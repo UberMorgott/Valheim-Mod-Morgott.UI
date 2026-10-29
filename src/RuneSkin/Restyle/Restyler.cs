@@ -132,9 +132,13 @@ namespace RuneSkin.Restyle
         // A styled text whose face another mod wrote after our pass (Epic Loot 0.15 VanillaFont on its first OnEnable, its
         // Quick Configure restyle of row clones that copied our mark). Style keeps a same-role mark as it is, so the
         // owner of the pass expires it first (ForeignUi); Apply then takes the mod's face as the new original.
+        // Epic Loot's VanillaFont (NorseBoldOutline) on a rune-face title keeps our font and writes only its "- Outline"
+        // material: on a loaded face (the canonical preset = the font asset's own material) a changed material is an
+        // overwrite too (run 20261029-033559-2, enchanting TabContent/*Content/Title off the rune preset).
         public static bool FontOverwritten(Graphic g) =>
             g is TMP_Text text && text.TryGetComponent<SkinMark>(out var mark) && !mark.Internal && mark.HasFont &&
-            mark.Outcome == Outcome.Styled && mark.SetFont && text.font != mark.SetFont;
+            mark.Outcome == Outcome.Styled && mark.SetFont &&
+            MarkMath.FaceOverwritten(text.font == mark.SetFont, ThemeTokens.IsLoadedFont(text.font), text.fontSharedMaterial == mark.SetFontMaterial);
 
         public static void Expire(Graphic g)
         {

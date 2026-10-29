@@ -620,6 +620,15 @@ namespace RuneSkin.PreWorld
                             tr.anchorMax = Vector2.one;
                             tr.offsetMin = new Vector2(24f, 0f);
                             tr.offsetMax = new Vector2(-24f, 0f);
+                            // showChangelog is a HorizontalLayoutGroup row (LeftKnot / Text / newsNotification / RightKnot):
+                            // the group, not these anchors, placed the label, off the plate centre by what the row
+                            // still held beside it (run 20261029-033559-2 at 1280x720: gaps 120/135). The knots are
+                            // hidden and the "!" docks at the corner (BadgeDock), so the label leaves the row too.
+                            if (b.GetComponent<LayoutGroup>())
+                            {
+                                if (!t.TryGetComponent<LayoutElement>(out var le)) le = t.gameObject.AddComponent<LayoutElement>();
+                                le.ignoreLayout = true;
+                            }
                         }
                 }
             if (links && links.TryGetComponent<VerticalLayoutGroup>(out var lv)) lv.spacing = Mathf.Max(lv.spacing, 6f);

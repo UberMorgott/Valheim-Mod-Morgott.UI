@@ -135,5 +135,24 @@ namespace RuneSkin.Tests
             Assert.Equal(want, LayoutMath.InsetGrowth(left, right, inset));
             Assert.Equal(System.Math.Max(left, inset), LayoutMath.RaiseSide(left, inset));
         }
+
+        // Run 20261029-033559-2: Epic Loot's convert quantity (IntegerNumber, short limit) sat left-aligned at the field
+        // inset (gaps 12 / 17); a short numeric field is a stepper value -> centred. Typed text / long numbers stay left.
+        [Theory]
+        [InlineData(true, 3, true)]
+        [InlineData(true, 4, true)]
+        [InlineData(true, 5, false)]
+        [InlineData(true, 0, false)] // no limit: free typed number
+        [InlineData(false, 3, false)]
+        public void ShortNumericFieldsAreNumberFields(bool numeric, int limit, bool want) =>
+            Assert.Equal(want, LayoutMath.IsNumberField(numeric, limit));
+
+        // Equal side insets, capped at 15 % of the box: the 38-unit Epic Loot box keeps ~27 units for its digits.
+        [Theory]
+        [InlineData(38.3f, 12f, 5.745f)]
+        [InlineData(120f, 12f, 12f)]
+        [InlineData(0f, 12f, 0f)]
+        public void NumberFieldPadLeavesRoomInNarrowBoxes(float width, float pad, float want) =>
+            Assert.Equal(want, LayoutMath.NumberFieldPad(width, pad), 3);
     }
 }

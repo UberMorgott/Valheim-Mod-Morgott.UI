@@ -125,7 +125,11 @@ namespace RuneSkin.Restyle
         {
             var box = input.targetGraphic ? input.targetGraphic.rectTransform : (RectTransform)input.transform;
             var pad = ThemeTokens.GetFloat("size.field.inset", 12f);
-            Align(HorizontalAlignmentOptions.Left);
+            // A short numeric value field (amount stepper: RuneSkin craft row, Epic Loot's convert / sacrifice quantity
+            // [-][N][+]) shows its number centred in the box with equal gaps to both edges, not as left-aligned typed text.
+            var number = LayoutMath.IsNumberField(input.contentType == TMP_InputField.ContentType.IntegerNumber ||
+                input.contentType == TMP_InputField.ContentType.DecimalNumber, input.characterLimit);
+            Align(number ? HorizontalAlignmentOptions.Center : HorizontalAlignmentOptions.Left);
             FieldText();
             var vp = input.textViewport;
             // One owner per viewport: the value text moves it (the placeholder shares it).
@@ -133,7 +137,9 @@ namespace RuneSkin.Restyle
             var space = box;
             var br = box.rect;
             var area = AreaIn(space);
-            var span = Free(box, br, area, input.targetGraphic, box.parent ? box.parent : box);
+            if (number) pad = LayoutMath.NumberFieldPad(br.width, pad);
+            // Number: the box edges, symmetric (a step button inside the box would skew the centre).
+            var span = number ? new LayoutMath.Span(br.xMin, br.xMax) : Free(box, br, area, input.targetGraphic, box.parent ? box.parent : box);
             if (vp && _text.transform.IsChildOf(vp) && vp != box)
             {
                 // Viewport edges move by the error of the text area (the text stretches inside it; RectMask2D clips there).

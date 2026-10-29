@@ -99,6 +99,13 @@ namespace RuneSkin.Restyle
         // grows to hold one line instead.
         public static bool MayShrinkToFit(bool inputField) => !inputField;
 
+        // A short numeric value field (Integer / Decimal content, characterLimit 1-4: amount steppers) centres its number.
+        public static bool IsNumberField(bool numericContent, int characterLimit) => numericContent && characterLimit > 0 && characterLimit <= 4;
+
+        // Side inset of a number field: the field inset, at most 15 % of the box width, so a narrow stepper box (Epic Loot
+        // quantity, 38 units) keeps room for three digits between equal gaps.
+        public static float NumberFieldPad(float boxWidth, float pad) => Math.Max(0f, Math.Min(pad, boxWidth * 0.15f));
+
         // Per-side vertical growth of an input viewport of height viewH inside its box (boxH) so one line of lineH fits,
         // never past the box. 0 once it fits: applying the result and asking again returns 0 (idempotent).
         public static float FieldViewportGrow(float viewH, float boxH, float lineH)

@@ -112,6 +112,10 @@ namespace RuneSkin.Diagnostics
             bool Under(Component c, string family) => c && Ownership.OwnershipRegistry.IsOwned(family) && t.IsChildOf(c.transform);
             var msg = MessageHud.instance;
             if (msg && msg.m_messageIcon && Ownership.OwnershipRegistry.IsOwned(Ownership.OwnershipRegistry.MessageHud) && t.IsChildOf(msg.m_messageIcon.transform.parent)) return true;
+            // NPC speech bubbles (Chat.SetNpcText clones of the m_npcTextBase / Large templates, e.g. Haldor / Hildir
+            // greetings over the trader panels): SpeechBubbleSkin styles the template in code (backing tinted
+            // color.speech.plate, sized by SpeechBubbleFit); a clone carries that look but no role row of its own.
+            if (Ownership.OwnershipRegistry.IsOwned(Ownership.OwnershipRegistry.Chat) && t.GetComponentInParent<WorldHud.SpeechBubbleFit>()) return true;
             return Under(MessageHud.instance, Ownership.OwnershipRegistry.MessageHud) || Under(Minimap.instance, Ownership.OwnershipRegistry.Minimap) ||
                    Under(EnemyHud.instance, Ownership.OwnershipRegistry.EnemyHud) || Under(DamageText.instance, Ownership.OwnershipRegistry.DamageText);
         }
