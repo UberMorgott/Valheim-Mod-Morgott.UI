@@ -165,7 +165,10 @@ namespace RuneSkin.Restyle
                 if (lead && img == _lead) continue;
                 if (Ornament(img)) continue;
                 var r = TextInset.Drawn(img, _button);
-                if (r.width >= br.width * 0.6f || r.yMax < lmin.y || r.yMin > lmax.y) continue;
+                // Only images inside the plate are beside the label (as TextInset.Free): a corner-docked badge (BadgeDock,
+                // half outside on the top-right corner) and its round plate narrowed the span by its inner half, the
+                // changelog label sat 7.5 units left of centre (run 20261029-105944, 1280x720, gaps 120 / 135).
+                if (!br.Contains(r.center) || r.width >= br.width * 0.6f || r.yMax < lmin.y || r.yMin > lmax.y) continue;
                 Obstacles.Add(new LayoutMath.Span(r.xMin, r.xMax));
             }
             Images.Clear();
