@@ -39,30 +39,49 @@ namespace RuneSkin.Diagnostics
         public void Add(Graphic g, Transform root, Classification c)
         {
             Counts[(int)c.Outcome]++;
-            Rows.Add(new ReportRow { Graphic = g, Path = SkinDiagnostics.PathOf(g.transform, root), Component = g.GetType().Name, Detail = SkinDiagnostics.Describe(g), Result = c });
+            Rows.Add(Row(g, root, c));
         }
 
+        private static ReportRow Row(Graphic g, Transform root, Classification c) =>
+            new ReportRow { Graphic = g, Path = SkinDiagnostics.PathOf(g.transform, root), Component = g.GetType().Name, Detail = SkinDiagnostics.Describe(g), Result = c };
+
+        private Dictionary<Graphic, int> _index;
         private int _prune = 256;
 
         // A row of a subtree the family restyled after this pass (Restyler.RestyleSubtree: cells / recipe rows vanilla
         // re-instantiated). Content rows carry no SkinMark, so without their row the coverage scan saw a rebuilt cell's
-        // item icon as never classified (run 20261029-105944, InventoryElement(Clone)/icon). Rows of destroyed graphics
-        // leave once the list doubled (subtrees rebuild on every open: no unbounded growth, no pinned dead graphics).
+        // item icon as never classified (run 20261029-105944, InventoryElement(Clone)/icon). A graphic already in the
+        // report has its row replaced (counts follow); rows of destroyed graphics leave once the list doubled (subtrees
+        // rebuild on every open: no unbounded growth, no pinned dead graphics).
         public void Append(Graphic g, Transform root, Classification c)
         {
+            if (_index == null)
+            {
+                _index = new Dictionary<Graphic, int>(Rows.Count);
+                for (var i = 0; i < Rows.Count; i++) if (Rows[i].Graphic) _index[Rows[i].Graphic] = i;
+            }
+            if (_index.TryGetValue(g, out var at))
+            {
+                Counts[(int)Rows[at].Result.Outcome]--;
+                Counts[(int)c.Outcome]++;
+                Rows[at] = Row(g, root, c);
+                return;
+            }
             if (Rows.Count >= _prune)
             {
-                // Dead graphics out, and one row per graphic (its latest: a subtree restyled again re-adds its rows).
-                var seen = new HashSet<Graphic>();
-                for (var i = Rows.Count - 1; i >= 0; i--)
-                    if (!Rows[i].Graphic || !seen.Add(Rows[i].Graphic)) Rows.RemoveAt(i);
+                Rows.RemoveAll(r => !r.Graphic);
                 Array.Clear(Counts, 0, Counts.Length);
-                foreach (var r in Rows) Counts[(int)r.Result.Outcome]++;
+                _index.Clear();
+                for (var i = 0; i < Rows.Count; i++)
+                {
+                    Counts[(int)Rows[i].Result.Outcome]++;
+                    _index[Rows[i].Graphic] = i;
+                }
                 _prune = Math.Max(256, Rows.Count * 2);
             }
+            _index[g] = Rows.Count;
             Add(g, root, c);
         }
-
         public string Summary =>
             $"{ScreenId}: graphics={Rows.Count} styled={Count(Outcome.Styled)} degraded={Count(Outcome.Degraded)} content={Count(Outcome.Content)} skipped={Count(Outcome.Skipped)} unknown={Count(Outcome.Unknown)}";
     }
