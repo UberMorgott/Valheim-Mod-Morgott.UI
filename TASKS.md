@@ -991,3 +991,18 @@ Pre-existing / foreign (not windows-v2):
 - [x] Bug 4 (backdrop tone changes over buttons / header): Skills / Trophies kept the vanilla darken (a 0.314), the moving world showed through; user 2026-11-03 "плотный фон" -> both take the RuneSkin scrim (a 0.8) like Achievements / Texts (0.25.35). Run 20261103-090528: darken alpha achievements = skills = trophies = 0.8, Skills spot 73 -> 5-7/255 (world behind the scrim), no UI graphic under the spot changes with the pointer.
 - [ ] Bug 5 (mouse stays captured after closing a window): not reproduced - Tab / Skills+Esc / Esc closes: player turns, cursor Locked, no look blockers (run 20261103-005216). Live: which window, closed how?
 - [ ] uifix-lag: frame time flat (7.01 -> 7.56 ms) but objects under InventoryGui grew 1187 -> 2449 over 3 tab walks: breakdown logged by tools 88f5633 on the next run.
+
+
+## Epic Loot 0.15.4-0.15.6 compat (0.25.37)
+
+- [x] EL 0.15.4 replaced SocketsUI (sockets in m_container) with its own ShardSlotPanel ("EpicLoot_ShardSlots", sibling of
+      m_player). Codex decision 2026-10-29 (chat bc0a8f0b): a dock window "inventory.sockets" topmost in the left column
+      (chest, backpack below; never folds), root placed by InventorySkin.ArrangeSockets in LateUpdate; EL's
+      ShardSlotPanel.Place stands down via prefix while the skin lays it out (moving the root after Place / children only
+      leaves the hit test a frame behind on drag). Adoption only when the patch applied.
+- [x] Tooltip: TooltipBox Fit / LayOut(float, float), "Canvas"/"ComparisonCanvas"/"Scroll View"/"Content"/"Topic"/"Text",
+      ScrollWheelHandler unchanged in 0.15.4 (PatchOnHoverFix -> TooltipBoxPatches): comments only.
+- [ ] Gamepad group focus indicator for dock windows (selected_frame hidden on every panel, sockets included).
+- [ ] Gamepad right-stick tooltip scroll: TooltipPlacer disables EL ScrollWheelHandler (which also runs GamepadScroll).
+- [ ] Sockets header glyph: no socket art in the bundle (header shows the title only).
+- [ ] Harness 97u-socket-use reads EpicLoot.ShardStones.SocketsUI.OpenEquipment / m_container: dead on 0.15.4.
