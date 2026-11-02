@@ -19,10 +19,13 @@ namespace RuneSkin.InventoryScreen
     {
         public const string Owner = "fullwindow";
 
+        // The CanvasGroup stays on the panel after the window closes (back at the panel's own values; a default group
+        // changes nothing): a deferred Destroy left a dying group that an Enter in the same frame (Exit last -> Enter
+        // other) adopted with its alpha 0, and Put then found it gone and never lifted the render gate (panel never drawn
+        // again).
         private sealed class Hidden
         {
             public CanvasGroup Group;
-            public bool Added;
             public float Alpha;
             public bool Blocks, Interactable;
         }
@@ -203,11 +206,7 @@ namespace RuneSkin.InventoryScreen
                 if (Holds(child)) { Show(child); continue; }
                 if (Find(child) != null) continue;
                 var h = new Hidden();
-                if (!child.TryGetComponent(out h.Group))
-                {
-                    h.Group = child.gameObject.AddComponent<CanvasGroup>();
-                    h.Added = true;
-                }
+                if (!child.TryGetComponent(out h.Group)) h.Group = child.gameObject.AddComponent<CanvasGroup>();
                 h.Alpha = h.Group.alpha;
                 h.Blocks = h.Group.blocksRaycasts;
                 h.Interactable = h.Group.interactable;
@@ -245,13 +244,9 @@ namespace RuneSkin.InventoryScreen
         {
             if (!h.Group) return;
             RenderGate.Set(h.Group.gameObject, Owner, false);
-            if (h.Added) UnityEngine.Object.Destroy(h.Group);
-            else
-            {
-                h.Group.alpha = h.Alpha;
-                h.Group.blocksRaycasts = h.Blocks;
-                h.Group.interactable = h.Interactable;
-            }
+            h.Group.alpha = h.Alpha;
+            h.Group.blocksRaycasts = h.Blocks;
+            h.Group.interactable = h.Interactable;
         }
 
         private static void Restore()
