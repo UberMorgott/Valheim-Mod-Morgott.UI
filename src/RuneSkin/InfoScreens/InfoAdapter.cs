@@ -31,6 +31,26 @@ namespace RuneSkin.InfoScreens
         }
     }
 
+    // One docked info panel at a time (InfoTabs closes its own panel before another opens). Achievements keeps the
+    // inventory header row (no mirror, InfoMath.HeaderTabsShown), so a header click opened Skills / Trophies / Texts on
+    // top of it; vanilla's full-screen darken covers that row. The open achievements panel closes first (vanilla
+    // OnCloseAchievements, InventoryGui.cs:2391-2395).
+    [HarmonyPatch]
+    public static class InfoSwitchAdapter
+    {
+        private static bool Prepare() => OwnershipRegistry.IsOwned(OwnershipRegistry.Inventory);
+
+        [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.OnOpenSkills))]
+        [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.OnOpenTexts))]
+        [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.OnOpenTrophies))]
+        [HarmonyPrefix]
+        [HarmonyPriority(Priority.First)]
+        private static void OpenOther_Prefix(InventoryGui __instance)
+        {
+            if (__instance.m_achievementsPanel && __instance.m_achievementsPanel.gameObject.activeSelf) __instance.OnCloseAchievements();
+        }
+    }
+
     [HarmonyPatch]
     public static class TrophiesAdapter
     {
