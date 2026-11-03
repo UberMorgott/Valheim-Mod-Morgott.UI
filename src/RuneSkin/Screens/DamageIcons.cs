@@ -13,11 +13,17 @@ namespace RuneSkin.Screens
     // UITooltip.UpdateTextElements (UITooltip.cs:166-181) writes Text = Localize(m_text); the postfix rewrites it from
     // the decorated raw text and hands the "Text" element our runtime TMP_SpriteAsset. One sprite asset per atlas page
     // the icons live on, chained as fallbacks (TMP name lookup walks fallbacks, TMP_SpriteAsset.SearchForSpriteByHashCode).
-    // Installed only when RuneSkin owns "Tooltips".
     [HarmonyPatch]
     public static class DamageIcons
     {
-        private static bool Prepare() => OwnershipRegistry.IsOwned(OwnershipRegistry.Tooltips);
+        // Installed when RuneSkin owns either family; each patch then checks its own (independent config switches).
+        private static bool _tips, _craft;
+        private static bool Prepare()
+        {
+            _tips = OwnershipRegistry.IsOwned(OwnershipRegistry.Tooltips);
+            _craft = OwnershipRegistry.IsOwned(OwnershipRegistry.Crafting);
+            return _tips || _craft;
+        }
 
         // Glyph placement in glyph px (TMP scales a sprite of an asset without pointSize to the font's ascent line,
         // TMP_Text.cs sprite branch): top sits on the ascent, ~10 % below the baseline, small gap after.
@@ -33,7 +39,7 @@ namespace RuneSkin.Screens
         private static void UpdateTextElements_Postfix(UITooltip __instance)
         {
             var tip = UITooltip.m_tooltip;
-            if (!tip || __instance == null) return;
+            if (!_tips || !tip || __instance == null) return;
             if (!Ensure()) return;
             var decorated = DamageIconText.Decorate(__instance.m_text, _tags);
             if (ReferenceEquals(decorated, __instance.m_text)) return;
@@ -41,6 +47,35 @@ namespace RuneSkin.Screens
             if (!t || !t.TryGetComponent<TMP_Text>(out var text)) return;
             if (text.spriteAsset != _asset) text.spriteAsset = _asset;
             text.text = Localization.instance.Localize(decorated);
+        }
+
+        // Crafting panel item description: InventoryGui.UpdateRecipe (InventoryGui.cs:1517) writes
+        // m_recipeDecription.text = Localize(ItemData.GetTooltip(item, quality, crafting: true, worldLevel, stack)) in one
+        // expression, so the raw tokens exist only as GetTooltip's return value. While UpdateRecipe runs, the outermost
+        // GetTooltip result (appending = false; Epic Loot's wrapped calls are harmless, Decorate is idempotent) gets the
+        // icons, and the description text gets our sprite asset.
+        private static bool _inRecipe;
+
+        [HarmonyPatch(typeof(InventoryGui), "UpdateRecipe")]
+        [HarmonyPrefix]
+        private static void UpdateRecipe_Prefix() => _inRecipe = _craft && Ensure(); // the panel is family "Crafting"
+
+        [HarmonyPatch(typeof(InventoryGui), "UpdateRecipe")]
+        [HarmonyFinalizer]
+        private static void UpdateRecipe_Finalizer(InventoryGui __instance)
+        {
+            if (_inRecipe && __instance.m_recipeDecription && __instance.m_recipeDecription.spriteAsset != _asset)
+                __instance.m_recipeDecription.spriteAsset = _asset;
+            _inRecipe = false;
+        }
+
+        [HarmonyPatch(typeof(ItemDrop.ItemData), nameof(ItemDrop.ItemData.GetTooltip),
+            new[] { typeof(ItemDrop.ItemData), typeof(int), typeof(bool), typeof(float), typeof(int), typeof(bool) })]
+        [HarmonyPostfix]
+        [HarmonyPriority(Priority.Last)]
+        private static void GetTooltip_Postfix(bool crafting, bool appending, ref string __result)
+        {
+            if (_inRecipe && crafting && !appending) __result = DamageIconText.Decorate(__result, _tags);
         }
 
         // Built once per theme revision (sprites / colours are theme tokens). False = no icon resolved (vanilla text).

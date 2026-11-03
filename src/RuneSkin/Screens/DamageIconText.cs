@@ -32,7 +32,9 @@ namespace RuneSkin.Screens
                 var end = raw.IndexOfAny(EndChars, start);
                 if (end < 0) end = raw.Length;
                 var type = Array.IndexOf(Types, raw.Substring(start, end - start));
-                if (type >= 0 && type < tags.Length && !string.IsNullOrEmpty(tags[type]))
+                // Idempotent: a token already carrying its tag (text decorated by a nested GetTooltip) is left alone.
+                if (type >= 0 && type < tags.Length && !string.IsNullOrEmpty(tags[type]) &&
+                    !(at >= tags[type].Length && string.CompareOrdinal(raw, at - tags[type].Length, tags[type], 0, tags[type].Length) == 0))
                 {
                     sb ??= new StringBuilder(raw.Length + 160);
                     sb.Append(raw, copied, at - copied).Append(tags[type]);

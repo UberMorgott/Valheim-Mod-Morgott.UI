@@ -51,6 +51,13 @@ namespace RuneSkin.Tests
         }
 
         [Fact]
+        public void DecoratingTwiceAddsNothing()
+        {
+            var once = DamageIconText.Decorate("\n$inventory_blunt: 5 VS $inventory_frost", Tags);
+            Assert.Same(once, DamageIconText.Decorate(once, Tags));
+        }
+
+        [Fact]
         public void TagCarriesNameAndColour()
         {
             Assert.Equal("<sprite name=\"fire\" color=#FF8A3DFF> ", DamageIconText.Tag("fire", "FF8A3DFF"));
