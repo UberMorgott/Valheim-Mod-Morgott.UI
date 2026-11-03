@@ -1,0 +1,9 @@
+# TASKS 3.U1: RuneSkin -> Morgott.UI (same sections and keys; Almanac family removed 2026-11-04)
+morgott.valheim.runeskin.cfg|Ownership -> morgott.valheim.ui.cfg|Ownership
+morgott.valheim.runeskin.cfg|Ownership|Almanac -> -
+morgott.valheim.runeskin.cfg|Hud -> morgott.valheim.ui.cfg|Hud
+morgott.valheim.runeskin.cfg|HudBars -> morgott.valheim.ui.cfg|HudBars
+morgott.valheim.runeskin.cfg|HudCenter -> morgott.valheim.ui.cfg|HudCenter
+morgott.valheim.runeskin.cfg|HudStrip -> morgott.valheim.ui.cfg|HudStrip
+morgott.valheim.runeskin.cfg|Layout -> morgott.valheim.ui.cfg|Layout
+morgott.valheim.runeskin.cfg|Diagnostics -> morgott.valheim.ui.cfg|Diagnostics
