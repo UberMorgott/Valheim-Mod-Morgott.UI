@@ -200,6 +200,9 @@ namespace RuneSkin.MapScreen
             var src = _map.m_mapSmallShader;
             var dst = _mapImage ? _mapImage.materialForRendering : null;
             if (!src || !dst || dst == src) return;
+            // Vanilla writes them only once a local player exists (Minimap.cs:670 -> CenterMap); until then they are not
+            // on the material and GetFloat logs "doesn't have a float or range property" every frame.
+            if (!src.HasProperty(ZoomId)) return;
             dst.SetFloat(ZoomId, src.GetFloat(ZoomId));
             dst.SetFloat(PixelSizeId, src.GetFloat(PixelSizeId));
             dst.SetVector(CenterId, src.GetVector(CenterId));
