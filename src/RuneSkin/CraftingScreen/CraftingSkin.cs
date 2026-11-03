@@ -509,11 +509,25 @@ namespace RuneSkin.CraftingScreen
             return false;
         }
 
+        // Row -> RecipeDataPair.CanCraft: a scan of m_availableRecipes per row image made every restyle pass O(rows^2)
+        // (987 rows under `nocost`). CanCraft is fixed per row instance (InventoryGui.AddRecipeToList, :1385); a row the
+        // map lacks (vanilla rebuilt the list) rebuilds it, at most once a frame: rows awaiting their deferred Destroy are
+        // in no list (Codex review), each of them rescanning would be O(rows^2) again.
+        private readonly Dictionary<Transform, bool> _canCraft = new Dictionary<Transform, bool>();
+        private int _canCraftFrame = -1, _canCraftFirst;
+
         private bool CanCraft(Transform row)
         {
+            if (_canCraft.TryGetValue(row, out var can)) return can;
+            var rows = _gui.m_availableRecipes;
+            var first = rows.Count > 0 && rows[0].InterfaceElement ? rows[0].InterfaceElement.GetInstanceID() : 0;
+            if (_canCraftFrame == Time.frameCount && _canCraftFirst == first) return true; // same list, already mapped
+            _canCraftFrame = Time.frameCount;
+            _canCraftFirst = first;
+            _canCraft.Clear();
             foreach (var r in _gui.m_availableRecipes)
-                if (r.InterfaceElement && r.InterfaceElement.transform == row) return r.CanCraft;
-            return true;
+                if (r.InterfaceElement) _canCraft[r.InterfaceElement.transform] = r.CanCraft;
+            return !_canCraft.TryGetValue(row, out can) || can;
         }
 
         private bool IsRequirementCell(Transform t)
@@ -1060,9 +1074,10 @@ namespace RuneSkin.CraftingScreen
             var pitch = o.RowPitch;
             var rows = _gui.m_availableRecipes;
             var first = rows.Count > 0 && rows[0].InterfaceElement ? rows[0].InterfaceElement.GetInstanceID() : 0;
-            var changed = !Mathf.Approximately(pitch, _rowPitch) || rows.Count != _rowCount || first != _rowFirst || _rowsTheme != ThemeTokens.Revision;
+            var rebuilt = _rowsRebuilt || rows.Count != _rowCount || first != _rowFirst;
+            var changed = rebuilt || !Mathf.Approximately(pitch, _rowPitch) || _rowsTheme != ThemeTokens.Revision;
             if (!changed) return;
-            var rebuilt = rows.Count != _rowCount || first != _rowFirst;
+            _rowsRebuilt = false;
             _rowPitch = pitch;
             _rowCount = rows.Count;
             _rowFirst = first;
@@ -1095,12 +1110,48 @@ namespace RuneSkin.CraftingScreen
         // m_recipeElementPrefab, which the root pass styled at attach: each clone carries the template's marks (Style keeps
         // a same-role, same-revision mark and only ensures its layout components), so the per-row state left is the strip's
         // craftable / unavailable role. Classified with the rows' own context (RowContext), not the whole root's.
+        // Rows a pool kept (MorgottTweaks [RecipeListReuse]) keep their marks: only rows not styled yet, or styled for the
+        // other CanCraft state, are restyled (987 rows under `nocost`: the whole pass took ~250 ms per rebuild, run
+        // 20261103-191416-2). A theme change restyles all (StyledRows cleared).
+        private readonly Dictionary<GameObject, bool> _styledRows = new Dictionary<GameObject, bool>();
+        private readonly List<InventoryGui.RecipeDataPair> _restyle = new List<InventoryGui.RecipeDataPair>();
+        private int _styledTheme = -1;
+        private bool _rowsRebuilt;
+
+        public void RowsRebuilt()
+        {
+            _rowsRebuilt = true;
+            _canCraft.Clear(); // a kept row's CanCraft may have changed (CanCraft map below)
+            _canCraftFrame = -1;
+        }
+
         private void RestyleRows(List<InventoryGui.RecipeDataPair> rows)
         {
-            var ctx = RowContext(rows);
+            if (_styledTheme != ThemeTokens.Revision)
+            {
+                _styledTheme = ThemeTokens.Revision;
+                _styledRows.Clear();
+            }
+            _restyle.Clear();
+            foreach (var r in rows)
+                if (r.InterfaceElement && (!_styledRows.TryGetValue(r.InterfaceElement, out var can) || can != r.CanCraft))
+                    _restyle.Add(r);
+            if (_styledRows.Count > 4 * Mathf.Max(64, rows.Count)) // destroyed rows (no pool): drop their keys
+            {
+                _styledRows.Clear();
+                _restyle.Clear();
+                _restyle.AddRange(rows);
+            }
+            if (_restyle.Count == 0) return;
+            var ctx = RowContext(_restyle);
             if (ctx == null) return;
-            for (var n = 0; n < rows.Count; n++)
-                if (rows[n].InterfaceElement) Restyler.RestyleSubtree(rows[n].InterfaceElement.transform, _crafting, ctx);
+            foreach (var r in _restyle)
+            {
+                if (!r.InterfaceElement) continue;
+                Restyler.RestyleSubtree(r.InterfaceElement.transform, _crafting, ctx);
+                _styledRows[r.InterfaceElement] = r.CanCraft;
+            }
+            _restyle.Clear();
         }
 
         private void StyleRow(RectTransform row, float pitch)

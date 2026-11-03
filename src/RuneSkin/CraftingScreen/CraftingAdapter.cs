@@ -39,6 +39,16 @@ namespace RuneSkin.CraftingScreen
             catch (System.Exception e) { Fault(e); }
         }
 
+        // Every list rebuild (InventoryGui.UpdateRecipeList, :1158): new rows, or rows a pool kept (MorgottTweaks
+        // [RecipeListReuse]) whose CanCraft may have changed - the same row count and first row do not mean the same rows.
+        [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.UpdateRecipeList))]
+        [HarmonyPostfix]
+        private static void UpdateRecipeList_Postfix()
+        {
+            var skin = CraftingSkin.Instance;
+            if (skin) skin.RowsRebuilt();
+        }
+
         [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.SetupRequirementList))]
         [HarmonyPrefix]
         [HarmonyPriority(Priority.First)]
