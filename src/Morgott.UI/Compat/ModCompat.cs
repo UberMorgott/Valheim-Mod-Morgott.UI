@@ -61,9 +61,9 @@ namespace Morgott.UI.Compat
         public const string MtChainTree = "MT_ChainTree";
         public const string MtChainCraftButton = "MT_ChainCraftButton";
         public const string MtGuid = "morgott.valheim.tweaks";
-        // Vaettir (was BossAwakening before 0.14.0): rarity frame child per enemy HUD (its tier sprite), its plugin id.
-        public const string VaettirFrame = "VT_Frame";
-        public const string VaettirGuid = "morgott.valheim.vaettir";
+        // Morgott.Creatures (was Vaettir): rarity frame child per enemy HUD (its tier sprite), its plugin id.
+        public const string CreaturesFrame = "CR_Frame";
+        public const string CreaturesGuid = Morgott.Core.Contracts.CreaturesGuid;
         public const string StarLevelSystemGuid = "MidnightsFX.StarLevelSystem";
     }
 }

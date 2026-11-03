@@ -23,7 +23,7 @@ namespace Morgott.UI.WorldHud
     // vanilla colours, GuiBar.cs:32-38), name in the body font with a dark outline, stars as badges, a
     // RuneSkin_EnemyFrame (frame_enemy_normal / frame_boss) fitted around Health with the tier emblem socket at the bar's left
     // end (part of the tier frame, cut with it from the mockup), the shield band and the stagger line inside the window, the boss name on a header plaque. Vaettir
-    // (morgott.valheim.vaettir, UI\RarityFrames.cs) adds its own VT_Frame child per HUD with the creature's rarity
+    // (morgott.valheim.creatures, UI\RarityFrames.cs) adds its own CR_Frame child per HUD with the creature's rarity
     // tier and hides the stars: RuneSkin keeps that frame object and its tier and redraws it with the matching RuneSkin
     // tier art (frame_enemy_<tier>: socket + rail + cap cut from enemy-b; boss bars frame_boss) after Vaettir's UpdateHuds postfix.
     //
@@ -38,8 +38,8 @@ namespace Morgott.UI.WorldHud
         public const string FrameName = "RuneSkin_EnemyFrame";
         public const string ShieldName = "RuneSkin_Shield";
         public const string StaggerName = "RuneSkin_Stagger";
-        private const string VaettirFrame = ModCompat.VaettirFrame;
-        private const float VtRetrySeconds = 1f; // HUDs without a VT_Frame (players, tamed, Vaettir off) look again at most once a second
+        private const string VaettirFrame = ModCompat.CreaturesFrame;
+        private const float VtRetrySeconds = 1f; // HUDs without a CR_Frame (players, tamed, Vaettir off) look again at most once a second
         private const int MaxCandidates = 64;
 
         private static readonly HudArt Art = new HudArt(ScreenId);
@@ -146,7 +146,7 @@ namespace Morgott.UI.WorldHud
                 {
                     var frame = NewFrame(health);
                     var fit = SetFrame(frame, health, boss ? "sprite.frame.boss" : "sprite.frame.enemy.normal", boss);
-                    Art.Note(frame, boss ? "frame.boss" : "frame.enemy.normal", frame.sprite, "RuneSkin enemy frame around Health (off while a Vaettir VT_Frame shows)");
+                    Art.Note(frame, boss ? "frame.boss" : "frame.enemy.normal", frame.sprite, "RuneSkin enemy frame around Health (off while a Vaettir CR_Frame shows)");
                     var lift = fit.Top;
                     if (!boss)
                     {
@@ -216,7 +216,7 @@ namespace Morgott.UI.WorldHud
         // (GuiBar.cs SetBar / SetWidth: SetSizeWithCurrentAnchors(Horizontal)), so the vertical geometry is free: the
         // Health rect grows to the token height around its pivot, every non-stretched descendant (bkg, darken,
         // health_* and their bar) scales its height and y position by the same factor, stretched ones follow the
-        // parent (ClearName then lifts the name above the frame). Vaettir's VT_Frame
+        // parent (ClearName then lifts the name above the frame). Vaettir's CR_Frame
         // sizes itself from health.rect.height (RarityFrames.cs:245) and is refitted by SetFrame, so tiers keep working.
         private static void Grow(Transform hud, RectTransform health, float target)
         {
@@ -471,7 +471,7 @@ namespace Morgott.UI.WorldHud
             }
         }
 
-        // After Vaettir's UpdateHuds postfix: its VT_Frame keeps the tier, RuneSkin draws the tier art; then alpha,
+        // After Vaettir's UpdateHuds postfix: its CR_Frame keeps the tier, RuneSkin draws the tier art; then alpha,
         // distance scale, name, shield band and stagger line.
         internal static void Update(EnemyHud hud)
         {
@@ -530,7 +530,7 @@ namespace Morgott.UI.WorldHud
             }
         }
 
-        // Vaettir tier art: frame (with its socket) redrawn when its sprite changes. HUDs without a VT_Frame (players, tamed,
+        // Vaettir tier art: frame (with its socket) redrawn when its sprite changes. HUDs without a CR_Frame (players, tamed,
         // Vaettir off) look for it again at most once a second (audit P2: Find per frame).
         private static void Tier(State s, float now)
         {
@@ -773,7 +773,7 @@ namespace Morgott.UI.WorldHud
         [HarmonyPatch(typeof(EnemyHud), "LateUpdate")]
         [HarmonyPrefix]
         [HarmonyPriority(Priority.First)]
-        [HarmonyBefore(ModCompat.VaettirGuid)]
+        [HarmonyBefore(ModCompat.CreaturesGuid)]
         private static void LateUpdate_Prefix(EnemyHud __instance)
         {
             try { EnemyHudSkin.ImmuneRows(__instance); }
@@ -791,7 +791,7 @@ namespace Morgott.UI.WorldHud
         [HarmonyPatch(typeof(EnemyHud), nameof(EnemyHud.UpdateHuds))]
         [HarmonyPostfix]
         [HarmonyPriority(Priority.Last)]
-        [HarmonyAfter(ModCompat.VaettirGuid, ModCompat.MtGuid, ModCompat.StarLevelSystemGuid)]
+        [HarmonyAfter(ModCompat.CreaturesGuid, ModCompat.MtGuid, ModCompat.StarLevelSystemGuid)]
         private static void UpdateHuds_Postfix(EnemyHud __instance)
         {
             try { EnemyHudSkin.Update(__instance); }

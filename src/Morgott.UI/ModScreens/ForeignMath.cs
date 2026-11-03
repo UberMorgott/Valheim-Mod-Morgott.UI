@@ -28,15 +28,6 @@ namespace Morgott.UI.ModScreens
             return AssemblyKind.Foreign;
         }
 
-        // ModUiOptOut list -> set. Saved configs keep the pre-0.14.0 default "BossAwakening", the old assembly name of
-        // Vaettir (morgott.valheim.vaettir since 0.14.0): it opts Vaettir out too.
-        public static HashSet<string> ParseOptOut(string csv)
-        {
-            var set = ParseList(csv);
-            if (set.Contains("BossAwakening")) set.Add("Vaettir");
-            return set;
-        }
-
         // Config list "A, B,C" -> set (case-insensitive, blanks dropped).
         public static HashSet<string> ParseList(string csv)
         {

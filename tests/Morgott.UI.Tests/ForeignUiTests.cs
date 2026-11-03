@@ -24,20 +24,12 @@ namespace Morgott.UI.Tests
         public void AssembliesAreClassified(string asm, AssemblyKind want) => Assert.Equal(want, Classify(asm));
 
         [Fact]
-        public void OldBossAwakeningOptOutAlsoOptsOutVaettir()
-        {
-            Assert.Contains("Vaettir", ParseOptOut("bossawakening, BA_WorldBossBar"));
-            Assert.DoesNotContain("Vaettir", ParseOptOut("OtherSkin"));
-            Assert.Contains("Vaettir", ParseOptOut("Vaettir,BA_WorldBossBar"));
-        }
-
-        [Fact]
         public void OptOutListIsCaseInsensitiveAndTrimmed()
         {
-            var set = ParseList(" OtherSkin, BA_WorldBossBar ,,");
+            var set = ParseList(" OtherSkin, CR_WorldBossBar ,,");
             Assert.Equal(2, set.Count);
             Assert.Contains("otherskin", set);
-            Assert.Contains("BA_WorldBossBar", set);
+            Assert.Contains("CR_WorldBossBar", set);
             Assert.Empty(ParseList(null));
         }
 

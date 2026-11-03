@@ -47,7 +47,7 @@ namespace Morgott.UI.Tests
         [InlineData(false, "HudBase(Clone)", false)]   // a normal mob
         [InlineData(false, "HudBaseBoss(Clone)", false)] // flag lowered (Vaettir: a second boss drawn as a mob)
         [InlineData(true, "HudBase(Clone)", false)]    // flagged but built from the mob template
-        [InlineData(true, "VT_TargetPanel", false)]    // Vaettir's target panel (a copy of the boss template)
+        [InlineData(true, "CR_TargetPanel", false)]    // Vaettir's target panel (a copy of the boss template)
         public void OnlyRealBossesGetTheBossBar(bool isBoss, string gui, bool want) =>
             Assert.Equal(want, Morgott.UI.WorldHud.EnemyHudMath.BossBar(isBoss, gui, "HudBaseBoss"));
 

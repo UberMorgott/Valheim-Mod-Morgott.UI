@@ -23,7 +23,7 @@ namespace Morgott.UI
     [BepInProcess("valheim.exe")]
     public sealed class Plugin : BaseUnityPlugin
     {
-        public const string Version = "0.26.0";
+        public const string Version = "0.26.1";
 
         public static ManualLogSource Log { get; private set; }
         public static ConfigEntry<float> SkinScale { get; private set; }
@@ -136,8 +136,8 @@ namespace Morgott.UI
             {
                 wanted[family] = Config.Bind("Ownership", family, true, Advanced("Morgott.UI " + does + " Read once at startup (restart to change).")).Value;
                 if (family == OwnershipRegistry.ModUi)
-                    _modUiOptOut = Config.Bind("Ownership", "ModUiOptOut", "Vaettir,BA_WorldBossBar", Advanced(
-                        "Comma-separated object or plugin assembly names the fallback restyler (ModUi) never touches, with everything below them (default: Vaettir's boss / raid / target bars keep their own design, styled by the EnemyHud track; the pre-0.14.0 name BossAwakening also opts Vaettir out). Read once at startup."));
+                    _modUiOptOut = Config.Bind("Ownership", "ModUiOptOut", "Morgott.Creatures,CR_WorldBossBar", Advanced(
+                        "Comma-separated object or plugin assembly names the fallback restyler (ModUi) never touches, with everything below them (default: Morgott.Creatures' boss / raid / target bars keep their own design, styled by the EnemyHud track). Read once at startup."));
             }
             HudScale = Config.Bind("Hud", "Scale", 1f, new ConfigDescription(
                 "Scale of the bottom strip (its cells, frames and gaps; the inventory grid shares the strip's cell), the minimap ring and the HUD margins on top of the game's UI scale. Fonts never go below the readable floor.",

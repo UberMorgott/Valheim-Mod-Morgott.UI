@@ -84,11 +84,11 @@ namespace Morgott.UI.Tests
         }
 
         [Theory]
-        [InlineData("vt_frame_normal", false, "sprite.frame.enemy.normal")]
-        [InlineData("vt_frame_magic", false, "sprite.frame.enemy.magic")]
-        [InlineData("vt_frame_rare", false, "sprite.frame.enemy.rare")]
-        [InlineData("vt_frame_unique", false, "sprite.frame.enemy.unique")]
-        [InlineData("vt_frame_rare", true, "sprite.frame.boss")]
+        [InlineData("cr_frame_normal", false, "sprite.frame.enemy.normal")]
+        [InlineData("cr_frame_magic", false, "sprite.frame.enemy.magic")]
+        [InlineData("cr_frame_rare", false, "sprite.frame.enemy.rare")]
+        [InlineData("cr_frame_unique", false, "sprite.frame.enemy.unique")]
+        [InlineData("cr_frame_rare", true, "sprite.frame.boss")]
         [InlineData(null, false, "sprite.frame.enemy.normal")]
         public void VaettirTierMapsToRuneSkinArt(string vt, bool boss, string token)
         {

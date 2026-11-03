@@ -223,7 +223,7 @@ namespace Morgott.UI.WorldHud
             return i < 0 ? i + count : i;
         }
 
-        // Vaettir rarity frame sprite name (UI\Resources\vt_frame_<tier>.png, RarityFrames.cs Files) -> RuneSkin token.
+        // Vaettir rarity frame sprite name (UI\Resources\cr_frame_<tier>.png, RarityFrames.cs Files) -> RuneSkin token.
         public static string TierToken(string vtSprite, bool boss)
         {
             if (boss) return "sprite.frame.boss";
