@@ -743,7 +743,7 @@ namespace RuneSkin.CraftingScreen
         // and the grid root is centred in it. Reflection: VNEI is optional and not referenced.
         private static Type _vneiType;
         private static System.Reflection.MethodInfo _vneiSetSize;
-        private static System.Reflection.FieldInfo _vneiRoot;
+        private static System.Reflection.FieldInfo _vneiRoot, _vneiDrag;
         private static System.Reflection.PropertyInfo _vneiX, _vneiY;
         private static bool _vneiLooked;
         private Component _vneiUi;
@@ -759,6 +759,7 @@ namespace RuneSkin.CraftingScreen
                 {
                     _vneiSetSize = HarmonyLib.AccessTools.Method(_vneiType, "SetSize", new[] { typeof(bool), typeof(int), typeof(int) });
                     _vneiRoot = HarmonyLib.AccessTools.Field(_vneiType, "root");
+                    _vneiDrag = HarmonyLib.AccessTools.Field(_vneiType, "dragHandler");
                     _vneiX = HarmonyLib.AccessTools.Property(_vneiType, "ItemSizeX");
                     _vneiY = HarmonyLib.AccessTools.Property(_vneiType, "ItemSizeY");
                 }
@@ -802,6 +803,13 @@ namespace RuneSkin.CraftingScreen
                     var w = (x * 50f + 10f) * u;
                     var h = (y * 50f + 100f) * u;
                     Geo.Place(_canvas, browser, new Box(area.X + (area.W - w) / 2f, area.Y, w, h));
+                    // VNEI's root follows its drag handle every frame (BaseUI.LateUpdate: root.anchoredPosition =
+                    // dragHandler.anchoredPosition; same parent / anchors / pivot in its prefab). Moving root alone made
+                    // the two LateUpdates fight: the grid jumped by half the body's spare height inside each frame, so
+                    // UITooltip.LateUpdate (UITooltip.cs:87) found the pointer outside the hovered cell and hid its
+                    // tooltip (user bug 2026-11-03: no VNEI tooltip moving the pointer up the grid). The handle goes too.
+                    var handle = _vneiDrag != null ? _vneiDrag.GetValue(ui) as RectTransform : null;
+                    if (handle && handle.anchoredPosition != browser.anchoredPosition) handle.anchoredPosition = browser.anchoredPosition;
                 }
             }
             catch (Exception e)
