@@ -124,7 +124,13 @@ namespace Morgott.UI.Api
 
         private static readonly List<Entry<HoldPromptState>> Holds = new List<Entry<HoldPromptState>>();
 
-        public static Action AddHold(string owner, string id, Func<Player, HoldPromptState> get) => Add(Holds, owner, owner + ":" + id, get);
+        // Same owner + id replaces (ITheme contract); disposal stays per entry, so an old handle never removes the new one.
+        public static Action AddHold(string owner, string id, Func<Player, HoldPromptState> get)
+        {
+            var key = owner + ":" + id;
+            Holds.RemoveAll(e => e.Key == key);
+            return Add(Holds, owner, key, get);
+        }
 
         // Newest live prompt that wants to be shown (sanitized: progress clamped to 0..1, empty prompts hidden).
         public static bool TryHold(Player player, out HoldPromptState state)
