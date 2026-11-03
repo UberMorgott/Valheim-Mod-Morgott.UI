@@ -234,8 +234,9 @@ namespace RuneSkin.WorldHud
             return "sprite.frame.enemy.normal";
         }
 
-        // Immunity row: bit i = DamageIconText.Types[i] (blunt, slash, pierce, fire, frost, lightning, poison, spirit) the
-        // creature takes nothing from (Immune / Ignore, HitData.ApplyModifier, HitData.cs:925). Chop / pickaxe are not combat.
+        // Immunity row: bit i = DamageIconText.Types[i] (blunt, slash, pierce, fire, frost, lightning, poison) the creature takes
+        // nothing from (Immune / Ignore, HitData.ApplyModifier, HitData.cs:925). Not shown: chop / pickaxe (not combat) and spirit
+        // (user 2026-11-03: nearly every living mob is spirit Immune, a badge on most bars).
         public static int ImmuneMask(HitData.DamageModifiers m)
         {
             var mask = 0;
@@ -246,7 +247,6 @@ namespace RuneSkin.WorldHud
             if (Immune(m.m_frost)) mask |= 16;
             if (Immune(m.m_lightning)) mask |= 32;
             if (Immune(m.m_poison)) mask |= 64;
-            if (Immune(m.m_spirit)) mask |= 128;
             return mask;
         }
 
