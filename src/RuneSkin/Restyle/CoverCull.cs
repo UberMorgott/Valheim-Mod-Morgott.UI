@@ -75,6 +75,13 @@ namespace RuneSkin.Restyle
                 for (var i = 0; i < index; i++) Consider(parent.GetChild(i), opaque, order, 0);
                 if (parent == root) break;
             }
+            // A window under its own override-sorting canvas above its root (the large map, LargeMap.cs:68-70) is also
+            // drawn after every other branch of that root canvas, earlier or later siblings alike (Codex: the crosshair,
+            // EnemyHud and DamageText under IngameGui stayed drawn under the map backing).
+            if (root && sortCanvas.transform != root && sortCanvas.rootCanvas.sortingOrder < order)
+                for (var node = sortCanvas.transform; node && node != root && node.parent; node = node.parent)
+                    foreach (Transform sib in node.parent)
+                        if (sib != node) Consider(sib, opaque, order, 0, true);
             // Root canvases drawn earlier (lower sorting order).
             Canvases.Clear();
             Canvases.AddRange(Object.FindObjectsByType<Canvas>(FindObjectsSortMode.None));
@@ -87,22 +94,23 @@ namespace RuneSkin.Restyle
             Canvases.Clear();
         }
 
-        private static void Consider(Transform t, Rect opaque, int windowOrder, int depth)
+        // tieAbove: an equal sorting order counts as drawn after the window (a later sibling branch: order not proven).
+        private static void Consider(Transform t, Rect opaque, int windowOrder, int depth, bool tieAbove = false)
         {
             if (!t || !t.gameObject.activeInHierarchy || !(t is RectTransform)) return;
             // Sorted above the window by its own (or an ancestor's) override-sorting canvas: drawn after it.
             var sort = SortCanvas(t);
-            if (sort && sort.overrideSorting && sort.sortingOrder > windowOrder) return;
+            if (sort && sort.overrideSorting && (sort.sortingOrder > windowOrder || tieAbove && sort.sortingOrder == windowOrder)) return;
             if (!Bounds(t, out var b, out var above)) return;
             if (!RenderGateMath.Overlaps(opaque.xMin, opaque.yMin, opaque.xMax, opaque.yMax, b.xMin, b.yMin, b.xMax, b.yMax)) return;
-            var aboveWindow = above != null && above.sortingOrder > windowOrder;
+            var aboveWindow = above != null && (above.sortingOrder > windowOrder || tieAbove && above.sortingOrder == windowOrder);
             if (!aboveWindow && RenderGateMath.Inside(opaque.xMin, opaque.yMin, opaque.xMax, opaque.yMax, b.xMin, b.yMin, b.xMax, b.yMax, Tol))
             {
                 Next.Add(t.gameObject);
                 return;
             }
             if (depth >= MaxDepth) return;
-            foreach (Transform child in t) Consider(child, opaque, windowOrder, depth + 1);
+            foreach (Transform child in t) Consider(child, opaque, windowOrder, depth + 1, tieAbove);
         }
 
         // Screen bounds of the subtree's enabled graphics; above = the highest override-sorting canvas inside it.

@@ -85,7 +85,7 @@ namespace RuneSkin.InventoryScreen
                 }
             }
             var gui = InventoryGui.instance;
-            var standing = StandingShown(gui);
+            var standing = StandingShown(gui) || LargeMapShown();
             if (standing != _standing)
             {
                 _standing = standing;
@@ -117,6 +117,15 @@ namespace RuneSkin.InventoryScreen
             return !gui.TryGetComponent<CanvasGroup>(out var fade) || fade.alpha >= 0.999f;
         }
 
+        // The open large map's backing covers the world HUD drawn before it (crosshair / hover name, enemy and boss bars,
+        // damage numbers; overdraw-map covered=15, runs 20261023-161531 .. 20261103-102154). Only what lies fully inside
+        // the backing is gated, so a windowed / moved map (MapWindow) keeps the HUD outside it.
+        private static bool LargeMapShown()
+        {
+            var map = Minimap.instance;
+            return map && map.m_mode == Minimap.MapMode.Large && map.m_largeRoot && map.m_largeRoot.activeInHierarchy;
+        }
+
         private static void Cull(InventoryGui gui)
         {
             if (Time.unscaledTime < _nextCull) return;
@@ -136,7 +145,8 @@ namespace RuneSkin.InventoryScreen
                 // crosshair / hover name drew under Texts_frame/bkg/RuneSkinPanel/Backing).
                 else AddStanding(w);
             }
-            if (_standing && gui) AddStanding(gui.m_inventoryRoot);
+            if (_standing && gui && StandingShown(gui)) AddStanding(gui.m_inventoryRoot);
+            if (LargeMapShown()) AddStanding(Minimap.instance.m_largeRoot.transform);
             CoverCull.Refresh(CoverWindows, CoverRects);
         }
 
