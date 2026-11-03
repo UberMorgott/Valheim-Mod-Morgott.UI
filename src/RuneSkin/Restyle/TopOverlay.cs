@@ -35,11 +35,11 @@ namespace RuneSkin.Restyle
             return order;
         }
 
-        // Puts go on the top overlay sort; idempotent, cheap when nothing changed.
-        public static Canvas Lift(GameObject go)
+        // Puts go on the top overlay sort (band above BaseOrder); idempotent, cheap when nothing changed.
+        public static Canvas Lift(GameObject go, int band = Band)
         {
             if (!go) return null;
-            var order = Order(go.transform.parent, out var layer);
+            var order = BaseOrder(go.transform.parent, out var layer) + band;
             var c = go.GetComponent<Canvas>();
             if (!c) c = go.AddComponent<Canvas>();
             if (!c.overrideSorting) c.overrideSorting = true;
