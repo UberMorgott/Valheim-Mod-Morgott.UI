@@ -84,6 +84,8 @@ namespace RuneSkin.Screens
                 var appended = item.m_shared.m_appendToolTip ? item.m_shared.m_appendToolTip.m_itemData?.m_shared : null;
                 if (appended != null)
                     __result = InfoScreens.StatsMath.FoodTooltipPerSecond(__result, appended.m_foodRegen, comma, "$runeskin_stats_per_second");
+                // Trinkets: what fills adrenaline, the bar size, the full-bar effect per second and the decay.
+                if (!appending) __result = AdrenalineTooltip.Append(item, __result);
             }
             if (_inRecipe && crafting && !appending) __result = DamageIconText.Decorate(__result, _tags);
         }
