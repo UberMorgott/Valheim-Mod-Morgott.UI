@@ -113,7 +113,8 @@ namespace RuneSkin.InfoScreens
                 var t = image.transform;
                 if (image.GetComponent<SkinMark>() is SkinMark m && m.Internal) continue;
                 if (t.name == "bkg" && t.parent == _frame) ctx.Role(image, "skip", "vanilla skills frame (replaced by the panel stack)");
-                else if (t.name == "darken" || t.name == "blur") ctx.Role(image, "skip", "vanilla modal dim / blur behind the dialog (kept)");
+                else if (t.name == "darken") ctx.Role(image, "scrim", "vanilla modal dim -> RuneSkin scrim like Achievements / Texts (user 2026-11-03: the world showed through the 0.31 dim)");
+                else if (t.name == "blur") ctx.Role(image, "skip", "vanilla modal blur behind the dialog (kept)");
                 else if (t.parent == _root && image.GetComponent<Button>()) ctx.Role(image, "skip", "full-screen click-outside closer (vanilla, transparent; a button sprite would paint the screen)");
                 else if (t.name == "Skills" && t.parent == _frame) ctx.Role(image, "skip", "inactive list backdrop (InputFieldBackground), replaced by the panel stack");
                 else if (_dialog.m_listRoot && t == _dialog.m_listRoot) ctx.Role(image, "skip", "list content hit area (vanilla, transparent; not a screen dim)");

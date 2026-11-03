@@ -96,7 +96,8 @@ namespace RuneSkin.InfoScreens
                 var t = image.transform;
                 if (image.GetComponent<SkinMark>() is SkinMark m && m.Internal) continue;
                 if (t.parent == _frame && t.name.StartsWith("border", System.StringComparison.Ordinal)) ctx.Role(image, "skip", "vanilla trophies frame (replaced by the panel stack)");
-                else if (t.name == "darken" || t.name == "blur") ctx.Role(image, "skip", "vanilla modal dim / blur (kept)");
+                else if (t.name == "darken") ctx.Role(image, "scrim", "vanilla modal dim -> RuneSkin scrim like Achievements / Texts (user 2026-11-03)");
+                else if (t.name == "blur") ctx.Role(image, "skip", "vanilla modal blur (kept)");
                 else if (t.name == "icon_bkg") ctx.Role(image, "slot.recess", "trophy cell (slot_cell_recess)");
                 else if (t.name == "bkg" && t.parent && t.parent.name.StartsWith("TrophyElement", System.StringComparison.Ordinal)) ctx.Role(image, "skip", "vanilla trophy card strip (grid cells only, trophies-a)");
                 else if (t.name == "icon") ctx.Role(image, "content", "trophy icon");
