@@ -7,7 +7,7 @@ namespace RuneSkin.InfoScreens
     internal enum Explain
     {
         None, Health, Stamina, Eitr, HealthRegen, StaminaRegen, EitrRegen, Resist, Jog, Run, Swim, Weight, RunDrain, Dodge,
-        Jump, SwimDrain, Armor, Block, Parry, BlockStamina, Damage, Dps, AttackStamina,
+        Jump, SwimDrain, Armor, Block, Parry, BlockStamina, Damage, Dps, AttackStamina, ShieldMax, ShieldRecharge, ShieldBreak,
     }
 
     // The breakdown of each stat (StatBreakdown): the same vanilla formulas the rows use (decompiled 1.0.20, V =
@@ -47,6 +47,9 @@ namespace RuneSkin.InfoScreens
                 case InfoScreens.Explain.Damage: Damage(bd); break;
                 case InfoScreens.Explain.Dps: Dps(bd); break;
                 case InfoScreens.Explain.AttackStamina: AttackStamina(bd, arg); break;
+                case InfoScreens.Explain.ShieldMax:
+                case InfoScreens.Explain.ShieldRecharge:
+                case InfoScreens.Explain.ShieldBreak: Shield(bd, id); break;
                 default: bd.Clear(""); break;
             }
         }
@@ -103,6 +106,46 @@ namespace RuneSkin.InfoScreens
             }
             Residual(bd, game, sum, true);
             bd.Result(Total, game);
+        }
+
+        // ---- MorgottTweaks energy shield: EnergyShieldInfo.Parts (0 max, 1 recharge rate, 2 recharge delay), the source
+        // parts its EnergyShieldPlayer.Tick sums (Epic Loot effects, unique gems, Discipline aura, low life, reserve) ----
+
+        private readonly string[] _esKeys = new string[24];
+        private readonly float[] _esValues = new float[24];
+
+        private void Shield(StatBreakdown bd, Explain id)
+        {
+            var p = _p;
+            float cur = 0f, max = 0f, rate = 0f, delay = 0f, breakDelay = 0f;
+            var es = StatsSources.EnergyShield != null && StatsSources.EnergyShield(p, out cur, out max, out rate, out delay, out breakDelay);
+            var sec = Loc("$runeskin_stats_sec");
+            if (id == InfoScreens.Explain.ShieldBreak)
+            {
+                bd.Clear(Loc("$runeskin_stats_break_delay"));
+                if (!es) return;
+                bd.Base(Loc("$runeskin_bd_base"), breakDelay, sec);
+                bd.Result(Total, breakDelay, sec);
+                bd.Note(Loc("$runeskin_bd_es_break_note"));
+                return;
+            }
+            var isMax = id == InfoScreens.Explain.ShieldMax;
+            bd.Clear(Loc(isMax ? "$runeskin_stats_es" : "$runeskin_stats_recharge"));
+            if (!es || StatsSources.EnergyShieldParts == null) return;
+            if (isMax)
+            {
+                ShieldParts(bd, 0, max, Total, "");
+                return;
+            }
+            ShieldParts(bd, 1, rate, Total, PerSecond);
+            ShieldParts(bd, 2, delay, Loc("$runeskin_bd_es_delay"), sec);
+        }
+
+        private void ShieldParts(StatBreakdown bd, int kind, float total, string result, string unit)
+        {
+            var n = StatsSources.EnergyShieldParts(_p, kind, _esKeys, _esValues);
+            for (var i = 0; i < n; i++) _esKeys[i] = Loc(_esKeys[i]);
+            bd.Parts(_esKeys, _esValues, n, total, Other, result, unit, kind != 2);
         }
 
         // ---- regeneration ----

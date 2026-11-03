@@ -707,7 +707,7 @@ namespace RuneSkin.InfoScreens
             var p = _p;
             float cur = 0f, max = 0f, rate = 0f, delay = 0f, breakDelay = 0f;
             var es = StatsSources.EnergyShield != null && StatsSources.EnergyShield(p, out cur, out max, out rate, out delay, out breakDelay);
-            var row = Row(c, Kind.Pair, "es", "$runeskin_stats_es");
+            var row = Explained(Row(c, Kind.Pair, "es", "$runeskin_stats_es"), Explain.ShieldMax);
             var bar = _w.Next(c, Kind.Bar);
             bar.BarToken = "sprite.stats.bar.es";
             if (es)
@@ -721,7 +721,7 @@ namespace RuneSkin.InfoScreens
                 row.V.Append('—');
                 bar.FillShare = 0f;
             }
-            var re = Row(c, Kind.Pair, "recharge", "$runeskin_stats_recharge");
+            var re = Explained(Row(c, Kind.Pair, "recharge", "$runeskin_stats_recharge"), Explain.ShieldRecharge);
             if (es)
             {
                 Rate(re.V, rate);
@@ -729,7 +729,7 @@ namespace RuneSkin.InfoScreens
                 StatsMath.AppendDecimal(re.V, delay, _comma, false).Append(' ').Append(Loc("$runeskin_stats_sec"));
             }
             else re.V.Append('—');
-            var br = Row(c, Kind.Pair, "breakdelay", "$runeskin_stats_break_delay");
+            var br = Explained(Row(c, Kind.Pair, "breakdelay", "$runeskin_stats_break_delay"), Explain.ShieldBreak);
             if (es) StatsMath.AppendCompact(br.V, breakDelay, _comma).Append(' ').Append(Loc("$runeskin_stats_sec"));
             else br.V.Append('—');
         }

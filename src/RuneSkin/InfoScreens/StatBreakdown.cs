@@ -86,6 +86,25 @@ namespace RuneSkin.InfoScreens
         // A typed share line ("режущий 82  (87%)"): value + share, tinted with the element colour `color`.
         public void Share(string label, float value, float share, int color) => Push(Op.Add, label, null, value, share, "share", 0, color);
 
+        // `n` additive source parts (labels localized) at the shown precision (tenths, AppendCompact), the gap to the shown
+        // `total` as an `other` line, then `total`: the visible lines always add up to the visible result.
+        public void Parts(string[] labels, float[] values, int n, float total, string other, string result, string unit, bool higherIsBetter)
+        {
+            var sum = 0;
+            for (var i = 0; i < n && i < labels.Length && i < values.Length; i++)
+            {
+                var t = Tenths(values[i]);
+                if (t == 0) continue;
+                Push(Op.Add, labels[i], null, t / 10f, 0f, unit, Sem(t, higherIsBetter));
+                sum += t;
+            }
+            var gap = Tenths(total) - sum;
+            if (gap != 0) Push(Op.Add, other, null, gap / 10f, 0f, unit, Sem(gap, higherIsBetter));
+            Result(result, Tenths(total) / 10f, unit);
+        }
+
+        private static int Tenths(float v) => (int)Math.Round(v * 10f, MidpointRounding.AwayFromZero);
+
         public void Result(string label, float value, string unit = "") => Push(Op.Result, label, null, value, 0f, unit, 0);
 
         public void ResultRange(string label, float min, float max, string unit = "") => Push(Op.Result, label, null, min, max, unit, 0);

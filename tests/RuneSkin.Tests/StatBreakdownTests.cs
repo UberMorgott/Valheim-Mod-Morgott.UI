@@ -47,6 +47,33 @@ namespace RuneSkin.Tests
             Assert.Equal("0,85", StatsMath.AppendFactor(new StringBuilder(), 0.85f, true).ToString());
         }
 
+        // Energy shield rows (MorgottTweaks EnergyShieldInfo.Parts): the source lines add up to the row's total, a gap
+        // becomes the "other" line.
+        [Fact]
+        public void ShieldPartsSumToTotal()
+        {
+            var bd = new StatBreakdown();
+            bd.Clear("Сила оберега");
+            var labels = new[] { "Энергощит от здоровья", "Энергощит", "Дисциплина", "Резерв" };
+            var values = new[] { 16f, 10f, 5.2f, -0.2f, 99f };
+            bd.Parts(labels, values, 4, 31f, "Прочее", "Итого", "", true);
+            Assert.Equal(31f, bd.Sum(StatBreakdown.Op.Add), 3);
+            Assert.Equal(31f, bd.Sum(StatBreakdown.Op.Result), 3);
+            Assert.Equal(5, bd.Count); // no "other" line: the parts already sum to the total
+            bd.Clear("Перезарядка");
+            bd.Parts(labels, values, 2, 30f, "Прочее", "Итого", "/с", true);
+            Assert.Equal(30f, bd.Sum(StatBreakdown.Op.Add), 3);
+            Assert.Equal("Прочее", bd[2].Label);
+            var sb = new StringBuilder();
+            bd.Render(sb, true, "00FF00", "FF0000", "AAAAAA");
+            Assert.Contains("Энергощит от здоровья:  <color=#00FF00>+16/с", sb.ToString());
+            // Rounding: 0,14 + 0,14 shows +0,1 +0,1, total 0,3 -> the visible gap is its own line.
+            bd.Clear("Перезарядка");
+            bd.Parts(labels, new[] { 0.14f, 0.14f }, 2, 0.28f, "Прочее", "Итого", "/с", true);
+            Assert.Equal(0.3f, bd.Sum(StatBreakdown.Op.Add), 4);
+            Assert.Equal(0.3f, bd.Sum(StatBreakdown.Op.Result), 4);
+        }
+
         [Fact]
         public void BreakdownSkipsNoOpsAndRendersParts()
         {

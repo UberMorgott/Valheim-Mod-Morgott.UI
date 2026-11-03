@@ -152,6 +152,8 @@ namespace RuneSkin.Theme
             { "runeskin_bd_base", new[] { "Base", "База" } },
             { "runeskin_bd_total", new[] { "Total", "Итого" } },
             { "runeskin_bd_other", new[] { "Enchantments and other", "Чары и прочее" } },
+            { "runeskin_bd_es_delay", new[] { "Recharge starts after", "Перезарядка начинается через" } },
+            { "runeskin_bd_es_break_note", new[] { "Faster Energy Shield Start does not shorten it", "Быстрый старт энергощита её не сокращает" } },
             { "runeskin_bd_enchant", new[] { "Enchantments", "Чары" } },
             { "runeskin_bd_skill", new[] { "Skill", "Навык" } },
             { "runeskin_bd_quality", new[] { "Item level", "Уровень предмета" } },

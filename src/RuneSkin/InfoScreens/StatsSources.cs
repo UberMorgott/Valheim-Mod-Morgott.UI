@@ -24,6 +24,8 @@ namespace RuneSkin.InfoScreens
         public static Func<Player, int> PotionsActive { get; private set; }
         public static Func<bool> PotionSlotsEnabled { get; private set; }
         public static EnergyShieldGet EnergyShield { get; private set; }
+        // EnergyShieldInfo.Parts(player, kind, keys, values): source tokens + additive parts of max / rate / delay.
+        public static Func<Player, int, string[], float[], int> EnergyShieldParts { get; private set; }
         public static ArmorResistanceStep ArmorResistance { get; private set; }
         // MorgottTweaks ResourceAffixesModule pays Epic Loot's flat AddStaminaRegen / AddEitrRegen per second.
         public static bool ResourceAffixes { get; private set; }
@@ -45,11 +47,12 @@ namespace RuneSkin.InfoScreens
             var enabled = RuneSkin.Compat.TypeLookup.ByName("MorgottTweaks.PotionSlotCount")?.GetProperty("Enabled", BindingFlags.Public | BindingFlags.Static)?.GetGetMethod();
             PotionSlotsEnabled = enabled != null ? (Func<bool>)Delegate.CreateDelegate(typeof(Func<bool>), enabled, false) : null;
             EnergyShield = Make<EnergyShieldGet>("MorgottTweaks.EnergyShieldInfo", "TryGet");
+            EnergyShieldParts = Make<Func<Player, int, string[], float[], int>>("MorgottTweaks.EnergyShieldInfo", "Parts");
             ArmorResistance = Make<ArmorResistanceStep>("MorgottTweaks.ArmorResistance", "ApplyResistance");
             ResourceAffixes = _elTotal != null && RuneSkin.Compat.TypeLookup.ByName("MorgottTweaks.ResourceAffixesModule") != null;
             Plugin.Log.LogInfo($"[RuneSkin] stats sources: EpicLoot={EpicLoot} resist={ElResistance != null} night={ElNight != null} " +
                                $"foodSlots={FoodSlots != null} potionSlots={PotionSlots != null} potionsActive={PotionsActive != null} " +
-                               $"energyShield={EnergyShield != null} armorCurve={ArmorResistance != null}");
+                               $"energyShield={EnergyShield != null} esParts={EnergyShieldParts != null} armorCurve={ArmorResistance != null}");
         }
 
         // Epic Loot effect total of the local player (EffectValue sum x scale), 0 without Epic Loot.
