@@ -1,6 +1,6 @@
-using System.Collections.Generic;
+using Morgott.Core;
 using RuneSkin.Api;
-using RuneSkin.API;
+using System.Collections.Generic;
 using RuneSkin.Diagnostics;
 using RuneSkin.Responsive;
 using RuneSkin.Restyle;
@@ -616,7 +616,7 @@ namespace RuneSkin.PlayerHud
             foreach (var se in p.GetSEMan().GetStatusEffects())
             {
                 if (!se) continue;
-                var c = StatusSource.Classify(se, out _);
+                var c = StatusSource.Classify(se);
                 if (c.Overlay != FrameOverlay.None && c.OverlayPriority > overlayPrio) { overlay = c.Overlay; overlayPrio = c.OverlayPriority; }
             }
             overlaySprite = overlay == FrameOverlay.Frost ? "sprite.hud.overlay.frost" : overlay == FrameOverlay.Wet ? "sprite.hud.overlay.wet" : null;

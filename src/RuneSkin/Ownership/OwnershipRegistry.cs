@@ -46,47 +46,47 @@ namespace RuneSkin.Ownership
         // M6 in-game vanilla screens (restyled in place, art\README.md "M6 sprites"): build menu + selected-piece strip,
         // crosshair / hover / piece health / stealth eye, action progress / stagger / event line / mount panel, ship
         // HUD (speed ladder, rudder), key hints. Names shared with RuneSkin.API.SkinFamilies.
-        public const string BuildHud = RuneSkin.API.SkinFamilies.BuildHud;
-        public const string Crosshair = RuneSkin.API.SkinFamilies.Crosshair;
-        public const string ActionHud = RuneSkin.API.SkinFamilies.ActionHud;
-        public const string ShipHud = RuneSkin.API.SkinFamilies.ShipHud;
-        public const string KeyHints = RuneSkin.API.SkinFamilies.KeyHints;
+        public const string BuildHud = "BuildHud";
+        public const string Crosshair = "Crosshair";
+        public const string ActionHud = "ActionHud";
+        public const string ShipHud = "ShipHud";
+        public const string KeyHints = "KeyHints";
 
         // M6 batch 2 (restyled in place, GameScreens\): black screens (respawn / sleep / teleport), chat + speech
         // bubbles, small popups, text input / viewer (+ raven panel), compendium, split dialog.
-        public const string LoadScreen = RuneSkin.API.SkinFamilies.LoadScreen;
-        public const string Chat = RuneSkin.API.SkinFamilies.Chat;
-        public const string Popups = RuneSkin.API.SkinFamilies.Popups;
-        public const string TextDialogs = RuneSkin.API.SkinFamilies.TextDialogs;
-        public const string Compendium = RuneSkin.API.SkinFamilies.Compendium;
-        public const string SplitDialog = RuneSkin.API.SkinFamilies.SplitDialog;
+        public const string LoadScreen = "LoadScreen";
+        public const string Chat = "Chat";
+        public const string Popups = "Popups";
+        public const string TextDialogs = "TextDialogs";
+        public const string Compendium = "Compendium";
+        public const string SplitDialog = "SplitDialog";
 
         // M6 batch 3 (GameScreens\TradeScreens.cs): trader store, barber, developer panels (console, connect panel),
         // feedback dialog.
-        public const string Store = RuneSkin.API.SkinFamilies.Store;
-        public const string Barber = RuneSkin.API.SkinFamilies.Barber;
-        public const string DevPanels = RuneSkin.API.SkinFamilies.DevPanels;
-        public const string Feedback = RuneSkin.API.SkinFamilies.Feedback;
+        public const string Store = "Store";
+        public const string Barber = "Barber";
+        public const string DevPanels = "DevPanels";
+        public const string Feedback = "Feedback";
 
         // M7 (ModScreens\): the fallback restyler for every UI no other family owns (ModUi: other mods' canvases and
         // panels, Jotunn windows, IMGUI fonts, other mods' main menu lines), precise mod adapters (Epic Loot enchanting
         // table / adventure board / tempering, mod HUD parts) and the vanilla leftovers (achievements panel, variant
         // dialog, dragged item; radial menus).
-        public const string ModUi = RuneSkin.API.SkinFamilies.ModUi;
-        public const string EpicLootEnchanting = RuneSkin.API.SkinFamilies.EpicLootEnchanting;
-        public const string EpicLootBoard = RuneSkin.API.SkinFamilies.EpicLootBoard;
-        public const string EpicLootTemper = RuneSkin.API.SkinFamilies.EpicLootTemper;
-        public const string ModHud = RuneSkin.API.SkinFamilies.ModHud;
-        public const string InventoryExtras = RuneSkin.API.SkinFamilies.InventoryExtras;
-        public const string Radial = RuneSkin.API.SkinFamilies.Radial;
+        public const string ModUi = "ModUi";
+        public const string EpicLootEnchanting = "EpicLootEnchanting";
+        public const string EpicLootBoard = "EpicLootBoard";
+        public const string EpicLootTemper = "EpicLootTemper";
+        public const string ModHud = "ModHud";
+        public const string InventoryExtras = "InventoryExtras";
+        public const string Radial = "Radial";
 
         // Batch P (features that were AugaSkin's, still live with RuneSkin): pause-menu Compendium entry, summon frames,
         // other players' shield rails, mouse cursor, character stats window.
-        public const string MenuCompendium = RuneSkin.API.SkinFamilies.MenuCompendium;
-        public const string SummonFrames = RuneSkin.API.SkinFamilies.SummonFrames;
-        public const string PlayerShields = RuneSkin.API.SkinFamilies.PlayerShields;
-        public const string Cursor = RuneSkin.API.SkinFamilies.Cursor;
-        public const string CharacterStats = RuneSkin.API.SkinFamilies.CharacterStats;
+        public const string MenuCompendium = "MenuCompendium";
+        public const string SummonFrames = "SummonFrames";
+        public const string PlayerShields = "PlayerShields";
+        public const string Cursor = "Cursor";
+        public const string CharacterStats = "CharacterStats";
 
         public static readonly string[] Known = { Menu, Tooltips, Hud, Inventory, Crafting, Skills, Trophies, Almanac, Minimap, EnemyHud, MessageHud, DamageText, MainMenu, Settings, Connection, BuildHud, Crosshair, ActionHud, ShipHud, KeyHints, LoadScreen, Chat, Popups, TextDialogs, Compendium, SplitDialog, Store, Barber, DevPanels, Feedback, ModUi, EpicLootEnchanting, EpicLootBoard, EpicLootTemper, ModHud, InventoryExtras, Radial, MenuCompendium, SummonFrames, PlayerShields, Cursor, CharacterStats };
 

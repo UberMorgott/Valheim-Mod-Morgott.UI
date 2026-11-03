@@ -1,17 +1,17 @@
+using Morgott.Core;
 using System;
 using System.Collections.Generic;
-using RuneSkin.API;
 using RuneSkin.Classify;
 using RuneSkin.Ownership;
 using RuneSkin.Restyle;
 using RuneSkin.Theme;
 using UnityEngine;
-using UnityEngine.UI;
+using ITheme = Morgott.Core.ITheme;
+using CoreTheme = Morgott.Core.Theme;
 
 namespace RuneSkin.Api
 {
-    // Roots RuneSkin restyles: adapter-owned vanilla roots and roots registered through the API. Each root keeps
-    // the factory of its ScreenContext, so Invalidate and theme reloads re-run the same classification.
+    // Roots RuneSkin restyles. Each root keeps the factory of its ScreenContext, so theme reloads re-run the same classification.
     public static class ScreenRegistry
     {
         private static readonly Dictionary<Transform, Func<ScreenContext>> Roots = new Dictionary<Transform, Func<ScreenContext>>();
@@ -70,126 +70,60 @@ namespace RuneSkin.Api
         public static ScreenContext ContextOf(Transform root) => root && Roots.TryGetValue(root, out var make) ? make() : null;
     }
 
-    // Backend of RuneSkin.API.Skin.
-    public sealed class Host : IHost
+    // Morgott.Core ITheme implementation, registered through Core Services in Plugin.Awake.
+    public sealed class ThemeProvider : ITheme
     {
-        private static readonly HashSet<string> Capabilities = new HashSet<string> { "root.restyle", "bind", "invalidate", "theme.read", "ownership" };
+        // Capability -> family that must be owned for it ("panel.dock": the AdventureBackpacks fork asks it).
+        private static readonly Dictionary<string, string> Capabilities = new Dictionary<string, string>
+        {
+            ["effect.render"] = OwnershipRegistry.Hud,
+            ["resource.render"] = OwnershipRegistry.Hud,
+            ["capacity.render"] = OwnershipRegistry.Hud,
+            ["ability.render"] = OwnershipRegistry.Hud,
+            ["panel.dock"] = OwnershipRegistry.Inventory,
+            ["slot.render"] = OwnershipRegistry.Inventory,
+            ["panel.action"] = OwnershipRegistry.Inventory,
+            [CoreTheme.CapSlotOverlay] = OwnershipRegistry.Inventory,
+            [CoreTheme.CapHoldRender] = OwnershipRegistry.ActionHud, // drawn by WorldHud\HoldPromptSkin
+        };
 
-        public readonly List<KeyValuePair<string, object>> Records = new List<KeyValuePair<string, object>>();
-
-        public bool IsOwned(string family) => OwnershipRegistry.IsOwned(family);
-
-        // HUD rendering capabilities exist only while RuneSkin owns the HUD family.
-        private static readonly HashSet<string> HudCapabilities = new HashSet<string> { "effect.render", "resource.render", "capacity.render", "ability.render" };
-
-        // Inventory rendering capabilities exist only while RuneSkin owns the inventory family.
-        private static readonly HashSet<string> InventoryCapabilities = new HashSet<string> { "panel.dock", "slot.render", "panel.action", "slot.overlay" };
+        public bool IsOwned(string family) => family != null && OwnershipRegistry.IsOwned(family);
 
         public bool Supports(string capability) =>
-            Capabilities.Contains(capability) || (HudCapabilities.Contains(capability) && OwnershipRegistry.IsOwned(OwnershipRegistry.Hud)) ||
-            (InventoryCapabilities.Contains(capability) && OwnershipRegistry.IsOwned(OwnershipRegistry.Inventory)) ||
-            // Hold prompts are drawn by the action HUD family (WorldHud\HoldPromptSkin).
-            (capability == "hold.render" && OwnershipRegistry.IsOwned(OwnershipRegistry.ActionHud));
+            capability != null && Capabilities.TryGetValue(capability, out var family) && OwnershipRegistry.IsOwned(family);
 
-        public IDisposable RegisterRoot(string owner, Transform root, string screenId)
+        public IDisposable RegisterResourceProvider(string owner, string pool, Func<Player, Morgott.Core.ResourceState> provider) =>
+            new Handle(Providers.AddResource(Need(owner, nameof(owner)), Need(pool, nameof(pool)), Need(provider, nameof(provider))));
+
+        public IDisposable RegisterCapacityProvider(string owner, string list, Func<Player, Morgott.Core.CapacityState> provider) =>
+            new Handle(Providers.AddCapacity(Need(owner, nameof(owner)), Need(list, nameof(list)), Need(provider, nameof(provider))));
+
+        public IDisposable RegisterPanelAction(string owner, Morgott.Core.PanelActionDescriptor action)
         {
-            if (!root) return new Handle(null); // destroyed while queued before attach
-            var id = owner + ":" + screenId;
-            var mark = root.GetComponent<RootMark>();
-            if (!mark) mark = root.gameObject.AddComponent<RootMark>();
-            mark.ScreenId = id;
-            mark.Owner = owner;
-            ScreenRegistry.Register(root, () => new ScreenContext(id, "Registered"));
-            ScreenRegistry.Restyle(root);
-            return new Handle(() =>
-            {
-                ScreenRegistry.Unregister(root);
-                if (!root) return;
-                Restyler.RevertRoot(root);
-                var m = root.GetComponent<RootMark>();
-                if (m) UnityEngine.Object.Destroy(m);
-            });
+            Need(action.Id, nameof(action.Id));
+            return new Handle(InventoryScreen.InventoryRegistry.AddAction(Need(owner, nameof(owner)), action));
         }
-
-        public IDisposable Bind(string owner, Graphic graphic, string role)
-        {
-            if (!graphic) return new Handle(null);
-            Classifier.PruneBindings();
-            Classifier.Bindings[graphic] = Classification.Of(role, $"bound by {owner}");
-            Restyle(graphic);
-            return new Handle(() =>
-            {
-                Classifier.Bindings.Remove(graphic);
-                if (!graphic) return;
-                var mark = graphic.GetComponent<SkinMark>();
-                if (mark)
-                {
-                    // Reset in place (a Destroy would land after the restyle below and take its journal with it).
-                    Restyler.Revert(mark);
-                    mark.Role = null;
-                    mark.ThemeRevision = -1;
-                }
-                Restyle(graphic);
-            });
-        }
-
-        private static void Restyle(Graphic graphic)
-        {
-            if (!graphic) return;
-            var root = ScreenRegistry.RootOf(graphic.transform);
-            var ctx = ScreenRegistry.ContextOf(root);
-            if (ctx != null) Restyler.Style(graphic, ctx);
-        }
-
-        public void Invalidate(Transform root)
-        {
-            if (!ScreenRegistry.Restyle(root))
-            {
-                var registered = ScreenRegistry.RootOf(root);
-                if (registered) ScreenRegistry.Restyle(registered);
-            }
-        }
-
-        // "inventory.*" regions dock in the inventory layout (M2); others are recorded for later milestones.
-        public IDisposable RegisterPanel(string owner, RectTransform rect, string region) =>
-            region.StartsWith("inventory.", StringComparison.Ordinal)
-                ? new Handle(InventoryScreen.InventoryRegistry.AddPanel(rect, region))
-                : Record(owner, "panel", new KeyValuePair<RectTransform, string>(rect, region));
-
-        public IDisposable RegisterSlot(string owner, SlotDescriptor descriptor) => new Handle(InventoryScreen.InventoryRegistry.AddSlot(owner, descriptor));
 
         public IDisposable SetSlotOverlay(string owner, Inventory inventory, int x, int y, string glyphToken) =>
-            new Handle(InventoryScreen.InventoryRegistry.SetOverlay(owner, inventory, x, y, glyphToken));
+            new Handle(InventoryScreen.InventoryRegistry.SetOverlay(Need(owner, nameof(owner)), Need(inventory, nameof(inventory)), x, y, Need(glyphToken, nameof(glyphToken))));
 
-        public IDisposable RegisterStatusEffect(string owner, StatusEffectDescriptor descriptor) =>
-            new Handle(Providers.AddEffect(owner, descriptor));
+        public IDisposable RegisterHoldPrompt(string owner, string id, Func<Player, Morgott.Core.HoldPromptState> provider) =>
+            new Handle(Providers.AddHold(Need(owner, nameof(owner)), Need(id, nameof(id)), Need(provider, nameof(provider))));
 
-        public IDisposable RegisterResourceProvider(string owner, string pool, Func<Player, ResourceState> provider) =>
-            new Handle(Providers.AddResource(owner, pool, provider));
-
-        public IDisposable RegisterCapacityProvider(string owner, string list, Func<Player, CapacityState> provider) =>
-            new Handle(Providers.AddCapacity(owner, list, provider));
-
-        public IDisposable RegisterHoldPrompt(string owner, string id, Func<Player, HoldPromptState> provider) =>
-            new Handle(Providers.AddHold(owner, id, provider));
-        public IDisposable RegisterAbilitySlot(string owner, AbilitySlotDescriptor descriptor) => new Handle(Providers.AddAbility(owner, descriptor));
-
-        public IDisposable RegisterPanelAction(string owner, PanelActionDescriptor descriptor) => new Handle(InventoryScreen.InventoryRegistry.AddAction(owner, descriptor));
-
-        public bool TryGetColor(string token, out Color color) => ThemeTokens.TryGetColor(token, out color);
-
-        public bool TryGetSprite(string token, out Sprite sprite) => ThemeTokens.TryGetSprite(token, out sprite);
-
-        public bool TryGetFloat(string token, out float value) => ThemeTokens.TryGetFloat(token, out value);
-
-        // M0: accepted and kept for the milestone that renders it (Supports(...) stays false until then).
-        private IDisposable Record(string owner, string kind, object payload)
+        public bool TryGetSprite(string token, out Sprite sprite)
         {
-            var entry = new KeyValuePair<string, object>(owner + "|" + kind, payload);
-            Records.Add(entry);
-            Plugin.Log.LogInfo($"[RuneSkin] api {kind} from {owner}: accepted, not rendered yet");
-            return new Handle(() => Records.Remove(entry));
+            sprite = null;
+            return token != null && ThemeTokens.TryGetSprite(token, out sprite);
         }
+
+        public bool TryGetFloat(string token, out float value)
+        {
+            value = 0f;
+            return token != null && ThemeTokens.TryGetFloat(token, out value);
+        }
+
+        private static T Need<T>(T value, string name) where T : class =>
+            value == null || value is string s && s.Length == 0 ? throw new ArgumentNullException(name) : value;
 
         private sealed class Handle : IDisposable
         {

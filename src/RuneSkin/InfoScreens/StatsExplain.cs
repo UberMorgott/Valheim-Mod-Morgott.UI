@@ -96,7 +96,7 @@ namespace RuneSkin.InfoScreens
             var game = which == 0 ? p.GetMaxHealth() : which == 1 ? p.GetMaxStamina() : p.GetMaxEitr();
             // Reservations (MorgottTweaks auras / summons through the resource providers) lower the game's max: own lines,
             // the same parts the HUD bar's reserve tooltip shows (Codex call 2026-10-28: gamepad reads them here).
-            var pool = which == 0 ? API.ResourcePools.Health : which == 1 ? API.ResourcePools.Stamina : API.ResourcePools.Eitr;
+            var pool = which == 0 ? Api.ResourcePools.Health : which == 1 ? Api.ResourcePools.Stamina : Api.ResourcePools.Eitr;
             if (Api.Providers.TryResource(pool, p, false, out var s) && Mathf.Abs(s.Available - game) <= 0.5f + 0.01f * game &&
                 PlayerHud.HudMath.ReserveShown(s.ReservedAuras, s.ReservedSummons))
             {

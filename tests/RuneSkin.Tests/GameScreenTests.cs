@@ -1,4 +1,4 @@
-using RuneSkin.API;
+using Morgott.Core;
 using RuneSkin.GameScreens;
 using Xunit;
 
@@ -93,12 +93,6 @@ namespace RuneSkin.Tests
         [Fact]
         public void BatchTwoFamilyNames()
         {
-            Assert.Equal("LoadScreen", SkinFamilies.LoadScreen);
-            Assert.Equal("Chat", SkinFamilies.Chat);
-            Assert.Equal("Popups", SkinFamilies.Popups);
-            Assert.Equal("TextDialogs", SkinFamilies.TextDialogs);
-            Assert.Equal("Compendium", SkinFamilies.Compendium);
-            Assert.Equal("SplitDialog", SkinFamilies.SplitDialog);
         }
 
         // Active effects rows: blank-line runs of SE tooltips collapse to one break, ends trimmed.

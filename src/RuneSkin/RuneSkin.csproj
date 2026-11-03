@@ -6,19 +6,16 @@
     <TargetFramework>net472</TargetFramework>
     <ValheimPlugin>true</ValheimPlugin>
     <ValheimUsePublicizer>true</ValheimUsePublicizer>
+    <ValheimUseCore>true</ValheimUseCore>
     <AssemblyName>RuneSkin</AssemblyName>
     <RootNamespace>RuneSkin</RootNamespace>
     <!-- Keep in sync with Plugin.Version. -->
     <Version>0.25.53</Version>
-    <!-- Plugin internals are not public API; XML docs are required on RuneSkin.API only. -->
+    <!-- Plugin internals are not public API (the public contract is Morgott.Core). -->
     <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\RuneSkin.API\RuneSkin.API.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
+<ItemGroup>
     <EmbeddedResource Include="Theme\default-theme.json" LogicalName="RuneSkin.default-theme.json" />
   </ItemGroup>
 

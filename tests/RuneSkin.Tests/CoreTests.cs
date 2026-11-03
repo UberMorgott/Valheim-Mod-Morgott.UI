@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using RuneSkin.API;
+using Morgott.Core;
 using RuneSkin.Theme;
 using UnityEngine;
 using UnityEngine.UI;
@@ -175,82 +175,4 @@ namespace RuneSkin.Tests
         public void ParserRejectsBadJson(string json) => Assert.Throws<FormatException>(() => ThemeJson.Parse(json));
     }
 
-    // Skin keeps static state: one ordered test covers pending, cancel, replay and live registration.
-    public class ApiReplayTests
-    {
-        private sealed class FakeHost : IHost
-        {
-            public readonly List<string> Calls = new List<string>();
-            public bool IsOwned(string family) => family == "Menu";
-            public bool Supports(string capability) => capability == "root.restyle";
-            public IDisposable RegisterRoot(string owner, Transform root, string screenId) => Rec("root");
-            public IDisposable Bind(string owner, Graphic graphic, string role) => Rec("bind");
-            public void Invalidate(Transform root) => Calls.Add("invalidate");
-            public IDisposable RegisterPanel(string owner, RectTransform rect, string region) => Rec("panel");
-            public IDisposable RegisterSlot(string owner, SlotDescriptor d) => Rec("slot:" + d.Id);
-            public IDisposable RegisterStatusEffect(string owner, StatusEffectDescriptor d) => Rec("effect:" + d.Hash);
-            public IDisposable RegisterResourceProvider(string owner, string pool, Func<Player, ResourceState> p) => Rec("resource:" + pool);
-            public IDisposable RegisterCapacityProvider(string owner, string list, Func<Player, CapacityState> p) => Rec("capacity:" + list);
-            public IDisposable RegisterPanelAction(string owner, PanelActionDescriptor d) => Rec("action:" + d.Id);
-            public IDisposable RegisterAbilitySlot(string owner, AbilitySlotDescriptor d) => Rec("ability:" + d.Id);
-            public IDisposable SetSlotOverlay(string owner, Inventory inventory, int x, int y, string glyphToken) => Rec($"overlay:{x},{y}");
-            public IDisposable RegisterHoldPrompt(string owner, string id, Func<Player, HoldPromptState> p) => Rec("hold:" + id);
-            public bool TryGetColor(string token, out Color color) { color = Color.white; return true; }
-            public bool TryGetSprite(string token, out Sprite sprite) { sprite = null; return false; }
-            public bool TryGetFloat(string token, out float value) { value = 1f; return true; }
-
-            private IDisposable Rec(string what)
-            {
-                Calls.Add(what);
-                return new Undo(() => Calls.Add("dispose:" + what));
-            }
-        }
-
-        private sealed class Undo : IDisposable
-        {
-            private readonly Action _a;
-            public Undo(Action a) => _a = a;
-            public void Dispose() => _a();
-        }
-
-        [Fact]
-        public void EarlyRegistrationsReplayOnAttachAndCancelOnDispose()
-        {
-            Assert.False(Skin.IsAvailable);
-            Assert.False(Skin.Supports("root.restyle"));
-            Assert.False(Skin.IsOwned("Menu"));
-
-            var descriptor = new SlotDescriptor { Id = "ring" };
-            var kept = Skin.RegisterSlot("test.owner", descriptor);
-            descriptor.Id = "mutated"; // copied on registration
-            var cancelled = Skin.RegisterPanelAction("test.owner", new PanelActionDescriptor { Id = "sort" });
-            cancelled.Dispose();
-            Skin.RegisterResourceProvider("test.owner", "es", _ => default);
-
-            var host = new FakeHost();
-            Skin.Attach(host);
-            Assert.Equal(new[] { "slot:ring", "resource:es" }, host.Calls);
-            Assert.True(Skin.IsAvailable);
-            Assert.True(Skin.Supports("root.restyle"));
-            Assert.False(Skin.Supports("slot.render"));
-            Assert.True(Skin.IsOwned("Menu"));
-
-            var live = Skin.RegisterStatusEffect("test.owner", new StatusEffectDescriptor { Hash = 7 });
-            Assert.Equal("effect:7", host.Calls[host.Calls.Count - 1]);
-            live.Dispose();
-            live.Dispose(); // idempotent
-            kept.Dispose();
-            Assert.Equal(new[] { "slot:ring", "resource:es", "effect:7", "dispose:effect:7", "dispose:slot:ring" }, host.Calls);
-
-            var ability = Skin.RegisterAbilitySlot("test.owner", new AbilitySlotDescriptor { Id = "dash", Order = 5, GetState = _ => default });
-            Assert.Equal("ability:dash", host.Calls[host.Calls.Count - 1]);
-            ability.Dispose();
-            Assert.Equal("dispose:ability:dash", host.Calls[host.Calls.Count - 1]);
-            Assert.Throws<ArgumentNullException>(() => Skin.RegisterAbilitySlot("test.owner", new AbilitySlotDescriptor { Id = "x" }));
-            Assert.Equal(12, Skin.ApiVersion);
-
-            Assert.Throws<ArgumentNullException>(() => Skin.RegisterSlot("", new SlotDescriptor { Id = "x" }));
-            Assert.Throws<InvalidOperationException>(() => Skin.Attach(host));
-        }
-    }
 }

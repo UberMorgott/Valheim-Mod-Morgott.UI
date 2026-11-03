@@ -1,6 +1,6 @@
 using System.IO;
 using System.Linq;
-using RuneSkin.API;
+using Morgott.Core;
 using RuneSkin.PlayerHud;
 using RuneSkin.Theme;
 using Xunit;
@@ -53,9 +53,8 @@ namespace RuneSkin.Tests
         public void PortedFamiliesAreDeclared()
         {
             var families = Default().families.Select(f => f.family).ToList();
-            foreach (var f in new[] { SkinFamilies.MenuCompendium, SkinFamilies.SummonFrames, SkinFamilies.PlayerShields, SkinFamilies.Cursor })
+            foreach (var f in new[] { "MenuCompendium", "SummonFrames", "PlayerShields", "Cursor" })
                 Assert.Contains(f, families);
-            Assert.True(Skin.ApiVersion >= 9);
         }
 
         [Theory]

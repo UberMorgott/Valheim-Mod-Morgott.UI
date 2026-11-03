@@ -1,5 +1,5 @@
+using RuneSkin.Api;
 using System;
-using RuneSkin.API;
 using UnityEngine;
 
 namespace RuneSkin.PlayerHud
@@ -13,14 +13,14 @@ namespace RuneSkin.PlayerHud
     public static class GuardianAbility
     {
         public static int ActiveHash { get; private set; }
-        private static IDisposable _slot;
+        private static Action _slot;
         private static string _key;
         private static float _keyAt;
 
         public static void Register()
         {
             if (_slot != null) return;
-            _slot = Skin.RegisterAbilitySlot(EpicLootBridge.Owner, new AbilitySlotDescriptor
+            _slot = Providers.AddAbility(EpicLootBridge.Owner, new AbilitySlotDescriptor
             {
                 Id = "guardian.power",
                 Order = 10, // first cell (mockup hud-4M3: F guardian, then the Epic Loot set skill)

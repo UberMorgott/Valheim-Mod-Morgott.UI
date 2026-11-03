@@ -123,9 +123,9 @@ namespace RuneSkin.PlayerHud
             foreach (var se in effects)
             {
                 if (!se || se.m_hidden || (ExcludeHash != 0 && se.NameHash() == ExcludeHash)) continue;
-                var c = StatusSource.Classify(se, out var registered);
+                var c = StatusSource.Classify(se);
                 if (c.Harmful != _harmful) continue;
-                var prio = registered && RuneSkin.Api.Providers.TryEffect(se.NameHash(), out var d) ? d.Priority : c.TintPriority + c.OverlayPriority;
+                var prio = c.TintPriority + c.OverlayPriority;
                 _entries.Add(new Entry { Effect = se, Hash = se.NameHash(), Class = c, Priority = prio });
             }
             _entries.Sort(Order);
@@ -390,12 +390,7 @@ namespace RuneSkin.PlayerHud
                 }
                 if (c.Icon.color != white) c.Icon.color = white;
             }
-            float? custom = null;
-            if (RuneSkin.Api.Providers.TryEffect(se.NameHash(), out var d) && d.Timer != null)
-            {
-                custom = StatusSource.Guard(se.NameHash(), d.Timer, se);
-            }
-            if (!custom.HasValue && StatusSource.HasOwnIconText(se))
+            if (StatusSource.HasOwnIconText(se))
             {
                 var text = se.GetIconText();
                 if (!ReferenceEquals(text, c.ShownText) && text != c.ShownText)
@@ -406,7 +401,7 @@ namespace RuneSkin.PlayerHud
                 }
                 return;
             }
-            var left = custom ?? StatusSource.Remaining(se);
+            var left = StatusSource.Remaining(se);
             var seconds = left > 0f ? Mathf.CeilToInt(left) : 0;
             if (seconds == c.ShownSeconds) return;
             c.ShownSeconds = seconds;

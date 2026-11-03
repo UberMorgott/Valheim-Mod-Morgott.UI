@@ -1,7 +1,7 @@
 using System.IO;
 using System.Linq;
 using System.Text;
-using RuneSkin.API;
+using Morgott.Core;
 using RuneSkin.InfoScreens;
 using RuneSkin.Theme;
 using Xunit;
@@ -129,7 +129,6 @@ namespace RuneSkin.Tests
             Assert.Equal(320f, b.X, 3);
             Assert.Equal(0f, b.Y, 3);
             var card = StatsMath.Card(3, 1, 68f, 134f, 439f, 420f, 448.3f, 434.5f);
-            Assert.Equal(12, Skin.ApiVersion);
             Assert.True(card.Right <= 1852f + 1f && card.Bottom <= 990f, card.ToString());
         }
 
@@ -165,8 +164,8 @@ namespace RuneSkin.Tests
         {
             var t = Default();
             Assert.Empty(ThemeSchema.Validate(t));
-            Assert.Contains(t.families, f => f.family == SkinFamilies.CharacterStats);
-            foreach (var token in t.families.Single(f => f.family == SkinFamilies.CharacterStats).requires.Where(r => r.StartsWith("sprite.", System.StringComparison.Ordinal)))
+            Assert.Contains(t.families, f => f.family == "CharacterStats");
+            foreach (var token in t.families.Single(f => f.family == "CharacterStats").requires.Where(r => r.StartsWith("sprite.", System.StringComparison.Ordinal)))
                 Assert.Contains(t.sprites, s => s.token == token);
             foreach (var role in new[] { "stats.chrome.tl", "stats.chrome.br", "stats.divider", "stats.hit", "stats.icon", "stats.title", "stats.header", "stats.label", "stats.value", "stats.sub" })
                 Assert.Contains(t.roles, r => r.role == role);

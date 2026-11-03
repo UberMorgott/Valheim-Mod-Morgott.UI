@@ -17,8 +17,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="..\..\src\RuneSkin.API\Skin.cs" Link="Linked\Skin.cs" />
-    <Compile Include="..\..\src\RuneSkin.API\Descriptors.cs" Link="Linked\Descriptors.cs" />
     <Compile Include="..\..\src\RuneSkin\Theme\HexColor.cs" Link="Linked\HexColor.cs" />
     <Compile Include="..\..\src\RuneSkin\Theme\ThemeModel.cs" Link="Linked\ThemeModel.cs" />
     <Compile Include="..\..\src\RuneSkin\Theme\ThemeSchema.cs" Link="Linked\ThemeSchema.cs" />
@@ -55,7 +53,6 @@
     <Compile Include="..\..\src\RuneSkin\WorldHud\HoldPromptMath.cs" Link="Linked\HoldPromptMath.cs" />
     <Compile Include="..\..\src\RuneSkin\WorldHud\SpeechMath.cs" Link="Linked\SpeechMath.cs" />
     <Compile Include="..\..\src\RuneSkin\GameScreens\GameScreenMath.cs" Link="Linked\GameScreenMath.cs" />
-    <Compile Include="..\..\src\RuneSkin.API\SkinFamilies.cs" Link="Linked\SkinFamilies.cs" />
     <Compile Include="..\..\src\RuneSkin\ModScreens\ForeignMath.cs" Link="Linked\ForeignMath.cs" />
     <Compile Include="..\..\src\RuneSkin\ModScreens\ElDialogMath.cs" Link="Linked\ElDialogMath.cs" />
     <Compile Include="..\..\src\RuneSkin\Screens\PreWorld\PreWorldMath.cs" Link="Linked\PreWorldMath.cs" />
@@ -84,6 +81,7 @@
     <Reference Include="UnityEngine.UIModule">
       <HintPath>$(ManagedDir)\UnityEngine.UIModule.dll</HintPath>
     </Reference>
+    <Reference Include="Morgott.Core" HintPath="$(CoreRef)" />
     <Reference Include="assembly_valheim">
       <HintPath>$(ManagedDir)\assembly_valheim.dll</HintPath>
     </Reference>

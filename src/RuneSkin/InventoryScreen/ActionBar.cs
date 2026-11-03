@@ -1,5 +1,5 @@
+using Morgott.Core;
 using System.Collections.Generic;
-using RuneSkin.API;
 using RuneSkin.Restyle;
 using RuneSkin.Theme;
 using TMPro;
@@ -152,7 +152,7 @@ namespace RuneSkin.InventoryScreen
             var mark = DollCell.Mark(bg, _buttonRole, "registered panel action button");
             mark.Outcome = Restyler.Apply(bg, mark, ThemeTokens.Role(_buttonRole)) ? Outcome.Styled : Outcome.Degraded;
             var glyphRole = !string.IsNullOrEmpty(a.D.GlyphToken) && ThemeTokens.HasRole(a.D.GlyphToken) ? a.D.GlyphToken : "glyph.action.generic";
-            var glyph = AddGlyph(rt, glyphRole, a.D.Glyph ? a.D.Glyph : (a.D.GlyphToken != null ? ThemeTokens.GetSprite(a.D.GlyphToken) : null));
+            var glyph = AddGlyph(rt, glyphRole, a.D.GlyphToken != null ? ThemeTokens.GetSprite(a.D.GlyphToken) : null);
             Tooltip(go, SlotNames.Get(a.D.TooltipKey ?? a.D.Id));
             var entry = new Entry { Rect = rt, Button = button, Action = a, Order = a.D.Order, Background = bg, Glyph = glyph };
             Header(entry);
@@ -212,7 +212,7 @@ namespace RuneSkin.InventoryScreen
 
         public bool Contains(Vector2 screenPoint) => _panel && RectTransformUtility.RectangleContainsScreenPoint(_panel, screenPoint, null);
 
-        public void Tick(bool keysAllowed, ref bool consumed)
+        public void Tick()
         {
             foreach (var e in _entries)
             {
@@ -224,17 +224,8 @@ namespace RuneSkin.InventoryScreen
                 if (e.Button.interactable != enabled)
                 {
                     e.Button.interactable = enabled;
-                    var tip = e.Rect.GetComponent<UITooltip>();
-                    var reason = enabled || a.D.DisabledReasonFor == null ? "" : InventoryRegistry.Guard(a, a.D.DisabledReasonFor, inv, "") ?? "";
-                    if (tip) tip.m_text = reason;
                     var states = e.Rect.GetComponent<GlyphStates>();
                     if (states && states.enabled) states.Apply(); // disabled = normal glyph at once (Codex review)
-                }
-                if (!keysAllowed || consumed || !enabled || string.IsNullOrEmpty(a.D.InputButton)) continue;
-                if (ZInput.GetButtonDown(a.D.InputButton))
-                {
-                    consumed = true;
-                    Invoke(e);
                 }
             }
         }

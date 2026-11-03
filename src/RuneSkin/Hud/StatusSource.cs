@@ -1,7 +1,6 @@
+using RuneSkin.Api;
 using System;
 using System.Collections.Generic;
-using RuneSkin.Api;
-using RuneSkin.API;
 using UnityEngine;
 
 namespace RuneSkin.PlayerHud
@@ -10,54 +9,18 @@ namespace RuneSkin.PlayerHud
     // damage only from real game state: SE_Poison m_damageLeft / m_damagePerHit (SE_Poison.cs:19-23), SE_Burning
     // fire / spirit pools (SE_Burning.cs:11-17), capped by the ticks left before the effect expires (Wet ages Burning
     // 6x while fire is left, SE_Burning.cs:30-34) and scaled like ApplyDamage scales a player's damage
-    // (Game.m_localDamgeTakenRate, Character.cs:2432). Registered descriptors (Skin.RegisterStatusEffect) win.
+    // (Game.m_localDamgeTakenRate, Character.cs:2432).
     public static class StatusSource
     {
         private static readonly Dictionary<long, EffectClass> Cache = new Dictionary<long, EffectClass>();
-        private static int _revision = -1;
 
-        public static EffectClass Classify(StatusEffect se, out bool registered)
+        public static EffectClass Classify(StatusEffect se)
         {
-            registered = false;
-            if (_revision != Providers.Revision)
-            {
-                Cache.Clear();
-                _revision = Providers.Revision;
-            }
             var hash = se.NameHash();
-            if (Providers.TryEffect(hash, out var d))
-            {
-                registered = true;
-                return FromDescriptor(se, d);
-            }
             var key = ((long)se.GetType().GetHashCode() << 32) ^ (uint)hash;
             if (Cache.TryGetValue(key, out var c)) return c;
             c = EffectTaxonomy.Classify(Facts(se));
             Cache[key] = c;
-            return c;
-        }
-
-        private static EffectClass FromDescriptor(StatusEffect se, StatusEffectDescriptor d)
-        {
-            var auto = EffectTaxonomy.Classify(Facts(se));
-            var c = new EffectClass
-            {
-                Caps = auto.Caps,
-                Harmful = d.Harmful,
-                Category = d.Harmful ? ((d.Channels & EffectChannels.PendingStripe) != EffectChannels.None ? 0 : 2) : 3,
-                Dot = (d.Channels & EffectChannels.PendingStripe) != EffectChannels.None && !d.NoForecast ? DotKind.Other : DotKind.None
-            };
-            if ((d.Channels & EffectChannels.BarTint) != EffectChannels.None && !string.IsNullOrEmpty(d.ColorToken))
-            {
-                c.TintBar = string.IsNullOrEmpty(d.Bar) ? ResourcePools.Health : d.Bar;
-                c.TintToken = d.ColorToken;
-                c.TintPriority = d.Priority;
-            }
-            if ((d.Channels & EffectChannels.Overlay) != EffectChannels.None)
-            {
-                c.Overlay = auto.Overlay != FrameOverlay.None ? auto.Overlay : FrameOverlay.Frost;
-                c.OverlayPriority = d.Priority;
-            }
             return c;
         }
 
@@ -133,17 +96,6 @@ namespace RuneSkin.PlayerHud
         {
             kind = DotKind.None;
             spirit = 0f;
-            // A registration decides first: explicit "no forecast" or its own estimate.
-            if (Providers.TryEffect(se.NameHash(), out var reg))
-            {
-                if (reg.NoForecast) return 0f;
-                if (reg.PendingDamage != null)
-                {
-                    var v = Guard(se.NameHash(), reg.PendingDamage, se);
-                    if (v.HasValue && v.Value > 0f && !float.IsInfinity(v.Value)) { kind = DotKind.Other; return v.Value; }
-                    return 0f;
-                }
-            }
             var rate = Game.m_localDamgeTakenRate;
             if (se is SE_Poison poison)
             {
@@ -161,21 +113,6 @@ namespace RuneSkin.PlayerHud
                 return fire;
             }
             return 0f;
-        }
-
-        // Foreign effect callbacks (forecast / timer): 3 faults per effect hash disable them for the session.
-        private static readonly Dictionary<int, int> Faults = new Dictionary<int, int>();
-
-        public static float? Guard(int hash, Func<StatusEffect, float?> f, StatusEffect se)
-        {
-            if (Faults.TryGetValue(hash, out var n) && n >= Providers.MaxFaults) return null;
-            try { return f(se); }
-            catch (Exception e)
-            {
-                Faults[hash] = n + 1;
-                Plugin.Log.LogWarning($"[RuneSkin] effect callback {se.name} failed ({n + 1}/{Providers.MaxFaults}" + (n + 1 >= Providers.MaxFaults ? ", disabled" : "") + $"): {e.Message}");
-                return null;
-            }
         }
 
         // Ticks still to come before the effect ends: one at timer <= 0, then one per interval of remaining real time.

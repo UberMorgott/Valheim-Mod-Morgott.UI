@@ -1,8 +1,8 @@
+using RuneSkin.Api;
 using System;
 using System.Linq.Expressions;
 using System.Reflection;
 using HarmonyLib;
-using RuneSkin.API;
 using UnityEngine;
 
 namespace RuneSkin.PlayerHud
@@ -104,7 +104,7 @@ namespace RuneSkin.PlayerHud
 
         // ---- abilities -------------------------------------------------------------------------------------------
 
-        private static IDisposable[] _slots;
+        private static Action[] _slots;
         private static readonly object[] Shown = new object[3];
         private static readonly Sprite[] Icons = new Sprite[3];
         private static readonly string[] Keys = new string[3];
@@ -114,11 +114,11 @@ namespace RuneSkin.PlayerHud
         public static void RegisterAbilities()
         {
             if (_slots != null || !Init() || !_abilitiesOk) return;
-            _slots = new IDisposable[3];
+            _slots = new Action[3];
             for (var n = 0; n < 3; n++)
             {
                 var index = n;
-                _slots[n] = Skin.RegisterAbilitySlot(Owner, new AbilitySlotDescriptor
+                _slots[n] = Providers.AddAbility(Owner, new AbilitySlotDescriptor
                 {
                     Id = "epicloot.ability." + index,
                     Order = 100 + index,

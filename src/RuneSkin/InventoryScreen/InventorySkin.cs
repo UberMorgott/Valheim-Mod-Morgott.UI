@@ -1,7 +1,7 @@
+using Morgott.Core;
+using RuneSkin.Api;
 using System;
 using System.Collections.Generic;
-using RuneSkin.API;
-using RuneSkin.Api;
 using RuneSkin.Classify;
 using RuneSkin.Ownership;
 using RuneSkin.Responsive;
@@ -64,8 +64,6 @@ namespace RuneSkin.InventoryScreen
         private GameObject _tooltipPrefab;
 
         // Doll
-        private readonly Dictionary<string, DollCell> _registered = new Dictionary<string, DollCell>();
-        private readonly Dictionary<string, InventoryRegistry.Slot> _registeredBy = new Dictionary<string, InventoryRegistry.Slot>();
         private readonly List<EaqsBridge.SlotInfo> _eaqs = new List<EaqsBridge.SlotInfo>();
         private readonly List<DollEntry> _entries = new List<DollEntry>();
         private int _eaqsReadFrame = -1000, _entriesRevision = -1, _dollScroll;
@@ -115,8 +113,7 @@ namespace RuneSkin.InventoryScreen
         {
             public string Key, Glyph, Name;
             public int Order;
-            public int Element; // EAQS element index, -1 = own cell
-            public DollCell Cell;
+            public int Element; // EAQS element index
             // Doll column (0 left, 1 right: InventoryWindowsMath.DollSide) and row in it.
             public int Side, Row;
         }
@@ -159,7 +156,7 @@ namespace RuneSkin.InventoryScreen
         // Player window action: every inventory-screen window back on its default (the layout this class computes).
         private void RegisterResetAction()
         {
-            _resetAction = InventoryRegistry.AddAction(Skin.PluginGuid, new PanelActionDescriptor
+            _resetAction = InventoryRegistry.AddAction(Contracts.UiGuid, new PanelActionDescriptor
             {
                 Id = "layout.reset",
                 Panel = PanelKind.Player,
@@ -387,7 +384,6 @@ namespace RuneSkin.InventoryScreen
                 if (cluster && !cluster.BandWanted) RequestBand(_rootCanvas.scaleFactor > 0f ? _rootCanvas.scaleFactor : 1f);
             }
             _frameReady = true;
-            UpdateRegisteredSlots();
             UpdateActions();
             HideQuickBar();
             ScrollInput();
@@ -665,13 +661,11 @@ namespace RuneSkin.InventoryScreen
         private bool ContainerIsBackpack() =>
             _gui.m_currentContainer && Player.m_localPlayer && _gui.m_currentContainer.gameObject == Player.m_localPlayer.gameObject;
 
-        // Backpack beside a chest: a panel registered as "inventory.backpack" (Skin.RegisterPanel), else the
-        // AdventureBackpacks fork's docking API (ABAPI.GetBackpackPanel). No object-name fallback (perf audit B5: own
+        // Backpack beside a chest: the AdventureBackpacks fork's docking API (ABAPI.GetBackpackPanel). No object-name fallback (perf audit B5: own
         // mods come in through APIs).
         private void FindBackpack()
         {
-            var panel = InventoryRegistry.Panel("inventory.backpack");
-            if (!panel) panel = AbApi.Panel();
+            var panel = AbApi.Panel();
             if (panel && !panel.gameObject.activeInHierarchy) panel = null;
             if (panel != _packPanel)
             {
@@ -703,8 +697,7 @@ namespace RuneSkin.InventoryScreen
         private void PrewarmBackpack()
         {
             if (_packPrewarmed || !Player.m_localPlayer || _gui.m_animator.GetBool(AnimVisible)) return;
-            var panel = InventoryRegistry.Panel("inventory.backpack");
-            if (!panel) panel = AbApi.Panel();
+            var panel = AbApi.Panel();
             if (!panel) return;
             _packPrewarmed = true;
             AdoptBackpack(panel); // the panel is inactive while closed: its new frame components run nothing until shown
@@ -1871,40 +1864,6 @@ namespace RuneSkin.InventoryScreen
                 EaqsBridge.Describe(s.Id, out var glyph, out var order, out var tooltipKey);
                 _entries.Add(new DollEntry { Key = "eaqs:" + s.Id, Glyph = glyph, Name = SlotNames.Get(tooltipKey), Side = InventoryWindowsMath.DollSide(glyph), Order = InventoryWindowsMath.DollRank(glyph) * 10000 + order * 100 + s.Index, Element = s.Element });
             }
-            var seen = new HashSet<string>();
-            foreach (var r in InventoryRegistry.Slots)
-            {
-                if (r.Dead) continue;
-                seen.Add(r.Key);
-                // A replaced registration (same key, new instance) gets a new cell: callbacks are bound per instance.
-                if (_registered.TryGetValue(r.Key, out var old) && old && (!_registeredBy.TryGetValue(r.Key, out var was) || !ReferenceEquals(was, r)))
-                {
-                    Destroy(old.gameObject);
-                    _registered.Remove(r.Key);
-                }
-                if (!_registered.TryGetValue(r.Key, out var cell) || !cell)
-                {
-                    if (r.D.CellRect) Plugin.Log.LogWarning($"[RuneSkin] doll slot '{r.Key}': SlotDescriptor.CellRect is not supported, RuneSkin builds the cell");
-                    _registeredBy[r.Key] = r;
-                    var reg = r;
-                    var glyphRole = !string.IsNullOrEmpty(r.D.GlyphToken) && ThemeTokens.HasRole(r.D.GlyphToken) ? r.D.GlyphToken : "glyph.slot.generic";
-                    cell = DollCell.Create(_doll, r.Key, r.D.Source == SlotSource.Mirror ? "slot.mirror" : "slot.cell", glyphRole, _tooltipPrefab);
-                    if (r.D.Glyph) { cell.Glyph.sprite = r.D.Glyph; cell.Glyph.enabled = true; }
-                    cell.OnPrimary = c => RegisteredPrimary(reg, c);
-                    cell.OnDropped = c => RegisteredPrimary(reg, c);
-                    cell.OnSecondary = c => RegisteredUnequip(reg);
-                    cell.SetTooltip(SlotNames.Get(r.D.TooltipKey ?? r.D.Id), "");
-                    _registered[r.Key] = cell;
-                }
-                // After the vanilla / EAQS cells of their side, in registration group + order (stable ids).
-                _entries.Add(new DollEntry { Key = r.Key, Glyph = null, Side = RegisteredSide(r), Order = 10000000 + GroupRank(r.D.Group) * 1000 + r.D.Order, Element = -1, Cell = cell });
-            }
-            foreach (var key in new List<string>(_registered.Keys))
-                if (!seen.Contains(key))
-                {
-                    if (_registered[key]) Destroy(_registered[key].gameObject);
-                    _registered.Remove(key);
-                }
             _entries.Sort((a, b) => a.Order != b.Order ? a.Order.CompareTo(b.Order) : string.CompareOrdinal(a.Key, b.Key));
             int left = 0, right = 0;
             for (var i = 0; i < _entries.Count; i++)
@@ -1916,12 +1875,6 @@ namespace RuneSkin.InventoryScreen
             _entriesRevision = InventoryRegistry.Revision;
         }
 
-        private static int GroupRank(string group) =>
-            group == "armor" ? 0 : group == "jewelry" ? 1 : group == "utility" ? 2 : group == "light" ? 3 : 9;
-
-        // A registered slot's doll side: armour with the body equipment (left), everything else right.
-        private static int RegisteredSide(InventoryRegistry.Slot r) => r.D.Group == "armor" ? 0 : 1;
-
         // Equipment cells per doll side (the layout's DollLeft / DollRight), same rules as RebuildEntries.
         private void DollSideCounts(out int left, out int right)
         {
@@ -1932,12 +1885,6 @@ namespace RuneSkin.InventoryScreen
                 if (s.Kind == EaqsBridge.Kind.Quick) continue;
                 EaqsBridge.Describe(s.Id, out var glyph, out _, out _);
                 if (InventoryWindowsMath.DollSide(glyph) == 0) left++;
-                else right++;
-            }
-            foreach (var r in InventoryRegistry.Slots)
-            {
-                if (r.Dead) continue;
-                if (RegisteredSide(r) == 0) left++;
                 else right++;
             }
         }
@@ -1982,10 +1929,6 @@ namespace RuneSkin.InventoryScreen
                     // Empty cell: its name in the tooltip (vanilla UpdateGui clears unused tooltips, InventoryGrid.cs:401-402).
                     if (!e.m_used && e.m_tooltip && e.m_tooltip.m_topic != entry.Name) e.m_tooltip.m_topic = entry.Name;
                 }
-                else if (entry.Cell)
-                {
-                    PlaceOwnCell(entry.Cell, cx, cy, d.Cell, shown);
-                }
             }
             if (cellsOnly)
             {
@@ -2007,16 +1950,7 @@ namespace RuneSkin.InventoryScreen
         {
             var n = 0;
             foreach (var s in _eaqs) if (s.Kind != EaqsBridge.Kind.Quick) n++;
-            foreach (var s in InventoryRegistry.Slots) if (!s.Dead) n++;
             return n;
-        }
-
-        private void PlaceOwnCell(DollCell cell, float x, float y, float size, bool shown)
-        {
-            if (!cell) return;
-            var rt = (RectTransform)cell.transform;
-            if (cell.gameObject.activeSelf != shown) cell.gameObject.SetActive(shown);
-            if (shown) Geo.Place(_canvas, rt, new Box(x, y, size, size));
         }
 
         private static void HideLabel(InventoryElement e)
@@ -2266,33 +2200,6 @@ namespace RuneSkin.InventoryScreen
             image.preserveAspect = false;
             return image;
         }
-        // ---------------------------------------------------------------- API-registered doll cells
-
-        private void UpdateRegisteredSlots()
-        {
-            if (!Player.m_localPlayer) return;
-            foreach (var r in InventoryRegistry.Slots)
-            {
-                if (r.Dead || r.D.GetItem == null || !_registered.TryGetValue(r.Key, out var cell) || !cell) continue;
-                cell.Show(InventoryRegistry.Guard(r, r.D.GetItem, null), 0);
-            }
-        }
-
-        private void RegisteredPrimary(InventoryRegistry.Slot r, DollCell c)
-        {
-            var item = _gui.m_dragItem;
-            if (item == null || !_gui.m_dragGo || r.D.SetEquipped == null) return;
-            if (r.D.Accepts == null || !InventoryRegistry.Guard(r, () => r.D.Accepts(item), false)) return;
-            if (InventoryRegistry.Guard(r, () => r.D.SetEquipped(item, true), false)) _gui.SetupDragItem(null, null, 1);
-        }
-
-        private void RegisteredUnequip(InventoryRegistry.Slot r)
-        {
-            if (r.D.GetItem == null || r.D.SetEquipped == null) return;
-            var item = InventoryRegistry.Guard(r, () => r.D.GetItem(), null);
-            if (item != null) InventoryRegistry.Guard(r, () => r.D.SetEquipped(item, false), false);
-        }
-
         // ---------------------------------------------------------------- actions
 
         private float Bar(RectTransform panel, PanelKind kind, Inventory inventory, Button takeAll, Button stackAll, Box box, float size = 0f, float gap = -1f)
@@ -2310,22 +2217,10 @@ namespace RuneSkin.InventoryScreen
 
         private void UpdateActions()
         {
-            var selected = UnityEngine.EventSystems.EventSystem.current ? UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject : null;
-            // The hidden first open takes no input (GhostOpen; Codex review: raycasts off does not stop the hotkeys).
-            var typing = _ghost || Chat.instance && Chat.instance.HasFocus() || global::Console.IsVisible() || TextInput.IsVisible() ||
-                         _gui.m_splitDialog && _gui.m_splitDialog.IsActive || selected && (selected.GetComponent<TMP_InputField>() || selected.GetComponent<InputField>());
-            // Hotkeys go to one panel: the one under the pointer, else the player panel (one consumer per press).
-            ActionBar focused = null;
-            Vector2 pointer = ZInput.pointerPosition;
-            foreach (var pair in _bars)
-                if (pair.Key && pair.Key.gameObject.activeInHierarchy && pair.Value != null && pair.Key != _gui.m_player && pair.Value.Contains(pointer))
-                    focused = pair.Value;
-            if (focused == null && _bars.TryGetValue(_gui.m_player, out var player)) focused = player;
-            var consumed = false;
             foreach (var pair in _bars)
             {
                 if (!pair.Key || !pair.Key.gameObject.activeInHierarchy || pair.Value == null) continue;
-                pair.Value.Tick(!typing && pair.Value == focused, ref consumed);
+                pair.Value.Tick();
             }
         }
     }

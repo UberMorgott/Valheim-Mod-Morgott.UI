@@ -1,6 +1,6 @@
+using Morgott.Core;
 using System;
 using System.Collections.Generic;
-using RuneSkin.API;
 using RuneSkin.PlayerHud;
 
 namespace RuneSkin.Api
@@ -21,8 +21,6 @@ namespace RuneSkin.Api
 
         private static readonly List<Entry<ResourceState>> Resources = new List<Entry<ResourceState>>();
         private static readonly List<Entry<CapacityState>> Capacities = new List<Entry<CapacityState>>();
-        private static readonly Dictionary<int, StatusEffectDescriptor> Effects = new Dictionary<int, StatusEffectDescriptor>();
-        private static readonly Dictionary<int, string> EffectOwners = new Dictionary<int, string>();
 
         public static int Revision { get; private set; }
 
@@ -32,25 +30,7 @@ namespace RuneSkin.Api
         public static Action AddCapacity(string owner, string list, Func<Player, CapacityState> get) =>
             Add(Capacities, owner, list, get);
 
-        public static Action AddEffect(string owner, StatusEffectDescriptor d)
-        {
-            Effects[d.Hash] = d;
-            EffectOwners[d.Hash] = owner;
-            Revision++;
-            return () =>
-            {
-                if (Effects.TryGetValue(d.Hash, out var cur) && ReferenceEquals(cur, d))
-                {
-                    Effects.Remove(d.Hash);
-                    EffectOwners.Remove(d.Hash);
-                    Revision++;
-                }
-            };
-        }
-
-        public static bool TryEffect(int hash, out StatusEffectDescriptor d) => Effects.TryGetValue(hash, out d);
-
-        // Ability zone slots (RuneSkin.API RegisterAbilitySlot), kept sorted by Order (stable: registration order on
+        // Ability zone slots (own: Epic Loot abilities, guardian power), kept sorted by Order (stable: registration order on
         // ties). AbilityRevision changes on every add / remove, so the strip re-lays out only then.
         private sealed class Ability
         {
@@ -167,7 +147,6 @@ namespace RuneSkin.Api
             foreach (var e in Holds) yield return $"hold {e.Key} from {e.Owner} faults={e.Faults}";
             foreach (var e in Resources) yield return $"resource {e.Key} from {e.Owner} faults={e.Faults}";
             foreach (var e in Capacities) yield return $"capacity {e.Key} from {e.Owner} faults={e.Faults}";
-            foreach (var p in EffectOwners) yield return $"effect {p.Key} from {p.Value}";
             foreach (var a in Abilities) yield return $"ability {a.D.Id} order={a.D.Order} from {a.Owner} faults={a.Faults}";
         }
 
@@ -194,5 +173,29 @@ namespace RuneSkin.Api
                 return false;
             }
         }
+    }
+
+    // One frame of an ability slot (allocation-free, returned by value every HUD frame). Valid false = empty, not drawn.
+    public struct AbilitySlotState
+    {
+        public bool Valid;
+        public UnityEngine.Sprite Icon;
+        public string Key;
+        public float CooldownLeft, CooldownTotal, ActiveLeft, ActiveTotal;
+    }
+
+    // Ability slot in the HUD strip's ability zone, drawn in ascending Order (Epic Loot abilities 100-102, guardian power 1000).
+    public sealed class AbilitySlotDescriptor
+    {
+        public string Id;
+        public int Order;
+        public bool Round; // round socket (guardian power family), else square cell
+        public Func<Player, AbilitySlotState> GetState;
+        public Action<Player> Activate;
+    }
+    // Pool names: Core ids + vanilla stamina (no provider registers it; the HUD reads it like the others).
+    public static class ResourcePools
+    {
+        public const string Health = Morgott.Core.Theme.PoolHealth, Stamina = "stamina", Eitr = Morgott.Core.Theme.PoolEitr, EnergyShield = Morgott.Core.Theme.PoolEnergyShield;
     }
 }

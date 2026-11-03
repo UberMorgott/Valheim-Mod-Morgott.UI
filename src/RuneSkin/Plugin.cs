@@ -1,3 +1,5 @@
+using Morgott.Core;
+using RuneSkin.Api;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -5,8 +7,6 @@ using BepInEx;
 using BepInEx.Configuration;
 using BepInEx.Logging;
 using HarmonyLib;
-using RuneSkin.API;
-using RuneSkin.Api;
 using RuneSkin.Diagnostics;
 using RuneSkin.Ownership;
 using RuneSkin.Responsive;
@@ -18,7 +18,8 @@ namespace RuneSkin
     // RuneSkin: clean-room UI skin that restyles live vanilla uGUI from theme tokens (no prefab swaps, no transpilers).
     // Bootstrap order in Awake: config -> theme + asset bundle -> ownership frozen -> API host attached (replays early registrations) -> Harmony patches of owned
     // families only.
-    [BepInPlugin(Skin.PluginGuid, "RuneSkin", Version)]
+    [BepInPlugin(Contracts.UiGuid, "RuneSkin", Version)]
+    [BepInDependency(Contracts.CoreGuid)]
     [BepInProcess("valheim.exe")]
     public sealed class Plugin : BaseUnityPlugin
     {
@@ -31,7 +32,7 @@ namespace RuneSkin
         public static ConfigEntry<bool> CharacterPreview { get; private set; }
         public static ConfigEntry<bool> MovableWindows { get; private set; }
         public static ConfigEntry<bool> ResetLayout { get; private set; }
-        public static Host ApiHost { get; private set; }
+        private static ThemeProvider _theme;
         public static ConfigEntry<float> HudScale { get; private set; }
         public static ConfigEntry<float> MinimapScale { get; private set; }
         public static ConfigEntry<bool> UltrawideBox { get; private set; }
@@ -73,6 +74,11 @@ namespace RuneSkin
         {
             _initStart = Stopwatch.GetTimestamp();
             Log = Logger;
+            if (CoreApi.ApiMajor != 1)
+            {
+                Log.LogError($"[RuneSkin] inactive: Morgott.Core API {CoreApi.ApiMajor}, needs 1");
+                return;
+            }
             _ownMenu = Own("Menu",
                 "RuneSkin styles the pause menu. Read once at startup (restart to change).");
             _ownTooltips = Own("Tooltips",
@@ -284,14 +290,13 @@ namespace RuneSkin
                 [OwnershipRegistry.CharacterStats] = _ownCharacterStats.Value && _ownInventory.Value,
             }, _requireAssets.Value);
 
-            ApiHost = new Host();
-            Skin.Attach(ApiHost);
+            Services.Register<ITheme>(_theme = new ThemeProvider());
 
             gameObject.AddComponent<ResponsiveContext>();
             if (WatchTheme.Value) ThemeWatcher.Attach(gameObject);
 
             var patchStart = Stopwatch.GetTimestamp();
-            _harmony = new Harmony(Skin.PluginGuid);
+            _harmony = new Harmony(Contracts.UiGuid);
             // M7: precise mod panels + the fallback restyler for every UI no family owns, Jotunn windows, IMGUI fonts
             // (their own runtime hooks), set up before the class patches that read their state.
             ModScreens.AlmanacAdapter.Harmony = _harmony;
@@ -311,10 +316,14 @@ namespace RuneSkin
             Theme.Words.ApplyExisting();
             if (OwnershipRegistry.IsOwned(OwnershipRegistry.Cursor)) CursorSkin.Apply();
             var ms = (Stopwatch.GetTimestamp() - patchStart) * 1000.0 / Stopwatch.Frequency;
-            Log.LogInfo($"[RuneSkin] {Version} ready (API v{Skin.ApiVersion}); init {(patchStart - _initStart) * 1000.0 / Stopwatch.Frequency:0} ms theme + ownership, {ms:0} ms patches");
+            Log.LogInfo($"[RuneSkin] {Version} ready; init {(patchStart - _initStart) * 1000.0 / Stopwatch.Frequency:0} ms theme + ownership, {ms:0} ms patches");
         }
 
-        private void OnDestroy() => _harmony?.UnpatchSelf();
+        private void OnDestroy()
+        {
+            if (_theme != null) Services.Unregister<ITheme>(_theme);
+            _harmony?.UnpatchSelf();
+        }
 
         // Re-reads the theme (override file) and re-applies every live root. Ownership never changes at runtime.
         public static void ReloadTheme()

@@ -17,7 +17,7 @@ namespace RuneSkin.ModScreens
         public static AssemblyKind Classify(string assembly)
         {
             if (string.IsNullOrEmpty(assembly)) return AssemblyKind.Game;
-            if (assembly == "RuneSkin" || assembly == "RuneSkin.API") return AssemblyKind.Own;
+            if (assembly == "RuneSkin") return AssemblyKind.Own;
             if (assembly.StartsWith("assembly_", StringComparison.Ordinal) || assembly == "gui_framework" ||
                 assembly.StartsWith("UnityEngine", StringComparison.Ordinal) || assembly.StartsWith("Unity.", StringComparison.Ordinal) ||
                 assembly == "Assembly-CSharp" || assembly == "Assembly-CSharp-firstpass" || assembly == "mscorlib" ||
@@ -92,7 +92,7 @@ namespace RuneSkin.ModScreens
                         ? new Verdict { HasUnit = true, UnitDepth = depth, Family = n.Hint, UnderRoot = underRoot }
                         : new Verdict { Blocked = true };
                 if (genericOwned && (n.Anchor || (!underRoot && n.Foreign && !n.Game)))
-                    return new Verdict { HasUnit = true, UnitDepth = depth, Family = RuneSkin.API.SkinFamilies.ModUi, UnderRoot = underRoot };
+                    return new Verdict { HasUnit = true, UnitDepth = depth, Family = "ModUi", UnderRoot = underRoot };
             }
             return new Verdict { UnderRoot = underRoot };
         }

@@ -1,5 +1,5 @@
 using System;
-using RuneSkin.API;
+using Morgott.Core;
 using RuneSkin.ModScreens;
 using RuneSkin.Theme;
 using Xunit;
@@ -47,7 +47,7 @@ namespace RuneSkin.Tests
         {
             var v = Step(Root, new Node { Foreign = true }, 3, true);
             Assert.True(v.HasUnit);
-            Assert.Equal(SkinFamilies.ModUi, v.Family);
+            Assert.Equal("ModUi", v.Family);
         }
 
         // Vanilla objects (or vanilla clones a mod adds a component to) and the boundary never start a unit.
@@ -67,16 +67,16 @@ namespace RuneSkin.Tests
             Assert.True(inRoot.UnderRoot);
             Assert.False(Step(inRoot, new Node { Foreign = true }, 2, true).HasUnit);
             Assert.True(Step(inRoot, new Node { Anchor = true }, 2, true).HasUnit);
-            var board = Step(inRoot, new Node { Foreign = true, Hint = SkinFamilies.EpicLootBoard, HintOwned = true }, 2, true);
+            var board = Step(inRoot, new Node { Foreign = true, Hint = "EpicLootBoard", HintOwned = true }, 2, true);
             Assert.True(board.HasUnit);
-            Assert.Equal(SkinFamilies.EpicLootBoard, board.Family);
+            Assert.Equal("EpicLootBoard", board.Family);
         }
 
         // A precise family the other skin keeps blocks the subtree (no generic restyle on top of its look).
         [Fact]
         public void UnownedPreciseFamilyBlocks()
         {
-            var v = Step(Root, new Node { Foreign = true, Hint = SkinFamilies.EpicLootTemper, HintOwned = false }, 1, true);
+            var v = Step(Root, new Node { Foreign = true, Hint = "EpicLootTemper", HintOwned = false }, 1, true);
             Assert.True(v.Blocked);
             Assert.True(Step(v, new Node { Foreign = true }, 2, true).Blocked);
         }
@@ -107,9 +107,9 @@ namespace RuneSkin.Tests
         public void ChildrenInheritTheTopmostUnit()
         {
             var top = Step(Root, new Node { Foreign = true }, 2, true);
-            var child = Step(top, new Node { Foreign = true, Hint = SkinFamilies.EpicLootEnchanting, HintOwned = true }, 3, true);
+            var child = Step(top, new Node { Foreign = true, Hint = "EpicLootEnchanting", HintOwned = true }, 3, true);
             Assert.Equal(2, child.UnitDepth);
-            Assert.Equal(SkinFamilies.ModUi, child.Family);
+            Assert.Equal("ModUi", child.Family);
         }
 
         // Generic family off: only precise adapters act.
@@ -118,7 +118,7 @@ namespace RuneSkin.Tests
         {
             Assert.False(Step(Root, new Node { Foreign = true }, 1, false).HasUnit);
             Assert.False(Step(Root, new Node { Anchor = true }, 1, false).HasUnit);
-            Assert.True(Step(Root, new Node { Hint = SkinFamilies.ModHud, HintOwned = true }, 1, false).HasUnit);
+            Assert.True(Step(Root, new Node { Hint = "ModHud", HintOwned = true }, 1, false).HasUnit);
         }
 
         [Theory]
@@ -162,13 +162,6 @@ namespace RuneSkin.Tests
         [Fact]
         public void M7FamiliesAreDeclaredInTheTheme()
         {
-            Assert.Equal("ModUi", SkinFamilies.ModUi);
-            Assert.Equal("EpicLootEnchanting", SkinFamilies.EpicLootEnchanting);
-            Assert.Equal("EpicLootBoard", SkinFamilies.EpicLootBoard);
-            Assert.Equal("EpicLootTemper", SkinFamilies.EpicLootTemper);
-            Assert.Equal("ModHud", SkinFamilies.ModHud);
-            Assert.Equal("InventoryExtras", SkinFamilies.InventoryExtras);
-            Assert.Equal("Radial", SkinFamilies.Radial);
             using var s = typeof(ThemeSchema).Assembly.GetManifestResourceStream("RuneSkin.default-theme.json");
             using var r = new System.IO.StreamReader(s!);
             var f = ThemeJson.Parse(r.ReadToEnd());
