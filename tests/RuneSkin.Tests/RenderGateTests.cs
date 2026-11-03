@@ -7,6 +7,17 @@ namespace RuneSkin.Tests
     // Overdraw track: hidden = not rendered (RenderGate ledger, fade floor, cover geometry).
     public class RenderGateTests
     {
+        // A destroyed (disabled) gate canvas left its subtree undrawn for good (Vaettir boss bar segments / despawn bar
+        // after Tab, 2026-11-03): the gate re-enables the canvas it added, never destroys it.
+        [Fact]
+        public void GateNeverDestroysItsCanvas()
+        {
+            var d = new System.IO.DirectoryInfo(System.AppContext.BaseDirectory);
+            while (d != null && !System.IO.File.Exists(System.IO.Path.Combine(d.FullName, "RuneSkin.sln"))) d = d.Parent;
+            var src = System.IO.File.ReadAllText(System.IO.Path.Combine(d!.FullName, "src", "RuneSkin", "Restyle", "RenderGate.cs"));
+            Assert.DoesNotContain("Destroy", src.Split('\n').Where(l => !l.TrimStart().StartsWith("//")).Aggregate("", (a, l) => a + l));
+        }
+
         [Fact]
         public void FadeWritesEndValuesAtOnceAndStepsAtMost60Hz()
         {

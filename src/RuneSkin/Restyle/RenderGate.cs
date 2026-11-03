@@ -10,14 +10,16 @@ namespace RuneSkin.Restyle
     // the managed Graphics keep their parent canvas (raycast/registry unchanged; input is blocked by the callers' own
     // CanvasGroups). A CanvasGroup at alpha 0 only multiplies vertex alpha: the geometry is still batched and drawn
     // (overdraw), which is what this replaces. Keyed by owner, so independent reasons (full window, large map, fade)
-    // stack: the gate goes on with the first owner and comes off with the last; a Canvas RuneSkin added is removed then,
-    // an existing one gets its own enabled state back.
+    // stack: the gate goes on with the first owner and comes off with the last; a Canvas RuneSkin added is re-enabled and
+    // kept (a plain nested canvas changes nothing), an existing one gets its own enabled state back. Destroying the added
+    // canvas instead left its whole subtree undrawn for good (Unity 6000.0.75: DestroyImmediate of a disabled nested Canvas
+    // does not hand the CanvasRenderers back to the parent canvas, SetAllDirty does not help; Vaettir boss bar segments,
+    // caps and despawn bar gone after the inventory / map covered them, offline repro D:\tmp\uirepro Repro.cs).
     public static class RenderGate
     {
         private sealed class Entry
         {
             public Canvas Canvas;
-            public bool Added;
             public bool Prior;
         }
 
@@ -100,7 +102,7 @@ namespace RuneSkin.Restyle
             var canvas = go.GetComponent<Canvas>();
             var added = !canvas;
             if (added) canvas = go.AddComponent<Canvas>();
-            Entries[go] = new Entry { Canvas = canvas, Added = added, Prior = added || canvas.enabled };
+            Entries[go] = new Entry { Canvas = canvas, Prior = added || canvas.enabled };
             if (!Suspended) canvas.enabled = false;
         }
 
@@ -108,11 +110,7 @@ namespace RuneSkin.Restyle
         {
             if (!Entries.TryGetValue(go, out var e)) return;
             Entries.Remove(go);
-            if (!e.Canvas) return;
-            // Immediately: a deferred Destroy leaves the disabled canvas for the rest of the frame, and a gate taken
-            // again in that frame would find (and later lose) the dying component.
-            if (e.Added) Object.DestroyImmediate(e.Canvas);
-            else e.Canvas.enabled = e.Prior;
+            if (e.Canvas) e.Canvas.enabled = e.Prior;
         }
 
         private static void Prune()
