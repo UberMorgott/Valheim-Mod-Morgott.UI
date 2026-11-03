@@ -40,6 +40,8 @@ namespace RuneSkin.ModScreens
             [ModCompat.EpicLootDebugText] = OwnershipRegistry.ModHud,
             // VNEI attaches its window to the crafting panel (a Crafting family root).
             [ModCompat.VneiBaseUi] = OwnershipRegistry.ModUi,
+            // Epic Loot's config-update prompt lives under StartGui (the pre-world menu family root).
+            [ModCompat.EpicLootConfigMessage] = OwnershipRegistry.ModUi,
         };
 
         private static readonly string[] PreciseFamilies = { OwnershipRegistry.EpicLootEnchanting, OwnershipRegistry.EpicLootBoard, OwnershipRegistry.EpicLootTemper, OwnershipRegistry.ModHud };

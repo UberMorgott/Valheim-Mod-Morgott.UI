@@ -232,6 +232,15 @@ namespace RuneSkin.Tests
         public void EnchantTabPlatesFitTheMask(float plate, float mask, float margin, float want) =>
             Assert.Equal(want, ElTabWidth(plate, mask, margin));
 
+        // Every shown tab fits the mask height at Epic Loot's spacing (0.15.6: 8 tabs in a 630 px mask, spacing 10).
+        [Theory]
+        [InlineData(80f, 630f, 0f, 10f, 7, 80f)]
+        [InlineData(80f, 630f, 0f, 10f, 8, 70f)]
+        [InlineData(80f, 630f, 5f, 10f, 8, 69f)]
+        [InlineData(80f, 630f, 0f, 10f, 0, 80f)]
+        public void EnchantTabPlatesFitTheMaskHeight(float plate, float mask, float padding, float spacing, int count, float want) =>
+            Assert.Equal(want, ElTabHeight(plate, mask, padding, spacing, count));
+
         [Fact]
         public void EnchantTabLockRolesAreInTheTheme()
         {

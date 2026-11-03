@@ -39,6 +39,9 @@ namespace RuneSkin.Compat
         public const string EpicLootTemperPanel = "EpicLoot.TemperPanel";
         public const string EpicLootAbilityBar = "EpicLoot.Abilities.AbilityBar";
         public const string EpicLootDebugText = "EpicLoot.DebugText";
+        // Epic Loot's config-update prompt (ConfigUpdatePrompt: ConfigMessagePrefab under StartGui on the main menu, shown
+        // once after Epic Loot's config version changes; 0.15.6 run 20261103-095927).
+        public const string EpicLootConfigMessage = "EpicLoot.ConfigMessage";
         // 0.15 TraderPanelDrag (EpicLoot\TraderPanelDrag.cs) on MerchantPanel / TemperPanel: a clear full-panel hit
         // surface shown while the drag key is held, and a corner move handle whose colour it writes every frame.
         public const string EpicLootDragSurface = "ModifierDragSurface";

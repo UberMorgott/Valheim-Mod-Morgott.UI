@@ -164,7 +164,8 @@ namespace RuneSkin.ModScreens
     // Epic Loot's tab column (Panel/Tabs: RectMask2D + VerticalLayoutGroup, padding right -10, aligned upper right, 137 px
     // plates in a 160 px mask): the plates ran 10 px under the mask's right edge (their frame was cut off). The column
     // centres its plates inside the mask at one size (size.el.tab.w x size.el.tab.h, ForeignMath.ElTabWidth), keeping
-    // Epic Loot's spacing (equal pitch). Journaled.
+    // Epic Loot's spacing (equal pitch); lower plates when the shown tabs would run past the mask (ForeignMath.ElTabHeight).
+    // Journaled.
     [DisallowMultipleComponent]
     public sealed class ElTabColumn : MonoBehaviour, IRevertible
     {
@@ -197,7 +198,11 @@ namespace RuneSkin.ModScreens
             if (!_group || !_tabs) return;
             var mask = ((RectTransform)_group.transform).rect.width;
             var w = ForeignMath.ElTabWidth(ThemeTokens.GetFloat("size.el.tab.w", 136f), mask, ThemeTokens.GetFloat("size.el.tab.margin", 4f));
-            var h = ThemeTokens.GetFloat("size.el.tab.h", 80f);
+            var shown = 0;
+            foreach (var tab in _tabs.m_tabs)
+                if (tab != null && tab.m_button && tab.m_button.gameObject.activeSelf) shown++;
+            var rect = ((RectTransform)_group.transform).rect;
+            var h = ForeignMath.ElTabHeight(ThemeTokens.GetFloat("size.el.tab.h", 80f), rect.height, _padding.top + _padding.bottom, _group.spacing, shown);
             var dirty = false;
             var p = _group.padding;
             if (p.left != 0 || p.right != 0 || p.top != _padding.top || p.bottom != _padding.bottom)

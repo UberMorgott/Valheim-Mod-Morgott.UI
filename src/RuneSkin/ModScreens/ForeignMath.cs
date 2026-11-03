@@ -175,6 +175,11 @@ namespace RuneSkin.ModScreens
         public static float ElTabWidth(float plate, float mask, float margin) =>
             Math.Max(0f, Math.Min(plate, mask - 2f * margin));
 
+        // Height of the tab plates: the plate's own height while every shown tab fits the mask at Epic Loot's spacing, else
+        // the height that fits them all (Epic Loot 0.15.1+ shows the Storage tab too: 8 x 80 + 7 x 10 ran past a 630 px mask).
+        public static float ElTabHeight(float plate, float mask, float padding, float spacing, int count) =>
+            count <= 0 ? plate : Math.Max(0f, Math.Min(plate, (float)Math.Floor((mask - padding - spacing * (count - 1)) / count)));
+
         // Epic Loot adventure board list / tab -> glyph role (art m7 board-a).
         public static string BoardGlyph(string name)
         {
