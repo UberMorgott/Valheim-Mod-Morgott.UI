@@ -36,6 +36,22 @@ namespace RuneSkin.InfoScreens
         public static float HealthRegen(float foodRegenSum, float multiplier) =>
             foodRegenSum > 0f ? foodRegenSum * multiplier / FoodTick : 0f;
 
+        // One food's healing in hp per second (its m_foodRegen is paid once per FoodTick).
+        public static float FoodRegenPerSecond(float foodRegen) => foodRegen / FoodTick;
+
+        // Vanilla item tooltip food line (ItemDrop.cs:1084, AppendFormat in the current culture) states m_foodRegen as
+        // "hp/tick"; rewritten in place as hp per second (`perSecond` = the "/s" word or its $token). No line = unchanged.
+        public static string FoodTooltipPerSecond(string tooltip, float foodRegen, bool comma, string perSecond)
+        {
+            if (string.IsNullOrEmpty(tooltip) || foodRegen <= 0f) return tooltip;
+            var tick = string.Format("<color=orange>{0} hp/tick</color>", foodRegen);
+            var i = tooltip.IndexOf(tick, StringComparison.Ordinal);
+            if (i < 0) return tooltip;
+            var sb = new StringBuilder(tooltip.Length + 16).Append(tooltip, 0, i).Append("<color=orange>");
+            AppendFactor(sb, FoodRegenPerSecond(foodRegen), comma).Append(" hp").Append(perSecond).Append("</color>");
+            return sb.Append(tooltip, i + tick.Length, tooltip.Length - i - tick.Length).ToString();
+        }
+
         // Seconds to the next food heal (m_foodRegenTimer counts up to FoodTick, Player.cs:2450-2455).
         public static float HealthTickIn(float timer) => Math.Max(0f, FoodTick - Math.Max(0f, timer));
 

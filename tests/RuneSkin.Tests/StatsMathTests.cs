@@ -20,6 +20,30 @@ namespace RuneSkin.Tests
         }
 
         [Fact]
+        public void FoodTooltipStatesHealingPerSecond()
+        {
+            var culture = System.Globalization.CultureInfo.CurrentCulture;
+            try
+            {
+                System.Globalization.CultureInfo.CurrentCulture = System.Globalization.CultureInfo.InvariantCulture;
+                // Vanilla ItemDrop.cs:1084 line for a 3 hp food tick -> 0.3 hp per second.
+                var raw = "$item_food_health: <color=orange>30</color>\n$item_food_regen: <color=orange>3 hp/tick</color>\n$item_food_duration: x";
+                Assert.Equal("$item_food_health: <color=orange>30</color>\n$item_food_regen: <color=orange>0.3 hp/s</color>\n$item_food_duration: x",
+                    StatsMath.FoodTooltipPerSecond(raw, 3f, false, "/s"));
+                Assert.Equal("<color=orange>0,15 hp/с</color>", StatsMath.FoodTooltipPerSecond("<color=orange>1.5 hp/tick</color>", 1.5f, true, "/с"));
+                // Already rewritten / other item: untouched (idempotent across nested GetTooltip calls).
+                Assert.Equal("<color=orange>0.3 hp/s</color>", StatsMath.FoodTooltipPerSecond("<color=orange>0.3 hp/s</color>", 3f, false, "/s"));
+                Assert.Equal("no food", StatsMath.FoodTooltipPerSecond("no food", 0f, false, "/s"));
+                Assert.Equal(0.25f, StatsMath.FoodRegenPerSecond(2.5f), 4);
+                // Item + its m_appendToolTip food with the same regen: one call per line, both rewritten.
+                var two = "<color=orange>2 hp/tick</color>|<color=orange>2 hp/tick</color>";
+                Assert.Equal("<color=orange>0.2 hp/s</color>|<color=orange>0.2 hp/s</color>",
+                    StatsMath.FoodTooltipPerSecond(StatsMath.FoodTooltipPerSecond(two, 2f, false, "/s"), 2f, false, "/s"));
+            }
+            finally { System.Globalization.CultureInfo.CurrentCulture = culture; }
+        }
+
+        [Fact]
         public void HealthRegenIsTickHealOverTenSeconds()
         {
             // Three dishes regen 2 + 2 + 3 = 7 per 10 s tick (Player.UpdateFood), no multiplier -> 0.7 / s.

@@ -455,7 +455,7 @@ namespace RuneSkin.InfoScreens
                 if (f.m_item.m_shared.m_foodRegen > 0f)
                 {
                     r.S.Append(", ").Append(Loc("$runeskin_stats_regen_short")).Append(' ');
-                    StatsMath.AppendCompact(r.S, f.m_item.m_shared.m_foodRegen, _comma);
+                    StatsMath.AppendFactor(r.S, StatsMath.FoodRegenPerSecond(f.m_item.m_shared.m_foodRegen), _comma).Append(Loc("$runeskin_stats_per_second"));
                 }
                 StatsMath.AppendClock(r.V, f.m_time);
             }

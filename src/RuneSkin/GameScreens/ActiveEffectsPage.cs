@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Reflection;
+using RuneSkin.InfoScreens;
 using RuneSkin.Ownership;
 using RuneSkin.Theme;
 using TMPro;
@@ -16,7 +17,7 @@ namespace RuneSkin.GameScreens
     // is a list in the reading pane: one row per active effect (row_recipe_* plate, icon in a slot_cell_recess socket,
     // name display serif, time left muted, effect text body sans). Sources, all live:
     // - foods (Player.GetFoods): item icon and name, current health / stamina / eitr of the food (Food.m_health ...,
-    //   decayed by Player.UpdateFood), regen per tick (SharedData.m_foodRegen), m_time left;
+    //   decayed by Player.UpdateFood), regen per second (SharedData.m_foodRegen / StatsMath.FoodTick), m_time left;
     // - status effects (SEMan.GetStatusEffects): an SE with a public `IEnumerable MtActiveEffectRowsV1()` (soft contract,
     //   MorgottTweaks ActiveEffectRows: object[] {id, Sprite, name, text, seconds left (<0 none), active}) is drawn from
     //   its rows, hidden or not; any other SE as vanilla lists it (SEMan.GetHUDStatusEffects): icon, Localize(m_name),
@@ -119,7 +120,7 @@ namespace RuneSkin.GameScreens
                 if (food.m_health > 0f) text.Add($"$item_food_health: <color={health}>{food.m_health:0}</color>");
                 if (food.m_stamina > 0f) text.Add($"$item_food_stamina: <color={stamina}>{food.m_stamina:0}</color>");
                 if (food.m_eitr > 0f) text.Add($"$item_food_eitr: <color={eitr}>{food.m_eitr:0}</color>");
-                if (s.m_foodRegen > 0f) text.Add($"$item_food_regen: <color={regen}>{s.m_foodRegen.ToString("0.#", CultureInfo.InvariantCulture)} hp/tick</color>");
+                if (s.m_foodRegen > 0f) text.Add($"$item_food_regen: <color={regen}>{StatsMath.FoodRegenPerSecond(s.m_foodRegen).ToString("0.##", CultureInfo.InvariantCulture)} hp$runeskin_stats_per_second</color>");
                 rows.Add(new Row { Icon = food.m_item.GetIcon(), Name = loc.Localize(s.m_name), Text = loc.Localize(string.Join("   ", text)), Seconds = food.m_time, Active = true });
             }
 

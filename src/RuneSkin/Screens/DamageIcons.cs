@@ -73,8 +73,18 @@ namespace RuneSkin.Screens
             new[] { typeof(ItemDrop.ItemData), typeof(int), typeof(bool), typeof(float), typeof(int), typeof(bool) })]
         [HarmonyPostfix]
         [HarmonyPriority(Priority.Last)]
-        private static void GetTooltip_Postfix(bool crafting, bool appending, ref string __result)
+        private static void GetTooltip_Postfix(ItemDrop.ItemData item, bool crafting, bool appending, ref string __result)
         {
+            // Every skinned item tooltip states food healing per second, not vanilla's "hp/tick" (Player.UpdateFood, 10 s).
+            // The m_appendToolTip food's line is printed inline by the local printConsumable (ItemDrop.cs:1057), no nested call.
+            if (item?.m_shared != null)
+            {
+                var comma = Localization.instance?.GetSelectedLanguage() == "Russian";
+                __result = InfoScreens.StatsMath.FoodTooltipPerSecond(__result, item.m_shared.m_foodRegen, comma, "$runeskin_stats_per_second");
+                var appended = item.m_shared.m_appendToolTip ? item.m_shared.m_appendToolTip.m_itemData?.m_shared : null;
+                if (appended != null)
+                    __result = InfoScreens.StatsMath.FoodTooltipPerSecond(__result, appended.m_foodRegen, comma, "$runeskin_stats_per_second");
+            }
             if (_inRecipe && crafting && !appending) __result = DamageIconText.Decorate(__result, _tags);
         }
 
