@@ -4,6 +4,7 @@ using System.Reflection;
 using BepInEx.Bootstrap;
 using HarmonyLib;
 using RuneSkin.Compat;
+using UnityEngine;
 
 namespace RuneSkin.InventoryScreen
 {
@@ -54,6 +55,26 @@ namespace RuneSkin.InventoryScreen
         {
             Plugin.Log.LogWarning("[RuneSkin] EAQS found, but its slot members changed: doll shows no EAQS cells");
             return false;
+        }
+
+        // EAQS 3.2.0 ContainerWindow adds ContainerDragHandle to m_container (drag the chest background with its drag key
+        // or "Container Draggable" on) and writes the offset to m_container.anchoredPosition every InventoryGui.Update.
+        // RuneSkin owns the chest window's place (WindowMove, dragged by its header) and re-places it every LateUpdate,
+        // so that drag never shows and only rewrites EAQS's config: the handle is switched off (a disabled Behaviour gets
+        // no EventSystem events; EAQS only checks that the component exists, it never re-enables it).
+        private static Type _dragHandle;
+        private static bool _dragResolved;
+
+        public static void DisableContainerDrag(Component container)
+        {
+            if (!container || !Available) return;
+            if (!_dragResolved)
+            {
+                _dragResolved = true;
+                _dragHandle = TypeLookup.ByName(ModCompat.EaqsContainerDragType);
+            }
+            if (_dragHandle == null) return; // EAQS before 3.2.0: no handle
+            if (container.GetComponent(_dragHandle) is Behaviour handle && handle.enabled) handle.enabled = false;
         }
 
         // Rows of the player grid that are real inventory (EAQS hides its slot rows behind these).

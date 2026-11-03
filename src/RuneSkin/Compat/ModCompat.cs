@@ -16,6 +16,7 @@ namespace RuneSkin.Compat
         // ---- Equipment and Quick Slots (randyknapp): doll cells read from its slot table
         public const string EaqsGuid = "randyknapp.mods.equipmentandquickslots";
         public const string EaqsSlotsType = "EquipmentAndQuickSlots.Slots";
+        public const string EaqsContainerDragType = "EquipmentAndQuickSlots.ContainerWindow+ContainerDragHandle";
         // Its pool of unused cells (EquipmentPanel.InventoryGrid_UpdateGui_RelocateSlotElements.EnsureHiddenRoot: an inactive RectTransform under
         // m_player, kept by its static reference, cells parked into it by ParkHiddenCell).
         public const string EaqsHiddenRoot = "EaqsHiddenSlotRoot";

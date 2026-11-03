@@ -998,6 +998,7 @@ namespace RuneSkin.InventoryScreen
             // Chest / backpack.
             if (containerShown)
             {
+                EaqsBridge.DisableContainerDrag(_gui.m_container);
                 ArrangeContainer(_gui.m_container, _gui.m_containerGrid, backpackInContainer ? _packBox : _chestBox, backpackInContainer ? o.BackpackGrid : o.ChestGrid,
                     backpackInContainer ? PanelKind.Backpack : PanelKind.Container, ContainerInventory(), _gui.m_containerName,
                     _gui.m_containerWeight ? _gui.m_containerWeight.transform : null, _gui.m_takeAllButton, _gui.m_stackAllButton);
