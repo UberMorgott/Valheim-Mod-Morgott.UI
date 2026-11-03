@@ -21,9 +21,9 @@ var themeVals map[string]float64
 var themeStr map[string]string
 
 func loadTheme() {
-	b, err := os.ReadFile("src/RuneSkin/Theme/default-theme.json")
+	b, err := os.ReadFile("src/Morgott.UI/Theme/default-theme.json")
 	if err != nil {
-		b, err = os.ReadFile("../src/RuneSkin/Theme/default-theme.json")
+		b, err = os.ReadFile("../src/Morgott.UI/Theme/default-theme.json")
 	}
 	must(err)
 	// the theme carries whole-line // section comments (the runtime parser skips them); drop them for encoding/json

@@ -4,11 +4,11 @@
        here, run `valbuild sync .`; `valbuild check .` (quality-gate) fails on drift. -->
   <Import Project="$(MSBuildThisFileDirectory)build\Valheim.Build.props" />
 
-  <!-- RuneSkin-wide (the canonical props leave these per repo). TargetFramework is set in each csproj. -->
+  <!-- Morgott.UI-wide (the canonical props leave these per repo). TargetFramework is set in each csproj. -->
   <PropertyGroup>
     <Nullable>disable</Nullable>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <!-- CS1591 only on the plugin: its internals are not public API (set in RuneSkin.csproj). -->
+    <!-- CS1591 only on the plugin: its internals are not public API (set in Morgott.UI.csproj). -->
   </PropertyGroup>
 </Project>

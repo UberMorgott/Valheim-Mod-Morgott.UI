@@ -1,0 +1,446 @@
+using System.Collections.Generic;
+using Morgott.UI.Theme;
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
+
+namespace Morgott.UI.PlayerHud
+{
+    // Status strip below the bars (ui-skin-engine-plan §8a): owned, pooled cells keyed by effect, replacing vanilla
+    // Hud.UpdateStatusEffects (Hud.cs:1635, which re-instantiates every icon when the count changes). Takes over its
+    // duties: hidden filter (:1645), icon, flash (m_flashIcon :1659), cooldown (:1667), icon text (:1670-1679) and the
+    // new-effect flash that clears m_isNew (:1682-1686). Empty = nothing drawn. Rows from the height budget; overflow
+    // reserves the last cell for "+N", which opens the full list (pointer, or the configured key / gamepad button).
+    public sealed class StatusStrip
+    {
+        private struct Entry
+        {
+            public StatusEffect Effect;
+            public int Hash;
+            public EffectClass Class;
+            public int Priority;
+        }
+
+        private sealed class Cell
+        {
+            public RectTransform Root;
+            public Image Back, Icon;
+            public TMP_Text Timer;
+            public StatusEffect Effect;
+            public int ShownSeconds = int.MinValue;
+            public string ShownText;
+            public float Flash;
+            public bool Harmful;
+        }
+
+        private readonly HudArt _art;
+        public readonly RectTransform Root;
+        private readonly List<Entry> _entries = new List<Entry>(16);
+        private readonly List<Cell> _cells = new List<Cell>(16);
+
+        // Pooled effect cells so far (HudCluster re-applies the text floors when new ones appear).
+        public int CellCount => _cells.Count;
+        private Cell _more;
+        private TMP_Text _moreText;
+        private int _moreShown = -1;
+        private RectTransform _popup;
+        private readonly List<Cell> _popupRows = new List<Cell>(16);
+        private bool _popupOpen;
+        private float _resortAt;
+        private int _lastCount = -1;
+        private static readonly System.Comparison<Entry> Order = (a, b) =>
+            EffectTaxonomy.Compare(a.Class.Category, a.Priority, a.Hash, b.Class.Category, b.Priority, b.Hash);
+
+        public HudMath.Flow Layout { get; private set; }
+        public int Count => _entries.Count;
+        public bool PopupOpen => _popupOpen;
+
+        private readonly RectTransform _panel;
+
+        // harmful: the debuff strip under the bars (true) or the buff row above the food (false); each takes only its
+        // side of EffectTaxonomy Harmful. The guardian power's own effect (ExcludeHash) shows on its socket instead.
+        private readonly bool _harmful;
+        public int ExcludeHash;
+
+        // HUD strip groups (user call 2026-10-22): rows grow UPWARD from the root (root = bottom-left of the lowest row;
+        // a full row wraps into a new row above), right-aligned for the group on the right side.
+        public bool Upward, AlignRight;
+
+        // Cell side (ref px): the theme's size.hud.status.cell grown until the worst-case timer / icon text
+        // (size.hud.status.sample width in the timer font, e.g. "88m 88s" from mods' GetIconText) fits inside the
+        // cell under the icon (HudMath.StatusCell). Measured once per theme revision with a TMP probe.
+        public const string WorstText = "88m 88s";
+        private static float _cellSize = -1f;
+        private static int _cellRevision = -1;
+        public static float CellSize => _cellSize > 0f && _cellRevision == ThemeTokens.Revision ? _cellSize : ThemeTokens.GetFloat("size.hud.status.cell", 42f);
+        public const float IconShare = 0.6f;
+
+        // Strip groups (user call 2026-10-23: many effects, save room): frameless tiles, the icon fills the tile, side =
+        // HudStrip.StatusSize x the slot cell (strip units), timer outlined over the icon bottom, debuffs a thin red
+        // underline; tight gap size.hud.status.strip.gap.
+        public static float StripCell => Mathf.Clamp(Plugin.StatusSize?.Value ?? 0.6f, 0.3f, 1f) * ThemeTokens.GetFloat("size.hud.strip.cell", 85f);
+        public static float StripGap => ThemeTokens.GetFloat("size.hud.status.strip.gap", 5f);
+        private float TileSize => Upward ? StripCell : CellSize;
+        private float TileGap => Upward ? StripGap : ThemeTokens.GetFloat("size.hud.status.gap", 4f);
+
+        private void Measure()
+        {
+            if (_cellSize > 0f && _cellRevision == ThemeTokens.Revision) return;
+            var font = ThemeTokens.GetFloat("size.hud.font.status", 15f);
+            var probe = _art.Text("TimerProbe", Root, "font.body", "color.hud.timer", font, TextAlignmentOptions.Center);
+            var size = probe.GetPreferredValues(WorstText, 0f, 0f);
+            Object.Destroy(probe.gameObject);
+            _cellSize = HudMath.StatusCell(ThemeTokens.GetFloat("size.hud.status.cell", 42f), IconShare, size.x, size.y, ThemeTokens.GetFloat("size.hud.status.text.pad", 3f));
+            _cellRevision = ThemeTokens.Revision;
+            Plugin.Log.LogInfo($"[Morgott.UI] status cell {_cellSize:0} ref px ('{WorstText}' {size.x:0.0}x{size.y:0.0} at {font})");
+        }
+
+        public StatusStrip(HudArt art, Transform parent, bool harmful, string name)
+        {
+            _art = art;
+            _harmful = harmful;
+            Root = HudArt.Rect(name, parent);
+            Measure();
+            // One framed dark-glass panel behind the cells (mockup hud-status-b), only while effects exist.
+            _panel = HudArt.Rect("Panel", Root);
+            // frame_strip carries its own dark interior (art notes); separator_v studs between entries.
+            var frame = art.Image("Frame", _panel, "sprite.hud.frame.strip", "color.frame", Image.Type.Tiled);
+            Stretch(frame.rectTransform, 0f);
+            _panel.gameObject.SetActive(false);
+        }
+
+        // Vanilla's HUD list (SEMan.GetHUDStatusEffects, Hud.cs:527): the effects with an icon; hidden ones dropped.
+        public void Feed(List<StatusEffect> effects)
+        {
+            var changed = effects.Count != _lastCount;
+            if (!changed)
+                for (var i = 0; i < _entries.Count && !changed; i++)
+                    changed = i >= effects.Count || _entries[i].Effect == null || !Contains(effects, _entries[i].Effect);
+            _lastCount = effects.Count;
+            if (!changed && Time.unscaledTime < _resortAt) return;
+            _resortAt = Time.unscaledTime + 0.5f; // hysteresis: order re-evaluated at most twice a second
+            _entries.Clear();
+            foreach (var se in effects)
+            {
+                if (!se || se.m_hidden || (ExcludeHash != 0 && se.NameHash() == ExcludeHash)) continue;
+                var c = StatusSource.Classify(se);
+                if (c.Harmful != _harmful) continue;
+                var prio = c.TintPriority + c.OverlayPriority;
+                _entries.Add(new Entry { Effect = se, Hash = se.NameHash(), Class = c, Priority = prio });
+            }
+            _entries.Sort(Order);
+            if (_popupOpen && changed) BuildPopup(); // keep the open list in step with the effects
+        }
+
+        private static bool Contains(List<StatusEffect> list, StatusEffect se)
+        {
+            for (var i = 0; i < list.Count; i++)
+                if (list[i] == se) return true;
+            return false;
+        }
+
+        // Lays out within width x budget (ref px, top edge at y = 0 going down). Returns the used height.
+        public float Arrange(float width, float budget)
+        {
+            var cell = TileSize;
+            var gap = TileGap;
+            var flow = HudMath.Wrap(_entries.Count, cell, gap, width, HudMath.MaxRows(budget, cell, gap));
+            Layout = flow;
+            Root.sizeDelta = new Vector2(width, flow.Rows * (cell + gap));
+            var panelOn = flow.Rows > 0 && !Upward; // strip groups (mockup hud-3): bare socket cells, no plate
+            if (_panel.gameObject.activeSelf != panelOn) _panel.gameObject.SetActive(panelOn);
+            if (panelOn)
+            {
+                var pad = ThemeTokens.GetFloat("size.hud.status.pad", 6f);
+                // Frame length follows the drawn cells (never empty cells); the tiled frame grows with the count.
+                var cols = Mathf.Min(flow.Columns, flow.Visible + (flow.MoreCell ? 1 : 0));
+                // Extra room at the end: timer text is wider than its cell (h:mm:ss) and must clear the frame edge.
+                var pw = cols * (cell + gap) - gap + 2f * pad + ThemeTokens.GetFloat("size.hud.status.pad.end", 0f);
+                _panel.sizeDelta = new Vector2(pw, flow.Rows * (cell + gap) - gap + 2f * pad);
+                var px = AlignRight ? flow.Columns * (cell + gap) - gap - (pw - pad) : -pad;
+                _panel.anchoredPosition = new Vector2(px, Upward ? -pad : -flow.Rows * (cell + gap) + gap - pad);
+            }
+            Separators(flow, cell, gap);
+            var shown = flow.Visible;
+            while (_cells.Count < shown) _cells.Add(MakeCell("Effect" + _cells.Count, Root, cell));
+            for (var i = 0; i < _cells.Count; i++)
+            {
+                var on = i < shown;
+                var c = _cells[i];
+                if (c.Root.gameObject.activeSelf != on) c.Root.gameObject.SetActive(on);
+                if (!on) { c.Effect = null; continue; }
+                Place(c.Root, CellPos(i, flow, cell, gap));
+                Bind(c, _entries[i]);
+            }
+            var more = flow.MoreCell;
+            if (more && _more == null)
+            {
+                _more = MakeCell("More", Root, cell, more: true);
+                _moreText = _more.Timer;
+                var button = _more.Root.gameObject.AddComponent<Button>();
+                button.targetGraphic = _more.Back;
+                button.transition = Selectable.Transition.None;
+                button.onClick.AddListener(TogglePopup);
+            }
+            if (_more != null)
+            {
+                if (_more.Root.gameObject.activeSelf != more) _more.Root.gameObject.SetActive(more);
+                if (more)
+                {
+                    Place(_more.Root, CellPos(shown, flow, cell, gap));
+                    if (_moreShown != flow.Overflow)
+                    {
+                        _moreShown = flow.Overflow;
+                        _moreText.SetText("+{0}", flow.Overflow);
+                    }
+                }
+            }
+            if (_popupOpen && _entries.Count == 0) _popupOpen = false;
+            if (_popup && _popup.gameObject.activeSelf != _popupOpen) _popup.gameObject.SetActive(_popupOpen);
+            return flow.Rows * (cell + gap);
+        }
+
+        private readonly List<Image> _separators = new List<Image>(16);
+
+        // One stud between neighbours in a row (none after the last drawn cell).
+        private void Separators(HudMath.Flow flow, float cell, float gap)
+        {
+            var drawn = Upward ? 0 : flow.Visible + (flow.MoreCell ? 1 : 0); // frameless strip tiles: no studs
+            var n = 0;
+            for (var i = 0; i + 1 < drawn; i++)
+            {
+                if ((i + 1) % flow.Columns == 0) continue;
+                if (n == _separators.Count)
+                {
+                    var s = _art.Image("Separator" + n, Root, "sprite.hud.separator", "color.frame", Image.Type.Simple);
+                    s.SetNativeSize();
+                    var native = s.rectTransform.sizeDelta;
+                    var k = native.y > 0f ? Mathf.Min(1f, cell / native.y) : 1f;
+                    s.rectTransform.sizeDelta = native * k;
+                    s.rectTransform.SetSiblingIndex(1); // above the panel, below the cells
+                    _separators.Add(s);
+                }
+                var sep = _separators[n++];
+                if (!sep.gameObject.activeSelf) sep.gameObject.SetActive(true);
+                var size = sep.rectTransform.sizeDelta;
+                var at = CellPos(i, flow, cell, gap);
+                var pos = new Vector2(AlignRight ? at.x - gap / 2f - size.x / 2f : at.x + cell + gap / 2f - size.x / 2f, at.y + (cell - size.y) / 2f);
+                if (sep.rectTransform.anchoredPosition != pos) sep.rectTransform.anchoredPosition = pos;
+            }
+            for (var i = n; i < _separators.Count; i++)
+                if (_separators[i].gameObject.activeSelf) _separators[i].gameObject.SetActive(false);
+        }
+
+        public void TogglePopup()
+        {
+            _popupOpen = !_popupOpen && (_entries.Count > 0);
+            if (_popupOpen) BuildPopup();
+            if (_popup) _popup.gameObject.SetActive(_popupOpen);
+        }
+
+        public void ClosePopup()
+        {
+            _popupOpen = false;
+            if (_popup) _popup.gameObject.SetActive(false);
+        }
+
+        // Full list: every entry, icon + localized name + timer, above the strip (clamped by the cluster layout).
+        private void BuildPopup()
+        {
+            var cell = StatusStrip.CellSize;
+            var gap = ThemeTokens.GetFloat("size.hud.status.gap", 4f);
+            if (!_popup)
+            {
+                _popup = HudArt.Rect("EffectList", Root);
+                var glass = _art.Image("Glass", _popup, "sprite.fill.glass", "color.glass", Image.Type.Sliced);
+                Stretch(glass.rectTransform, 0f);
+                var frame = _art.Image("Frame", _popup, "sprite.frame.tooltip", "color.frame", Image.Type.Sliced);
+                Stretch(frame.rectTransform, -6f);
+            }
+            var width = 300f;
+            var pad = 10f;
+            while (_popupRows.Count < _entries.Count)
+            {
+                var row = MakeCell("Row" + _popupRows.Count, _popup, cell);
+                var name = _art.Text("Name", row.Root, "font.body", "color.text.body", ThemeTokens.GetFloat("size.hud.font.number", 16f), TextAlignmentOptions.MidlineLeft);
+                name.rectTransform.anchoredPosition = new Vector2(cell + 8f, 0f);
+                name.rectTransform.sizeDelta = new Vector2(width - cell - 8f - 2f * pad, cell);
+                _popupRows.Add(row);
+            }
+            // Bounded: at most size.hud.list.rows rows per column, more columns side by side (every entry reachable).
+            var rows = Mathf.Max(1, Mathf.Min(_entries.Count, (int)ThemeTokens.GetFloat("size.hud.list.rows", 10f)));
+            var columns = (_entries.Count + rows - 1) / rows;
+            var h = rows * (cell + gap) - gap + 2f * pad;
+            _popup.sizeDelta = new Vector2(columns * width, h);
+            // Beside the group (right of a left group, left of a right group), bottom-aligned with it, growing upward.
+            _popup.anchoredPosition = new Vector2(AlignRight ? -columns * width - 12f : Root.sizeDelta.x + 12f, Upward ? 0f : -Root.sizeDelta.y);
+            for (var i = 0; i < _popupRows.Count; i++)
+            {
+                var on = i < _entries.Count;
+                var r = _popupRows[i];
+                if (r.Root.gameObject.activeSelf != on) r.Root.gameObject.SetActive(on);
+                if (!on) continue;
+                r.Root.anchoredPosition = new Vector2(pad + i / rows * width, h - pad - (i % rows + 1) * (cell + gap) + gap);
+                Bind(r, _entries[i]);
+                var name = r.Root.Find("Name").GetComponent<TMP_Text>();
+                name.text = Localization.instance != null ? Localization.instance.Localize(_entries[i].Effect.m_name) : _entries[i].Effect.m_name;
+            }
+        }
+
+        // Per frame: timers, flash, cooldown; only writes on change (timer text once per displayed second).
+        public void Tick(float dt)
+        {
+            for (var i = 0; i < _cells.Count; i++)
+                if (_cells[i].Effect) TickCell(_cells[i], dt);
+            if (_popupOpen)
+                for (var i = 0; i < _popupRows.Count; i++)
+                    if (_popupRows[i].Effect && _popupRows[i].Root.gameObject.activeSelf) TickCell(_popupRows[i], dt);
+        }
+
+        private Cell MakeCell(string name, Transform parent, float size, bool more = false)
+        {
+            var c = new Cell { Root = HudArt.Rect(name, parent) };
+            c.Root.sizeDelta = new Vector2(size, size);
+            // Effect cells are bare icons on the strip (mockup); only the "+N" cell has its socket art.
+            // Strip groups (mockup hud-3): each effect in a small glass socket, teal rim for buffs, crimson for debuffs.
+            c.Back = _art.Image("Socket", c.Root, more ? "sprite.hud.status.more" : null,
+                more ? "color.frame" : Upward && _harmful ? "color.hud.status.debuff.line" : "color.hud.clear", Image.Type.Simple, raycast: more);
+            Stretch(c.Back.rectTransform, 0f);
+            if (Upward && !more)
+            {
+                // frameless tile: debuff = a thin red underline under the icon, buff = nothing
+                var br = c.Back.rectTransform;
+                br.anchorMin = Vector2.zero;
+                br.anchorMax = new Vector2(1f, 0f);
+                br.offsetMin = new Vector2(size * 0.1f, -size * 0.06f);
+                br.offsetMax = new Vector2(-size * 0.1f, -size * 0.06f + Mathf.Max(1.5f, size * 0.05f));
+                c.Back.enabled = _harmful;
+            }
+            if (!more)
+            {
+                c.Icon = _art.Image("Icon", c.Root, null, "color.frame", Image.Type.Simple);
+                c.Icon.preserveAspect = true;
+                var ir = c.Icon.rectTransform;
+                // Centred on both axes (user call 2026-10-22: the icon sat at the top of the 62 px cell); the timer is a
+                // band at the cell bottom and never moves it.
+                ir.anchorMin = ir.anchorMax = ir.pivot = new Vector2(0.5f, 0.5f);
+                var side = Upward ? size : HudMath.IconSide(size, IconShare);
+                ir.sizeDelta = new Vector2(side, side);
+                ir.anchoredPosition = Vector2.zero;
+            }
+            Image plate = null;
+            if (plate)
+            {
+                var pr = plate.rectTransform;
+                pr.sizeDelta = new Vector2(size * 0.8f, size * 0.34f);
+                pr.anchoredPosition = new Vector2(size * 0.1f, -size * 0.12f);
+                plate.gameObject.SetActive(false);
+            }
+            c.Timer = _art.Text("Timer", c.Root, "font.body", "color.hud.timer", // values = body font, "+N" too
+                ThemeTokens.GetFloat(more ? "size.hud.font.number" : "size.hud.font.status", 15f), TextAlignmentOptions.Center);
+            var tr = c.Timer.rectTransform;
+            // Timer / icon text inside the cell under the icon (cell sized for WorstText); anything longer shrinks
+            // (auto-size down to the timer floor) instead of running into the neighbour.
+            tr.sizeDelta = more ? new Vector2(size, size) : Upward ? new Vector2(size * 1.3f, size * 0.42f) : new Vector2(size, HudMath.TimerBand(size, IconShare, ThemeTokens.GetFloat("size.hud.status.timer.band", 17f)));
+            tr.anchoredPosition = Upward && !more ? new Vector2(-size * 0.15f, -size * 0.04f) : Vector2.zero; // strip tile: over the icon bottom
+            if (Upward) WorldHud.TextLook.ApplyHudNumber(c.Timer); // over the icon: the shared outlined number style
+            if (!more)
+            {
+                c.Timer.enableAutoSizing = true;
+                c.Timer.fontSizeMax = c.Timer.fontSize;
+                c.Timer.fontSizeMin = Mathf.Min(c.Timer.fontSize, ThemeTokens.GetFloat("floor.text.timer.px", 12f));
+                c.Timer.overflowMode = TextOverflowModes.Overflow;
+            }
+            return c;
+        }
+
+        private void Bind(Cell c, Entry e)
+        {
+            if (c.Effect == e.Effect) return;
+            c.Effect = e.Effect;
+            c.ShownSeconds = int.MinValue;
+            c.ShownText = null;
+            c.Harmful = e.Class.Harmful;
+            if (c.Icon)
+            {
+                c.Icon.sprite = e.Effect.m_icon;
+                c.Icon.enabled = e.Effect.m_icon;
+            }
+
+            if (e.Effect.m_isNew)
+            {
+                e.Effect.m_isNew = false; // vanilla acknowledges here (Hud.cs:1684)
+                c.Flash = 0.6f;
+            }
+        }
+
+        private static void TickCell(Cell c, float dt)
+        {
+            var se = c.Effect;
+            if (c.Icon)
+            {
+                var white = Color.white;
+                if (se.m_flashIcon) white = Mathf.Sin(Time.time * 10f) > 0f ? new Color(1f, 0.5f, 0.5f, 1f) : Color.white;
+                if (se.m_cooldownIcon) white.a = 0.45f;
+                if (c.Flash > 0f)
+                {
+                    c.Flash -= dt;
+                    var k = Mathf.Clamp01(c.Flash / 0.6f);
+                    white = Color.Lerp(white, new Color(1.4f, 1.4f, 1.4f, 1f), k);
+                }
+                if (c.Icon.color != white) c.Icon.color = white;
+            }
+            if (StatusSource.HasOwnIconText(se))
+            {
+                var text = se.GetIconText();
+                if (!ReferenceEquals(text, c.ShownText) && text != c.ShownText)
+                {
+                    c.ShownText = text;
+                    c.Timer.text = text ?? "";
+                    Plate(c, !string.IsNullOrEmpty(text));
+                }
+                return;
+            }
+            var left = StatusSource.Remaining(se);
+            var seconds = left > 0f ? Mathf.CeilToInt(left) : 0;
+            if (seconds == c.ShownSeconds) return;
+            c.ShownSeconds = seconds;
+            if (seconds <= 0) c.Timer.text = "";
+            else if (seconds < 60) c.Timer.SetText("{0}", seconds);
+            else if (seconds < 600) c.Timer.SetText("{0}:{1:00}", seconds / 60, seconds % 60);
+            else c.Timer.SetText("{0}m", Mathf.CeilToInt(seconds / 60f));
+            Plate(c, seconds > 0);
+        }
+
+        private static void Plate(Cell c, bool on)
+        {
+            var plate = c.Root.Find("Plate");
+            if (plate && plate.gameObject.activeSelf != on) plate.gameObject.SetActive(on);
+        }
+
+        // Bottom-left of cell `index`: rows top-down from the root (classic) or bottom-up (Upward); columns from the
+        // left, or from the right edge of the full row width (AlignRight; the row width = flow.Columns cells).
+        private Vector2 CellPos(int index, HudMath.Flow flow, float cell, float gap)
+        {
+            var columns = Mathf.Max(1, flow.Columns);
+            var col = index % columns;
+            var row = index / columns;
+            var x = AlignRight ? (columns - 1 - col) * (cell + gap) : col * (cell + gap);
+            var y = Upward ? row * (cell + gap) : -(row + 1) * (cell + gap) + gap;
+            return new Vector2(x, y);
+        }
+
+        private static void Place(RectTransform rt, Vector2 pos)
+        {
+            if (rt.anchoredPosition != pos) rt.anchoredPosition = pos;
+        }
+
+        private static void Stretch(RectTransform rt, float inset)
+        {
+            rt.anchorMin = Vector2.zero;
+            rt.anchorMax = Vector2.one;
+            rt.offsetMin = new Vector2(inset, inset);
+            rt.offsetMax = new Vector2(-inset, -inset);
+        }
+    }
+}

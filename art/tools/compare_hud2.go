@@ -8,7 +8,7 @@ import (
 
 // Track H review composite (1920x1080 mockup px): the compact bottom HUD strip of mockup hud-3 rebuilt from our sprites
 // (frame / bars / cells / ghosts cut from hud-3 itself, art/src/kit/mockup-hud3.png) with the geometry of
-// src/RuneSkin/Hud/StripMath.cs (ported below; default theme + config: width 0.96, height 126 reference px), over the
+// src/Morgott.UI/Hud/StripMath.cs (ported below; default theme + config: width 0.96, height 126 reference px), over the
 // mockup scene. Item / food / potion / ability / status icons are content copied from the mockup's own cells.
 // Output: side by side [mockup | ours] + strip crops.
 

@@ -1,0 +1,90 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Pure-logic tests (no Unity runtime): API registration replay, theme schema validation, colour parsing.
+       net10.0 because the game's Unity 6 assemblies target netstandard2.1 (not loadable on .NET Framework);
+       the tested sources are compiled in directly (they are managed-only by design). -->
+  <PropertyGroup>
+    <!-- xUnit v3 on Microsoft Testing Platform (build\Valheim.Build.props tests layer). -->
+    <OutputType>Exe</OutputType>
+    <ValheimTests>true</ValheimTests>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <!-- The linked sources ship on net472, where ArgumentNullException.ThrowIfNull (CA1510) and span overloads of
+         uint.Parse (CA1846) do not exist; these net10-only suggestions cannot be applied to them. -->
+    <NoWarn>$(NoWarn);CA1510;CA1846</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\src\Morgott.UI\Theme\HexColor.cs" Link="Linked\HexColor.cs" />
+    <Compile Include="..\..\src\Morgott.UI\Theme\ThemeModel.cs" Link="Linked\ThemeModel.cs" />
+    <Compile Include="..\..\src\Morgott.UI\Theme\ThemeSchema.cs" Link="Linked\ThemeSchema.cs" />
+    <Compile Include="..\..\src\Morgott.UI\Theme\ThemeJson.cs" Link="Linked\ThemeJson.cs" />
+    <Compile Include="..\..\src\Morgott.UI\Hud\HudMath.cs" Link="Linked\HudMath.cs" />
+    <Compile Include="..\..\src\Morgott.UI\Hud\StripMath.cs" Link="Linked\StripMath.cs" />
+    <Compile Include="..\..\src\Morgott.UI\Hud\StripClearMath.cs" Link="Linked\StripClearMath.cs" />
+    <Compile Include="..\..\src\Morgott.UI\Hud\GaugeState.cs" Link="Linked\GaugeState.cs" />
+    <Compile Include="..\..\src\Morgott.UI\Hud\BarFxState.cs" Link="Linked\BarFxState.cs" />
+    <Compile Include="..\..\src\Morgott.UI\Hud\BarFill.cs" Link="Linked\BarFill.cs" />
+    <Compile Include="..\..\src\Morgott.UI\Hud\DenyFlash.cs" Link="Linked\DenyFlash.cs" />
+    <Compile Include="..\..\src\Morgott.UI\Hud\AmmoMath.cs" Link="Linked\AmmoMath.cs" />
+    <Compile Include="..\..\src\Morgott.UI\Hud\BeltMath.cs" Link="Linked\BeltMath.cs" />
+    <Compile Include="..\..\src\Morgott.UI\Hud\MagazineContract.cs" Link="Linked\MagazineContract.cs" />
+    <Compile Include="..\..\src\Morgott.UI\Restyle\PanelMath.cs" Link="Linked\PanelMath.cs" />
+    <Compile Include="..\..\src\Morgott.UI\Restyle\LabelFit.cs" Link="Linked\LabelFit.cs" />
+    <Compile Include="..\..\src\Morgott.UI\Restyle\LayoutMath.cs" Link="Linked\LayoutMath.cs" />
+    <Compile Include="..\..\src\Morgott.UI\Restyle\RenderGateMath.cs" Link="Linked\RenderGateMath.cs" />
+    <Compile Include="..\..\src\Morgott.UI\Compat\FadeParkMath.cs" Link="Linked\FadeParkMath.cs" />
+    <Compile Include="..\..\src\Morgott.UI\Restyle\WindowMoveMath.cs" Link="Linked\WindowMoveMath.cs" />
+    <Compile Include="..\..\src\Morgott.UI\Restyle\WindowHeaderMath.cs" Link="Linked\WindowHeaderMath.cs" />
+    <Compile Include="..\..\src\Morgott.UI\Restyle\MarkMath.cs" Link="Linked\MarkMath.cs" />
+    <Compile Include="..\..\src\Morgott.UI\InventoryScreen\InventoryMath.cs" Link="Linked\InventoryMath.cs" />
+    <Compile Include="..\..\src\Morgott.UI\InventoryScreen\InventoryWindowsMath.cs" Link="Linked\InventoryWindowsMath.cs" />
+    <Compile Include="..\..\src\Morgott.UI\InventoryScreen\GhostOpenMath.cs" Link="Linked\GhostOpenMath.cs" />
+    <Compile Include="..\..\src\Morgott.UI\InventoryScreen\PreviewMath.cs" Link="Linked\PreviewMath.cs" />
+    <Compile Include="..\..\src\Morgott.UI\InventoryScreen\PreviewOwnership.cs" Link="Linked\PreviewOwnership.cs" />
+    <Compile Include="..\..\src\Morgott.UI\CraftingScreen\CraftingMath.cs" Link="Linked\CraftingMath.cs" />
+    <Compile Include="..\..\src\Morgott.UI\InfoScreens\InfoMath.cs" Link="Linked\InfoMath.cs" />
+    <Compile Include="..\..\src\Morgott.UI\MapScreen\MinimapMath.cs" Link="Linked\MinimapMath.cs" />
+    <Compile Include="..\..\src\Morgott.UI\MapScreen\PinLabelMath.cs" Link="Linked\PinLabelMath.cs" />
+    <Compile Include="..\..\src\Morgott.UI\WorldHud\EnemyHudMath.cs" Link="Linked\EnemyHudMath.cs" />
+    <Compile Include="..\..\src\Morgott.UI\WorldHud\PlayHudMath.cs" Link="Linked\PlayHudMath.cs" />
+    <Compile Include="..\..\src\Morgott.UI\WorldHud\HoldPromptMath.cs" Link="Linked\HoldPromptMath.cs" />
+    <Compile Include="..\..\src\Morgott.UI\WorldHud\SpeechMath.cs" Link="Linked\SpeechMath.cs" />
+    <Compile Include="..\..\src\Morgott.UI\GameScreens\GameScreenMath.cs" Link="Linked\GameScreenMath.cs" />
+    <Compile Include="..\..\src\Morgott.UI\ModScreens\ForeignMath.cs" Link="Linked\ForeignMath.cs" />
+    <Compile Include="..\..\src\Morgott.UI\ModScreens\ElDialogMath.cs" Link="Linked\ElDialogMath.cs" />
+    <Compile Include="..\..\src\Morgott.UI\Screens\PreWorld\PreWorldMath.cs" Link="Linked\PreWorldMath.cs" />
+    <Compile Include="..\..\src\Morgott.UI\Hud\EffectTaxonomy.cs" Link="Linked\EffectTaxonomy.cs" />
+    <Compile Include="..\..\src\Morgott.UI\Hud\ResourceCheck.cs" Link="Linked\ResourceCheck.cs" />
+    <Compile Include="..\..\src\Morgott.UI\Hud\SummonMath.cs" Link="Linked\SummonMath.cs" />
+    <Compile Include="..\..\src\Morgott.UI\Hud\PartyMath.cs" Link="Linked\PartyMath.cs" />
+    <Compile Include="..\..\src\Morgott.UI\Theme\LegacyFaces.cs" Link="Linked\LegacyFaces.cs" />
+    <Compile Include="..\..\src\Morgott.UI\Theme\ThemeMerge.cs" Link="Linked\ThemeMerge.cs" />
+    <Compile Include="..\..\src\Morgott.UI\Diagnostics\Bounded.cs" Link="Linked\Bounded.cs" />
+    <Compile Include="..\..\src\Morgott.UI\InfoScreens\StatsMath.cs" Link="Linked\StatsMath.cs" />
+    <Compile Include="..\..\src\Morgott.UI\InfoScreens\StatBreakdown.cs" Link="Linked\StatBreakdown.cs" />
+    <Compile Include="..\..\src\Morgott.UI\Screens\TooltipMath.cs" Link="Linked\TooltipMath.cs" />
+    <Compile Include="..\..\src\Morgott.UI\Screens\DamageIconText.cs" Link="Linked\DamageIconText.cs" />
+    <Compile Include="..\..\src\Morgott.UI\Screens\AdrenalineText.cs" Link="Linked\AdrenalineText.cs" />
+    <EmbeddedResource Include="..\..\src\Morgott.UI\Theme\default-theme.json" LogicalName="Morgott.UI.default-theme.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>$(ManagedDir)\UnityEngine.CoreModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.UI">
+      <HintPath>$(ManagedDir)\UnityEngine.UI.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.UIModule">
+      <HintPath>$(ManagedDir)\UnityEngine.UIModule.dll</HintPath>
+    </Reference>
+    <Reference Include="Morgott.Core" HintPath="$(CoreRef)" />
+    <Reference Include="assembly_valheim">
+      <HintPath>$(ManagedDir)\assembly_valheim.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+</Project>

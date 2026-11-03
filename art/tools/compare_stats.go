@@ -14,7 +14,7 @@ import (
 )
 
 // compare-stats: offline compose of the character stats window (stats-full-b) from our sprites only, laid out with
-// the same design-px tokens as InfoScreens/StatsWindow.cs (read from src/RuneSkin/Theme/default-theme.json), filled
+// the same design-px tokens as InfoScreens/StatsWindow.cs (read from src/Morgott.UI/Theme/default-theme.json), filled
 // with the mockup's sample data; PT Sans / Cormorant text (the title's in-game rune face, the game's Norsebold, is
 // not on disk: Cormorant stands in). Output art/review/compose-stats.png + compare-stats.png ([mockup | ours]).
 
@@ -33,7 +33,7 @@ func elemTint(icon string) color.NRGBA {
 }
 
 func loadStatsTokens() {
-	b, err := os.ReadFile("src/RuneSkin/Theme/default-theme.json")
+	b, err := os.ReadFile("src/Morgott.UI/Theme/default-theme.json")
 	must(err)
 	var t struct {
 		Colors []struct {

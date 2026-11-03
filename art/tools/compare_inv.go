@@ -8,7 +8,7 @@ import (
 )
 
 // compare-inv: offline 1080p preview of the windowed inventory screen (mockup inv-layout-A, user 2026-10-26) from the
-// layout math. The boxes come from InventoryWindowsMath + StripMath at 1920x1080 (tests/RuneSkin.Tests
+// layout math. The boxes come from InventoryWindowsMath + StripMath at 1920x1080 (tests/Morgott.UI.Tests
 // InventoryWindowsTests.ExportPreviewLayout, RUNESKIN_INV_PREVIEW=<json>); frames, cells, headers, glyphs and the
 // bottom panel are our sprites drawn by Unity's Sliced / Tiled rules. Content (item icons, the character, the
 // crafting window's inside, the bar fills) is the mockup's own pixels moved into our boxes, so the comparison is

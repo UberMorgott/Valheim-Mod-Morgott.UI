@@ -1,0 +1,226 @@
+using System;
+using System.Text;
+using Morgott.UI.InventoryScreen;
+
+namespace Morgott.UI.Restyle
+{
+    // Pure logic of the one shared window header (RuneWindowHeader, RuneSkin 0.20.3; no Unity types: unit-tested on net8).
+    // Every window the skin owns or adopts carries exactly one header: a band at the window top with the window title
+    // in the rune face (Norsebold); dragging the band moves that window (offset from its layout default, canvas units,
+    // y down), a double-click resets it, positions persist per window id (WindowMove).
+    public static class WindowHeaderMath
+    {
+        // Header band of a window box: its top `height` (never taller than the window).
+        public static Box Band(Box window, float height) =>
+            window.IsEmpty ? default : new Box(window.X, window.Y, window.W, Math.Max(0f, Math.Min(height, window.H)));
+
+        // An axis-aligned rect, y up (world / screen space of the frame keep-out).
+        public readonly struct Span
+        {
+            public readonly float X0, Y0, X1, Y1;
+
+            public Span(float x0, float y0, float x1, float y1)
+            {
+                X0 = x0; Y0 = y0; X1 = x1; Y1 = y1;
+            }
+
+            public float CentreX => (X0 + X1) / 2f;
+        }
+
+        // Frame keep-out of a header band (user 2026-10-24: the plate lay over the frame's top border and cut the corner
+        // runes): insets that keep it inside the frame's inner rect (the frame minus its 9-slice border) by `margin`, and
+        // clear of every ornament (corner cap, junction piece) it still touches below that top inset - an ornament left of
+        // the band centre pushes the left edge past its right side, one right of it the right edge.
+        public static void FrameKeepOut(Span band, Span inner, System.Collections.Generic.IReadOnlyList<Span> ornaments, float margin, out float left, out float right, out float top)
+        {
+            top = Math.Max(0f, band.Y1 - (inner.Y1 - margin));
+            left = Math.Max(0f, inner.X0 + margin - band.X0);
+            right = Math.Max(0f, band.X1 - (inner.X1 - margin));
+            var y1 = band.Y1 - top;
+            if (ornaments == null) return;
+            for (var n = 0; n < ornaments.Count; n++)
+            {
+                var o = ornaments[n];
+                if (o.Y1 <= band.Y0 || o.Y0 >= y1 || o.X1 <= band.X0 || o.X0 >= band.X1) continue;
+                if (o.CentreX < band.CentreX) left = Math.Max(left, o.X1 + margin - band.X0);
+                else right = Math.Max(right, band.X1 - (o.X0 - margin));
+            }
+        }
+
+        // Plate and title insets (header-local) with a frame keep-out: the plate stays centred (one inset both sides, the
+        // larger of its own and the keep-outs), the title keeps its own margin inside the plate and stays centred too.
+        public static void PlateInFrame(float plateInset, float titleLeft, float titleRight, float keepLeft, float keepRight,
+            out float plateLeft, out float plateRight, out float titleL, out float titleR)
+        {
+            var p = Math.Max(plateInset, Math.Max(keepLeft, keepRight));
+            plateLeft = plateRight = p;
+            var margin = Math.Max(0f, Math.Min(titleLeft, titleRight) - plateInset);
+            var t = Math.Max(Math.Max(titleLeft, titleRight), p + margin);
+            titleL = titleR = t;
+        }
+
+        // Title insets when the centred title does not fit: the symmetric reserve on a side without a slot (no icon left /
+        // no aux right) exists only to keep the title centred, so it gives up just the missing width, down to the plain
+        // edge inset inside the plate (plate side + InsetShare - PlateInsetShare of the height). A narrow window with a
+        // wide frame keep-out and an icon (AB 3-column backpack: plate 128 units, symmetric title room 8 -> '…' at 60 %,
+        // run 20261027-144717) keeps its title readable; a title that fits stays centred.
+        public static void FreeEmptySide(float width, float h, float plateLeft, float plateRight, bool leftSlot, bool rightSlot,
+            float natural, ref float titleLeft, ref float titleRight)
+        {
+            var deficit = natural - (width - titleLeft - titleRight);
+            if (!(deficit > 0f)) return;
+            var edge = h * (InsetShare - PlateInsetShare);
+            if (!rightSlot)
+            {
+                var give = Math.Min(deficit, Math.Max(0f, titleRight - (plateRight + edge)));
+                titleRight -= give;
+                deficit -= give;
+            }
+            if (!leftSlot && deficit > 0f) titleLeft -= Math.Min(deficit, Math.Max(0f, titleLeft - (plateLeft + edge)));
+        }
+
+        // Smallest title size as a share of the header's one size (FitFont floor).
+        public const float TitleMinShare = 0.6f;
+
+        // Band width a header needs to show a title of `natural` width (at the header's one size) in full at the fitted
+        // size (TitleMinShare), with the frame keep-outs measured on it: the slotted side keeps its slot past the plate
+        // inset (PlateInFrame), a slotless side only its edge inset (FreeEmptySide); +1 unit against rounding.
+        public static float BandForTitle(float natural, float h, bool icon, float auxW, float keepLeft, float keepRight)
+        {
+            if (!(natural > 0f) || !(h > 0f)) return 0f;
+            var inset = h * PlateInsetShare;
+            var p = Math.Max(inset, Math.Max(keepLeft, keepRight));
+            var slotted = Math.Max(TitleSide(h, icon, auxW), p + TitleSide(h, icon, auxW) - inset);
+            var bare = p + h * (InsetShare - PlateInsetShare);
+            var left = icon ? slotted : bare;
+            var right = auxW > 0f ? slotted : bare;
+            return left + right + natural * TitleMinShare + 1f;
+        }
+
+        // Title size: the header's one size, stepped down only when the title is wider than its room (never below
+        // minShare of it).
+        public static float FitFont(float size, float naturalWidth, float room, float minShare)
+        {
+            if (!(naturalWidth > room) || !(naturalWidth > 0f)) return size;
+            return Math.Max(size * minShare, size * room / naturalWidth);
+        }
+
+        // Every header part is a share of the header height, so one height = one look on every window.
+        public const float InsetShare = 0.5f, IconShare = 0.8f, GapShare = 0.25f, PlateInsetShare = 0.05f, FontShare = 0.5f;
+
+        // Header height in canvas units: the theme token x the skin scale (the same on every window).
+        public static float HeaderHeight(float token, float skinScale) => Math.Max(1f, token) * (skinScale > 0f ? skinScale : 1f);
+
+        // Side reserved on BOTH sides of the title (symmetric: the title centre is the band centre whatever the slots
+        // hold): edge inset + the wider of the icon slot (left) and the aux slot (right).
+        public static float TitleSide(float h, bool icon, float auxW)
+        {
+            var iconSlot = icon ? h * (IconShare + GapShare) : 0f;
+            var auxSlot = auxW > 0f ? auxW + h * GapShare : 0f;
+            return h * InsetShare + Math.Max(iconSlot, auxSlot);
+        }
+
+        // How far the icon / aux slots move in from the band edges: the plate's frame keep-out beyond the plate's own
+        // inset (PlateInFrame narrows the plate by the same amount, so the slots stay inside the drawn plate).
+        public static float SlotShift(float keepOut, float h) => Math.Max(0f, keepOut - h * PlateInsetShare);
+
+        // Canvas slots of a header band: small icon left, aux value right (both vertically centred, IconShare of the
+        // height tall), the title box between the symmetric sides.
+        public static void Slots(Box band, bool icon, float auxW, out Box iconBox, out Box auxBox, out Box titleBox)
+        {
+            var h = band.H;
+            var s = h * IconShare;
+            var y = band.Y + (h - s) / 2f;
+            iconBox = icon ? new Box(band.X + h * InsetShare, y, s, s) : default;
+            auxBox = auxW > 0f ? new Box(band.Right - h * InsetShare - auxW, y, auxW, s) : default;
+            var side = Math.Min(TitleSide(h, icon, auxW), band.W / 2f);
+            titleBox = new Box(band.X + side, band.Y, Math.Max(0f, band.W - 2f * side), h);
+        }
+
+        // The same in the header's own units (w x h rect): plate inset, title insets left / right, title font size.
+        public static void LocalSlots(float w, float h, bool icon, float auxW, out float plateInset, out float titleLeft, out float titleRight, out float fontSize)
+        {
+            plateInset = h * PlateInsetShare;
+            titleLeft = titleRight = Math.Min(TitleSide(h, icon, auxW), w / 2f);
+            fontSize = h * FontShare;
+        }
+
+        // Header action plinth (integrated variant A, user 2026-10-27: the buttons lay pasted over the plate's right knot):
+        // the plate's knot ends in a carved terminal (left cap), a raised stone plinth holds one cell per action, the
+        // header's right end cap closes it. Header-local units (x right, y up); every piece keeps its sprite aspect at the
+        // plinth height (heightShare x the plate height, centred on the plate). The plate ends under the left cap's strip
+        // part (joinShare of its width), so no plate knot or end cap runs under a button.
+        public readonly struct Plinth
+        {
+            public readonly float CapLeftX, CapLeftW, CellsX, CellW, CapRightX, CapRightW, Y, H, Button, PlateEnd;
+            public readonly int Cells;
+
+            public Plinth(float capLeftX, float capLeftW, float cellsX, float cellW, int cells, float capRightX, float capRightW, float y, float h, float button, float plateEnd)
+            {
+                CapLeftX = capLeftX; CapLeftW = capLeftW; CellsX = cellsX; CellW = cellW; Cells = cells; CapRightX = capRightX;
+                CapRightW = capRightW; Y = y; H = h; Button = button; PlateEnd = plateEnd;
+            }
+
+            public bool IsEmpty => Cells <= 0 || !(H > 0f);
+            public float CellX(int i) => CellsX + i * CellW;
+            // Button rect of cell i: square, centred in the cell (x, y = lower-left corner).
+            public float ButtonX(int i) => CellX(i) + (CellW - Button) / 2f;
+            public float ButtonY => Y + (H - Button) / 2f;
+            public float Width => CapLeftW + Cells * CellW + CapRightW;
+        }
+
+        public static Plinth PlinthLayout(float plateRight, float plateBottom, float plateH, int cells, float heightShare,
+            float capLeftAspect, float cellAspect, float capRightAspect, float buttonShare, float joinShare)
+        {
+            if (cells <= 0 || !(plateH > 0f) || !(heightShare > 0f)) return default;
+            var h = plateH * heightShare;
+            var capR = Math.Max(0f, capRightAspect) * h;
+            var cell = Math.Max(0f, cellAspect) * h;
+            var capL = Math.Max(0f, capLeftAspect) * h;
+            var capRx = plateRight - capR;
+            var cellsX = capRx - cells * cell;
+            var capLx = cellsX - capL;
+            var y = plateBottom + (plateH - h) / 2f;
+            var button = Math.Min(cell, h) * Math.Max(0f, Math.Min(1f, buttonShare));
+            var plateEnd = capLx + capL * Math.Max(0f, Math.Min(1f, joinShare));
+            return new Plinth(capLx, capL, cellsX, cell, cells, capRx, capR, y, h, button, plateEnd);
+        }
+
+        // Title inset that keeps a centred title clear of the plinth (symmetric, so the title centre stays the band centre).
+        public static float TitleClearOfPlinth(float width, Plinth p, float gap) => p.IsEmpty ? 0f : Math.Max(0f, width - p.CapLeftX + gap);
+
+        // Offset during a drag: the offset at drag start plus the pointer travel (screen px, y up) in canvas units (y down).
+        public static void DragOffset(float startDx, float startDy, float fromX, float fromY, float toX, float toY, float scale, out float dx, out float dy)
+        {
+            var s = scale > 0f ? scale : 1f;
+            dx = startDx + (toX - fromX) / s;
+            dy = startDy - (toY - fromY) / s;
+        }
+
+        // A left double-click on the band resets the window to its default.
+        public static bool IsReset(int clickCount, bool leftButton) => leftButton && clickCount >= 2;
+
+        // Shown title: rich-text tags and surrounding space removed; empty -> the fallback (never an empty header).
+        public static string Title(string text, string fallback)
+        {
+            var clean = StripTags(text);
+            if (clean.Length > 0) return clean;
+            var f = StripTags(fallback);
+            return f.Length > 0 ? f : "-";
+        }
+
+        public static string StripTags(string text)
+        {
+            if (string.IsNullOrEmpty(text)) return "";
+            var sb = new StringBuilder(text.Length);
+            var depth = 0;
+            foreach (var ch in text)
+            {
+                if (ch == '<') { depth++; continue; }
+                if (ch == '>' && depth > 0) { depth--; continue; }
+                if (depth == 0) sb.Append(ch == '\n' || ch == '\r' || ch == '\t' ? ' ' : ch);
+            }
+            return sb.ToString().Trim();
+        }
+    }
+}

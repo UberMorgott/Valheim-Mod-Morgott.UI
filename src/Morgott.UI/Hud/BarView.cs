@@ -1,0 +1,965 @@
+using Morgott.UI.Theme;
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
+
+namespace Morgott.UI.PlayerHud
+{
+    // One resource bar (hud-resource-states §2-§3). Z-order inside the window: trough -> damage-lag ghost -> fill ->
+    // DoT stripes -> reserved hatch (+ edge, lock rune); then the frame, the primary overlay and the numbers.
+    // Geometry in reference px; the window (inner rect of the carved frame) is length L x height H, the frame extends
+    // inset.x / inset.y around it (art: window insets per frame sprite, theme floats window.<asset>.*).
+    // Bars have one fixed outer width (the max is a number, not a length); a real max step pulses the value and the
+    // frame instead. Writes only when a value moved; lag ease and the pulse run on their own clocks.
+    public sealed class BarView
+    {
+        public const int MaxStripes = 3;
+
+        public RectTransform Root;
+        private RectTransform _window;
+        private Image _trough, _lag, _fill, _reserved, _reservedEdge, _lock, _frame, _overlay, _paused, _glyph;
+        private Vector2 _glyphAt; private float _glyphSize;
+        // Fill-end effect (mockup: HP glossy glow front, stamina sheen, eitr wisps): one Simple image riding the fill
+        // end, its core at frontCore of its width; alpha breathes (canvasRenderer alpha: no mesh rebuild).
+        private Image _front;
+        // Fill-end rim (M6 edge pass, Codex pick B: crisp 1-2 px bright bevel, no glow): bar_edge mask tinted per bar,
+        // its right edge on the fill end (and on the shield band's end). Theme float mode.hud.bar.edge: 0 = the
+        // older breathing front FX, 1 = clean end (no FX), 2 = rim. EdgeModeOverride (>= 0) wins: harness variants.
+        private Image _edge, _shieldEdge;
+        public static int EdgeModeOverride = -1;
+        // Right end cap (0.10.2, user: the brown leather ends were "убогие"): frames are open at the right (rails run to
+        // the edge), one dark-metal cap per bar covers the rail band there - equal width size.hud.bar.cap on every bar,
+        // height = the bar's rail band, so stacked caps form one column; the HP cap holds the rune knot. The window
+        // ends at the cap's flat left edge and clips (RectMask2D): a full fill / the trough run under the cap and end
+        // squarely there instead of showing their rounded end before it. CapVariantOverride ("a" / "b" / "c", null =
+        // theme default) swaps every cap to token "<cap token>.<variant>" live: harness variant crops.
+        private Image _cap;
+        private readonly string _capToken;
+        private string _shownCapVariant;
+        private float _capW, _overFill, _overTrough, _overLag;
+        public static string CapVariantOverride;
+        // Plain (HUD strip, mockup hud-3): the bar shows its fill, lag, shield band and the plain value only - no DoT
+        // stripes, reserve hatch / edge / lock, paused rune or "cur/avail" texts (the main value keeps "cur/max +shield").
+        public bool Plain;
+        // Faint full-height sheen of the shield segment (themes with the strip4 art); else the upper band.
+        private Image _sheen;
+        private static int EdgeMode => EdgeModeOverride >= 0 ? EdgeModeOverride : (int)ThemeTokens.GetFloat("mode.hud.bar.edge", 2f);
+        private float _frontCore, _frontClock;
+        // Shield layer (health bar only): current / max shield of the full window from its left end (HudMath.ShieldOverlay):
+        // upper band, or the top line over the sheen.
+        private Image _shield;
+        private float _shieldValue, _shieldMax, _shownShield = -1f, _shownMaxLabel = -2f, _shownPlus = -1f, _shownPlusMax = -1f;
+        // Wet: a few single drip clusters at irregular spots along the frame bottom (a tiled row read as a zipper).
+        private static readonly float[] WetSpots = { 0.07f, 0.38f, 0.79f };
+        private readonly Image[] _wet = new Image[WetSpots.Length];
+        private readonly Image[] _stripes = new Image[MaxStripes];
+        private TMP_Text _number, _aux;
+        // Value font size from the theme; FitValue shrinks / shifts the drawn digits into the window from it.
+        private float _numberSize;
+        private readonly HudArt _art;
+        private readonly bool _rail;
+        private readonly string _fillColor;
+        private readonly bool _main;
+        private readonly float _scale;
+
+        private float _insetL, _insetR, _insetB, _insetT, _h;
+        private float _length = -1f;
+        private float _lagValue = -1f, _lagHold, _lastCur = -1f;
+        // Smoothed fill share (0..1) drawn this frame: eases toward the live value (BarFill.Smooth), so a small pool
+        // moves pixel by pixel instead of in whole-point steps (user 2026-10-23); -1 = snap on the next frame.
+        private float _shownShare = -1f, _shownVel;
+        private float _shownCur = -1f, _shownAvail = -1f, _shownExtra = -1f;
+        private int _shownStripes = -1;
+        private string _shownFill, _shownOverlaySprite;
+        private bool _shownInert;
+        private float _lastMax = -1f, _pulse;
+        private Color _textColor, _frameColor;
+
+        // scale: the frame drawn smaller than its sprite (borders follow through HudArt.Track, geometry through
+        // the same factor). mainValue: the value is centred and large with the glow material (health); else small,
+        // right-aligned.
+        public BarView(HudArt art, Transform parent, string name, bool rail, string frameToken, string fillColorToken,
+            float scale = 1f, bool mainValue = false, string glyphToken = null, string frontToken = null, string frontColorToken = null,
+            float frontCore = 0.5f, string capToken = null, string fillToken = null, string troughColorToken = null, string capWidthToken = null, string shieldToken = null, string troughToken = null)
+        {
+            _art = art;
+            _rail = rail;
+            _fillColor = fillColorToken;
+            _main = mainValue;
+            Root = HudArt.Rect(name, parent);
+            FrameGeometry(frameToken, out _insetL, out _insetR, out _insetB, out _insetT, out _h);
+            scale = Mathf.Clamp(scale, 0.25f, 4f);
+            _insetL *= scale;
+            _insetR *= scale;
+            _insetB *= scale;
+            _insetT *= scale;
+            _h *= scale;
+            _scale = scale;
+            FrameEdges(frameToken, out var edgeT, out var edgeB);
+            EdgeTop = edgeT * scale;
+            EdgeBottom = edgeB * scale;
+            if (capToken != null && ThemeTokens.GetSprite(capToken))
+            {
+                _capToken = capToken;
+                _capW = ThemeTokens.GetFloat(capWidthToken ?? "size.hud.bar.cap", 34f);
+                _insetR = _capW;
+            }
+            _window = HudArt.Rect("Window", Root);
+            _window.anchoredPosition = new Vector2(_insetL, _insetB);
+            _trough = art.Image("Trough", _window, rail ? "sprite.hud.rail.trough" : troughToken ?? "sprite.hud.bar.trough", troughColorToken ?? "color.hud.trough", Image.Type.Sliced);
+            _lag = art.Image("Lag", _window, rail ? "sprite.hud.rail.fill" : "sprite.hud.bar.lag", "color.hud.lag", Image.Type.Sliced);
+            // fillToken: a fill texture of its own (HUD strip: cut from the mockup, untinted), else the shared grey mask tinted.
+            _fill = art.Image("Fill", _window, rail ? "sprite.hud.rail.fill" : fillToken ?? "sprite.hud.bar.fill", fillColorToken, Image.Type.Sliced);
+            if (!rail && ThemeTokens.GetSprite("sprite.hud.bar.edge"))
+            {
+                _edge = art.Image("Edge", _window, "sprite.hud.bar.edge", HudMath.EdgeColorToken(fillColorToken), Image.Type.Simple);
+                _edge.gameObject.SetActive(false);
+            }
+            if (frontToken != null && ThemeTokens.GetSprite(frontToken))
+            {
+                _front = art.Image("Front", _window, frontToken, frontColorToken, Image.Type.Simple);
+                _frontCore = Mathf.Clamp01(frontCore);
+                _front.gameObject.SetActive(false);
+            }
+            if (!rail)
+                for (var i = 0; i < MaxStripes; i++)
+                {
+                    _stripes[i] = art.Image("Stripe" + i, _window, "sprite.hud.dot.poison", "color.dot.other", Image.Type.Tiled);
+                    _stripes[i].gameObject.SetActive(false);
+                }
+            var sheenArt = mainValue && ThemeTokens.GetSprite("sprite.hud.strip4.shield.mid");
+            if (mainValue)
+            {
+                // with the sheen: the shield's top line, a plain bright quad; else the band sprite
+                _shield = sheenArt ? art.Image("Shield", _window, null, "color.hud.shield.glow", Image.Type.Simple)
+                    : art.Image("Shield", _window, shieldToken ?? "sprite.hud.bar.fill", "color.hud.shield", shieldToken != null ? Image.Type.Simple : Image.Type.Sliced);
+                _shield.gameObject.SetActive(false);
+                if (_edge)
+                {
+                    _shieldEdge = art.Image("ShieldEdge", _window, "sprite.hud.bar.edge", HudMath.EdgeColorToken("color.hud.shield"), Image.Type.Simple);
+                    _shieldEdge.gameObject.SetActive(false);
+                }
+            }
+            if (sheenArt)
+            {
+                _sheen = art.Image("ShieldSheen", _window, "sprite.hud.strip4.fill", "color.hud.shield.sheen", Image.Type.Sliced);
+                _sheen.gameObject.SetActive(false);
+            }
+            _reserved = art.Image("Reserved", _window, "sprite.hud.reserved", "color.hud.reserve", Image.Type.Tiled);
+            _reservedEdge = art.Image("ReservedEdge", _window, "sprite.hud.reserved.edge", "color.hud.reserve.edge", Image.Type.Simple);
+            _lock = art.Image("Lock", _window, "sprite.hud.glyph.lock", "color.hud.glyph", Image.Type.Simple);
+            _reserved.gameObject.SetActive(false);
+            _reservedEdge.gameObject.SetActive(false);
+            _lock.gameObject.SetActive(false);
+            _frame = art.Image("Frame", Root, frameToken, "color.hud.frame", Image.Type.Tiled);
+            _frameColor = _frame.color;
+            if (_capToken != null)
+            {
+                _cap = art.Image("Cap", Root, _capToken, "color.hud.frame", Image.Type.Simple);
+                _window.gameObject.AddComponent<RectMask2D>();
+                _overFill = RightBorder(_fill, scale);
+                _overTrough = RightBorder(_trough, scale);
+                _overLag = RightBorder(_lag, scale);
+            }
+            if (glyphToken != null) Glyph(frameToken, glyphToken, scale);
+            if (!rail)
+            {
+                _overlay = art.Image("Overlay", Root, "sprite.hud.overlay.frost", "color.overlay.frost", Image.Type.Simple);
+                _overlay.gameObject.SetActive(false);
+                for (var i = 0; i < _wet.Length; i++)
+                {
+                    // Three drip variants alternate along the frame (art f907652: overlay_wet, _2, _3); a missing variant falls back.
+                    var token = i == 0 || !ThemeTokens.GetSprite("sprite.hud.overlay.wet." + (i + 1)) ? "sprite.hud.overlay.wet" : "sprite.hud.overlay.wet." + (i + 1);
+                    _wet[i] = art.Image("Wet" + i, Root, token, "color.overlay.wet", Image.Type.Simple);
+                    _wet[i].gameObject.SetActive(false);
+                }
+            }
+            var numberSize = ThemeTokens.GetFloat(mainValue ? "size.hud.font.value" : rail ? "size.hud.font.timer" : "size.hud.font.minor", 16f);
+            // Values in the body sans (lining digits; the display serif has old-style ones) with a dark outline and a
+            // slight dilate, readable on any fill (user call 2026-10-22, as the damage numbers).
+            _number = art.Text("Value", Root, "font.body", "color.hud.text", numberSize,
+                TextAlignmentOptions.Center); // every bar: value centred in the window, both axes (user call 2026-10-22)
+            WorldHud.TextLook.ApplyHudNumber(_number);
+            _number.richText = mainValue;
+            _numberSize = _number.fontSize;
+            _textColor = _number.color;
+            if (mainValue)
+            {
+                // shield value of its own (variant C): glyph + number in the shield colour, right end of the window
+                _shieldText = art.Text("ShieldValue", Root, "font.body", "color.hud.shield.glow", numberSize * ThemeTokens.GetFloat("share.hud.shield.text", 0.8f), TextAlignmentOptions.MidlineRight);
+                WorldHud.TextLook.ApplyHudNumber(_shieldText);
+                _shieldText.richText = false;
+                _shieldText.gameObject.SetActive(false);
+                _shieldGlyph = art.Image("ShieldGlyph", Root, "sprite.glyph.sub.shield", "color.hud.shield.glow", Image.Type.Simple);
+                _shieldGlyph.preserveAspect = true;
+                _shieldGlyph.gameObject.SetActive(false);
+            }
+            _aux = art.Text("Aux", Root, "font.body", "color.hud.timer", ThemeTokens.GetFloat("size.hud.font.timer", 13f), TextAlignmentOptions.MidlineLeft);
+            _aux.gameObject.SetActive(false);
+            _paused = art.Image("Paused", Root, "sprite.hud.glyph.seal", "color.hud.glyph", Image.Type.Simple);
+            _paused.gameObject.SetActive(false);
+            foreach (var img in Root.GetComponentsInChildren<Image>(true))
+                art.Track(img, scale);
+        }
+
+        // Window geometry (the trough/fill rect inside the carved frame), in reference px (sprite px x 100 / PPU, the
+        // reference PPU; HudArt.Track maps the canvas' own reference onto it). The art states the window per frame
+        // sprite in sprite px as theme floats "window.<asset>.left/right/top/bottom" (art\sprites\sprites.json notes);
+        // without them the 9-slice border is the window inset. The window height is the frame height minus top and
+        // bottom insets.
+        public static void FrameGeometry(string frameToken, out float left, out float right, out float bottom, out float top, out float height)
+        {
+            var sprite = ThemeTokens.GetSprite(frameToken);
+            left = right = bottom = top = 0f;
+            height = 20f;
+            if (!sprite) return;
+            var toRef = 100f / Mathf.Max(1f, sprite.pixelsPerUnit);
+            var b = sprite.border; // (left, bottom, right, top)
+            var key = "window." + (sprite.name.EndsWith("(Clone)", System.StringComparison.Ordinal) ? sprite.name.Substring(0, sprite.name.Length - 7) : sprite.name);
+            left = ThemeTokens.GetFloat(key + ".left", b.x) * toRef;
+            right = ThemeTokens.GetFloat(key + ".right", b.z) * toRef;
+            bottom = ThemeTokens.GetFloat(key + ".bottom", b.y) * toRef;
+            top = ThemeTokens.GetFloat(key + ".top", b.w) * toRef;
+            height = Mathf.Max(2f, sprite.rect.height * toRef - bottom - top);
+        }
+        // Pool glyph in the frame's icon recess: the art states the recess per frame sprite as theme floats
+        // "recess.<asset>.x/y/r" (sprite px, y from the top; art\sprites\sprites.json notes). Without them, or
+        // without the glyph sprite, no glyph is drawn.
+        private void Glyph(string frameToken, string glyphToken, float scale)
+        {
+            var frame = ThemeTokens.GetSprite(frameToken);
+            if (!frame || !ThemeTokens.GetSprite(glyphToken)) return;
+            var key = "recess." + (frame.name.EndsWith("(Clone)", System.StringComparison.Ordinal) ? frame.name.Substring(0, frame.name.Length - 7) : frame.name);
+            var r = ThemeTokens.GetFloat(key + ".r", 0f);
+            if (!(r > 0f)) return;
+            var toRef = 100f / Mathf.Max(1f, frame.pixelsPerUnit) * scale;
+            _glyphAt = new Vector2(ThemeTokens.GetFloat(key + ".x", 0f), frame.rect.height - ThemeTokens.GetFloat(key + ".y", 0f)) * toRef;
+            _glyphSize = 2f * r * ThemeTokens.GetFloat("share.hud.glyph.recess", 0.9f) * toRef;
+            _glyph = _art.Image("Glyph", Root, glyphToken, "color.hud.glyph", Image.Type.Simple);
+            _glyph.preserveAspect = true;
+        }
+
+        // Transparent rows above / below the frame's rail (ref px, scaled): the art states them per frame sprite in
+        // sprite px as theme floats "edge.<asset>.top/bottom" (measured from the sprite's alpha along the rail).
+        // HudCluster stacks frames rail to rail through them (HudMath.StackStep). Without them: 0, frames edge to edge.
+        public static void FrameEdges(string frameToken, out float top, out float bottom)
+        {
+            top = bottom = 0f;
+            var sprite = ThemeTokens.GetSprite(frameToken);
+            if (!sprite) return;
+            var toRef = 100f / Mathf.Max(1f, sprite.pixelsPerUnit);
+            var key = "edge." + (sprite.name.EndsWith("(Clone)", System.StringComparison.Ordinal) ? sprite.name.Substring(0, sprite.name.Length - 7) : sprite.name);
+            top = ThemeTokens.GetFloat(key + ".top", 0f) * toRef;
+            bottom = ThemeTokens.GetFloat(key + ".bottom", 0f) * toRef;
+        }
+
+        // Right border of a window sprite in reference px at the bar scale (how far its rounded / fading end reaches).
+        private static float RightBorder(Image img, float scale)
+        {
+            var s = img ? img.sprite : null;
+            return s ? s.border.z * 100f / Mathf.Max(1f, s.pixelsPerUnit) * scale : 0f;
+        }
+
+        // Cap variant swap (harness crops): restyles the cap when CapVariantOverride changed since the last frame.
+        private void SyncCap()
+        {
+            if (!_cap || _shownCapVariant == CapVariantOverride) return;
+            _shownCapVariant = CapVariantOverride;
+            var token = string.IsNullOrEmpty(CapVariantOverride) ? _capToken : _capToken + "." + CapVariantOverride;
+            _art.Restyle(_cap, ThemeTokens.GetSprite(token) ? token : _capToken, "color.hud.frame", Image.Type.Simple);
+        }
+
+        // Right-aligned values keep clear of the frame's end cap (Codex band review: numbers lost in the caps).
+
+        public float EdgeTop { get; }
+        public float EdgeBottom { get; }
+
+        public float Height => _h + _insetB + _insetT;
+        public float Width => Mathf.Max(0f, _length) + _insetL + _insetR;
+        public float WindowLength => _length;
+        // Frame width outside the window (left + right caps).
+        public float Caps => _insetL + _insetR;
+
+        public void SetVisible(bool on)
+        {
+            if (Root.gameObject.activeSelf != on) Root.gameObject.SetActive(on);
+        }
+
+        // Target panel: the bar block piece carries the carved channels, so the bar draws no frame of its own; its window
+        // is exactly the channel (height h, no insets, no caps).
+        public void Frameless(float h)
+        {
+            if (_frame) _frame.enabled = false;
+            if (_cap) _cap.enabled = false;
+            if (_glyph) _glyph.enabled = false;
+            _insetL = _insetR = _insetB = _insetT = 0f;
+            _h = Mathf.Max(2f, h);
+            _window.anchoredPosition = Vector2.zero;
+            _length = -1f;
+        }
+
+        // Target panel channel rim (user screenshot 2026-10-23): the pill outline around the frameless window (9-slice,
+        // its ends fixed, the middle stretched), ox / oy units outside the bar on each side; over the fill, under the
+        // value text and the shield glow. Follows the bar's size through its anchors (no per-frame work).
+        private Image _rim;
+
+        public void Rim(string spriteToken, string colorToken, float ox, float oy, float artScale)
+        {
+            if (_rim || !ThemeTokens.GetSprite(spriteToken)) return;
+            _rim = _art.Image("Rim", Root, spriteToken, colorToken, Image.Type.Sliced);
+            _art.Track(_rim, artScale);
+            _rim.raycastTarget = false;
+            var rt = _rim.rectTransform;
+            rt.anchorMin = Vector2.zero;
+            rt.anchorMax = Vector2.one;
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.offsetMin = new Vector2(-ox, -oy);
+            rt.offsetMax = new Vector2(ox, oy);
+            rt.SetSiblingIndex(_window.GetSiblingIndex() + 1);
+        }
+
+        // Fixed outer width: window = outer - caps (readable floor size.hud.bar.min).
+        public void SetOuterWidth(float outer)
+        {
+            var l = HudMath.FixedWindow(outer, Caps, ThemeTokens.GetFloat("size.hud.bar.min", 160f));
+            if (Mathf.Abs(l - _length) < 0.05f) return;
+            _length = l;
+            _shownCur = -1f; // fill widths follow the window
+            Layout();
+        }
+
+        // Pool max B: a real step (share.hud.pulse.step) starts the highlight pulse of the value and the frame.
+        public void SetMax(float max)
+        {
+            if (_lastMax >= 0f && HudMath.IsMaxStep(_lastMax, max, ThemeTokens.GetFloat("share.hud.pulse.step", 0.03f)))
+                _pulse = 1f;
+            _lastMax = max; // per-frame compare: slow food decay never adds up to a pulse
+        }
+
+        // Per-frame animation clock (runs even when no value changed).
+        public void Tick(float dt)
+        {
+            SyncCap();
+            if (_front && _front.gameObject.activeSelf)
+            {
+                _frontClock += dt;
+                var lo = ThemeTokens.GetFloat("share.hud.front.min", 0.7f);
+                _front.canvasRenderer.SetAlpha(Mathf.Lerp(lo, 1f, 0.5f + 0.5f * Mathf.Sin(_frontClock * ThemeTokens.GetFloat("rate.hud.front", 2.4f))));
+            }
+            if (_pulse <= 0f) return;
+            _pulse = Mathf.Max(0f, _pulse - dt / Mathf.Max(0.05f, ThemeTokens.GetFloat("time.hud.pulse", 0.6f)));
+            var k = Mathf.Sin(_pulse * Mathf.PI * 0.5f); // full highlight at the step, eases out
+            var hi = ThemeTokens.GetColor("color.hud.pulse", new Color(0.31f, 0.88f, 0.9f, 1f));
+            _number.color = Color.Lerp(_textColor, hi, k);
+            _frame.color = Color.Lerp(_frameColor, Color.Lerp(_frameColor, hi, 0.5f), k);
+        }
+
+        private void Layout()
+        {
+            var l = Mathf.Max(0f, _length);
+            Root.sizeDelta = new Vector2(l + _insetL + _insetR, Height);
+            _window.sizeDelta = new Vector2(l, _h);
+            Full(_trough.rectTransform, _cap ? HudMath.ClippedEnd(l, l, _overTrough) : l);
+            Stretch(_frame.rectTransform);
+            if (_cap)
+            {
+                var cr = _cap.rectTransform;
+                HudMath.CapBox(_insetL, l, _capW, Height, EdgeTop, EdgeBottom, out var cx, out var cy, out var cw, out var ch);
+                cr.anchorMin = cr.anchorMax = cr.pivot = Vector2.zero;
+                cr.anchoredPosition = new Vector2(cx, cy);
+                cr.sizeDelta = new Vector2(cw, ch);
+            }
+            if (_glyph)
+            {
+                var gr = _glyph.rectTransform;
+                gr.anchorMin = gr.anchorMax = Vector2.zero;
+                gr.pivot = new Vector2(0.5f, 0.5f);
+                gr.anchoredPosition = _glyphAt;
+                gr.sizeDelta = new Vector2(_glyphSize, _glyphSize);
+            }
+            if (_overlay) PlaceOverlay();
+            FxLayout();
+            var nr = _number.rectTransform;
+            nr.anchoredPosition = new Vector2(_insetL, _insetB);
+            nr.sizeDelta = new Vector2(l, _h);
+            FitValue();
+            _shieldPlaced = false;
+            var ar = _aux.rectTransform;
+            ar.anchoredPosition = new Vector2(_insetL + 4f, _insetB);
+            ar.sizeDelta = new Vector2(Mathf.Max(0f, l - 8f), _h);
+            var pr = _paused.rectTransform;
+            var g = _h + _insetB;
+            pr.sizeDelta = new Vector2(g, g);
+            pr.anchoredPosition = new Vector2(_insetL + l - 4f - g - 56f, (Height - g) / 2f);
+        }
+
+        // Renders one frame of data. cur / max (B) / avail (C) in units; stripes in window px; tint = fill colour
+        // token override (one per bar) or null; overlay sprite token or null.
+        public void Render(float cur, float max, float avail, HudMath.Stripe[] stripes, int stripeCount, int[] stripeKinds,
+            string tint, string overlaySprite, string overlayColor, bool inert, float dt, bool showAvail)
+        {
+            var l = Mathf.Max(0f, _length);
+            if (!(max > 0f)) max = 1f;
+            SetMax(max);
+            cur = Mathf.Clamp(cur, 0f, max);
+            // Damage-lag ghost: absolute value, holds then eases down; heals and max changes never create one.
+            // Rising value (regen, heal) snaps the ghost to the fill: a ghost only ever follows a decrease (user live
+            // test 2026-10-22: a ghost easing after an earlier hit read as a trail while the bar refilled).
+            var rising = _lagValue < 0f || cur >= _lagValue || cur > _lastCur + 0.001f;
+            if (rising) { _lagValue = cur; _lagHold = 0f; }
+            else
+            {
+                if (cur < _lastCur - 0.001f) _lagHold = ThemeTokens.GetFloat("time.hud.lag.hold", 0.6f);
+                if (_lagHold > 0f) _lagHold -= dt;
+                else
+                {
+                    var ease = Mathf.Max(0.05f, ThemeTokens.GetFloat("time.hud.lag.ease", 0.5f));
+                    _lagValue = Mathf.MoveTowards(_lagValue, cur, Mathf.Max(0.5f, (_lagValue - cur)) * dt / ease * 2f);
+                }
+            }
+            _lagValue = Mathf.Min(_lagValue, max);
+            _lastCur = cur;
+            // drawn fill: the live float value eased over BarFxConfig.FillSmoothing (numbers stay exact, the damage-lag
+            // ghost keeps its own hold / ease and never sits under the drawn fill)
+            _shownShare = BarFill.Smooth(_shownShare, ref _shownVel, cur / max, Time.unscaledDeltaTime, BarFxConfig.FillSmoothSeconds); // unscaled: eases in a paused game too
+            var shown = _shownShare * max;
+            // a heal / regen snaps the ghost to the DRAWN fill (no ghost ahead of a rising fill); a hit keeps it at least
+            // at the drawn fill while the fill eases down
+            _lagValue = rising ? Mathf.Min(shown, max) : Mathf.Max(_lagValue, Mathf.Min(shown, max));
+
+            var fillToken = tint ?? _fillColor;
+            if (fillToken != _shownFill || inert != _shownInert)
+            {
+                _shownFill = fillToken;
+                _shownInert = inert;
+                _fill.color = ThemeTokens.GetColor(inert ? "color.hud.inert" : fillToken, Color.white);
+            }
+            {
+                var fillW = l * shown / max;
+                Place(_fill, 0f, HudMath.ClippedEnd(fillW, l, _overFill), shown > 0f);
+                var mode = EdgeMode;
+                if (_edge) Edge(_edge, fillW, 0f, _h, mode == 2 && cur > 0f && fillW < l - 0.5f);
+                if (_front && mode != 0 && _front.gameObject.activeSelf) _front.gameObject.SetActive(false);
+                if (_front && mode == 0)
+                {
+                    var fs = _front.sprite;
+                    var fwid = fs ? _h * fs.rect.width / Mathf.Max(1f, fs.rect.height) : _h;
+                    // Rides the fill edge and never reaches past it into the empty trough (user live test 2026-10-22:
+                    // the overhanging wisps read as a static trail): the sprite ends at the edge, its core
+                    // (_frontCore of its width) just inside; hidden while the fill is shorter than the sprite.
+                    var on = fillW >= fwid && fillW < l - 0.5f;
+                    if (_front.gameObject.activeSelf != on) _front.gameObject.SetActive(on);
+                    if (on)
+                    {
+                        var fr = _front.rectTransform;
+                        fr.sizeDelta = new Vector2(fwid, _h);
+                        fr.anchoredPosition = new Vector2(fillW - fwid, 0f);
+                    }
+                }
+                var lagW = l * _lagValue / max;
+                Place(_lag, 0f, HudMath.ClippedEnd(lagW, l, _overLag), _lagValue > shown + 0.01f);
+                HudMath.Reserved(avail, max, l, out var rs, out var rw);
+                var reserve = rw >= 0.5f && !Plain;
+                Place(_reserved, rs, rw, reserve);
+                Place(_reservedEdge, rs - 1f, 2f, reserve);
+                var lockSize = ThemeTokens.GetFloat("size.hud.glyph.lock", 18f);
+                var lockOn = reserve && rw >= ThemeTokens.GetFloat("size.hud.lock.min", 18f) && _lock.sprite;
+                if (lockOn)
+                {
+                    var lr = _lock.rectTransform;
+                    lr.sizeDelta = new Vector2(lockSize, lockSize);
+                    lr.anchoredPosition = new Vector2(rs + (rw - lockSize) / 2f, (_h - lockSize) / 2f);
+                }
+                if (_lock.gameObject.activeSelf != lockOn) _lock.gameObject.SetActive(lockOn);
+                // Value centred in the window on every bar (user call 2026-10-22: HP centred in the fill, the others
+                // right-aligned read inconsistent); with a locked segment, centred in the unlocked part.
+                var nw = HudMath.ValueSpan(l, rs, reserve);
+                var nr = _number.rectTransform;
+                if (Mathf.Abs(nr.sizeDelta.x - nw) > 0.5f) nr.sizeDelta = new Vector2(nw, _h);
+            }
+            if (!_rail)
+            {
+                if (Plain) stripeCount = 0;
+                if (stripeCount != _shownStripes || stripeCount > 0)
+                {
+                    for (var i = 0; i < MaxStripes; i++)
+                    {
+                        var on = i < stripeCount;
+                        if (on)
+                        {
+                            var kind = stripeKinds[i];
+                            var spriteToken = kind == (int)DotKind.Fire ? "sprite.hud.dot.fire" : kind == (int)DotKind.Poison ? "sprite.hud.dot.poison" : "sprite.hud.dot.bleed";
+                            var colorToken = kind == (int)DotKind.Fire ? "color.dot.fire" : kind == (int)DotKind.Poison ? "color.dot.poison" : kind == (int)DotKind.Spirit ? "color.dot.spirit" : "color.dot.other";
+                            var sprite = ThemeTokens.GetSprite(spriteToken);
+                            if (_stripes[i].sprite != sprite) { _stripes[i].sprite = sprite; _stripes[i].enabled = sprite; }
+                            var c = ThemeTokens.GetColor(colorToken, Color.white);
+                            if (_stripes[i].color != c) _stripes[i].color = c;
+                        }
+                        Place(_stripes[i], on ? stripes[i].Start : 0f, on ? stripes[i].Width : 0f, on);
+                    }
+                    _shownStripes = stripeCount;
+                }
+                if (overlaySprite != _shownOverlaySprite)
+                {
+                    _shownOverlaySprite = overlaySprite;
+                    var s = ThemeTokens.GetSprite(overlaySprite);
+                    _overlayWet = overlaySprite == "sprite.hud.overlay.wet";
+                    var frost = s && !_overlayWet;
+                    if (frost)
+                    {
+                        _overlay.sprite = s;
+                        _overlay.color = ThemeTokens.GetColor(overlayColor, Color.white);
+                    }
+                    if (_overlay.gameObject.activeSelf != frost) _overlay.gameObject.SetActive(frost);
+                    var wet = s && _overlayWet;
+                    foreach (var w in _wet)
+                        if (w.gameObject.activeSelf != wet) w.gameObject.SetActive(wet);
+                    PlaceOverlay();
+                }
+            }
+            if (_fx) FxRender(cur, shown, max, fillToken, inert);
+            if (_shield)
+            {
+                // Shield over the HP fill in its own scale (user 2026-11-03: shield / max shield of the full window, from the
+                // left end, independent of HP). With the sheen: the faint sheen full height + a thin line along its top
+                // (Codex call 2026-11-03); else the upper band. Over the shader fill too (it draws no shield).
+                float sx, sy, sw, sh;
+                if (_sheen)
+                {
+                    sx = 0f;
+                    sw = HudMath.ShieldOverlay(_shieldValue, _shieldMax, l);
+                    PlaceAt(_sheen, sx, 0f, sw, _h, true);
+                    sh = ThemeTokens.GetFloat("size.hud.shield.line", 5f);
+                    sy = _h - sh;
+                }
+                else HudMath.ShieldBand(_shieldValue, _shieldMax, l, _h, ThemeTokens.GetFloat("share.hud.shield.band", 0.4f), out sx, out sy, out sw, out sh);
+                var son = sw > 0.05f && sh > 0.05f;
+                if (_shield.gameObject.activeSelf != son) _shield.gameObject.SetActive(son);
+                if (son)
+                {
+                    var sr = _shield.rectTransform;
+                    sr.anchoredPosition = new Vector2(sx, sy);
+                    sr.sizeDelta = new Vector2(sw, sh);
+                }
+                if (_shieldEdge) Edge(_shieldEdge, sx + sw, sy, sh, !_fx && son && EdgeMode == 2 && sx + sw < l - 0.5f);
+            }
+            if (Plain) showAvail = false;
+            var extra = showAvail ? avail : -1f;
+            // Label value: the HP (HealthText for the health bar: the HP even while the fill shows the energy shield),
+            // else this bar's own cur / max, "cur/max (+shield/max)" with a shield on the HP (2026-11-03); the energy shield
+            // carrying the player (tagged) keeps its own label (ShieldLabel, variant C).
+            var lc = _main && _hpText ? _lblHp : cur;
+            var lm = _main && _hpText ? _lblHpMax : max;
+            if (_main) ShieldLabel();
+            var tagShown = _main && _hpText && _lblTagged ? 1f : 0f;
+            var maxShown = _main ? Mathf.Ceil(lm) : -1f;
+            var plus = _main && tagShown <= 0f ? Mathf.Ceil(_hpText ? _lblShield : _shieldValue) : 0f;
+            var plusMax = plus > 0f ? Mathf.Ceil(_hpText ? _lblShieldMax : _shieldMax) : 0f;
+            if (Mathf.CeilToInt(lc) != Mathf.CeilToInt(_shownCur) || Mathf.CeilToInt(extra) != Mathf.CeilToInt(_shownExtra) || _shownCur < 0f || tagShown != _shownShield || maxShown != _shownMaxLabel || plus != _shownPlus || plusMax != _shownPlusMax)
+            {
+                // Health: the HP value alone, centred ("HP cur/max" while the fill is the energy shield).
+                if (_main) _number.text = HudMath.HpText(lc, lm, tagShown > 0f, plus, plusMax);
+                else if (showAvail) _number.SetText("{0}/{1}", Mathf.Ceil(lc), Mathf.Ceil(avail));
+                else _number.SetText("{0}", Mathf.Ceil(lc));
+                FitValue();
+                _shownExtra = extra;
+                _shownShield = tagShown;
+                _shownMaxLabel = maxShown;
+                _shownPlus = plus;
+                _shownPlusMax = plusMax;
+            }
+            else if (_fitPending) FitValue();
+            _shownCur = lc;
+            _shownAvail = avail;
+        }
+
+        // Value text fitted to the window by its drawn glyphs (HudMath.ValueInkFit): measured at the theme size with no
+        // margin, the font shrinks until the ink height fits the window and a top / bottom margin moves the ink centre
+        // onto the window centre (the rect stays the window, TMP centres the line box in the margin-reduced rect).
+        // Nothing drawn yet (hidden, no mesh) -> retried on the next Render.
+        // Readable floor (run 20261024-143631 text-min-1280x720: the fit drew the HP value at 13.2 px < its 14 px floor -
+        // at 720p the strip is 0.55x the 1080p one, its 11.8 px window under the ~12.5 px ink of a 14 px "180/180 +90"):
+        // the fit never shrinks under the text's TextFloor size; the ink then overhangs the window evenly (~0.35 px a
+        // side at 720p, centred), at 1080p+ the window fits the floor size and nothing changes.
+        private bool _fitPending;
+
+        private void FitValue()
+        {
+            _fitPending = true;
+            if (!_number || !(_numberSize > 0f)) return;
+            var nr = _number.rectTransform;
+            var floor = _number.TryGetComponent<TextFloor>(out var tf) ? tf.MinSize() : 0f;
+            var design = Mathf.Max(_numberSize, floor);
+            _number.fontSize = design;
+            _number.margin = Vector4.zero;
+            _number.ForceMeshUpdate();
+            var info = _number.textInfo;
+            float top = float.MinValue, bottom = float.MaxValue;
+            for (var i = 0; info != null && i < info.characterCount; i++)
+            {
+                var ch = info.characterInfo[i];
+                if (!ch.isVisible) continue;
+                top = Mathf.Max(top, ch.topRight.y);
+                bottom = Mathf.Min(bottom, ch.bottomLeft.y);
+            }
+            if (top < bottom) return;
+            var rect = nr.rect;
+            HudMath.ValueInkFit(rect.height, top - rect.center.y, bottom - rect.center.y, floor / design, out var scale, out var shift);
+            _number.fontSize = design * scale;
+            _number.margin = shift >= 0f ? new Vector4(0f, 0f, 0f, 2f * shift) : new Vector4(0f, -2f * shift, 0f, 0f);
+            _fitPending = false;
+        }
+
+        // Frame overlay placement (art\sprites\sprites.json notes): overlay_frost = ice-crystal cluster at native size
+        // with its pivot on the frame top-left corner; overlay_wet = drips hanging from the frame's bottom rail: single
+        // clusters (pivot top on the window's bottom edge, share.hud.overlay.wet of native size so they end in the gap,
+        // not over the bar below) at WetSpots along the window. Never stretched over the window (the value stays
+        // readable).
+        private bool _overlayWet;
+
+        private void PlaceOverlay()
+        {
+            if (!_overlay) return;
+            var s = _overlay.sprite;
+            if (s)
+            {
+                var r = _overlay.rectTransform;
+                var toRef = 100f / Mathf.Max(1f, s.pixelsPerUnit) * _scale;
+                _overlay.preserveAspect = true;
+                r.anchorMin = r.anchorMax = r.pivot = new Vector2(0f, 1f);
+                r.anchoredPosition = Vector2.zero;
+                r.sizeDelta = new Vector2(s.rect.width, s.rect.height) * toRef;
+            }
+            var l = Mathf.Max(0f, _length);
+            var k = ThemeTokens.GetFloat("share.hud.overlay.wet", 0.6f);
+            for (var i = 0; i < _wet.Length; i++)
+            {
+                var w = _wet[i];
+                if (!w || !w.sprite) continue;
+                var toRef = 100f / Mathf.Max(1f, w.sprite.pixelsPerUnit) * _scale * k;
+                var size = new Vector2(w.sprite.rect.width, w.sprite.rect.height) * toRef;
+                var r = w.rectTransform;
+                r.anchorMin = r.anchorMax = Vector2.zero;
+                r.pivot = new Vector2(0f, 1f);
+                r.sizeDelta = size;
+                r.anchoredPosition = new Vector2(_insetL + Mathf.Max(0f, l - size.x) * WetSpots[i], _insetB);
+            }
+        }
+
+        private static void PlaceAt(Image img, float x, float y, float w, float h, bool on)
+        {
+            if (!img) return;
+            on = on && w > 0.05f && img.sprite;
+            if (img.gameObject.activeSelf != on) img.gameObject.SetActive(on);
+            if (!on) return;
+            var rt = img.rectTransform;
+            rt.anchorMin = rt.anchorMax = rt.pivot = Vector2.zero;
+            var p = new Vector2(x, y);
+            var s = new Vector2(w, h);
+            if (rt.anchoredPosition != p) rt.anchoredPosition = p;
+            if (rt.sizeDelta != s) rt.sizeDelta = s;
+        }
+
+        // ---- shader bars (HUD strip, user call 2026-10-23) ---------------------------------------------------------
+        // One Image in the window with the RuneSkin/UI Bar material draws trough depth, glossy fill, straight-cut end,
+        // lag ghost and grey missing part (its _Shield sheen stays 0: the shield segment is the sprite sheen + line over it,
+        // 2026-11-03). The sprite fill layers (trough, lag, fill, edge, front) stay built but disabled. One material
+        // instance per bar; properties written only when they change.
+        private Image _fx;
+        private Material _fxMat;
+        private float _fxFill = -1f, _fxLag = -1f, _fxAspect = -1f;
+        private string _fxColor;
+        private string _fxColorToken;
+        private static readonly int PFill = Shader.PropertyToID("_Fill"), PLag = Shader.PropertyToID("_Lag"),
+            PAspect = Shader.PropertyToID("_Aspect"), PFillColor = Shader.PropertyToID("_FillColor"),
+            PMode = Shader.PropertyToID("_Mode"), PPool = Shader.PropertyToID("_Pool"), PFxOn = Shader.PropertyToID("_FxOn"),
+            PFxIntensity = Shader.PropertyToID("_FxIntensity"), PFxSpeed = Shader.PropertyToID("_FxSpeed"), PHitAt = Shader.PropertyToID("_HitAt"),
+            PHitSize = Shader.PropertyToID("_HitSize"), PHealAt = Shader.PropertyToID("_HealAt"), PPulseAt = Shader.PropertyToID("_PulseAt"),
+            PRegen = Shader.PropertyToID("_Regen"), PExhaust = Shader.PropertyToID("_Exhaust");
+
+        // Living fill (barfx): the pool look, its event state, and the last written on / intensity / speed / pool.
+        private BarFxPool _fxPool = BarFxPool.Plain, _fxShownPool = (BarFxPool)(-2);
+        private readonly BarFxState _fxEvents = new BarFxState();
+        private float _fxOnShown = -1f, _fxIntensityShown = -1f, _fxSpeedShown = -1f;
+
+        public BarFxPool FxPool => _fxPool;
+        public Material FxMaterialInstance => _fxMat;
+
+        public bool ShaderFill => _fx;
+
+        // colorToken: the pool's fill colour (color.hud.bar.fx.*).
+        // pool: the living fill look of this bar (Plain = the glossy cylinder only).
+        public void UseShader(Shader shader, string colorToken, BarFxPool pool = BarFxPool.Plain)
+        {
+            if (!shader || _fx) return;
+            _fxColorToken = colorToken;
+            _fxPool = pool;
+            foreach (var img in new[] { _trough, _lag, _fill, _edge, _front, _shieldEdge })
+                if (img) img.enabled = false;
+            _fx = _art.Image("BarFx", _window, null, "color.frame", Image.Type.Simple);
+            _fx.color = Color.white;
+            _fx.transform.SetAsFirstSibling();
+            _fxMat = FxMaterial(shader, "RuneSkin bar " + Root.name, 0f);
+            _fxMat.SetColor("_LagColor", ThemeTokens.GetColor("color.hud.bar.fx.lag", new Color(0.95f, 0.88f, 0.82f)));
+            _fxMat.SetColor("_MissingColor", ThemeTokens.GetColor("color.hud.bar.fx.missing", new Color(0.42f, 0.42f, 0.42f)));
+            _fxMat.SetColor("_SheenColor", ThemeTokens.GetColor("color.hud.shield.sheen", new Color(0.36f, 0.91f, 0.95f, 0.22f)));
+            _fxMat.SetColor("_ClotColor", ThemeTokens.GetColor("color.hud.bar.fx.clot", new Color(0.30f, 0.035f, 0.045f)));
+            _fx.material = _fxMat;
+            Full(_fx.rectTransform, Mathf.Max(0f, _length));
+            _fx.raycastTarget = false;
+            FxLayout();
+        }
+
+        private static Material FxMaterial(Shader shader, string name, float mode)
+        {
+            var m = new Material(shader) { name = name };
+            m.SetFloat(PMode, mode);
+            m.SetFloat("_HiPos", ThemeTokens.GetFloat("share.hud.bar.fx.hi.pos", 0.78f));
+            m.SetFloat("_HiWidth", ThemeTokens.GetFloat("share.hud.bar.fx.hi.width", 0.12f));
+            m.SetFloat("_HiAmount", ThemeTokens.GetFloat("share.hud.bar.fx.hi", 0.38f));
+            m.SetFloat("_Bottom", ThemeTokens.GetFloat("share.hud.bar.fx.bottom", 0.55f));
+            m.SetFloat("_Depth", ThemeTokens.GetFloat("share.hud.bar.fx.depth", 0.45f));
+            m.SetFloat("_Rim", ThemeTokens.GetFloat("share.hud.bar.fx.rim", 0.35f));
+            m.SetFloat("_GlowWidth", ThemeTokens.GetFloat("share.hud.bar.fx.glow", 0.16f));
+            return m;
+        }
+
+        // Quad geometry: the fill quad spans the window.
+        private void FxLayout()
+        {
+            if (!_fx) return;
+            var l = Mathf.Max(0f, _length);
+            Full(_fx.rectTransform, l);
+            var aspect = _h > 0f ? l / _h : 1f;
+            if (!Mathf.Approximately(aspect, _fxAspect)) { _fxAspect = aspect; FxSet(PAspect, aspect); }
+        }
+
+        private void FxRender(float cur, float shown, float max, string fillToken, bool inert)
+        {
+            var color = inert ? "color.hud.inert" : fillToken == _fillColor ? _fxColorToken : fillToken;
+            if (color != _fxColor)
+            {
+                _fxColor = color;
+                FxSetColor(PFillColor, ThemeTokens.GetColor(color, Color.white));
+            }
+            var f = Mathf.Clamp01(shown / max);
+            if (Mathf.Abs(f - _fxFill) > 0.00001f) { _fxFill = f; FxSet(PFill, f); }
+            var lag = Mathf.Clamp01(Mathf.Max(_lagValue, shown) / max);
+            if (Mathf.Abs(lag - _fxLag) > 0.0001f) { _fxLag = lag; FxSet(PLag, lag); }
+            // the living look only for the bar's own pool (an energy shield shown in the HP window stays plain)
+            FxEvents(fillToken == _fillColor && !inert ? _fxPool : BarFxPool.Plain, cur, max);
+        }
+
+        // Living fill: live config (on / intensity per pool, shared speed) and the bar's events, written to the material
+        // only when they change (events once per event: the shader animates from the shared clock).
+        private void FxEvents(BarFxPool pool, float cur, float max)
+        {
+            BarFxConfig.For(pool, out var on, out var intensity);
+            var onF = on ? 1f : 0f;
+            if (pool != _fxShownPool)
+            {
+                _fxShownPool = pool;
+                FxSet(PPool, (float)pool);
+                _fxEvents.Resync();
+            }
+            if (onF != _fxOnShown) { _fxOnShown = onF; FxSet(PFxOn, onF); }
+            if (intensity != _fxIntensityShown) { _fxIntensityShown = intensity; FxSet(PFxIntensity, intensity); }
+            var speed = BarFxConfig.Speed?.Value ?? 1f;
+            if (speed != _fxSpeedShown) { _fxSpeedShown = speed; FxSet(PFxSpeed, speed); }
+            var changed = _fxEvents.Step(on ? pool : BarFxPool.Plain, cur, max, BarFxConfig.Now, Time.deltaTime, BarFxConfig.Tuning);
+            if (changed == BarFxState.Changed.None) return;
+            if ((changed & BarFxState.Changed.Hit) != BarFxState.Changed.None) { FxSet(PHitAt, _fxEvents.HitAt); FxSet(PHitSize, _fxEvents.HitSize); }
+            if ((changed & BarFxState.Changed.Heal) != BarFxState.Changed.None) FxSet(PHealAt, _fxEvents.HealAt);
+            if ((changed & BarFxState.Changed.Pulse) != BarFxState.Changed.None) FxSet(PPulseAt, _fxEvents.PulseAt);
+            if ((changed & BarFxState.Changed.Regen) != BarFxState.Changed.None) FxSet(PRegen, _fxEvents.Regen ? 1f : 0f);
+            if ((changed & BarFxState.Changed.Exhaust) != BarFxState.Changed.None) FxSet(PExhaust, _fxEvents.Exhaust ? 1f : 0f);
+            BarFxConfig.Count(changed);
+        }
+
+        // Writes a living-fill property to the base material and, when a stencil Mask made uGUI render a copy, to that
+        // copy too (StencilMaterial keeps its copy's properties: a base-only write would stay invisible).
+        // Every material property goes through here (0.20.1: fill / lag / shield / colour / aspect were base-only, so a
+        // stencil copy made after them kept stale values), and the material actually drawn is logged whenever its
+        // living-fill state changes (user crops 0.20.0 showed the plain glossy fill: the log names shader, pool, on and
+        // intensity of the rendered material, base or stencil copy).
+        private void FxSet(int id, float value)
+        {
+            _fxMat.SetFloat(id, value);
+            var shown = _fx.materialForRendering;
+            if (shown && shown != _fxMat) shown.SetFloat(id, value);
+            FxLogShown(shown);
+        }
+
+        private void FxSetColor(int id, Color value)
+        {
+            _fxMat.SetColor(id, value);
+            var shown = _fx.materialForRendering;
+            if (shown && shown != _fxMat) shown.SetColor(id, value);
+        }
+
+        private Material _fxLoggedMat;
+        private float _fxLoggedPool = -9f, _fxLoggedOn = -9f, _fxLoggedI = -9f;
+
+        private void FxLogShown(Material shown)
+        {
+            if (!shown) return;
+            float pool = shown.GetFloat(PPool), on = shown.GetFloat(PFxOn), intensity = shown.GetFloat(PFxIntensity);
+            if (shown == _fxLoggedMat && pool == _fxLoggedPool && on == _fxLoggedOn && intensity == _fxLoggedI) return;
+            _fxLoggedMat = shown;
+            _fxLoggedPool = pool;
+            _fxLoggedOn = on;
+            _fxLoggedI = intensity;
+            Plugin.Log.LogInfo($"[Morgott.UI] bar fx {Root.name}: shader={(shown.shader ? shown.shader.name : "none")} " +
+                $"{(shown == _fxMat ? "base" : "stencil copy")} pool={pool:0} on={on:0.##} intensity={intensity:0.##}");
+        }
+
+        // The HUD was hidden (dead, menu, cutscene) or the player changed: forget the last samples, so the values seen on
+        // return are no hit / heal.
+        public void FxResync() => _fxEvents.Resync();
+        // Shield drawn over the health fill on the next Render: amount and its own pool max (0 = none).
+        public void SetShield(float amount, float max = 0f)
+        {
+            _shieldValue = Mathf.Max(0f, amount);
+            _shieldMax = Mathf.Max(0f, max);
+        }
+        // ---- health labels (variant C) -----------------------------------------------------------------------------
+        private TMP_Text _shieldText;
+        private Image _shieldGlyph;
+        private bool _hpText, _lblTagged, _shieldPlaced;
+        private float _lblHp, _lblHpMax, _lblShield, _lblShieldMax;
+        private string _shownShieldText;
+
+        // Label values of the HP bar for this frame (call before Render): the HP value (tagged "HP" while the fill shows
+        // the energy shield) and the shield value (poolMax > 0: "cur/max" of a shield pool, else the amount).
+        public void HealthText(float hpCur, float hpMax, bool tagged, float shield, float poolMax)
+        {
+            _hpText = true;
+            _lblHp = hpCur;
+            _lblHpMax = hpMax;
+            _lblTagged = tagged;
+            _lblShield = shield;
+            _lblShieldMax = poolMax;
+        }
+
+        public string ShieldValueText => _shieldText && _shieldText.gameObject.activeSelf ? _shieldText.text : "";
+
+        private void ShieldLabel()
+        {
+            if (!_shieldText) return;
+            var text = _hpText && _lblTagged ? HudMath.ShieldText(_lblShield, _lblShieldMax) : "";
+            var on = text.Length > 0;
+            if (_shieldText.gameObject.activeSelf != on) _shieldText.gameObject.SetActive(on);
+            var glyph = on && _shieldGlyph.sprite;
+            if (_shieldGlyph.gameObject.activeSelf != glyph) _shieldGlyph.gameObject.SetActive(glyph);
+            if (!on) return;
+            if (text == _shownShieldText && _shieldPlaced) return;
+            _shownShieldText = text;
+            _shieldText.text = text;
+            // right end of the window, the glyph just left of the number; both centred on the window
+            var l = Mathf.Max(0f, _length);
+            var pad = ThemeTokens.GetFloat("size.hud.shield.text.pad", 10f);
+            var tr = _shieldText.rectTransform;
+            tr.anchorMin = tr.anchorMax = tr.pivot = Vector2.zero;
+            tr.anchoredPosition = new Vector2(_insetL, _insetB);
+            tr.sizeDelta = new Vector2(Mathf.Max(0f, l - pad), _h);
+            var w = _shieldText.GetPreferredValues(text).x;
+            var g = _h * ThemeTokens.GetFloat("share.hud.shield.glyph", 0.8f);
+            var gr = _shieldGlyph.rectTransform;
+            gr.anchorMin = gr.anchorMax = gr.pivot = Vector2.zero;
+            gr.sizeDelta = new Vector2(g, g);
+            gr.anchoredPosition = new Vector2(_insetL + l - pad - w - g - ThemeTokens.GetFloat("size.hud.shield.glyph.gap", 3f), _insetB + (_h - g) / 2f);
+            _shieldPlaced = true;
+        }
+        // Refused-action warning (DenyFeedback): the bar's capsule tinted color.hud.bar.deny at intensity x its alpha, over
+        // every fill layer of the window (created on first use, the last child). 0 hides it.
+        private Image _flash;
+        public float FlashAlpha => _flash && _flash.gameObject.activeSelf ? _flash.color.a : 0f;
+        public Color FlashColor => _flash ? _flash.color : Color.clear;
+
+        public void Flash(float intensity)
+        {
+            if (!(intensity > 0.001f))
+            {
+                if (_flash && _flash.gameObject.activeSelf) _flash.gameObject.SetActive(false);
+                return;
+            }
+            if (!_flash)
+            {
+                _flash = _art.Image("DenyFlash", _window, "sprite.hud.strip4.fill", "color.hud.bar.deny", Image.Type.Sliced);
+                var rt = _flash.rectTransform;
+                rt.anchorMin = Vector2.zero;
+                rt.anchorMax = Vector2.one;
+                rt.pivot = new Vector2(0.5f, 0.5f);
+                rt.offsetMin = rt.offsetMax = Vector2.zero;
+                _flash.raycastTarget = false;
+                if (_sheen) _flash.pixelsPerUnitMultiplier = _sheen.pixelsPerUnitMultiplier;
+            }
+            var c = ThemeTokens.GetColor("color.hud.bar.deny", new Color(1f, 0.35f, 0.1f, 0.85f));
+            c.a *= Mathf.Clamp01(intensity);
+            if (!_flash.gameObject.activeSelf) _flash.gameObject.SetActive(true);
+            if (_flash.color != c) _flash.color = c;
+        }
+
+        // Small text left inside the window (ES recharge countdown) or hidden.
+        public void Aux(int seconds)
+        {
+            var on = seconds > 0;
+            if (_aux.gameObject.activeSelf != on) _aux.gameObject.SetActive(on);
+            if (on) _aux.SetText("{0}", seconds);
+        }
+
+        public void Paused(bool on)
+        {
+            on = on && _paused.sprite && !Plain;
+            if (_paused.gameObject.activeSelf != on) _paused.gameObject.SetActive(on);
+        }
+
+        public void Dim(bool dim)
+        {
+            var a = dim ? 0.45f : 1f;
+            if (!Mathf.Approximately(_fill.canvasRenderer.GetAlpha(), a)) _fill.canvasRenderer.SetAlpha(a);
+            if (_fx && !Mathf.Approximately(_fx.canvasRenderer.GetAlpha(), a)) _fx.canvasRenderer.SetAlpha(a);
+        }
+
+        // Rim ending at window x (its right edge), from y up h; width from the sprite's aspect, whole ref px.
+        private void Edge(Image img, float x, float y, float h, bool on)
+        {
+            var s = img.sprite;
+            var w = HudMath.EdgeWidth(s ? s.rect.width : 0f, s ? s.rect.height : 0f, h);
+            on = on && w > 0f && x >= w;
+            if (img.gameObject.activeSelf != on) img.gameObject.SetActive(on);
+            if (!on) return;
+            var rt = img.rectTransform;
+            var pos = new Vector2(Mathf.Round(x - w), y);
+            var size = new Vector2(w, h);
+            if (rt.anchoredPosition != pos) rt.anchoredPosition = pos;
+            if (rt.sizeDelta != size) rt.sizeDelta = size;
+        }
+
+        // Window-local horizontal strip [x, x+w] of the full window height.
+        private void Place(Image img, float x, float w, bool on)
+        {
+            on = on && w > 0.05f;
+            if (img.gameObject.activeSelf != on) img.gameObject.SetActive(on);
+            if (!on) return;
+            var rt = img.rectTransform;
+            var pos = new Vector2(x, 0f);
+            var size = new Vector2(w, _h);
+            if (rt.anchoredPosition != pos) rt.anchoredPosition = pos;
+            if (rt.sizeDelta != size) rt.sizeDelta = size;
+        }
+
+        private void Full(RectTransform rt, float l)
+        {
+            rt.anchoredPosition = Vector2.zero;
+            rt.sizeDelta = new Vector2(l, _h);
+        }
+
+        private static void Stretch(RectTransform rt)
+        {
+            rt.anchorMin = Vector2.zero;
+            rt.anchorMax = Vector2.one;
+            rt.offsetMin = rt.offsetMax = Vector2.zero;
+        }
+    }
+}

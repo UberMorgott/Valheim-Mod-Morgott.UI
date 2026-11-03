@@ -1,0 +1,99 @@
+using System.IO;
+using System.Linq;
+using Morgott.Core;
+using Morgott.UI.PlayerHud;
+using Morgott.UI.Theme;
+using Xunit;
+
+namespace Morgott.UI.Tests
+{
+    // Batch P: legacy faces, summon frames maths, ported families in the theme.
+    public class BatchPTests
+    {
+        private static ThemeFile Default()
+        {
+            using var s = typeof(ThemeSchema).Assembly.GetManifestResourceStream("Morgott.UI.default-theme.json");
+            using var r = new StreamReader(s!);
+            return ThemeJson.Parse(r.ReadToEnd());
+        }
+
+        [Fact]
+        public void BoldBodyTakesTheBoldCut()
+        {
+            Assert.Equal("font.body.bold", LegacyFaces.FaceToken("font.body", true));
+            Assert.Equal("font.body", LegacyFaces.FaceToken("font.body", false));
+            Assert.Equal("font.display", LegacyFaces.FaceToken("font.display", true));
+        }
+
+        [Fact]
+        public void DefaultThemeShipsLegacyFacesAndCursor()
+        {
+            var t = Default();
+            Assert.Empty(ThemeSchema.Validate(t));
+            Assert.Equal("PT_Sans-Web-Regular", t.fonts.Single(f => f.token == "font.body").legacy);
+            Assert.Equal("PT_Sans-Web-Bold", t.fonts.Single(f => f.token == "font.body.bold").legacy);
+            Assert.Null(t.fonts.Single(f => f.token == "font.display").legacy); // loaded rune face: its own source font
+            Assert.Equal("cursor", t.textures.Single(x => x.token == "texture.cursor").asset);
+            foreach (var role in new[] { "legacy.body", "legacy.label", "legacy.muted", "text.legacy" })
+                Assert.Equal("font.body", t.roles.Single(r => r.role == role).font);
+        }
+
+        [Fact]
+        public void LegacyFaceOnALoadedFontIsRejected()
+        {
+            var t = Default();
+            t.fonts.Single(f => f.token == "font.display").legacy = "X";
+            Assert.Contains(ThemeSchema.Validate(t), e => e.Contains("legacy face only for bundle fonts"));
+            t = Default();
+            t.textures = new[] { new AssetEntry { token = "texture.cursor", asset = "" } };
+            Assert.Contains(ThemeSchema.Validate(t), e => e.Contains("texture 'texture.cursor': asset missing"));
+        }
+
+        [Fact]
+        public void PortedFamiliesAreDeclared()
+        {
+            var families = Default().families.Select(f => f.family).ToList();
+            foreach (var f in new[] { "MenuCompendium", "SummonFrames", "PlayerShields", "Cursor" })
+                Assert.Contains(f, families);
+        }
+
+        [Theory]
+        [InlineData(SummonState.Spawning, false, "ui_summon_spawning", -1)]
+        [InlineData(SummonState.Alive, false, null, -1)]
+        [InlineData(SummonState.Alive, true, "ui_summon_stay", -1)]
+        [InlineData(SummonState.Dead, false, "ui_summon_respawn", 13)]
+        [InlineData(SummonState.Off, true, "ui_summon_off", -1)]
+        [InlineData(SummonState.NoReserve, false, "ui_summon_noreserve", -1)]
+        [InlineData(SummonState.Waiting, false, "ui_summon_waiting", -1)]
+        public void StatusLine(SummonState state, bool stay, string key, int seconds)
+        {
+            Assert.Equal(key, SummonMath.StatusKey(state, stay, 112.2, 100.0, out var s));
+            Assert.Equal(seconds, s);
+        }
+
+        [Fact]
+        public void RespawnNeverNegative()
+        {
+            SummonMath.StatusKey(SummonState.Dead, false, 90.0, 100.0, out var s);
+            Assert.Equal(0, s);
+        }
+
+        [Theory]
+        [InlineData(5f, 10f, 0.5f)]
+        [InlineData(12f, 10f, 1f)]
+        [InlineData(-1f, 10f, 0f)]
+        [InlineData(5f, 0f, 0f)]
+        [InlineData(float.NaN, 10f, 0f)]
+        public void RatioClamped(float v, float max, float want) => Assert.Equal(want, SummonMath.Ratio(v, max), 3);
+
+        [Fact]
+        public void RowSideFollowsTheHotbar()
+        {
+            Assert.True(SummonMath.Below(1000f, 1080f));  // vanilla top-left hotbar: row under it
+            Assert.False(SummonMath.Below(60f, 1080f));   // hotbar in a bottom strip: row on top of it
+            Assert.Equal(100f, SummonMath.FrameX(2, 44f, 6f));
+            Assert.True(SummonMath.Active(SummonState.Spawning));
+            Assert.False(SummonMath.Active(SummonState.Dead));
+        }
+    }
+}

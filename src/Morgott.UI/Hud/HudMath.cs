@@ -1,0 +1,390 @@
+using System;
+using System.Collections.Generic;
+
+namespace Morgott.UI.PlayerHud
+{
+    // Pure HUD layout math (no Unity types: unit-tested on net8). All sizes in reference pixels (1920x1080 at
+    // GuiScale 1) unless named *Px (physical pixels). Spec: side notes hud-resource-states.md §2.2-§4,
+    // ui-skin-engine-plan.md §8a.
+    public static class HudMath
+    {
+        // Main bars have one fixed outer width (mockup hud-status-b, user call 2026-10-21: the max is shown as a
+        // number, never as bar length). Window = outer width minus the frame caps, never below the readable floor.
+        public static float FixedWindow(float outer, float caps, float minWindow)
+        {
+            if (!(outer > 0f) || float.IsInfinity(outer)) return minWindow;
+            return Math.Max(minWindow, outer - caps);
+        }
+
+        // A max change pulses the value only for real steps: >= 1 unit (food decay ticks are debounced) and
+        // >= stepShare of the larger max.
+        public static bool IsMaxStep(float oldMax, float newMax, float stepShare)
+        {
+            var delta = Math.Abs(newMax - oldMax);
+            return delta >= 1f && delta >= stepShare * Math.Max(oldMax, newMax);
+        }
+
+        public static float Clamp(float v, float min, float max) => v < min ? min : v > max ? max : v;
+
+        // Rounds a reference-px position to whole physical pixels (pxPerUnit = physical px per reference px).
+        public static float Snap(float v, float pxPerUnit) =>
+            pxPerUnit > 0f && !float.IsInfinity(pxPerUnit) ? (float)Math.Round(v * pxPerUnit) / pxPerUnit : v;
+
+        // Vertical stacking of frames whose rails do not reach the sprite edge (theme "edge.<asset>.top/bottom",
+        // transparent rows above / below the rail): the next frame starts where the lower rail's top edge is,
+        // minus the upper frame's own bottom margin, so the rails touch (mockup hud-status-b: no gaps).
+        public static float StackStep(float lowerHeight, float lowerEdgeTop, float upperEdgeBottom, float gap) =>
+            Math.Max(0f, lowerHeight - Math.Max(0f, lowerEdgeTop) - Math.Max(0f, upperEdgeBottom) + gap);
+
+        // Bar right end cap (0.10.2), bar-local: right after the window, over the rail band (frame height minus its
+        // transparent edge rows), capW wide on every bar - stacked rail to rail (StackStep, gap 0) the caps touch.
+        public static void CapBox(float insetL, float window, float capW, float height, float edgeTop, float edgeBottom,
+            out float x, out float y, out float w, out float h)
+        {
+            x = insetL + Math.Max(0f, window);
+            y = Math.Max(0f, edgeBottom);
+            w = Math.Max(0f, capW);
+            h = Math.Max(0f, height - Math.Max(0f, edgeTop) - Math.Max(0f, edgeBottom));
+        }
+
+        // Drawn width of a window layer (fill, lag, trough): one that reaches the window end runs `over` further, under
+        // the cap, where the window mask cuts it square (its rounded / fading end never shows before the cap).
+        public static float ClippedEnd(float width, float window, float over) =>
+            width >= window - 0.01f ? width + Math.Max(0f, over) : width;
+
+        // Food diamonds (sockets = squares rotated 45 deg, the diamond touching the cell's edge midpoints), a
+        // checkerboard row like AugaSkin's (equal diagonal steps, alternating low / high): centres step by s on both
+        // axes, so facing edges are parallel along their whole length, perpendicular gap = (2s - cell) / sqrt 2.
+        public static float DiamondStep(float cell, float gap) => (cell + Math.Max(0f, gap) * (float)Math.Sqrt(2.0)) / 2f;
+
+        // Lower-left corner of socket i (row origin = lower-left of the lowest cell); odd sockets are raised.
+        public static void DiamondCell(int i, float step, out float x, out float y)
+        {
+            x = i * step;
+            y = (i & 1) == 1 ? step : 0f;
+        }
+
+        // ---- pending-damage stripes (hud-resource-states §3) ------------------------------------------------------
+
+        public struct Stripe
+        {
+            public int Key;      // effect key of the first contributor (colour), -1 = merged "other"
+            public float Start;  // px from the bar's left edge
+            public float Width;  // px
+        }
+
+        // Pending damage drawn as <= maxStripes stripes inside the current fill, right-aligned from the fill end,
+        // in the given (fixed) order: the first entry sits next to the fill end. Total capped at current value; each
+        // stripe at least minWidth px without growing the total (stripes that cannot get minWidth merge into the
+        // last kept one). Entries past maxStripes merge into the last stripe (key -1 = "other").
+        // pending: (key, amount) in units; barPx = px of the full max B. Returns the stripe count written to output.
+        // Scratch (main thread only): no allocation per frame.
+        private static float[] _amounts = new float[3], _widths = new float[3];
+        private static int[] _keys = new int[3];
+
+        public static int Stripes(IList<KeyValuePair<int, float>> pending, float current, float max, float barPx,
+            float minWidth, int maxStripes, Stripe[] output)
+        {
+            if (pending == null || output == null || !(max > 0f) || !(current > 0f) || maxStripes <= 0) return 0;
+            var count = 0;
+            var slots = Math.Min(maxStripes, output.Length);
+            if (slots <= 0) return 0;
+            if (_amounts.Length < slots) { _amounts = new float[slots]; _keys = new int[slots]; _widths = new float[slots]; }
+            var amounts = _amounts;
+            var keys = _keys;
+            for (var n = 0; n < pending.Count; n++)
+            {
+                var p = pending[n];
+                if (!(p.Value > 0f) || float.IsInfinity(p.Value)) continue;
+                if (count < slots)
+                {
+                    keys[count] = p.Key;
+                    amounts[count++] = p.Value;
+                }
+                else
+                {
+                    amounts[slots - 1] += p.Value;
+                    keys[slots - 1] = -1;
+                }
+            }
+            if (count == 0) return 0;
+            var fillPx = barPx * Math.Min(current, max) / max;
+            var total = 0f;
+            for (var i = 0; i < count; i++) total += amounts[i];
+            var totalPx = Math.Min(fillPx, barPx * Math.Min(total, current) / max);
+            if (!(totalPx > 0f)) return 0;
+            // Widths proportional to amounts inside the capped total.
+            var widths = _widths;
+            for (var i = 0; i < count; i++) widths[i] = totalPx * amounts[i] / total;
+            // Too narrow for every stripe at minWidth: keep as many as fit, the last kept one absorbs the rest.
+            var fit = minWidth > 0f ? Math.Max(1, (int)Math.Floor(totalPx / minWidth)) : count;
+            if (fit < count)
+            {
+                for (var i = fit; i < count; i++) widths[fit - 1] += widths[i];
+                keys[fit - 1] = -1;
+                count = fit;
+            }
+            // Raise narrow stripes to minWidth, taking the px from the widest ones (total unchanged).
+            for (var guard = 0; guard < count * 2; guard++)
+            {
+                var narrow = -1;
+                for (var i = 0; i < count; i++)
+                    if (widths[i] < minWidth - 0.001f) { narrow = i; break; }
+                if (narrow < 0) break;
+                var widest = 0;
+                for (var i = 1; i < count; i++)
+                    if (widths[i] > widths[widest]) widest = i;
+                var need = minWidth - widths[narrow];
+                var spare = widths[widest] - minWidth;
+                if (spare <= 0f) break;
+                var take = Math.Min(need, spare);
+                widths[widest] -= take;
+                widths[narrow] += take;
+            }
+            var end = fillPx;
+            for (var i = 0; i < count; i++)
+            {
+                output[i] = new Stripe { Key = keys[i], Start = end - widths[i], Width = widths[i] };
+                end -= widths[i];
+            }
+            return count;
+        }
+
+        // ---- reserved segment (hud-resource-states §2.3) ---------------------------------------------------------
+
+        // Locked segment at the bar end: [C/B, 1] of the bar. Returns its px start and width (width 0 = none).
+        public static void Reserved(float available, float max, float barPx, out float start, out float width)
+        {
+            start = barPx;
+            width = 0f;
+            if (!(max > 0f) || !(available >= 0f) || available >= max) return;
+            start = barPx * available / max;
+            width = barPx - start;
+        }
+
+        // Reserve tooltip of a strip bar (TASKS M1 reserve item, Codex call 2026-10-28: hover on the bar while the inventory
+        // is open, same parts in the stats window): shown only when something is reserved (>= half a point in total).
+        public static bool ReserveShown(float auras, float summons) =>
+            !float.IsNaN(auras) && !float.IsNaN(summons) && Math.Max(0f, auras) + Math.Max(0f, summons) >= 0.5f;
+
+        // Tooltip body: "available / max" line, then one line per non-zero reservation (whole points, rounded).
+        public static string ReserveText(float available, float max, float auras, float summons, string availableLabel, string aurasLabel, string summonsLabel)
+        {
+            var sb = new System.Text.StringBuilder(96);
+            sb.Append(availableLabel).Append(": ").Append(Round(available)).Append(" / ").Append(Round(max));
+            if (auras >= 0.5f) sb.Append('\n').Append(aurasLabel).Append(": ").Append(Round(auras));
+            if (summons >= 0.5f) sb.Append('\n').Append(summonsLabel).Append(": ").Append(Round(summons));
+            return sb.ToString();
+        }
+
+        private static string Round(float v) => ((int)Math.Round(Math.Max(0f, v), MidpointRounding.AwayFromZero)).ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+        // ---- flow layout (ui-skin-engine-plan §8a) -------------------------------------------------------------
+
+        public struct Flow
+        {
+            public int Columns;
+            public int Rows;
+            public int Visible;     // entries drawn as cells
+            public int Overflow;    // entries behind the "+N" cell (or behind the full-list action when no rows)
+            public bool MoreCell;   // the last cell is the "+N" cell
+        }
+
+        // HP bar labels, variant C (Codex call 2026-10-26; user: "119/119" could not be told apart from the shield):
+        // the HP value "cur/max" centred ("HP cur/max" while the fill shows the Chaos Inoculation energy shield, so the
+        // centre never reads as the shield), the shield as its own number at the window's right end next to a shield
+        // glyph: "cur/max" for a pool with a max (the energy shield that carries the player, shown even at 0), else the
+        // amount; "" = no shield label. Values rounded up as the bar shows them.
+        // 2026-11-03 (user): a shield on the HP bar reads in the centre label as "cur/max (+shield/shieldMax)" - both pools
+        // in their own scale, as drawn; no label of its own (shield > 0 only; Chaos Inoculation keeps variant C).
+        public static string HpText(float cur, float max, bool tagged, float shield = 0f, float shieldMax = 0f)
+        {
+            var c = (int)Math.Ceiling(Math.Max(0f, cur));
+            var m = (int)Math.Ceiling(Math.Max(0f, max));
+            var s = shield > 0f && !float.IsInfinity(shield) ? (int)Math.Ceiling(shield) : 0;
+            var sm = shieldMax > 0f && !float.IsInfinity(shieldMax) ? Math.Max(s, (int)Math.Ceiling(shieldMax)) : 0;
+            var hp = tagged ? $"HP {c}/{m}" : $"{c}/{m}";
+            return s <= 0 ? hp : sm > 0 ? $"{hp} (+{s}/{sm})" : $"{hp} (+{s})";
+        }
+
+        public static string ShieldText(float shield, float poolMax)
+        {
+            var s = shield > 0f && !float.IsInfinity(shield) ? (int)Math.Ceiling(shield) : 0;
+            if (poolMax > 0f && !float.IsInfinity(poolMax)) return $"{s}/{(int)Math.Ceiling(poolMax)}";
+            return s > 0 ? s.ToString(System.Globalization.CultureInfo.InvariantCulture) : "";
+        }
+
+        // Shield overlay in its OWN scale (user 2026-11-03, corrected spec: each pool shows its own percentage - max HP
+        // 1000, shield 30 of 60 = half the bar): from the window's left end, current / max shield of the full width, over
+        // the HP fill and independent of it. No shield / no max = 0.
+        public static float ShieldOverlay(float shield, float shieldMax, float windowPx)
+        {
+            if (!(shield > 0f) || !(shieldMax > 0f) || !(windowPx > 0f) || float.IsInfinity(shield)) return 0f;
+            return Math.Min(1f, shield / shieldMax) * windowPx;
+        }
+
+        // Shield band rect in window px (user call 2026-10-22 r2: the shield never hides HP): the upper `share` of the
+        // window height, ShieldOverlay wide from the window's left.
+        public static void ShieldBand(float shield, float shieldMax, float windowW, float windowH, float share,
+            out float x, out float y, out float w, out float h)
+        {
+            share = Math.Min(1f, Math.Max(0f, share));
+            x = 0f;
+            w = ShieldOverlay(shield, shieldMax, windowW);
+            h = w > 0f ? Math.Max(0f, windowH) * share : 0f;
+            y = Math.Max(0f, windowH) - h;
+        }
+
+        // Side of a square status cell that holds its icon (top, iconShare of the side) and one timer / icon-text line
+        // under it (textH tall, textW wide + pad each side) without the text leaving the cell: never below minCell.
+        public static float StatusCell(float minCell, float iconShare, float textW, float textH, float pad)
+        {
+            var share = Math.Min(0.9f, Math.Max(0f, iconShare));
+            var byWidth = textW + 2f * pad;
+            var byHeight = (textH + pad) / (1f - share);
+            return (float)Math.Ceiling(Math.Max(minCell, Math.Max(byWidth, byHeight)));
+        }
+
+        // Rows that fit a height budget.
+        public static int MaxRows(float budget, float cell, float gap) =>
+            cell <= 0f || budget < cell ? 0 : (int)Math.Floor((budget + gap) / (cell + gap));
+
+        public static int Columns(float width, float cell, float gap) =>
+            cell <= 0f ? 1 : Math.Max(1, (int)Math.Floor((width + gap) / (cell + gap)));
+
+        // Wrapping flow of `count` fixed cells in `width`, at most maxRows rows. Overflow reserves the last cell for
+        // "+N" before counting N. maxRows 0 = nothing drawn, all entries overflow (reachable through the full list).
+        public static Flow Wrap(int count, float cell, float gap, float width, int maxRows)
+        {
+            var f = new Flow { Columns = Columns(width, cell, gap) };
+            if (count <= 0) return f;
+            if (maxRows <= 0)
+            {
+                f.Overflow = count;
+                return f;
+            }
+            var capacity = f.Columns * maxRows;
+            if (count <= capacity)
+            {
+                f.Visible = count;
+                f.Rows = (count + f.Columns - 1) / f.Columns;
+                return f;
+            }
+            f.Visible = capacity - 1;
+            f.Overflow = count - f.Visible;
+            f.MoreCell = true;
+            f.Rows = maxRows;
+            return f;
+        }
+
+        // ---- scale and safe box (hud-resource-states §4) ---------------------------------------------------------
+
+        // Hud.Scale config range (user multiplier on top of the game's UI scale).
+        public const float HudScaleMin = 0.75f, HudScaleMax = 1.5f;
+
+        public static float HudScale(float hudScale) => Clamp(hudScale, HudScaleMin, HudScaleMax);
+
+        // Screen px per reference px of HUD frames, gaps and margins: guiFactor = min(W/1920, H/1080) x GuiScale (the
+        // canvas scale, GuiScaler.cs:54-58) x Hud.Scale. No font floor here: the readable floors apply to texts only
+        // (TextFloor); flooring the frame scale (old ClusterScale: 0.923 at 720 where guiFactor is 0.667) blew the
+        // strip gaps up by 38 % on small screens.
+        public static float FrameScale(float guiFactor, float hudScale) => Math.Max(0f, guiFactor) * HudScale(hudScale);
+
+        // Horizontal span the HUD corners use: on screens wider than ultraRatio (21:9 and up) with the box on, a
+        // centred 16:9 box of the safe height; else the safe area.
+        public static void HudBox(float safeX, float safeW, float safeH, bool boxOn, float ultraRatio,
+            out float x, out float w)
+        {
+            x = safeX;
+            w = safeW;
+            if (!boxOn || !(safeH > 0f) || safeW / safeH < ultraRatio) return;
+            var box = safeH * 16f / 9f;
+            if (box >= safeW) return;
+            x = safeX + (safeW - box) / 2f;
+            w = box;
+        }
+
+        // Whole seconds for status timers ("12", "1:05", "5m" past 10 min). Ceil so 0.4 s shows "1".
+        public static string Timer(float seconds)
+        {
+            if (!(seconds > 0f) || float.IsInfinity(seconds)) return "";
+            var s = (int)Math.Ceiling(seconds);
+            if (s < 60) return s.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            if (s < 600) return (s / 60).ToString(System.Globalization.CultureInfo.InvariantCulture) + ":" + (s % 60).ToString("00", System.Globalization.CultureInfo.InvariantCulture);
+            return ((s + 59) / 60).ToString(System.Globalization.CultureInfo.InvariantCulture) + "m";
+        }
+
+        // Bar value box width from the window's left edge: the whole window, or only the unlocked part when a reserve
+        // locks the end (never over the hatch); the value is centred in it.
+        public static float ValueSpan(float windowWidth, float reserveStart, bool reserve) =>
+            Math.Max(0f, reserve ? Math.Min(windowWidth, reserveStart) : windowWidth);
+
+        // Bar value fitted to its window by the drawn glyphs (run 20261024-134656 shield-text-inside: "180/180 +90" at
+        // size.hud.font.value 30 drew its ink 26.8 px tall over the 21.4 px HP window, the "/" and digits 4.8 px under the
+        // fill; TMP centres the line box (ascender..descender), not the ink, so the digits also sat 2.1 px low).
+        // inkTop / inkBottom = glyph extents measured at the design size, relative to the window centre (y up); a single
+        // line scales about that centre with the font size. scale (<= 1) shrinks the font until the ink height fits
+        // windowH, but not under minScale (the readable floor's share of the design size; the ink then overhangs the
+        // window evenly); shift (y up, at the fitted size) moves the ink centre onto the window centre.
+        public static void ValueInkFit(float windowH, float inkTop, float inkBottom, float minScale, out float scale, out float shift)
+        {
+            scale = 1f;
+            shift = 0f;
+            var inkH = inkTop - inkBottom;
+            if (!(inkH > 0f) || !(windowH > 0f)) return;
+            scale = Math.Min(1f, Math.Max(windowH / inkH, Math.Max(0f, minScale)));
+            shift = -(inkTop + inkBottom) / 2f * scale;
+        }
+
+        // Icon in a square cell: side = cell x share, centred on the cell (offset from the cell centre is zero on both
+        // axes whatever the timer text does).
+        public static float IconSide(float cell, float share) => Math.Max(0f, cell) * Math.Max(0f, Math.Min(1f, share));
+
+        // Timer band at the bottom of a status cell: height of the free space under a centred icon (at least minH).
+        public static float TimerBand(float cell, float share, float minH) => Math.Max(minH, (Math.Max(0f, cell) - IconSide(cell, share)) * 0.5f);
+
+        // Fill-end rim width for a window of height h: the sprite's aspect, rounded to whole px, at least 2 (a thinner
+        // rim would vanish under filtering); 0 without a sprite.
+        public static float EdgeWidth(float spriteW, float spriteH, float h)
+        {
+            if (!(spriteW > 0f) || !(spriteH > 0f) || !(h > 0f)) return 0f;
+            return Math.Max(2f, (float)Math.Round(h * spriteW / spriteH));
+        }
+
+        // Food cell tooltip body: current / max of each pool the food gives (Food.m_health / m_stamina / m_eitr, decayed by
+        // Player.UpdateFood, Player.cs:2424-2440; max = SharedData.m_food / m_foodStamina / m_foodEitr), regen in hp per
+        // second, time left as mm:ss. Labels = vanilla $item_food_* tokens (the tooltip localizes them); colours = "#RRGGBBAA".
+        public static string FoodText(float hp, float maxHp, float sta, float maxSta, float eitr, float maxEitr, float regenPerSecond,
+            float seconds, string perSecond, string hpColor, string staColor, string eitrColor, string regenColor)
+        {
+            var sb = new System.Text.StringBuilder(192);
+            void Pool(string label, float cur, float max, string color)
+            {
+                if (max > 0f) sb.Append(label).Append(": <color=").Append(color).Append('>').Append(Math.Round(cur).ToString("0", Inv))
+                    .Append(" / ").Append(Math.Round(max).ToString("0", Inv)).Append("</color>\n");
+            }
+            Pool("$item_food_health", hp, maxHp, hpColor);
+            Pool("$item_food_stamina", sta, maxSta, staColor);
+            Pool("$item_food_eitr", eitr, maxEitr, eitrColor);
+            if (regenPerSecond > 0f)
+                sb.Append("$item_food_regen: <color=").Append(regenColor).Append('>').Append(regenPerSecond.ToString("0.##", Inv))
+                    .Append(" hp").Append(perSecond).Append("</color>\n");
+            return sb.Append("$item_food_duration: <color=").Append(regenColor).Append('>').Append(FoodClock(seconds)).Append("</color>").ToString();
+        }
+
+        private static readonly System.Globalization.CultureInfo Inv = System.Globalization.CultureInfo.InvariantCulture;
+
+        // Seconds left as mm:ss, rounded up (a food with 0.2 s left still shows 00:01); minutes are not capped at 59.
+        public static string FoodClock(float seconds)
+        {
+            var s = (int)Math.Ceiling(Math.Max(0f, seconds));
+            return (s / 60).ToString("00", Inv) + ":" + (s % 60).ToString("00", Inv);
+        }
+
+        // Rim tint token for a fill colour token: color.hud.<bar> -> color.hud.edge.<bar>; anything else -> the generic one.
+        public static string EdgeColorToken(string fillToken) =>
+            fillToken != null && fillToken.StartsWith("color.hud.", StringComparison.Ordinal)
+                ? "color.hud.edge" + fillToken.Remove(0, "color.hud".Length)
+                : "color.hud.edge";
+    }
+}
