@@ -130,6 +130,8 @@ namespace Morgott.UI
                 return;
             }
             Translations.Load(typeof(Plugin).Assembly, "Morgott.UI.Translations.");
+            // Shared VFX (Core IVfx) do not depend on the theme: registered even when the skin stays inactive.
+            if (!CoreApi.Headless) Services.Register<IVfx>(VfxProvider.Instance = new VfxProvider(System.IO.Path.GetDirectoryName(Info.Location)));
             var wanted = new Dictionary<string, bool>();
             foreach (var (family, does) in Families)
             {
@@ -216,7 +218,7 @@ namespace Morgott.UI
                 requested[family] = wanted[family] && (!Needs.TryGetValue(family, out var host) || wanted[host]);
             OwnershipRegistry.Freeze(requested, _requireAssets.Value);
 
-            Services.Register<ITheme>(_theme = new ThemeProvider());
+            if (!CoreApi.Headless) Services.Register<ITheme>(_theme = new ThemeProvider());
 
             gameObject.AddComponent<ResponsiveContext>();
             if (WatchTheme.Value) ThemeWatcher.Attach(gameObject);
@@ -247,6 +249,7 @@ namespace Morgott.UI
         private void OnDestroy()
         {
             if (_theme != null) Services.Unregister<ITheme>(_theme);
+            if (VfxProvider.Instance != null) Services.Unregister<IVfx>(VfxProvider.Instance);
             _harmony?.UnpatchSelf();
         }
 

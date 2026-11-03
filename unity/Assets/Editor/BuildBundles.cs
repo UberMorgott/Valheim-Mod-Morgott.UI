@@ -2,7 +2,7 @@
 // Unity.exe -batchmode -quit -nographics -projectPath <repo>/unity -executeMethod BuildBundles.Build -logFile -
 // Steps: TMP shaders (from the editor's ugui package) -> sync art/sprites + art/fonts -> sprite import (9-slice
 // borders, pivot, PPU from art/sprites/sprites.json) -> SpriteAtlas -> static TMP SDF font assets (bake report in
-// art/fonts/bake-report.txt) -> legacy dynamic Fonts + readable textures (art/textures) -> AssetBundle "runeskin" (StandaloneWindows64, LZ4) -> unity/Build/runeskin
+// art/fonts/bake-report.txt) -> legacy dynamic Fonts + readable textures (art/textures; shaders: BuildVfx, morgott_vfx) -> AssetBundle "runeskin" (StandaloneWindows64, LZ4) -> unity/Build/runeskin
 // -> contents listing loaded back from the built file (unity/Build/runeskin.contents.txt).
 using System;
 using System.Collections.Generic;
@@ -69,7 +69,6 @@ public static class BuildBundles
             var fonts = BakeFonts();
             fonts.AddRange(ImportLegacyFonts());
             fonts.AddRange(ImportTextures());
-            fonts.AddRange(ImportShaders());
             foreach (var p in sprites.Select(AssetDatabase.GetAssetPath).Distinct().Append(AtlasPath).Concat(hi.Count > 0 ? new[] { HiAtlasPath } : new string[0]).Concat(st.Count > 0 ? new[] { StripAtlasPath } : new string[0]).Concat(fonts))
                 AssetImporter.GetAtPath(p).SetAssetBundleNameAndVariant(BundleName, "");
             AssetDatabase.SaveAssets();
@@ -389,28 +388,6 @@ public static class BuildBundles
 
     // Loads the built file back and lists what the game will get; fails if a sprites.json entry or a font is absent.
     public static void List() => List(JsonUtility.FromJson<Manifest>(File.ReadAllText(Path.Combine(Art, "sprites", "sprites.json"))));
-
-    const string ShaderDir = Root + "/Shaders";
-
-    // art/shaders/*.shader -> Assets/RuneSkin/Shaders, compiled into the bundle (UI effect shaders the game cannot compile
-    // at runtime; RuneSkin loads them by asset name, Shader.Find then resolves them for other mods). A shader error fails the build.
-    static List<string> ImportShaders()
-    {
-        var dir = Path.Combine(Art, "shaders");
-        var files = Directory.Exists(dir) ? Directory.GetFiles(dir, "*.shader").Select(Path.GetFileName).ToList() : new List<string>();
-        Sync(dir, files, ShaderDir);
-        var paths = new List<string>();
-        foreach (var f in files)
-        {
-            var path = $"{ShaderDir}/{f}";
-            AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate | ImportAssetOptions.ForceSynchronousImport);
-            var sh = AssetDatabase.LoadAssetAtPath<Shader>(path) ?? throw new Exception("no shader at " + path);
-            if (ShaderUtil.ShaderHasError(sh))
-                throw new Exception($"shader {sh.name} has errors: " + string.Join("; ", ShaderUtil.GetShaderMessages(sh).Select(m => m.message)));
-            paths.Add(path);
-        }
-        return paths;
-    }
 
     static void List(Manifest man)
     {

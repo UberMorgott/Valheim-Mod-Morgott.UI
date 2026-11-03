@@ -8,7 +8,7 @@
 //   _Mode 1 = weld: a narrow molten band at _Fill (_WeldWidth of the width, soft falloff into the fill, a sharper one
 //             into the trough), flickering along v; _Flash (a hit, decays on the CPU) adds short-lived sparks.
 // Colours are eyedropped from boss-c.png (gas row / red fill end); speed / intensity / widths come from theme tokens.
-Shader "RuneSkin/UI Boss FX"
+Shader "Morgott/UI Boss FX"
 {
     Properties
     {

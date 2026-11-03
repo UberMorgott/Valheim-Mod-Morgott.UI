@@ -283,8 +283,9 @@ namespace Morgott.UI.Theme
             }
         }
 
-        public static Shader BossFxShader { get; private set; }
-        public static Shader BarShader { get; private set; }
+        // UI effect shaders from the morgott_vfx bundle (Api\VfxProvider, Core IVfx); null = sprite fallbacks.
+        public static Shader BossFxShader => Api.VfxProvider.Instance?.UiBossFx();
+        public static Shader BarShader => Api.VfxProvider.Instance?.UiBar();
 
         // Sprite atlas page mip bias (theme token bias.atlas.mip overrides): -0.7 keeps the 4x HUD art crisp at 1080p
         // (hud2 sharpness, batch201; -0.5 was the importer value that never reached the packed pages).
@@ -314,13 +315,6 @@ namespace Morgott.UI.Theme
                 return;
             }
             SpriteAtlasManager.atlasRequested += OnAtlasRequested; // before any sprite load can ask for it
-            // UI effect shader (boss bar gas haze / weld). Loaded here, Shader.Find("RuneSkin/UI Boss FX") resolves it for
-            // other mods (Vaettir); null = their sprite fallback.
-            BossFxShader = _bundle.LoadAsset<Shader>("RuneSkinBossFx");
-            if (!BossFxShader || !BossFxShader.isSupported) Diagnostics.SkinDiagnostics.Theme("boss FX shader missing or unsupported (sprite fallback)");
-            // HUD strip bar fill / shield glow shader (RuneSkin/UI Bar); null = the sprite bars.
-            BarShader = _bundle.LoadAsset<Shader>("RuneSkinBar");
-            if (!BarShader || !BarShader.isSupported) Diagnostics.SkinDiagnostics.Theme("bar shader missing or unsupported (sprite bars)");
             // Sprites may be standalone assets, texture sub-assets or packed in a SpriteAtlas: index all by name.
             foreach (var s in _bundle.LoadAllAssets<Sprite>())
                 if (s && !BundleSprites.ContainsKey(s.name)) BundleSprites.Add(s.name, s);

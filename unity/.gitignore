@@ -11,3 +11,5 @@
 /obj/
 *.csproj
 *.sln
+/Assets/Morgott/
+/Assets/Morgott.meta

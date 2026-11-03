@@ -9,7 +9,7 @@
 //             from the left up to _Shield of the width (top and bottom together), the right end at full.
 // Every value is a material property set by BarView on change only (one material instance per bar); shape numbers
 // come from theme tokens (share.hud.bar.fx.*).
-Shader "RuneSkin/UI Bar"
+Shader "Morgott/UI Bar"
 {
     Properties
     {
