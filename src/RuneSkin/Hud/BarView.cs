@@ -41,17 +41,13 @@ namespace RuneSkin.PlayerHud
         // Plain (HUD strip, mockup hud-3): the bar shows its fill, lag, shield band and the plain value only - no DoT
         // stripes, reserve hatch / edge / lock, paused rune or "cur/avail" texts (the main value keeps "cur/max +shield").
         public bool Plain;
-        // Shield as a thin line above the bar (older strip) instead of the band inside the window.
-        public bool ShieldLine;
-        // Shield as a glow around the bar's perimeter (mockup hud-4M3): lit from the left end cap along the top and the
-        // bottom edges together, the right cap at full; plus a faint sheen over the fill, both shield / max long.
-        public bool ShieldPerimeter;
-        private Image _shCapL, _shMid, _shCapR, _sheen;
+        // Faint full-height sheen of the shield segment (themes with the strip4 art); else the upper band.
+        private Image _sheen;
         private static int EdgeMode => EdgeModeOverride >= 0 ? EdgeModeOverride : (int)ThemeTokens.GetFloat("mode.hud.bar.edge", 2f);
         private float _frontCore, _frontClock;
-        // Shield layer (health bar only): translucent shield-coloured strip over the fill, HudMath.ShieldOverlay wide.
+        // Shield layer (health bar only): the shield segment (HudMath.ShieldSegment): upper band, or the top line over the sheen.
         private Image _shield;
-        private float _shieldValue, _shownShield = -1f, _shownMaxLabel = -2f;
+        private float _shieldValue, _shownShield = -1f, _shownMaxLabel = -2f, _shownPlus = -1f;
         // Wet: a few single drip clusters at irregular spots along the frame bottom (a tiled row read as a zipper).
         private static readonly float[] WetSpots = { 0.07f, 0.38f, 0.79f };
         private readonly Image[] _wet = new Image[WetSpots.Length];
@@ -130,9 +126,12 @@ namespace RuneSkin.PlayerHud
                     _stripes[i] = art.Image("Stripe" + i, _window, "sprite.hud.dot.poison", "color.dot.other", Image.Type.Tiled);
                     _stripes[i].gameObject.SetActive(false);
                 }
+            var sheenArt = mainValue && ThemeTokens.GetSprite("sprite.hud.strip4.shield.mid");
             if (mainValue)
             {
-                _shield = art.Image("Shield", _window, shieldToken ?? "sprite.hud.bar.fill", "color.hud.shield", shieldToken != null ? Image.Type.Simple : Image.Type.Sliced);
+                // with the sheen: the shield's top line, a plain bright quad; else the band sprite
+                _shield = sheenArt ? art.Image("Shield", _window, null, "color.hud.shield.glow", Image.Type.Simple)
+                    : art.Image("Shield", _window, shieldToken ?? "sprite.hud.bar.fill", "color.hud.shield", shieldToken != null ? Image.Type.Simple : Image.Type.Sliced);
                 _shield.gameObject.SetActive(false);
                 if (_edge)
                 {
@@ -140,7 +139,7 @@ namespace RuneSkin.PlayerHud
                     _shieldEdge.gameObject.SetActive(false);
                 }
             }
-            if (mainValue && ThemeTokens.GetSprite("sprite.hud.strip4.shield.mid"))
+            if (sheenArt)
             {
                 _sheen = art.Image("ShieldSheen", _window, "sprite.hud.strip4.fill", "color.hud.shield.sheen", Image.Type.Sliced);
                 _sheen.gameObject.SetActive(false);
@@ -162,15 +161,6 @@ namespace RuneSkin.PlayerHud
                 _overLag = RightBorder(_lag, scale);
             }
             if (glyphToken != null) Glyph(frameToken, glyphToken, scale);
-            if (_sheen)
-            {
-                _shCapL = art.Image("ShieldCapL", Root, "sprite.hud.strip4.shield.l", "color.hud.shield.glow", Image.Type.Simple);
-                _shMid = art.Image("ShieldRun", Root, "sprite.hud.strip4.shield.mid", "color.hud.shield.glow", Image.Type.Tiled);
-                _shCapR = art.Image("ShieldCapR", Root, "sprite.hud.strip4.shield.r", "color.hud.shield.glow", Image.Type.Simple);
-                _shCapL.gameObject.SetActive(false);
-                _shMid.gameObject.SetActive(false);
-                _shCapR.gameObject.SetActive(false);
-            }
             if (!rail)
             {
                 _overlay = art.Image("Overlay", Root, "sprite.hud.overlay.frost", "color.overlay.frost", Image.Type.Simple);
@@ -366,7 +356,6 @@ namespace RuneSkin.PlayerHud
         private void Layout()
         {
             var l = Mathf.Max(0f, _length);
-            _shownRun = -1f; // the shield perimeter follows the width
             Root.sizeDelta = new Vector2(l + _insetL + _insetR, Height);
             _window.sizeDelta = new Vector2(l, _h);
             Full(_trough.rectTransform, _cap ? HudMath.ClippedEnd(l, l, _overTrough) : l);
@@ -528,23 +517,20 @@ namespace RuneSkin.PlayerHud
                 }
             }
             if (_fx) FxRender(cur, shown, max, fillToken, inert);
-            else if (ShieldPerimeter && _sheen)
+            if (_shield)
             {
-                Perimeter(_shieldValue, max, l);
-            }
-            else if (_shield)
-            {
-                HudMath.ShieldBand(_shieldValue, max, l, _h, ThemeTokens.GetFloat("share.hud.shield.band", 0.4f), out var sx, out var sy, out var sw, out var sh);
-                if (ShieldLine)
+                // Shield segment after the drawn HP fill, in the HP scale (HudMath.ShieldSegment). With the sheen: the
+                // faint sheen full height + a thin line along its top (Codex call 2026-11-03: a full-height outline on an
+                // 18 px segment reads as a marker); else the upper band. Over the shader fill too (it draws no shield).
+                float sx, sy, sw, sh;
+                if (_sheen)
                 {
-                    // Mockup hud-2 / hud-3: a thin glowing cyan line just above the HP well, from its start, shield /
-                    // max long - not a band over the fill. Child of the bar root (outside the clipped window).
-                    if (_shield.transform.parent != Root) { _shield.transform.SetParent(Root, false); if (_shieldEdge) _shieldEdge.gameObject.SetActive(false); }
-                    sx = _insetL;
-                    sw = HudMath.ShieldOverlay(_shieldValue, max, l);
-                    sh = ThemeTokens.GetFloat("size.hud.strip.shield.line", 6f);
-                    sy = Height + ThemeTokens.GetFloat("size.hud.strip.shield.gap", 1f);
+                    HudMath.ShieldSegment(shown, _shieldValue, max, l, out sx, out sw);
+                    PlaceAt(_sheen, sx, 0f, sw, _h, true);
+                    sh = ThemeTokens.GetFloat("size.hud.shield.line", 5f);
+                    sy = _h - sh;
                 }
+                else HudMath.ShieldBand(shown, _shieldValue, max, l, _h, ThemeTokens.GetFloat("share.hud.shield.band", 0.4f), out sx, out sy, out sw, out sh);
                 var son = sw > 0.05f && sh > 0.05f;
                 if (_shield.gameObject.activeSelf != son) _shield.gameObject.SetActive(son);
                 if (son)
@@ -553,27 +539,30 @@ namespace RuneSkin.PlayerHud
                     sr.anchoredPosition = new Vector2(sx, sy);
                     sr.sizeDelta = new Vector2(sw, sh);
                 }
-                if (_shieldEdge && !ShieldLine) Edge(_shieldEdge, sx + sw, sy, sh, son && EdgeMode == 2 && sx + sw < l - 0.5f);
+                if (_shieldEdge) Edge(_shieldEdge, sx + sw, sy, sh, !_fx && son && EdgeMode == 2 && sx + sw < l - 0.5f);
             }
             if (Plain) showAvail = false;
             var extra = showAvail ? avail : -1f;
             // Label value: the HP (HealthText for the health bar: the HP even while the fill shows the energy shield),
-            // else this bar's own cur / max; the shield has its own label (ShieldLabel, variant C).
+            // else this bar's own cur / max, "cur/max (+shield)" with a shield on the HP (2026-11-03); the energy shield
+            // carrying the player (tagged) keeps its own label (ShieldLabel, variant C).
             var lc = _main && _hpText ? _lblHp : cur;
             var lm = _main && _hpText ? _lblHpMax : max;
             if (_main) ShieldLabel();
             var tagShown = _main && _hpText && _lblTagged ? 1f : 0f;
             var maxShown = _main ? Mathf.Ceil(lm) : -1f;
-            if (Mathf.CeilToInt(lc) != Mathf.CeilToInt(_shownCur) || Mathf.CeilToInt(extra) != Mathf.CeilToInt(_shownExtra) || _shownCur < 0f || tagShown != _shownShield || maxShown != _shownMaxLabel)
+            var plus = _main && tagShown <= 0f ? Mathf.Ceil(_hpText ? _lblShield : _shieldValue) : 0f;
+            if (Mathf.CeilToInt(lc) != Mathf.CeilToInt(_shownCur) || Mathf.CeilToInt(extra) != Mathf.CeilToInt(_shownExtra) || _shownCur < 0f || tagShown != _shownShield || maxShown != _shownMaxLabel || plus != _shownPlus)
             {
                 // Health: the HP value alone, centred ("HP cur/max" while the fill is the energy shield).
-                if (_main) _number.text = HudMath.HpText(lc, lm, tagShown > 0f);
+                if (_main) _number.text = HudMath.HpText(lc, lm, tagShown > 0f, plus);
                 else if (showAvail) _number.SetText("{0}/{1}", Mathf.Ceil(lc), Mathf.Ceil(avail));
                 else _number.SetText("{0}", Mathf.Ceil(lc));
                 FitValue();
                 _shownExtra = extra;
                 _shownShield = tagShown;
                 _shownMaxLabel = maxShown;
+                _shownPlus = plus;
             }
             else if (_fitPending) FitValue();
             _shownCur = lc;
@@ -653,46 +642,6 @@ namespace RuneSkin.PlayerHud
             }
         }
 
-        // Shield perimeter glow + sheen (ShieldPerimeter). Outer box = the bar root grown by size.hud.strip4.shield.out;
-        // caps at the sprites' aspect, the run between them tiled, shield / max of the straight part.
-        private float _shownRun = -1f, _shownCapL = -1f, _shownCapR = -1f;
-
-        private void Perimeter(float shield, float max, float l)
-        {
-            var run = StripMath.ShieldRun(shield, max, out var capL, out var capR);
-            if (Mathf.Abs(run - _shownRun) < 0.0005f && capL == _shownCapL && capR == _shownCapR) return;
-            _shownRun = run;
-            _shownCapL = capL;
-            _shownCapR = capR;
-            if (_shield && _shield.gameObject.activeSelf) _shield.gameObject.SetActive(false);
-            var o = ThemeTokens.GetFloat("size.hud.strip4.shield.out", 3f);
-            var h = Height + 2f * o;
-            var w = Width + 2f * o;
-            var cw = CapWidth(_shCapL, h);
-            var cwr = CapWidth(_shCapR, h);
-            var straight = Mathf.Max(0f, w - cw - cwr);
-            PlaceAt(_shCapL, -o, -o, cw, h, capL > 0f);
-            if (_shCapL.gameObject.activeSelf) _shCapL.canvasRenderer.SetAlpha(capL);
-            PlaceAt(_shMid, -o + cw, -o, straight * run, h, run > 0f);
-            PlaceAt(_shCapR, -o + cw + straight, -o, cwr, h, capR > 0f);
-            // Sheen over the fill: shield / max of the window, from its start.
-            var sw = l * run;
-            var on = sw > 0.05f;
-            if (_sheen.gameObject.activeSelf != on) _sheen.gameObject.SetActive(on);
-            if (on)
-            {
-                var sr = _sheen.rectTransform;
-                sr.anchoredPosition = Vector2.zero;
-                sr.sizeDelta = new Vector2(sw, _h);
-            }
-        }
-
-        private static float CapWidth(Image img, float h)
-        {
-            var s = img ? img.sprite : null;
-            return s ? h * s.rect.width / Mathf.Max(1f, s.rect.height) : 0f;
-        }
-
         private static void PlaceAt(Image img, float x, float y, float w, float h, bool on)
         {
             if (!img) return;
@@ -709,16 +658,16 @@ namespace RuneSkin.PlayerHud
 
         // ---- shader bars (HUD strip, user call 2026-10-23) ---------------------------------------------------------
         // One Image in the window with the RuneSkin/UI Bar material draws trough depth, glossy fill, straight-cut end,
-        // lag ghost, grey missing part and the shield sheen; a second one over the frame draws the shield perimeter
-        // glow. The sprite layers (trough, lag, fill, edge, front, shield band / sheen / perimeter) stay built but
-        // disabled. One material instance per bar; properties written only when they change.
-        private Image _fx, _fxGlow;
-        private Material _fxMat, _fxGlowMat;
-        private float _fxFill = -1f, _fxLag = -1f, _fxShield = -1f, _fxAspect = -1f, _fxGlowAspect = -1f;
+        // lag ghost and grey missing part (its _Shield sheen stays 0: the shield segment is the sprite sheen + line over it,
+        // 2026-11-03). The sprite fill layers (trough, lag, fill, edge, front) stay built but disabled. One material
+        // instance per bar; properties written only when they change.
+        private Image _fx;
+        private Material _fxMat;
+        private float _fxFill = -1f, _fxLag = -1f, _fxAspect = -1f;
         private string _fxColor;
         private string _fxColorToken;
         private static readonly int PFill = Shader.PropertyToID("_Fill"), PLag = Shader.PropertyToID("_Lag"),
-            PShield = Shader.PropertyToID("_Shield"), PAspect = Shader.PropertyToID("_Aspect"), PFillColor = Shader.PropertyToID("_FillColor"),
+            PAspect = Shader.PropertyToID("_Aspect"), PFillColor = Shader.PropertyToID("_FillColor"),
             PMode = Shader.PropertyToID("_Mode"), PPool = Shader.PropertyToID("_Pool"), PFxOn = Shader.PropertyToID("_FxOn"),
             PFxIntensity = Shader.PropertyToID("_FxIntensity"), PFxSpeed = Shader.PropertyToID("_FxSpeed"), PHitAt = Shader.PropertyToID("_HitAt"),
             PHitSize = Shader.PropertyToID("_HitSize"), PHealAt = Shader.PropertyToID("_HealAt"), PPulseAt = Shader.PropertyToID("_PulseAt"),
@@ -741,7 +690,7 @@ namespace RuneSkin.PlayerHud
             if (!shader || _fx) return;
             _fxColorToken = colorToken;
             _fxPool = pool;
-            foreach (var img in new[] { _trough, _lag, _fill, _edge, _front, _shield, _shieldEdge, _sheen, _shCapL, _shMid, _shCapR })
+            foreach (var img in new[] { _trough, _lag, _fill, _edge, _front, _shieldEdge })
                 if (img) img.enabled = false;
             _fx = _art.Image("BarFx", _window, null, "color.frame", Image.Type.Simple);
             _fx.color = Color.white;
@@ -753,18 +702,7 @@ namespace RuneSkin.PlayerHud
             _fxMat.SetColor("_ClotColor", ThemeTokens.GetColor("color.hud.bar.fx.clot", new Color(0.30f, 0.035f, 0.045f)));
             _fx.material = _fxMat;
             Full(_fx.rectTransform, Mathf.Max(0f, _length));
-            if (ShieldPerimeter)
-            {
-                _fxGlow = _art.Image("ShieldGlow", Root, null, "color.frame", Image.Type.Simple);
-                _fxGlow.color = Color.white;
-                _fxGlow.raycastTarget = false;
-                _fxGlowMat = FxMaterial(shader, "RuneSkin bar glow " + Root.name, 1f);
-                _fxGlowMat.SetColor("_GlowColor", ThemeTokens.GetColor("color.hud.shield.glow", new Color(0.36f, 0.91f, 0.95f)));
-                _fxGlow.material = _fxGlowMat;
-                _number.transform.SetAsLastSibling();
-            }
             _fx.raycastTarget = false;
-            _shownRun = -1f;
             FxLayout();
         }
 
@@ -782,7 +720,7 @@ namespace RuneSkin.PlayerHud
             return m;
         }
 
-        // Quad geometry: the fill quad spans the window; the glow quad the bar root grown by size.hud.strip4.shield.out.
+        // Quad geometry: the fill quad spans the window.
         private void FxLayout()
         {
             if (!_fx) return;
@@ -790,16 +728,6 @@ namespace RuneSkin.PlayerHud
             Full(_fx.rectTransform, l);
             var aspect = _h > 0f ? l / _h : 1f;
             if (!Mathf.Approximately(aspect, _fxAspect)) { _fxAspect = aspect; FxSet(PAspect, aspect); }
-            if (!_fxGlow) return;
-            var o = ThemeTokens.GetFloat("size.hud.strip4.shield.out", 3f);
-            var w = Width + 2f * o;
-            var h = Height + 2f * o;
-            var rt = _fxGlow.rectTransform;
-            rt.anchorMin = rt.anchorMax = rt.pivot = Vector2.zero;
-            rt.anchoredPosition = new Vector2(-o, -o);
-            rt.sizeDelta = new Vector2(w, h);
-            var ga = h > 0f ? w / h : 1f;
-            if (!Mathf.Approximately(ga, _fxGlowAspect)) { _fxGlowAspect = ga; _fxGlowMat.SetFloat(PAspect, ga); }
         }
 
         private void FxRender(float cur, float shown, float max, string fillToken, bool inert)
@@ -816,15 +744,6 @@ namespace RuneSkin.PlayerHud
             if (Mathf.Abs(lag - _fxLag) > 0.0001f) { _fxLag = lag; FxSet(PLag, lag); }
             // the living look only for the bar's own pool (an energy shield shown in the HP window stays plain)
             FxEvents(fillToken == _fillColor && !inert ? _fxPool : BarFxPool.Plain, cur, max);
-            var run = StripMath.ShieldRun(_shieldValue, max, out _, out _);
-            if (Mathf.Abs(run - _fxShield) > 0.0001f)
-            {
-                _fxShield = run;
-                FxSet(PShield, run);
-                if (_fxGlowMat) _fxGlowMat.SetFloat(PShield, run);
-                var on = run > 0f;
-                if (_fxGlow && _fxGlow.gameObject.activeSelf != on) _fxGlow.gameObject.SetActive(on);
-            }
         }
 
         // Living fill: live config (on / intensity per pool, shared speed) and the bar's events, written to the material
@@ -919,7 +838,7 @@ namespace RuneSkin.PlayerHud
         private void ShieldLabel()
         {
             if (!_shieldText) return;
-            var text = HudMath.ShieldText(_hpText ? _lblShield : _shieldValue, _hpText ? _lblShieldMax : 0f);
+            var text = _hpText && _lblTagged ? HudMath.ShieldText(_lblShield, _lblShieldMax) : "";
             var on = text.Length > 0;
             if (_shieldText.gameObject.activeSelf != on) _shieldText.gameObject.SetActive(on);
             var glyph = on && _shieldGlyph.sprite;

@@ -397,18 +397,6 @@ namespace RuneSkin.Tests
             Assert.Equal(0f, StripMath.RowSplit(700f, 18f, new[] { 0f, 0f, 0f }, 3, x, w));
         }
 
-        [Fact]
-        public void ShieldRunsFromTheLeftCap()
-        {
-            Assert.Equal(0f, StripMath.ShieldRun(0f, 150f, out var l0, out var r0));
-            Assert.Equal(0f, l0);
-            Assert.Equal(0.5f, StripMath.ShieldRun(75f, 150f, out var l1, out var r1), 3);
-            Assert.Equal(1f, l1);
-            Assert.Equal(0f, r1);
-            Assert.Equal(1f, StripMath.ShieldRun(300f, 150f, out _, out var r2));
-            Assert.Equal(1f, r2);
-            Assert.Equal(0f, r0);
-        }
 
         [Fact]
         public void GaugeFadesInOnChangeAndOutAfterIdle()

@@ -64,7 +64,7 @@ namespace RuneSkin.WorldHud
             public TMP_Text Name;
             public bool Managed, Picked, WasManaged;
             public EnemyHudMath.Reason Reason;
-            public float AimedAt = -1f, Alpha = 1f, Distance, ScaleK = 1f, ShieldW = -1f, StaggerW = -1f;
+            public float AimedAt = -1f, Alpha = 1f, Distance, ScaleK = 1f, ShieldW = -1f, ShieldX = -1f, StaggerW = -1f;
             public EnemyHudMath.StaggerState Stg;
             public EnemyHudMath.StaggerPhase ShownPhase = (EnemyHudMath.StaggerPhase)(-1);
             public float ShownFlash = -1f;
@@ -553,7 +553,7 @@ namespace RuneSkin.WorldHud
         }
 
         // Shield band (spec 4): ZDO mt_es / mt_es_max on the creature when published, else the owner's SE_Shield
-        // remaining absorb (SE_Shield.cs:23-57); width = shield / max HP of the window, upper share.hud.shield.band.
+        // remaining absorb (SE_Shield.cs:23-57); HudMath.ShieldSegment (after the HP fill, HP scale), upper share.hud.shield.band.
         private static void ShieldBand(State s, Character c)
         {
             if (!s.Shield) return;
@@ -562,10 +562,11 @@ namespace RuneSkin.WorldHud
             if (zdo != null && zdo.GetFloat(EsMaxHash) > 0f) shield = Mathf.Max(0f, zdo.GetFloat(EsHash));
             else if (c.m_nview && c.m_nview.IsOwner()) shield = VanillaShield(c);
             var r = s.Health.rect;
-            HudMath.ShieldBand(shield, c.GetMaxHealth(), r.width, r.height, ThemeTokens.GetFloat("share.enemy.shield.band", 0.3f),
+            HudMath.ShieldBand(c.GetHealth(), shield, c.GetMaxHealth(), r.width, r.height, ThemeTokens.GetFloat("share.enemy.shield.band", 0.3f),
                 out var x, out var y, out var w, out var h);
-            if (Mathf.Abs(w - s.ShieldW) < 0.5f) return;
+            if (Mathf.Abs(w - s.ShieldW) < 0.5f && Mathf.Abs(x - s.ShieldX) < 0.5f) return;
             s.ShieldW = w;
+            s.ShieldX = x;
             s.Shield.enabled = w >= 0.5f;
             var rect = s.Shield.rectTransform;
             rect.anchoredPosition = new Vector2(x, y);

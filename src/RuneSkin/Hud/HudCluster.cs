@@ -107,7 +107,7 @@ namespace RuneSkin.PlayerHud
             _strip = new StatusStrip(_art, _root, true, "StatusStrip");
             _buffs = new StatusStrip(_art, _root, false, "BuffStrip");
             // Bars as in mockup hud-4M3 (Codex 4x redraws, cuts strip4_*): a rounded well, a glossy neutral fill tinted per
-            // pool (own coloured fill per pool, untinted), the missing part grey (neutral fill, trough colour); HP on top with the shield perimeter; the resource row under it (stamina /
+            // pool (own coloured fill per pool, untinted), the missing part grey (neutral fill, trough colour); HP on top with the shield segment; the resource row under it (stamina /
             // eitr / adrenaline, split evenly among the present ones, RowSplit).
             var well = "sprite.hud.strip4.well";
             var fill = "sprite.hud.strip4.fill";
@@ -120,7 +120,6 @@ namespace RuneSkin.PlayerHud
             _stamina = new BarView(_art, _root, "Stamina", false, rowWell, "color.hud.strip.fill.stamina", rowScale, fillToken: fill + ".stamina", troughColorToken: trough, troughToken: fill);
             _health = new BarView(_art, _root, "Health", false, well, "color.hud.strip.fill.health", hpScale, mainValue: true, fillToken: fill + ".hp", troughColorToken: trough, troughToken: fill);
             _health.Plain = _stamina.Plain = _eitr.Plain = _adrenaline.Plain = true;
-            _health.ShieldPerimeter = true;
             // Bar fills on the RuneSkin/UI Bar shader (user call 2026-10-23): glossy cylinder, straight-cut end, grey
             // missing part, lag ghost, shield sheen + perimeter glow; the sprite fills stay as the fallback.
             // The panel art carries the troughs (mockup bottom-hud-center-v2): frameless bars on the trough rects.
@@ -443,8 +442,8 @@ namespace RuneSkin.PlayerHud
             {
                 var count = HudMath.Stripes(_pending, hp, hpB, _health.WindowLength, ThemeTokens.GetFloat("size.hud.stripe.min", 4f), BarView.MaxStripes, _stripes);
                 for (var i = 0; i < count; i++) _stripeKinds[i] = _stripes[i].Key < 0 ? (int)DotKind.Other : _stripes[i].Key;
-                // Shield = MorgottTweaks energy shield (provider pool) + vanilla staff shields (SE_Shield): the upper band
-                // of the HP window, label "HP + shield" (user calls 2026-10-22).
+                // Shield = MorgottTweaks energy shield (provider pool) + vanilla staff shields (SE_Shield): the HP-scale
+                // segment after the HP fill, label "cur/max (+shield)" (user calls 2026-10-22, 2026-11-03).
                 var shield = (esOn ? Mathf.Max(0f, es.Current) : 0f) + VanillaShield(p);
                 _health.SetShield(shield);
                 _health.HealthText(hp, hpB, false, shield, 0f);

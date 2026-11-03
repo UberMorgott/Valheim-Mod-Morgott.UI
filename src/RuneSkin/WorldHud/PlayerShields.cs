@@ -11,7 +11,8 @@ namespace RuneSkin.WorldHud
     // Other players' shields under their overhead health bar (family PlayerShields, batch P: was an AugaSkin feature).
     // Vanilla shows another player's health only on the EnemyHud player HUD (m_baseHudPlayer, ShowHud EnemyHud.cs:126-157,
     // shown in range and not crouching :101-124, health set every frame :213-224); the bar is its "Health" child. Thin
-    // rune rails go under it, each filled current / max, from the bar outwards:
+    // rune rails go under it, from the bar outwards, each filled in the HP bar's scale (current / the player's max HP,
+    // user 2026-11-03: a pool-scaled rail read as HP worth of shield):
     // - energy shield (MorgottTweaks [EnergyShield], player ZDO floats mt_es / mt_es_max, written by the owner);
     // - absorb shield (vanilla SE_Shield, e.g. Staff of Protection: its remaining absorb lives only in the owner's SEMan,
     //   so MorgottTweaks [Multiplayer] ShareShieldAbsorb publishes player ZDO mt_shield / mt_shield_max).
@@ -56,12 +57,13 @@ namespace RuneSkin.WorldHud
                 if (zdo == null) continue;
                 var rails = Huds.GetValue(hud, _ => new Rails());
                 var slot = 0;
-                if (Show(ref rails.Es, hud.m_gui.transform, EsName, "color.hud.es", zdo.GetFloat(EsKey), zdo.GetFloat(EsMaxKey), slot)) slot++;
-                Show(ref rails.Shield, hud.m_gui.transform, ShieldName, "color.hud.shield", zdo.GetFloat(ShieldKey), zdo.GetFloat(ShieldMaxKey), slot);
+                var hpMax = c.GetMaxHealth();
+                if (Show(ref rails.Es, hud.m_gui.transform, EsName, "color.hud.es", zdo.GetFloat(EsKey), zdo.GetFloat(EsMaxKey), hpMax, slot)) slot++;
+                Show(ref rails.Shield, hud.m_gui.transform, ShieldName, "color.hud.shield", zdo.GetFloat(ShieldKey), zdo.GetFloat(ShieldMaxKey), hpMax, slot);
             }
         }
 
-        private static bool Show(ref Rail rail, Transform gui, string name, string color, float value, float max, int slot)
+        private static bool Show(ref Rail rail, Transform gui, string name, string color, float value, float max, float hpMax, int slot)
         {
             if (max <= 0f)
             {
@@ -76,7 +78,7 @@ namespace RuneSkin.WorldHud
                 rail.Slot = slot;
                 Place(rail.Rect, gui, slot);
             }
-            var r = SummonMath.Ratio(value, max);
+            var r = SummonMath.Ratio(value, hpMax);
             if (rail.Ratio != r)
             {
                 rail.Ratio = r;

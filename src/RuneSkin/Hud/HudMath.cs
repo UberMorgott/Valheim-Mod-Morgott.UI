@@ -195,11 +195,15 @@ namespace RuneSkin.PlayerHud
         // centre never reads as the shield), the shield as its own number at the window's right end next to a shield
         // glyph: "cur/max" for a pool with a max (the energy shield that carries the player, shown even at 0), else the
         // amount; "" = no shield label. Values rounded up as the bar shows them.
-        public static string HpText(float cur, float max, bool tagged)
+        // 2026-11-03 (user): a shield on the HP bar reads in the centre label as "cur/max (+shield)", no label of its own
+        // (shield > 0 only; Chaos Inoculation keeps the variant C label).
+        public static string HpText(float cur, float max, bool tagged, float shield = 0f)
         {
             var c = (int)Math.Ceiling(Math.Max(0f, cur));
             var m = (int)Math.Ceiling(Math.Max(0f, max));
-            return tagged ? $"HP {c}/{m}" : $"{c}/{m}";
+            var s = shield > 0f && !float.IsInfinity(shield) ? (int)Math.Ceiling(shield) : 0;
+            var hp = tagged ? $"HP {c}/{m}" : $"{c}/{m}";
+            return s > 0 ? $"{hp} (+{s})" : hp;
         }
 
         public static string ShieldText(float shield, float poolMax)
@@ -209,22 +213,26 @@ namespace RuneSkin.PlayerHud
             return s > 0 ? s.ToString(System.Globalization.CultureInfo.InvariantCulture) : "";
         }
 
-        // Shield layer over the HP fill (user call 2026-10-22: one translucent layer ON the health bar, no rail):
-        // width = shield / max HP of the window, clamped to the window; no shield / no max = 0.
-        public static float ShieldOverlay(float shield, float maxHp, float windowPx)
+        // Shield segment in the HP bar's scale (user 2026-11-03: drawn from the left it read as a share of HP; WoW absorb
+        // style, Codex call): shield / max HP wide, right after the HP fill; when HP + shield passes the max it is pinned
+        // to the window's right end, over the top of the HP fill (shield >= max HP = the whole window). No shield / no max = 0.
+        public static void ShieldSegment(float hp, float shield, float maxHp, float windowPx, out float x, out float w)
         {
-            if (!(shield > 0f) || !(maxHp > 0f) || !(windowPx > 0f) || float.IsInfinity(shield)) return 0f;
-            return Math.Min(1f, shield / maxHp) * windowPx;
+            x = w = 0f;
+            if (!(shield > 0f) || !(maxHp > 0f) || !(windowPx > 0f) || float.IsInfinity(shield)) return;
+            var s = Math.Min(1f, shield / maxHp);
+            var h = hp > 0f ? Math.Min(1f, hp / maxHp) : 0f;
+            x = Math.Min(h, 1f - s) * windowPx;
+            w = s * windowPx;
         }
 
         // Shield band rect in window px (user call 2026-10-22 r2: the shield never hides HP): the upper `share` of the
-        // window height, ShieldOverlay wide from the window's left; the HP fill keeps the full height under it.
-        public static void ShieldBand(float shield, float maxHp, float windowW, float windowH, float share,
+        // window height over ShieldSegment.
+        public static void ShieldBand(float hp, float shield, float maxHp, float windowW, float windowH, float share,
             out float x, out float y, out float w, out float h)
         {
             share = Math.Min(1f, Math.Max(0f, share));
-            x = 0f;
-            w = ShieldOverlay(shield, maxHp, windowW);
+            ShieldSegment(hp, shield, maxHp, windowW, out x, out w);
             h = w > 0f ? Math.Max(0f, windowH) * share : 0f;
             y = Math.Max(0f, windowH) - h;
         }

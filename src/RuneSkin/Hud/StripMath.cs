@@ -233,17 +233,6 @@ namespace RuneSkin.PlayerHud
             return total;
         }
 
-        // Shield perimeter (mockup hud-4M3): the glow starts on the left end cap and runs along the top and bottom edges
-        // together; full at shield >= max (right cap lit). Returns the lit share of the straight part 0..1 and the caps.
-        public static float ShieldRun(float shield, float max, out float leftCap, out float rightCap)
-        {
-            leftCap = rightCap = 0f;
-            if (!(max > 0f) || !(shield > 0f)) return 0f;
-            var f = Math.Min(1f, shield / max);
-            leftCap = Math.Min(1f, f * 20f); // fades in over the first 5 %
-            rightCap = f >= 0.995f ? 1f : 0f;
-            return f;
-        }
 
         // Shared slot size (user call 2026-10-23): the strip hotbar cell IS an inventory grid cell. Both come from the
         // theme token size.slot (canvas units) x the skin scale (InventoryMath clamps it to 0.5..2) x the GUI canvas scale.
