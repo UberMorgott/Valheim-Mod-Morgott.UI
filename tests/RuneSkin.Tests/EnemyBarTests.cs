@@ -160,5 +160,37 @@ namespace RuneSkin.Tests
             Assert.Equal(P.Active, s.Phase);
             Assert.Equal(0.7f, s.Fill, 3);
         }
+
+        // Immunity row: Immune and Ignore count, every other modifier (VeryResistant included) and chop / pickaxe do not;
+        // bit order = DamageIconText.Types.
+        [Fact]
+        public void ImmuneMaskCountsImmuneAndIgnoreOnly()
+        {
+            var bat = new HitData.DamageModifiers
+            {
+                m_frost = HitData.DamageModifier.Immune,
+                m_poison = HitData.DamageModifier.Ignore,
+                m_fire = HitData.DamageModifier.VeryResistant,
+                m_chop = HitData.DamageModifier.Immune,
+                m_pickaxe = HitData.DamageModifier.Ignore,
+            };
+            var mask = EnemyHudMath.ImmuneMask(bat);
+            var types = RuneSkin.Screens.DamageIconText.Types;
+            Assert.Equal((1 << System.Array.IndexOf(types, "frost")) | (1 << System.Array.IndexOf(types, "poison")), mask);
+            Assert.Equal(0, EnemyHudMath.ImmuneMask(default));
+            var im = HitData.DamageModifier.Immune;
+            var all = new HitData.DamageModifiers
+            {
+                m_blunt = im,
+                m_slash = im,
+                m_pierce = im,
+                m_fire = im,
+                m_frost = im,
+                m_lightning = im,
+                m_poison = im,
+                m_spirit = im,
+            };
+            Assert.Equal((1 << RuneSkin.Screens.DamageIconText.Types.Length) - 1, EnemyHudMath.ImmuneMask(all));
+        }
     }
 }

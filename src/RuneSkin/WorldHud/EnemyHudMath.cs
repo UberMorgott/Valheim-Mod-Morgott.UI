@@ -233,5 +233,23 @@ namespace RuneSkin.WorldHud
             if (vtSprite.EndsWith("unique", StringComparison.Ordinal)) return "sprite.frame.enemy.unique";
             return "sprite.frame.enemy.normal";
         }
+
+        // Immunity row: bit i = DamageIconText.Types[i] (blunt, slash, pierce, fire, frost, lightning, poison, spirit) the
+        // creature takes nothing from (Immune / Ignore, HitData.ApplyModifier, HitData.cs:925). Chop / pickaxe are not combat.
+        public static int ImmuneMask(HitData.DamageModifiers m)
+        {
+            var mask = 0;
+            if (Immune(m.m_blunt)) mask |= 1;
+            if (Immune(m.m_slash)) mask |= 2;
+            if (Immune(m.m_pierce)) mask |= 4;
+            if (Immune(m.m_fire)) mask |= 8;
+            if (Immune(m.m_frost)) mask |= 16;
+            if (Immune(m.m_lightning)) mask |= 32;
+            if (Immune(m.m_poison)) mask |= 64;
+            if (Immune(m.m_spirit)) mask |= 128;
+            return mask;
+        }
+
+        private static bool Immune(HitData.DamageModifier m) => m == HitData.DamageModifier.Immune || m == HitData.DamageModifier.Ignore;
     }
 }

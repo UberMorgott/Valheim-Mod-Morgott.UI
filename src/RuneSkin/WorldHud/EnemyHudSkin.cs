@@ -74,6 +74,9 @@ namespace RuneSkin.WorldHud
             public int SparkFrame = -1;
             public float BossFit = 1f, LastHp = -1f, Flash;
             public int Tier;
+            public RectTransform Immune;
+            public int ImmuneMask = -1;
+            public float ImmuneAt;
         }
 
         private static readonly ConditionalWeakTable<EnemyHud.HudData, State> States = new ConditionalWeakTable<EnemyHud.HudData, State>();
@@ -162,6 +165,7 @@ namespace RuneSkin.WorldHud
                             group.interactable = false;
                             group.blocksRaycasts = false;
                         }
+                        NewImmuneRow(health, fit.Bottom);
                         ClearName(t, health, lift);
                     }
                 }
@@ -400,6 +404,7 @@ namespace RuneSkin.WorldHud
                 s.Own = Child(s.Health, FrameName);
                 s.Shield = Child(s.Health, ShieldName);
                 s.Stagger = Child(s.Health, StaggerName);
+                s.Immune = s.Health.Find(ImmuneName) as RectTransform;
             }
             if (s.Group) s.Alpha = s.Group.alpha;
             States.Add(data, s);
@@ -681,7 +686,8 @@ namespace RuneSkin.WorldHud
                     .Append(" bossFit=").Append(s.BossFit.ToString("0.000", System.Globalization.CultureInfo.InvariantCulture))
                     .Append(" bossSpan=").Append((_rootCanvas && s.Boss ? _bossSpan * s.BossFit / _rootCanvas.rect.width : -1f).ToString("0.000", System.Globalization.CultureInfo.InvariantCulture))
                     .Append(" weld=").Append((s.Flare && s.Flare.enabled ? s.Flare.rectTransform.anchorMin.x : -1f).ToString("0.000", System.Globalization.CultureInfo.InvariantCulture))
-                    .Append(" bossFrame=").Append(s.Own && s.Own.enabled ? 1 : 0);
+                    .Append(" bossFrame=").Append(s.Own && s.Own.enabled ? 1 : 0)
+                    .Append(" immune=").Append(s.Immune && s.Immune.gameObject.activeSelf ? ImmuneTypes(s.ImmuneMask) : "-");
             }
             return sb.ToString();
         }
@@ -761,6 +767,17 @@ namespace RuneSkin.WorldHud
         {
             try { EnemyHudSkin.Attach(__instance); }
             catch (Exception e) { Plugin.Log.LogError($"[RuneSkin] enemy HUD restyle failed (vanilla bars stay): {e}"); }
+        }
+
+        // Before Vaettir's OneBossBar lowers m_boss for the HUD pass (its LateUpdate prefix): the immunity row reads the real flag.
+        [HarmonyPatch(typeof(EnemyHud), "LateUpdate")]
+        [HarmonyPrefix]
+        [HarmonyPriority(Priority.First)]
+        [HarmonyBefore(ModCompat.VaettirGuid)]
+        private static void LateUpdate_Prefix(EnemyHud __instance)
+        {
+            try { EnemyHudSkin.ImmuneRows(__instance); }
+            catch (Exception e) { Plugin.Log.LogError($"[RuneSkin] enemy HUD immunity row failed: {e}"); }
         }
 
         [HarmonyPatch(typeof(EnemyHud), nameof(EnemyHud.UpdateHuds))]
