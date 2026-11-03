@@ -102,7 +102,7 @@ namespace RuneSkin.GameScreens
         private static readonly HashSet<Type> Failed = new HashSet<Type>();
         private static readonly List<StatusEffect> HudEffects = new List<StatusEffect>();
 
-        private static string Hex(string token, Color fallback) => "#" + ColorUtility.ToHtmlStringRGBA(ThemeTokens.GetColor(token, fallback));
+        internal static string Hex(string token, Color fallback) => "#" + ColorUtility.ToHtmlStringRGBA(ThemeTokens.GetColor(token, fallback));
 
         public static void Collect(Player player, List<Row> rows)
         {

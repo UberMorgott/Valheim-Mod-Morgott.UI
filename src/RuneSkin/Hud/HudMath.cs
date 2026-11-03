@@ -353,6 +353,36 @@ namespace RuneSkin.PlayerHud
             return Math.Max(2f, (float)Math.Round(h * spriteW / spriteH));
         }
 
+        // Food cell tooltip body: current / max of each pool the food gives (Food.m_health / m_stamina / m_eitr, decayed by
+        // Player.UpdateFood, Player.cs:2424-2440; max = SharedData.m_food / m_foodStamina / m_foodEitr), regen in hp per
+        // second, time left as mm:ss. Labels = vanilla $item_food_* tokens (the tooltip localizes them); colours = "#RRGGBBAA".
+        public static string FoodText(float hp, float maxHp, float sta, float maxSta, float eitr, float maxEitr, float regenPerSecond,
+            float seconds, string perSecond, string hpColor, string staColor, string eitrColor, string regenColor)
+        {
+            var sb = new System.Text.StringBuilder(192);
+            void Pool(string label, float cur, float max, string color)
+            {
+                if (max > 0f) sb.Append(label).Append(": <color=").Append(color).Append('>').Append(Math.Round(cur).ToString("0", Inv))
+                    .Append(" / ").Append(Math.Round(max).ToString("0", Inv)).Append("</color>\n");
+            }
+            Pool("$item_food_health", hp, maxHp, hpColor);
+            Pool("$item_food_stamina", sta, maxSta, staColor);
+            Pool("$item_food_eitr", eitr, maxEitr, eitrColor);
+            if (regenPerSecond > 0f)
+                sb.Append("$item_food_regen: <color=").Append(regenColor).Append('>').Append(regenPerSecond.ToString("0.##", Inv))
+                    .Append(" hp").Append(perSecond).Append("</color>\n");
+            return sb.Append("$item_food_duration: <color=").Append(regenColor).Append('>').Append(FoodClock(seconds)).Append("</color>").ToString();
+        }
+
+        private static readonly System.Globalization.CultureInfo Inv = System.Globalization.CultureInfo.InvariantCulture;
+
+        // Seconds left as mm:ss, rounded up (a food with 0.2 s left still shows 00:01); minutes are not capped at 59.
+        public static string FoodClock(float seconds)
+        {
+            var s = (int)Math.Ceiling(Math.Max(0f, seconds));
+            return (s / 60).ToString("00", Inv) + ":" + (s % 60).ToString("00", Inv);
+        }
+
         // Rim tint token for a fill colour token: color.hud.<bar> -> color.hud.edge.<bar>; anything else -> the generic one.
         public static string EdgeColorToken(string fillToken) =>
             fillToken != null && fillToken.StartsWith("color.hud.", StringComparison.Ordinal)

@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using RuneSkin.Api;
 using RuneSkin.API;
+using RuneSkin.GameScreens;
+using RuneSkin.InfoScreens;
 using RuneSkin.InventoryScreen;
 using RuneSkin.Theme;
 using UnityEngine;
@@ -444,8 +446,16 @@ namespace RuneSkin.PlayerHud
                 // Belt cell: MT's own localized tooltip (name x count, auto state, mouse help, key, auto rule).
                 var kind = input.Potion >= 0 ? BeltMath.Potion : BeltMath.Food;
                 var index = input.Potion >= 0 ? input.Potion : input.Food;
-                topic = BeltBridge.TryGet(p, kind, index, out var cell) ? cell.ItemName ?? "" : "";
+                var has = BeltBridge.TryGet(p, kind, index, out var cell);
+                topic = has ? cell.ItemName ?? "" : "";
                 text = BeltBridge.Tooltip(kind, index);
+                // a running food first (MT keeps the cell's Player.Food; vanilla CanEat allows one food per name)
+                var food = has && kind == BeltMath.Food && cell.Active ? p.GetFoods().Find(f => f.m_item?.m_shared.m_name == cell.ActiveName) : null;
+                if (food != null)
+                {
+                    topic = cell.ActiveName;
+                    text = FoodTip(food) + (text.Length > 0 ? "\n\n" + text : "");
+                }
                 tip.Set(topic, text);
                 return topic.Length > 0 || text.Length > 0;
             }
@@ -458,7 +468,11 @@ namespace RuneSkin.PlayerHud
                 else if (input.Food >= 0)
                 {
                     var foods = p.GetFoods();
-                    item = input.Food < foods.Count ? foods[input.Food].m_item : null;
+                    if (input.Food < foods.Count && foods[input.Food].m_item != null)
+                    {
+                        topic = foods[input.Food].m_item.m_shared.m_name;
+                        text = FoodTip(foods[input.Food]);
+                    }
                 }
                 else if (input.Ability >= 0 && Providers.AbilityId(input.Ability) == "guardian.power")
                 {
@@ -479,6 +493,22 @@ namespace RuneSkin.PlayerHud
             tip.Set(topic, text);
             return topic.Length > 0 || text.Length > 0;
         }
+        // A running food: current / max pools, regen per second, time left (m_time drains by Game.m_foodRate per second,
+        // Player.cs:2427), then its consume status effect (Hearthcraft infused dishes / creams) as vanilla lists one.
+        private static string FoodTip(Player.Food food)
+        {
+            var s = food.m_item.m_shared;
+            var text = HudMath.FoodText(food.m_health, s.m_food, food.m_stamina, s.m_foodStamina, food.m_eitr, s.m_foodEitr,
+                StatsMath.FoodRegenPerSecond(s.m_foodRegen), Mathf.Max(0f, food.m_time) / Mathf.Max(Game.m_foodRate, 1e-4f),
+                "$runeskin_stats_per_second",
+                ActiveEffectsPage.Hex("color.hud.edge.health", new Color(1f, 0.5f, 0.5f)),
+                ActiveEffectsPage.Hex("color.hud.edge.stamina", new Color(1f, 1f, 0.5f)),
+                ActiveEffectsPage.Hex("color.hud.edge.eitr", new Color(0.56f, 0.56f, 1f)),
+                ActiveEffectsPage.Hex("color.text.ember", new Color(1f, 0.55f, 0.2f)));
+            var se = s.m_consumeStatusEffect;
+            return se ? text + $"\n\n<color={ActiveEffectsPage.Hex("color.text.active", new Color(0.91f, 0.71f, 0.29f))}>{se.m_name}</color>\n{se.GetTooltipString()}" : text;
+        }
+
         // Reserve parts of a pool (ResourceState from the providers, MorgottTweaks auras / summons): nothing (empty text)
         // while nothing is reserved or the provider's state is stale (its Available off the game's current max).
         private static void ReserveTooltip(Player p, string pool, ref string topic, ref string text)

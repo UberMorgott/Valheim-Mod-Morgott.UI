@@ -528,4 +528,34 @@ namespace RuneSkin.Tests
         [Fact]
         public void StatusCellKeepsThemeMinimum() => Assert.Equal(60f, HudMath.StatusCell(60f, 0.6f, 20f, 10f, 3f));
     }
+
+    // HUD food cell tooltip (0.25.49): current / max per pool, regen per second, time left mm:ss.
+    public class FoodTooltipTests
+    {
+        [Fact]
+        public void LinesForAPartlyEatenFood()
+        {
+            // Cooked meat-like food: 30 hp / 10 sta max, decayed; m_foodRegen 2 per 10 s tick = 0.2 hp/s; 755.2 s left.
+            var t = HudMath.FoodText(26.6f, 30f, 8.9f, 10f, 0f, 0f, 2f / 10f, 755.2f, "/s", "#H", "#S", "#E", "#R");
+            Assert.Equal("$item_food_health: <color=#H>27 / 30</color>\n" +
+                "$item_food_stamina: <color=#S>9 / 10</color>\n" +
+                "$item_food_regen: <color=#R>0.2 hp/s</color>\n" +
+                "$item_food_duration: <color=#R>12:36</color>", t);
+        }
+
+        [Fact]
+        public void EitrShownOnlyWhenTheFoodGivesIt()
+        {
+            Assert.Contains("$item_food_eitr: <color=#E>40 / 60</color>", HudMath.FoodText(10f, 20f, 5f, 10f, 40f, 60f, 0f, 1f, "/s", "#H", "#S", "#E", "#R"));
+            Assert.DoesNotContain("$item_food_regen", HudMath.FoodText(10f, 20f, 5f, 10f, 40f, 60f, 0f, 1f, "/s", "#H", "#S", "#E", "#R"));
+        }
+
+        [Theory]
+        [InlineData(0f, "00:00")]
+        [InlineData(-3f, "00:00")]
+        [InlineData(0.2f, "00:01")]
+        [InlineData(59f, "00:59")]
+        [InlineData(3600f, "60:00")]
+        public void ClockRoundsUp(float seconds, string expected) => Assert.Equal(expected, HudMath.FoodClock(seconds));
+    }
 }
