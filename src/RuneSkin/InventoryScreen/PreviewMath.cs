@@ -71,6 +71,12 @@ namespace RuneSkin.InventoryScreen
             return ((float)d, (float)(yMin + lo * 2.0 * tan * (d - nearLo)));
         }
 
+        // Lowest height the framing measures: `BelowFeet` metres under the body model's posed sole (boot soles, a cape
+        // hem); anything lower is not the figure. No body measured (NaN) = no floor.
+        public static float Floor(float bodyLo) => float.IsNaN(bodyLo) ? float.NegativeInfinity : bodyLo - BelowFeet;
+
+        public const float BelowFeet = 0.25f;
+
         // Shortest height span FitHeight frames (no renderer bounds yet / a degenerate box).
         public const float MinSpan = 0.5f;
 

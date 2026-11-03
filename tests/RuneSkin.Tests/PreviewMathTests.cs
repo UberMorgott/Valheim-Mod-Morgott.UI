@@ -59,6 +59,14 @@ namespace RuneSkin.Tests
         }
 
         [Fact]
+        public void FloorSitsUnderTheBodySoleOrIsOpen()
+        {
+            Assert.Equal(-0.25f, PreviewMath.Floor(0f), 4);
+            Assert.True(PreviewMath.Floor(0.1f) > -30f); // a point tens of metres under the feet is dropped
+            Assert.True(float.IsNegativeInfinity(PreviewMath.Floor(float.NaN)));
+        }
+
+        [Fact]
         public void ResizeOnlyBeyondSlack()
         {
             Assert.True(PreviewMath.NeedsResize(0, 0, 100, 100));

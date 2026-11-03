@@ -95,7 +95,8 @@ namespace RuneSkin.InventoryScreen
         private readonly List<Renderer> _renderers = new List<Renderer>();
         private readonly List<Vector3> _verts = new List<Vector3>();
         // Posed height span (MeasureHeight), the equipment revision it was measured for and the bake scratch mesh.
-        private int _measuredFor = int.MinValue;
+        private int _measuredFor = int.MinValue, _settleAt;
+        private const int SettleFrames = 30;
         private float _posedLo, _posedHi, _posedNearLo, _posedNearHi;
         private readonly List<Vector3> _points = new List<Vector3>();
         // Share of the height span at each end whose points' depth counts for the perspective fit (feet, helmet).
@@ -446,6 +447,7 @@ namespace RuneSkin.InventoryScreen
             _applied = -1;
             _yMin = _yMax = _nearLo = _nearHi = float.NaN; // next build snaps its framing
             _measuredFor = int.MinValue;
+            _settleAt = 0;
             if (_bake)
             {
                 Destroy(_bake);
@@ -588,7 +590,11 @@ namespace RuneSkin.InventoryScreen
         // ExtremeBand of the span (feet / helmet): the depth they reach toward the camera at any yaw (FitHeight).
         private void MeasureHeight(out float lo, out float hi, out float nearLo, out float nearHi)
         {
-            if (_measuredFor == _applied && _clone)
+            // One re-measure SettleFrames after a refresh: items attached by it (MagicaCloth BuildAndRun is async) are not
+            // in their settled pose in the refresh frame, and that first measure was cached until the next equip change.
+            var settle = _settleAt > 0 && Time.frameCount >= _settleAt;
+            if (settle) _settleAt = 0;
+            if (_measuredFor == _applied && _clone && !settle)
             {
                 lo = _posedLo;
                 hi = _posedHi;
@@ -596,39 +602,40 @@ namespace RuneSkin.InventoryScreen
                 nearHi = _posedNearHi;
                 return;
             }
+            if (_measuredFor != _applied) _settleAt = Time.frameCount + SettleFrames;
             _measuredFor = _applied;
             lo = float.MaxValue;
             hi = float.MinValue;
             nearLo = nearHi = 0f;
             if (!_bake) _bake = new Mesh { name = "RuneSkinPreviewBake" };
             _clone.GetComponentsInChildren(false, _renderers);
+            var bodyLo = float.NaN;
+            Renderer lowest = null;
+            var lowestY = float.MaxValue;
             foreach (var r in _renderers)
             {
                 if (!r || !r.enabled) continue;
-                if (r is SkinnedMeshRenderer s)
+                var first = _points.Count;
+                Collect(r);
+                for (var i = first; i < _points.Count; i++)
                 {
-                    if (!s.sharedMesh) continue;
-                    s.BakeMesh(_bake, true); // unscaled local space: localToWorldMatrix applies the scale once
-                    _bake.GetVertices(_verts);
-                    var m = s.transform.localToWorldMatrix;
-                    foreach (var v in _verts) _points.Add(m.MultiplyPoint3x4(v) - Origin);
+                    var y = _points[i].y;
+                    if (r == _vis.m_bodyModel && !(y >= bodyLo)) bodyLo = y;
+                    if (y < lowestY) { lowestY = y; lowest = r; }
                 }
-                else if (r is MeshRenderer && r.TryGetComponent<MeshFilter>(out var mf) && mf.sharedMesh && mf.sharedMesh.isReadable)
-                {
-                    mf.sharedMesh.GetVertices(_verts);
-                    var m = r.transform.localToWorldMatrix;
-                    foreach (var v in _verts) _points.Add(m.MultiplyPoint3x4(v) - Origin);
-                }
-                else if (r is MeshRenderer)
-                {
-                    var b = r.bounds;
-                    if (b.size.sqrMagnitude <= 0f) continue;
-                    for (var c = 0; c < 8; c++)
-                        _points.Add(b.center - Origin + Vector3.Scale(b.extents, new Vector3((c & 1) == 0 ? -1 : 1, (c & 2) == 0 ? -1 : 1, (c & 4) == 0 ? -1 : 1)));
-                }
+            }
+            // Feet = the body model's posed sole: geometry further below is not the figure (user 2026-11-03, MP run:
+            // a figure ~1/25 of the alcove pinned at its top - one renderer reached tens of metres under the feet).
+            var floor = PreviewMath.Floor(bodyLo);
+            if (lowest && lowestY < floor)
+            {
+                var what = $"measure dropped {lowest.GetType().Name} '{Diagnostics.SkinDiagnostics.PathOf(lowest.transform, _clone.transform)}' {lowestY - bodyLo:0.0} m under the feet (cloth {InCloth(lowest.transform)}, frame {Time.frameCount - _settleAt + SettleFrames} after refresh)";
+                Note(what);
+                Plugin.Log.LogInfo("[RuneSkin] character preview " + what);
             }
             foreach (var p in _points)
             {
+                if (p.y < floor) continue;
                 if (p.y < lo) lo = p.y;
                 if (p.y > hi) hi = p.y;
             }
@@ -642,6 +649,7 @@ namespace RuneSkin.InventoryScreen
                 var band = (hi - lo) * ExtremeBand;
                 foreach (var p in _points)
                 {
+                    if (p.y < floor) continue;
                     if (p.y <= lo + band) nearLo = Mathf.Max(nearLo, Mathf.Sqrt(p.x * p.x + p.z * p.z));
                     if (p.y >= hi - band) nearHi = Mathf.Max(nearHi, Mathf.Sqrt(p.x * p.x + p.z * p.z));
                 }
@@ -654,6 +662,41 @@ namespace RuneSkin.InventoryScreen
             _posedHi = hi;
             _posedNearLo = nearLo;
             _posedNearHi = nearHi;
+        }
+
+        // Under a MagicaCloth2 component (no assembly reference: by namespace, as Keep does).
+        private static bool InCloth(Transform t)
+        {
+            for (; t; t = t.parent)
+                foreach (var c in t.GetComponents<MonoBehaviour>())
+                    if (c && (c.GetType().Namespace ?? "").StartsWith("MagicaCloth2", StringComparison.Ordinal)) return true;
+            return false;
+        }
+
+        // The drawn mesh points of one renderer (rig-relative) into _points.
+        private void Collect(Renderer r)
+        {
+            if (r is SkinnedMeshRenderer s)
+            {
+                if (!s.sharedMesh) return;
+                s.BakeMesh(_bake, true); // unscaled local space: localToWorldMatrix applies the scale once
+                _bake.GetVertices(_verts);
+                var m = s.transform.localToWorldMatrix;
+                foreach (var v in _verts) _points.Add(m.MultiplyPoint3x4(v) - Origin);
+            }
+            else if (r is MeshRenderer && r.TryGetComponent<MeshFilter>(out var mf) && mf.sharedMesh && mf.sharedMesh.isReadable)
+            {
+                mf.sharedMesh.GetVertices(_verts);
+                var m = r.transform.localToWorldMatrix;
+                foreach (var v in _verts) _points.Add(m.MultiplyPoint3x4(v) - Origin);
+            }
+            else if (r is MeshRenderer)
+            {
+                var b = r.bounds;
+                if (b.size.sqrMagnitude <= 0f) return;
+                for (var c = 0; c < 8; c++)
+                    _points.Add(b.center - Origin + Vector3.Scale(b.extents, new Vector3((c & 1) == 0 ? -1 : 1, (c & 2) == 0 ? -1 : 1, (c & 4) == 0 ? -1 : 1)));
+            }
         }
 
         // Time of day / weather independent: world directional lights off, rig lights on, fog off, flat ambient for this render only.
