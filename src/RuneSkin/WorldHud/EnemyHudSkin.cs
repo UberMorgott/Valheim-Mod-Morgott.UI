@@ -64,7 +64,7 @@ namespace RuneSkin.WorldHud
             public TMP_Text Name;
             public bool Managed, Picked, WasManaged;
             public EnemyHudMath.Reason Reason;
-            public float AimedAt = -1f, Alpha = 1f, Distance, ScaleK = 1f, ShieldW = -1f, ShieldX = -1f, StaggerW = -1f;
+            public float AimedAt = -1f, Alpha = 1f, Distance, ScaleK = 1f, ShieldW = -1f, StaggerW = -1f;
             public EnemyHudMath.StaggerState Stg;
             public EnemyHudMath.StaggerPhase ShownPhase = (EnemyHudMath.StaggerPhase)(-1);
             public float ShownFlash = -1f;
@@ -553,31 +553,38 @@ namespace RuneSkin.WorldHud
         }
 
         // Shield band (spec 4): ZDO mt_es / mt_es_max on the creature when published, else the owner's SE_Shield
-        // remaining absorb (SE_Shield.cs:23-57); HudMath.ShieldSegment (after the HP fill, HP scale), upper share.hud.shield.band.
+        // remaining absorb (SE_Shield.cs:23-57); current / max shield from the bar's left (own scale, user 2026-11-03), upper share.hud.shield.band.
         private static void ShieldBand(State s, Character c)
         {
             if (!s.Shield) return;
-            var shield = 0f;
+            float shield = 0f, shieldMax = 0f;
             var zdo = c.m_nview ? c.m_nview.GetZDO() : null;
-            if (zdo != null && zdo.GetFloat(EsMaxHash) > 0f) shield = Mathf.Max(0f, zdo.GetFloat(EsHash));
-            else if (c.m_nview && c.m_nview.IsOwner()) shield = VanillaShield(c);
+            if (zdo != null && zdo.GetFloat(EsMaxHash) > 0f) { shield = Mathf.Max(0f, zdo.GetFloat(EsHash)); shieldMax = zdo.GetFloat(EsMaxHash); }
+            else if (c.m_nview && c.m_nview.IsOwner()) shield = VanillaShield(c, out shieldMax);
             var r = s.Health.rect;
-            HudMath.ShieldBand(c.GetHealth(), shield, c.GetMaxHealth(), r.width, r.height, ThemeTokens.GetFloat("share.enemy.shield.band", 0.3f),
+            HudMath.ShieldBand(shield, shieldMax, r.width, r.height, ThemeTokens.GetFloat("share.enemy.shield.band", 0.3f),
                 out var x, out var y, out var w, out var h);
-            if (Mathf.Abs(w - s.ShieldW) < 0.5f && Mathf.Abs(x - s.ShieldX) < 0.5f) return;
+            if (Mathf.Abs(w - s.ShieldW) < 0.5f) return;
             s.ShieldW = w;
-            s.ShieldX = x;
             s.Shield.enabled = w >= 0.5f;
             var rect = s.Shield.rectTransform;
             rect.anchoredPosition = new Vector2(x, y);
             rect.sizeDelta = new Vector2(w, h);
         }
 
-        internal static float VanillaShield(Character c)
+        internal static float VanillaShield(Character c) => VanillaShield(c, out _);
+
+        // total = the effects' m_totalAbsorbDamage (the pool max)
+        internal static float VanillaShield(Character c, out float total)
         {
             var sum = 0f;
+            total = 0f;
             foreach (var se in c.GetSEMan().GetStatusEffects())
-                if (se is SE_Shield shield) sum += Mathf.Max(0f, shield.m_totalAbsorbDamage - shield.m_damage);
+                if (se is SE_Shield shield)
+                {
+                    sum += Mathf.Max(0f, shield.m_totalAbsorbDamage - shield.m_damage);
+                    total += Mathf.Max(0f, shield.m_totalAbsorbDamage);
+                }
             return sum;
         }
 

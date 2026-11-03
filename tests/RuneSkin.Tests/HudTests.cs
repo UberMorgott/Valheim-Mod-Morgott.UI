@@ -393,28 +393,19 @@ namespace RuneSkin.Tests
             Assert.True(s >= 42f);
         }
 
-        // Shield in the HP bar's scale (user 2026-11-03: max HP 1000, shield 30 of 60 covered half the bar): width =
-        // shield / max HP right after the HP fill; HP + shield over the max = pinned to the right end.
+        // Shield over the HP bar in its own scale (user 2026-11-03: max HP 1000, shield 30 of 60 = half the bar): from
+        // the left end, current / max shield of the window, independent of HP.
         [Theory]
-        [InlineData(500f, 30f, 1000f, 600f, 300f, 18f)]    // user's case: 3 % of the bar, after the HP fill
-        [InlineData(0f, 30f, 1000f, 600f, 0f, 18f)]        // no HP: from the left end
-        [InlineData(1000f, 30f, 1000f, 600f, 582f, 18f)]   // full HP: pinned right, over the top 3 % of HP
-        [InlineData(900f, 300f, 1000f, 600f, 420f, 180f)]  // overflow 200: ends at the right end
-        [InlineData(400f, 2000f, 1000f, 600f, 0f, 600f)]   // shield > max HP: the whole bar
-        [InlineData(1200f, 50f, 1000f, 600f, 570f, 30f)]   // HP over max (lag / rounding): clamped
-        [InlineData(500f, 0f, 1000f, 600f, 0f, 0f)]        // no shield
-        [InlineData(500f, -5f, 1000f, 600f, 0f, 0f)]       // nonsense shield
-        [InlineData(500f, float.PositiveInfinity, 1000f, 600f, 0f, 0f)]
-        [InlineData(500f, 50f, 0f, 600f, 0f, 0f)]          // no max HP
-        [InlineData(float.NaN, 50f, 1000f, 600f, 0f, 30f)] // unknown HP: from the left end
-        public void ShieldSegmentInHpScale(float hp, float shield, float max, float window, float wantX, float wantW)
-        {
-            HudMath.ShieldSegment(hp, shield, max, window, out var x, out var w);
-            Assert.Equal(wantX, x, 3);
-            Assert.Equal(wantW, w, 3);
-            Assert.True(x >= 0f && x + w <= window + 0.001f);
-        }
-
+        [InlineData(30f, 60f, 600f, 300f)]                    // user's case: half the bar
+        [InlineData(60f, 60f, 600f, 600f)]                    // full shield: the whole bar
+        [InlineData(90f, 60f, 600f, 600f)]                    // over its max (the pair arrives apart): clamped
+        [InlineData(0f, 60f, 600f, 0f)]                       // no shield
+        [InlineData(-5f, 60f, 600f, 0f)]                      // nonsense shield
+        [InlineData(float.PositiveInfinity, 60f, 600f, 0f)]
+        [InlineData(30f, 0f, 600f, 0f)]                       // no max
+        [InlineData(30f, 60f, 0f, 0f)]                        // no window
+        public void ShieldOverlayOwnScale(float shield, float max, float window, float want) =>
+            Assert.Equal(want, HudMath.ShieldOverlay(shield, max, window), 3);
         // Variant C (2026-10-26): HP value alone, "HP " while the fill is the energy shield; shield label of its own.
         [Theory]
         [InlineData(142f, 200f, false, "142/200")]
@@ -423,14 +414,16 @@ namespace RuneSkin.Tests
         public void HpTextVariantC(float cur, float max, bool tagged, string want) =>
             Assert.Equal(want, HudMath.HpText(cur, max, tagged));
 
-        // 2026-11-03: "HP / max (+shield)" in the centre label.
+        // 2026-11-03: "HP cur/max (+shield/max)" in the centre label, each pool in its own scale.
         [Theory]
-        [InlineData(500f, 1000f, 30f, "500/1000 (+30)")]
-        [InlineData(500f, 1000f, 29.2f, "500/1000 (+30)")] // rounded up as the bar shows it
-        [InlineData(500f, 1000f, 0f, "500/1000")]
-        [InlineData(500f, 1000f, float.NaN, "500/1000")]
-        public void HpTextWithShield(float cur, float max, float shield, string want) =>
-            Assert.Equal(want, HudMath.HpText(cur, max, false, shield));
+        [InlineData(500f, 1000f, 30f, 60f, "500/1000 (+30/60)")]
+        [InlineData(500f, 1000f, 29.2f, 59.1f, "500/1000 (+30/60)")] // rounded up as the bar shows them
+        [InlineData(500f, 1000f, 30f, 0f, "500/1000 (+30)")]         // unknown max: the amount alone
+        [InlineData(500f, 1000f, 70f, 60f, "500/1000 (+70/70)")]     // the pair arrives apart: max never below cur
+        [InlineData(500f, 1000f, 0f, 60f, "500/1000")]
+        [InlineData(500f, 1000f, float.NaN, 60f, "500/1000")]
+        public void HpTextWithShield(float cur, float max, float shield, float shieldMax, string want) =>
+            Assert.Equal(want, HudMath.HpText(cur, max, false, shield, shieldMax));
 
         [Theory]
         [InlineData(45f, 0f, "45")]
@@ -517,8 +510,8 @@ namespace RuneSkin.Tests
         [InlineData(50f, 100f, 400f, 42f, 2f, 200f, 42f, 0f)]             // share clamped to 1
         public void ShieldBandRect(float shield, float max, float ww, float wh, float share, float w, float h, float y)
         {
-            HudMath.ShieldBand(0f, shield, max, ww, wh, share, out var bx, out var by, out var bw, out var bh);
-            Assert.Equal(0f, bx); // no HP: the segment starts at the left end
+            HudMath.ShieldBand(shield, max, ww, wh, share, out var bx, out var by, out var bw, out var bh);
+            Assert.Equal(0f, bx);
             Assert.Equal(w, bw, 2);
             Assert.Equal(h, bh, 2);
             Assert.Equal(y, by, 2);

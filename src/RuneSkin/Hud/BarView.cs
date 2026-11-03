@@ -45,9 +45,10 @@ namespace RuneSkin.PlayerHud
         private Image _sheen;
         private static int EdgeMode => EdgeModeOverride >= 0 ? EdgeModeOverride : (int)ThemeTokens.GetFloat("mode.hud.bar.edge", 2f);
         private float _frontCore, _frontClock;
-        // Shield layer (health bar only): the shield segment (HudMath.ShieldSegment): upper band, or the top line over the sheen.
+        // Shield layer (health bar only): current / max shield of the full window from its left end (HudMath.ShieldOverlay):
+        // upper band, or the top line over the sheen.
         private Image _shield;
-        private float _shieldValue, _shownShield = -1f, _shownMaxLabel = -2f, _shownPlus = -1f;
+        private float _shieldValue, _shieldMax, _shownShield = -1f, _shownMaxLabel = -2f, _shownPlus = -1f, _shownPlusMax = -1f;
         // Wet: a few single drip clusters at irregular spots along the frame bottom (a tiled row read as a zipper).
         private static readonly float[] WetSpots = { 0.07f, 0.38f, 0.79f };
         private readonly Image[] _wet = new Image[WetSpots.Length];
@@ -519,18 +520,19 @@ namespace RuneSkin.PlayerHud
             if (_fx) FxRender(cur, shown, max, fillToken, inert);
             if (_shield)
             {
-                // Shield segment after the drawn HP fill, in the HP scale (HudMath.ShieldSegment). With the sheen: the
-                // faint sheen full height + a thin line along its top (Codex call 2026-11-03: a full-height outline on an
-                // 18 px segment reads as a marker); else the upper band. Over the shader fill too (it draws no shield).
+                // Shield over the HP fill in its own scale (user 2026-11-03: shield / max shield of the full window, from the
+                // left end, independent of HP). With the sheen: the faint sheen full height + a thin line along its top
+                // (Codex call 2026-11-03); else the upper band. Over the shader fill too (it draws no shield).
                 float sx, sy, sw, sh;
                 if (_sheen)
                 {
-                    HudMath.ShieldSegment(shown, _shieldValue, max, l, out sx, out sw);
+                    sx = 0f;
+                    sw = HudMath.ShieldOverlay(_shieldValue, _shieldMax, l);
                     PlaceAt(_sheen, sx, 0f, sw, _h, true);
                     sh = ThemeTokens.GetFloat("size.hud.shield.line", 5f);
                     sy = _h - sh;
                 }
-                else HudMath.ShieldBand(shown, _shieldValue, max, l, _h, ThemeTokens.GetFloat("share.hud.shield.band", 0.4f), out sx, out sy, out sw, out sh);
+                else HudMath.ShieldBand(_shieldValue, _shieldMax, l, _h, ThemeTokens.GetFloat("share.hud.shield.band", 0.4f), out sx, out sy, out sw, out sh);
                 var son = sw > 0.05f && sh > 0.05f;
                 if (_shield.gameObject.activeSelf != son) _shield.gameObject.SetActive(son);
                 if (son)
@@ -544,7 +546,7 @@ namespace RuneSkin.PlayerHud
             if (Plain) showAvail = false;
             var extra = showAvail ? avail : -1f;
             // Label value: the HP (HealthText for the health bar: the HP even while the fill shows the energy shield),
-            // else this bar's own cur / max, "cur/max (+shield)" with a shield on the HP (2026-11-03); the energy shield
+            // else this bar's own cur / max, "cur/max (+shield/max)" with a shield on the HP (2026-11-03); the energy shield
             // carrying the player (tagged) keeps its own label (ShieldLabel, variant C).
             var lc = _main && _hpText ? _lblHp : cur;
             var lm = _main && _hpText ? _lblHpMax : max;
@@ -552,10 +554,11 @@ namespace RuneSkin.PlayerHud
             var tagShown = _main && _hpText && _lblTagged ? 1f : 0f;
             var maxShown = _main ? Mathf.Ceil(lm) : -1f;
             var plus = _main && tagShown <= 0f ? Mathf.Ceil(_hpText ? _lblShield : _shieldValue) : 0f;
-            if (Mathf.CeilToInt(lc) != Mathf.CeilToInt(_shownCur) || Mathf.CeilToInt(extra) != Mathf.CeilToInt(_shownExtra) || _shownCur < 0f || tagShown != _shownShield || maxShown != _shownMaxLabel || plus != _shownPlus)
+            var plusMax = plus > 0f ? Mathf.Ceil(_hpText ? _lblShieldMax : _shieldMax) : 0f;
+            if (Mathf.CeilToInt(lc) != Mathf.CeilToInt(_shownCur) || Mathf.CeilToInt(extra) != Mathf.CeilToInt(_shownExtra) || _shownCur < 0f || tagShown != _shownShield || maxShown != _shownMaxLabel || plus != _shownPlus || plusMax != _shownPlusMax)
             {
                 // Health: the HP value alone, centred ("HP cur/max" while the fill is the energy shield).
-                if (_main) _number.text = HudMath.HpText(lc, lm, tagShown > 0f, plus);
+                if (_main) _number.text = HudMath.HpText(lc, lm, tagShown > 0f, plus, plusMax);
                 else if (showAvail) _number.SetText("{0}/{1}", Mathf.Ceil(lc), Mathf.Ceil(avail));
                 else _number.SetText("{0}", Mathf.Ceil(lc));
                 FitValue();
@@ -563,6 +566,7 @@ namespace RuneSkin.PlayerHud
                 _shownShield = tagShown;
                 _shownMaxLabel = maxShown;
                 _shownPlus = plus;
+                _shownPlusMax = plusMax;
             }
             else if (_fitPending) FitValue();
             _shownCur = lc;
@@ -812,8 +816,12 @@ namespace RuneSkin.PlayerHud
         // The HUD was hidden (dead, menu, cutscene) or the player changed: forget the last samples, so the values seen on
         // return are no hit / heal.
         public void FxResync() => _fxEvents.Resync();
-        // Shield amount drawn over the health fill on the next Render (0 = none).
-        public void SetShield(float amount) => _shieldValue = Mathf.Max(0f, amount);
+        // Shield drawn over the health fill on the next Render: amount and its own pool max (0 = none).
+        public void SetShield(float amount, float max = 0f)
+        {
+            _shieldValue = Mathf.Max(0f, amount);
+            _shieldMax = Mathf.Max(0f, max);
+        }
         // ---- health labels (variant C) -----------------------------------------------------------------------------
         private TMP_Text _shieldText;
         private Image _shieldGlyph;

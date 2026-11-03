@@ -396,12 +396,20 @@ namespace RuneSkin.PlayerHud
             }
         }
 
-        // Remaining absorb of every vanilla shield effect (SE_Shield: m_totalAbsorbDamage - m_damage, SE_Shield.cs:23-57).
-        public static float VanillaShield(Player p)
+        // Remaining absorb of every vanilla shield effect (SE_Shield: m_totalAbsorbDamage - m_damage, SE_Shield.cs:23-57);
+        // total = their m_totalAbsorbDamage (the pool max).
+        public static float VanillaShield(Player p) => VanillaShield(p, out _);
+
+        public static float VanillaShield(Player p, out float total)
         {
             var sum = 0f;
+            total = 0f;
             foreach (var se in p.GetSEMan().GetStatusEffects())
-                if (se is SE_Shield s) sum += Mathf.Max(0f, s.m_totalAbsorbDamage - s.m_damage);
+                if (se is SE_Shield s)
+                {
+                    sum += Mathf.Max(0f, s.m_totalAbsorbDamage - s.m_damage);
+                    total += Mathf.Max(0f, s.m_totalAbsorbDamage);
+                }
             return sum;
         }
 
@@ -442,11 +450,12 @@ namespace RuneSkin.PlayerHud
             {
                 var count = HudMath.Stripes(_pending, hp, hpB, _health.WindowLength, ThemeTokens.GetFloat("size.hud.stripe.min", 4f), BarView.MaxStripes, _stripes);
                 for (var i = 0; i < count; i++) _stripeKinds[i] = _stripes[i].Key < 0 ? (int)DotKind.Other : _stripes[i].Key;
-                // Shield = MorgottTweaks energy shield (provider pool) + vanilla staff shields (SE_Shield): the HP-scale
-                // segment after the HP fill, label "cur/max (+shield)" (user calls 2026-10-22, 2026-11-03).
-                var shield = (esOn ? Mathf.Max(0f, es.Current) : 0f) + VanillaShield(p);
-                _health.SetShield(shield);
-                _health.HealthText(hp, hpB, false, shield, 0f);
+                // Shield = MorgottTweaks energy shield (provider pool) + vanilla staff shields (SE_Shield): over the HP fill in
+                // its own scale (current / max shield), label "cur/max (+shield/max)" (user calls 2026-10-22, 2026-11-03).
+                var shield = (esOn ? Mathf.Max(0f, es.Current) : 0f) + VanillaShield(p, out var vanillaMax);
+                var shieldMax = (esOn ? es.Max : 0f) + vanillaMax;
+                _health.SetShield(shield, shieldMax);
+                _health.HealthText(hp, hpB, false, shield, shieldMax);
                 _health.Render(hp, hpB, hpC, _stripes, count, _stripeKinds, null, overlaySprite, overlayColor, false, dt, false);
             }
 
