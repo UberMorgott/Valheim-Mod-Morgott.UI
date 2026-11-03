@@ -67,7 +67,6 @@ namespace Morgott.UI.InventoryScreen
         // leaves the set; the panels return when none is left.
         public static void Tick()
         {
-            WatchAlmanac();
             if (Open.Count > 0)
             {
                 var n = Open.Count;
@@ -178,28 +177,6 @@ namespace Morgott.UI.InventoryScreen
         public static int CoverCount => CoverWindows.Count;
         public static Transform CoverWindow(int i) => i >= 0 && i < CoverWindows.Count ? CoverWindows[i] : null;
         public static Rect CoverRect(int i) => i >= 0 && i < CoverRects.Count ? CoverRects[i] : default;
-
-        // Almanac (another mod: its window replaces the trophies panel under hudroot's parent, HUD/Almanac) is a full window
-        // too: found by its root name (no dependency), entered while it shows, left when it hides.
-        private static Transform _almanac;
-        private static float _nextAlmanacLookup;
-
-        private static void WatchAlmanac()
-        {
-            if (!_almanac)
-            {
-                if (Time.unscaledTime < _nextAlmanacLookup) return;
-                _nextAlmanacLookup = Time.unscaledTime + 2f;
-                var gui = InventoryGui.instance;
-                var hud = gui && gui.transform.parent ? gui.transform.parent.Find("HUD") : null;
-                _almanac = hud ? hud.Find(Morgott.UI.Compat.ModCompat.AlmanacRoot) : null;
-                if (!_almanac) return;
-            }
-            var shown = _almanac.gameObject.activeInHierarchy;
-            var listed = Open.Contains(_almanac);
-            if (shown && !listed) Enter(_almanac);
-            else if (!shown && listed) Exit(_almanac);
-        }
 
         public static void ExitAll()
         {

@@ -26,10 +26,6 @@ namespace Morgott.UI.Compat
         public const string VneiBaseUi = "VNEI.UI.BaseUI";
         public const string VneiPanel = "VNEI(Clone)";
 
-        // ---- Almanac (RustyMods, our fork): window restyled in place
-        public const string AlmanacGuid = "RustyMods.Almanac";
-        public const string AlmanacPanelType = "Almanac.UI.AlmanacPanel";
-        public const string AlmanacRoot = "Almanac";
 
         // ---- Epic Loot (RandyKnapp)
         public const string EpicLootGuid = "randyknapp.mods.epicloot";

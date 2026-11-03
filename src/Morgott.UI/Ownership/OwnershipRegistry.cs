@@ -10,7 +10,7 @@ namespace Morgott.UI.Ownership
     public static class OwnershipRegistry
     {
         public const string Menu = "Menu", Tooltips = "Tooltips", Hud = "Hud", Inventory = "Inventory", Crafting = "Crafting";
-        public const string Skills = "Skills", Trophies = "Trophies", Almanac = "Almanac", Minimap = "Minimap", EnemyHud = "EnemyHud";
+        public const string Skills = "Skills", Trophies = "Trophies", Minimap = "Minimap", EnemyHud = "EnemyHud";
         public const string MessageHud = "MessageHud", DamageText = "DamageText", MainMenu = "MainMenu", Settings = "Settings";
         public const string Connection = "Connection", BuildHud = "BuildHud", Crosshair = "Crosshair", ActionHud = "ActionHud";
         public const string ShipHud = "ShipHud", KeyHints = "KeyHints", LoadScreen = "LoadScreen", Chat = "Chat", Popups = "Popups";
@@ -20,6 +20,9 @@ namespace Morgott.UI.Ownership
         public const string ModHud = "ModHud", InventoryExtras = "InventoryExtras", Radial = "Radial", MenuCompendium = "MenuCompendium";
         public const string SummonFrames = "SummonFrames", PlayerShields = "PlayerShields", Cursor = "Cursor", CharacterStats = "CharacterStats";
 
+        // Every family of this build in config order (set by Freeze; the autotest driver reads it by name).
+        public static string[] Known = new string[0];
+
         private static readonly HashSet<string> Owned = new HashSet<string>();
         public static bool Frozen { get; private set; }
 
@@ -27,6 +30,7 @@ namespace Morgott.UI.Ownership
         {
             if (Frozen) return;
             Frozen = true;
+            Known = new List<string>(requested.Keys).ToArray();
             foreach (var pair in requested)
             {
                 var family = pair.Key;

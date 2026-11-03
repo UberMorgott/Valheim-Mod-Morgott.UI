@@ -1,4 +1,4 @@
-# RuneSkin
+# Morgott.UI (was RuneSkin)
 
 Valheim workspace rules: E:\DEV\Valheim\CLAUDE.md, shared memory C:\Users\Morgott\.claude\projects\E--DEV-Valheim\memory\MEMORY.md, in-game testing E:\DEV\Valheim\GAME-AUTOMATION.md. Plan/backlog: TASKS.md. `art/` and `unity/` are the art pipeline (separate owner).
 

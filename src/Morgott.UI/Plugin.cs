@@ -67,7 +67,6 @@ namespace Morgott.UI
             ("Crafting", "styles and lays out the crafting column (station header, tabs, recipe list, detail, requirements). Needs Inventory."),
             ("Skills", "styles and lays out the skills dialog (needs Inventory)."),
             ("Trophies", "styles and lays out the trophies panel (needs Inventory)."),
-            ("Almanac", "restyles the Almanac mod's window (its layout and content stay Almanac's)."),
             ("Minimap", "draws the small minimap as a round rune ring (compass runes, wind, day phase, biome plaque) and restyles the large map screen."),
             ("EnemyHud", "restyles enemy health bars, star levels and the boss bar (Vaettir rarity frames keep their tiers)."),
             ("MessageHud", "restyles centre messages, top-left notifications, unlock messages and the biome-discovered banner."),
@@ -227,7 +226,6 @@ namespace Morgott.UI
             _harmony = new Harmony(Contracts.UiGuid);
             // M7: precise mod panels + the fallback restyler for every UI no family owns, Jotunn windows, IMGUI fonts
             // (their own runtime hooks), set up before the class patches that read their state.
-            ModScreens.AlmanacAdapter.Harmony = _harmony;
             Screens.TooltipAdapter.Harmony = _harmony;
             ModScreens.ElDialogs.Harmony = _harmony;
             Compat.FadePark.Harmony = _harmony;
@@ -295,13 +293,13 @@ namespace Morgott.UI
 
     // Order of RuneSkin's own postfixes that share one game method (HarmonyX: higher priority first, ties by
     // registration). Priority.Last = 0; the old sequential PatchAll(Type) order, kept: InventoryGui.Awake / Update
-    // inventory -> crafting -> skills -> trophies -> Almanac -> game screens -> extras; Hud.Awake HUD cluster ->
+    // inventory -> crafting -> skills -> trophies -> game screens -> extras; Hud.Awake HUD cluster ->
     // play HUD (WorldHud.PlayHudAdapter, Priority.Last) -> game screens -> extras; FejdStartup.Start main menu -> mod lines.
     internal static class PatchOrder
     {
         public const int Hud = Priority.Last + 1;
         public const int HudGameScreens = Priority.Last - 1, HudExtras = Priority.Last - 2;
-        public const int Crafting = Priority.Last - 1, Skills = Priority.Last - 2, Trophies = Priority.Last - 3, Almanac = Priority.Last - 4,
+        public const int Crafting = Priority.Last - 1, Skills = Priority.Last - 2, Trophies = Priority.Last - 3,
             InventoryGameScreens = Priority.Last - 5, InventoryExtras = Priority.Last - 6, CharacterStats = Priority.Last - 7;
         public const int MainMenuMods = Priority.Last - 1;
     }
