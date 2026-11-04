@@ -220,7 +220,10 @@ namespace Morgott.UI.ItemBrowser
         public static bool CanTake =>
             Cheat != null && Cheat.Value && Player.m_localPlayer &&
             // devcommands as vanilla reads it (Terminal.IsCheatsEnabled: m_cheat only counts on the server / single player).
-            (Console.instance && Console.instance.IsCheatsEnabled() || Jotunn.Managers.SynchronizationManager.Instance.PlayerIsAdmin ||
+            // Jotunn's PlayerIsAdmin is true for the local server too (single player / host): admin counts on a remote
+            // server only, else plain single player could take (47i item-coverage-take-gate, 2026-11-04).
+            (Console.instance && Console.instance.IsCheatsEnabled() ||
+             ZNet.instance && !ZNet.instance.IsServer() && Jotunn.Managers.SynchronizationManager.Instance.PlayerIsAdmin ||
              ZoneSystem.instance && (ZoneSystem.instance.GetGlobalKey(GlobalKeys.NoBuildCost) || ZoneSystem.instance.GetGlobalKey(GlobalKeys.NoCraftCost)));
 
         /// <returns>null when taken, else why not. The gate is checked here, not only in the UI (design 7).</returns>
