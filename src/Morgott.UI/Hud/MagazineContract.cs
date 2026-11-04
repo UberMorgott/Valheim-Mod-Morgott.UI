@@ -4,7 +4,7 @@ using System.Reflection;
 namespace Morgott.UI.PlayerHud
 {
     // The crossbow magazine read contract (side-session note crossbow-magazine-ui-contract.md), the managed part
-    // (unit-tested): MorgottTweaks' public static class MorgottTweaks.CrossbowMagazine bound to typed delegates, exact
+    // (unit-tested): MorgottTweaks' public static class Morgott.Power.CrossbowMagazine bound to typed delegates, exact
     // signatures only - int Capacity(ItemData), int Loaded(ItemData), int Revision(). A member that is missing or has
     // another signature stays null (Complete false = no magazine readout; Revision null = re-read on the timers only).
     public sealed class MagazineBinding<TItem>
@@ -18,7 +18,7 @@ namespace Morgott.UI.PlayerHud
 
     public static class MagazineContract
     {
-        public const string TypeName = "MorgottTweaks.CrossbowMagazine";
+        public const string TypeName = "Morgott.Power.CrossbowMagazine";
 
         public static MagazineBinding<TItem> Bind<TItem>(Type type)
         {

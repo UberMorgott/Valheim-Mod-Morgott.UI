@@ -41,15 +41,15 @@ namespace Morgott.UI.InfoScreens
             _elTotal = Make<Func<Player, string, float, ItemDrop.ItemData, float>>("EpicLoot.PlayerExtensions", "GetTotalActiveMagicEffectValue");
             ElResistance = Make<Action<Character, HitData>>("EpicLoot.MagicItemEffects.ModifyResistance", "ModifyIncoming");
             ElNight = Make<Action<Character, HitData>>("EpicLoot.MagicItemEffects.Shards.DamageReductionAtNight", "ModifyIncoming");
-            FoodSlots = Make<Func<Player, int>>("MorgottTweaks.FoodSlots", "Max");
-            PotionSlots = Make<Func<Player, int>>("MorgottTweaks.PotionSlotCount", "Max");
-            PotionsActive = Make<Func<Player, int>>("MorgottTweaks.PotionSlotCount", "Active");
-            var enabled = Morgott.Core.TypeLookup.ByFullName("MorgottTweaks.PotionSlotCount")?.GetProperty("Enabled", BindingFlags.Public | BindingFlags.Static)?.GetGetMethod();
+            FoodSlots = Make<Func<Player, int>>("Morgott.Power.FoodSlots", "Max");
+            PotionSlots = Make<Func<Player, int>>("Morgott.Power.PotionSlotCount", "Max");
+            PotionsActive = Make<Func<Player, int>>("Morgott.Power.PotionSlotCount", "Active");
+            var enabled = Morgott.Core.TypeLookup.ByFullName("Morgott.Power.PotionSlotCount")?.GetProperty("Enabled", BindingFlags.Public | BindingFlags.Static)?.GetGetMethod();
             PotionSlotsEnabled = enabled != null ? (Func<bool>)Delegate.CreateDelegate(typeof(Func<bool>), enabled, false) : null;
-            EnergyShield = Make<EnergyShieldGet>("MorgottTweaks.EnergyShieldInfo", "TryGet");
-            EnergyShieldParts = Make<Func<Player, int, string[], float[], int>>("MorgottTweaks.EnergyShieldInfo", "Parts");
-            ArmorResistance = Make<ArmorResistanceStep>("MorgottTweaks.ArmorResistance", "ApplyResistance");
-            ResourceAffixes = _elTotal != null && Morgott.Core.TypeLookup.ByFullName("MorgottTweaks.ResourceAffixesModule") != null;
+            EnergyShield = Make<EnergyShieldGet>("Morgott.Power.EnergyShieldInfo", "TryGet");
+            EnergyShieldParts = Make<Func<Player, int, string[], float[], int>>("Morgott.Power.EnergyShieldInfo", "Parts");
+            ArmorResistance = Make<ArmorResistanceStep>("Morgott.Power.ArmorResistance", "ApplyResistance");
+            ResourceAffixes = _elTotal != null && Morgott.Core.TypeLookup.ByFullName("Morgott.Power.ResourceAffixesModule") != null;
             Plugin.Log.LogInfo($"[Morgott.UI] stats sources: EpicLoot={EpicLoot} resist={ElResistance != null} night={ElNight != null} " +
                                $"foodSlots={FoodSlots != null} potionSlots={PotionSlots != null} potionsActive={PotionsActive != null} " +
                                $"energyShield={EnergyShield != null} esParts={EnergyShieldParts != null} armorCurve={ArmorResistance != null}");

@@ -4,7 +4,7 @@ using HarmonyLib;
 namespace Morgott.UI.PlayerHud
 {
     // Crossbow magazine data from MorgottTweaks (soft, no assembly reference): its public read API
-    // MorgottTweaks.CrossbowMagazine (Capacity(ItemData) / Loaded(ItemData): 0 = not a magazine crossbow; Revision():
+    // Morgott.Power.CrossbowMagazine (Capacity(ItemData) / Loaded(ItemData): 0 = not a magazine crossbow; Revision():
     // bumped on every loaded-count or MagazineSize change), bound once to typed delegates like StatsSources. Contract:
     // side-session note crossbow-magazine-ui-contract.md. Without MorgottTweaks (or with its magazine off) no item is a
     // magazine: no dots, no plate readout.
@@ -81,7 +81,7 @@ namespace Morgott.UI.PlayerHud
             var type = Morgott.Core.TypeLookup.ByFullName(MagazineContract.TypeName);
             if (type == null)
             {
-                Plugin.Log.LogInfo("[Morgott.UI] crossbow magazine source: MorgottTweaks.CrossbowMagazine absent (no magazine readout)");
+                Plugin.Log.LogInfo("[Morgott.UI] crossbow magazine source: Morgott.Power.CrossbowMagazine absent (no magazine readout)");
                 return;
             }
             var c = MagazineContract.Bind<ItemDrop.ItemData>(type);

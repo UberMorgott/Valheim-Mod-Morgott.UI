@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace Morgott.UI.PlayerHud
 {
-    // One belt cell as RuneSkin reads it: field-for-field copy of MorgottTweaks.BeltSlotState (docs\belt-api.md section
+    // One belt cell as RuneSkin reads it: field-for-field copy of Morgott.Power.BeltSlotState (docs\belt-api.md section
     // 2), so no assembly reference. Item is READ ONLY and valid this frame only.
     public struct BeltCell
     {
@@ -32,7 +32,7 @@ namespace Morgott.UI.PlayerHud
         public string HotkeyLabel;
     }
 
-    // Soft binding to MorgottTweaks.Belt (Belt API v1, MorgottTweaks docs\belt-api.md): bound once to compiled
+    // Soft binding to Morgott.Power.Belt (Belt API v1, MorgottTweaks docs\belt-api.md): bound once to compiled
     // delegates (no per-frame reflection, no allocation per read), every call main thread / local player. MT owns every
     // rule and all state; RuneSkin only reads cells and forwards presses (HandleClick and the gamepad commands).
     // Missing MT / older MT without Belt / another major ApiVersion = not Bound; the strip then keeps its old sources.
@@ -99,7 +99,7 @@ namespace Morgott.UI.PlayerHud
         {
             if (_tried) return;
             _tried = true;
-            var belt = Morgott.Core.TypeLookup.ByFullName("MorgottTweaks.Belt");
+            var belt = Morgott.Core.TypeLookup.ByFullName("Morgott.Power.Belt");
             if (belt == null) return;
             try
             {
@@ -110,8 +110,8 @@ namespace Morgott.UI.PlayerHud
                     Plugin.Log.LogWarning($"[Morgott.UI] MorgottTweaks Belt API {version} != {BeltMath.SupportedApi}: belt row off.");
                     return;
                 }
-                var kindType = Morgott.Core.TypeLookup.ByFullName("MorgottTweaks.BeltKind");
-                var stateType = Morgott.Core.TypeLookup.ByFullName("MorgottTweaks.BeltSlotState");
+                var kindType = Morgott.Core.TypeLookup.ByFullName("Morgott.Power.BeltKind");
+                var stateType = Morgott.Core.TypeLookup.ByFullName("Morgott.Power.BeltSlotState");
                 if (kindType == null || stateType == null) return;
                 _enabled = Getter<bool>(belt, "Enabled");
                 _version = Getter<int>(belt, "Version");

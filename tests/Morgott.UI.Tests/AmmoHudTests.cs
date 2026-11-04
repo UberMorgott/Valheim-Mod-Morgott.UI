@@ -182,7 +182,7 @@ namespace Morgott.UI.Tests
             Assert.Equal(3, c.Loaded("xbow"));
             Assert.Equal(0, c.Capacity("bow"));
             Assert.Equal(42, c.Revision());
-            Assert.Equal("MorgottTweaks.CrossbowMagazine", MagazineContract.TypeName);
+            Assert.Equal("Morgott.Power.CrossbowMagazine", MagazineContract.TypeName);
         }
 
         [Fact]
