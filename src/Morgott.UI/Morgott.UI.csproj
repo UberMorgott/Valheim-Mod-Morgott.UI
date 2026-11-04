@@ -19,6 +19,20 @@
 <ItemGroup>
     <EmbeddedResource Include="Theme\default-theme.json" LogicalName="Morgott.UI.default-theme.json" />
     <EmbeddedResource Include="Translations\*.json" LogicalName="Morgott.UI.Translations.%(Filename).json" />
+    <!-- Icons for other mods' icon-less statuses, loaded by Icons\ModStatusIcons. -->
+    <EmbeddedResource Include="Assets\StatusIcons.png" LogicalName="Morgott.UI.StatusIcons.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Restyled item icons (Icons\IconRestyle): BC7 pages + manifest ship as files in <plugin>\icons\ (too big to embed);
+         the lossless ItemIcons_NN.png masters stay in the repo for the next additive pack (MorgottTweaks tools\iconstyle). -->
+    <None Include="Assets\ItemIcons\ItemIcons.json;Assets\ItemIcons\*.bc7.gz" Link="icons\%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Morgott.DevTools.IconCapture reads Icons.IconRestyle.Originals (dev tool, never in the pack). -->
+    <InternalsVisibleTo Include="Morgott.DevTools.IconCapture" />
   </ItemGroup>
 
   <ItemGroup>

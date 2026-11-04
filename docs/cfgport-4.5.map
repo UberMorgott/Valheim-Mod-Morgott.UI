@@ -1,0 +1,4 @@
+# TASKS 4.5: MorgottTweaks icon/UI glue -> Morgott.UI (same sections and keys). Run: cfgport -dir <config dir> docs\cfgport-4.5.map
+morgott.valheim.tweaks.cfg|IconRestyle|Enabled -> morgott.valheim.ui.cfg|IconRestyle|Enabled
+morgott.valheim.tweaks.cfg|Compat|ModStatusIcons -> morgott.valheim.ui.cfg|Compat|ModStatusIcons
+morgott.valheim.tweaks.cfg|Compat|CurrencyPocketTooltip -> morgott.valheim.ui.cfg|Compat|CurrencyPocketTooltip

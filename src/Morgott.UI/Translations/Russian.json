@@ -243,5 +243,7 @@
   "ib_itemtype_fish": "Рыба",
   "ib_itemtype_twohandedweaponleft": "Двуручное оружие",
   "ib_itemtype_ammononequipable": "Боеприпасы",
-  "ib_itemtype_trinket": "Безделушка"
+  "ib_itemtype_trinket": "Безделушка",
+  "ui_cp_coin_drop": "Сюда монеты",
+  "ui_cp_coin_drop_desc": "Нажмите, чтобы убрать монеты в кошель"
 }

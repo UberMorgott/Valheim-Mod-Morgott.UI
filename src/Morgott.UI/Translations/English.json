@@ -243,5 +243,7 @@
   "ib_itemtype_fish": "Fish",
   "ib_itemtype_twohandedweaponleft": "Two-handed weapon",
   "ib_itemtype_ammononequipable": "Ammo",
-  "ib_itemtype_trinket": "Trinket"
+  "ib_itemtype_trinket": "Trinket",
+  "ui_cp_coin_drop": "Coin Drop",
+  "ui_cp_coin_drop_desc": "Click here to store coins in your pocket."
 }

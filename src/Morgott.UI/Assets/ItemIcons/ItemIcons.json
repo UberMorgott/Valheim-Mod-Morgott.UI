@@ -1,0 +1,6703 @@
+{
+ "format": "mt-item-icons",
+ "version": 2,
+ "cell": 128,
+ "gutter": 8,
+ "cols": 14,
+ "mips": 4,
+ "encoding": "bc7",
+ "compression": "gzip",
+ "pages": [
+  {
+   "png": "ItemIcons_00.png",
+   "file": "ItemIcons_00.bc7.gz",
+   "group": "vanilla",
+   "width": 2016,
+   "height": 2016,
+   "bytes": 5397840,
+   "sha256": "b06fb3191e57765fdc743e8ab121a0565369cd71c7dc23d503702e38957be298"
+  },
+  {
+   "png": "ItemIcons_01.png",
+   "file": "ItemIcons_01.bc7.gz",
+   "group": "morgott.valheim.hearthcraft",
+   "width": 2016,
+   "height": 2016,
+   "bytes": 5397840,
+   "sha256": "3c5c6abe0d4660cc323f86e4d7492d543f9ab5d7cfbfc99cab90df33b66376fb"
+  },
+  {
+   "png": "ItemIcons_02.png",
+   "file": "ItemIcons_02.bc7.gz",
+   "group": "morgott.valheim.tweaks",
+   "width": 2016,
+   "height": 576,
+   "bytes": 1542240,
+   "sha256": "d00e272b90edc734d7096d205a635bb127b3fd7efff5d3846eb7e5047bcc2ac7"
+  },
+  {
+   "png": "ItemIcons_03.png",
+   "file": "ItemIcons_03.bc7.gz",
+   "group": "morgott.valheim.tweaks",
+   "width": 2016,
+   "height": 160,
+   "bytes": 428400,
+   "sha256": "eb269326872604c48b88ec825748c1d005cc2fee7b4fa68e1ba6cebe242893fa"
+  },
+  {
+   "png": "ItemIcons_04.png",
+   "file": "ItemIcons_04.bc7.gz",
+   "group": "vanilla",
+   "width": 2016,
+   "height": 2016,
+   "bytes": 5397840,
+   "sha256": "e327462068a810b10c76837504bfafe8d353f712e2019d581b101e0887229178"
+  },
+  {
+   "png": "ItemIcons_05.png",
+   "file": "ItemIcons_05.bc7.gz",
+   "group": "vanilla",
+   "width": 2016,
+   "height": 2016,
+   "bytes": 5397840,
+   "sha256": "e1885e6347122e6004ebddc790851d0c7b2e6630f1cf5e10fa4573c5d0878586"
+  },
+  {
+   "png": "ItemIcons_06.png",
+   "file": "ItemIcons_06.bc7.gz",
+   "group": "vanilla",
+   "width": 2016,
+   "height": 2016,
+   "bytes": 5397840,
+   "sha256": "5b0343722fe2f11a5510f880e692b183936a95ca4288c6c566033c7695eb41e5"
+  },
+  {
+   "png": "ItemIcons_07.png",
+   "file": "ItemIcons_07.bc7.gz",
+   "group": "vanilla",
+   "width": 2016,
+   "height": 1600,
+   "bytes": 4284000,
+   "sha256": "458f10f589753902930c23de9c8d4bdfc657961f00339d6781ed9161dac9873d"
+  },
+  {
+   "png": "ItemIcons_08.png",
+   "file": "ItemIcons_08.bc7.gz",
+   "group": "morgott.valheim.hearthcraft",
+   "width": 2016,
+   "height": 160,
+   "bytes": 428400,
+   "sha256": "0337c182e4c8ea037dfb94b949f72c4a23bd4975cfd98814969dba52aa000e4a"
+  },
+  {
+   "png": "ItemIcons_09.png",
+   "file": "ItemIcons_09.bc7.gz",
+   "group": "Therzie.Wizardry",
+   "width": 2016,
+   "height": 1440,
+   "bytes": 3855600,
+   "sha256": "fa19cb220b99d423d9afd35aaaaadd5e7627fa6b7d8849175401cbabe0f898c5"
+  },
+  {
+   "png": "ItemIcons_10.png",
+   "file": "ItemIcons_10.bc7.gz",
+   "group": "ReepusDeepusDelmeepus4902761.ChaosArmor",
+   "width": 2016,
+   "height": 288,
+   "bytes": 771120,
+   "sha256": "0ecabe44dce4e0dbbb5de97abe8a7aa72c363519105bd1b18635c08a2e1ea701"
+  },
+  {
+   "png": "ItemIcons_11.png",
+   "file": "ItemIcons_11.bc7.gz",
+   "group": "Therzie.Armory",
+   "width": 2016,
+   "height": 1152,
+   "bytes": 3084480,
+   "sha256": "88a458b2a493147b3e3e99dec7f314cd2aa6a02d529974acb295eb1abfd05c1b"
+  },
+  {
+   "png": "ItemIcons_12.png",
+   "file": "ItemIcons_12.bc7.gz",
+   "group": "Therzie.Warfare",
+   "width": 2016,
+   "height": 1728,
+   "bytes": 4626720,
+   "sha256": "eea1fe223272c916e09a485bab6ded2490688c77910fd178d1f1c601562f3e14"
+  },
+  {
+   "png": "ItemIcons_13.png",
+   "file": "ItemIcons_13.bc7.gz",
+   "group": "misc",
+   "width": 2016,
+   "height": 160,
+   "bytes": 428400,
+   "sha256": "dae9cde69fd4fd78ff57c19b364f9c068c299e42d575dd4f83f0c20df42aa9c3"
+  }
+ ],
+ "items": {
+  "100_Legendary_ShardStone": [
+   2,
+   0
+  ],
+  "101_Legendary_ShardStone": [
+   2,
+   1
+  ],
+  "102_Legendary_ShardStone": [
+   2,
+   2
+  ],
+  "103_Legendary_ShardStone": [
+   2,
+   3
+  ],
+  "104_Legendary_ShardStone": [
+   2,
+   4
+  ],
+  "105_Legendary_ShardStone": [
+   2,
+   5
+  ],
+  "106_Legendary_ShardStone": [
+   2,
+   6
+  ],
+  "107_Legendary_ShardStone": [
+   2,
+   7
+  ],
+  "108_Legendary_ShardStone": [
+   2,
+   8
+  ],
+  "109_Legendary_ShardStone": [
+   2,
+   9
+  ],
+  "110_Legendary_ShardStone": [
+   2,
+   10
+  ],
+  "111_Legendary_ShardStone": [
+   2,
+   11
+  ],
+  "112_Legendary_ShardStone": [
+   2,
+   12
+  ],
+  "113_Legendary_ShardStone": [
+   2,
+   13
+  ],
+  "114_Legendary_ShardStone": [
+   2,
+   14
+  ],
+  "115_Legendary_ShardStone": [
+   2,
+   15
+  ],
+  "116_Legendary_ShardStone": [
+   2,
+   16
+  ],
+  "117_Legendary_ShardStone": [
+   2,
+   17
+  ],
+  "118_Legendary_ShardStone": [
+   2,
+   18
+  ],
+  "119_Legendary_ShardStone": [
+   2,
+   19
+  ],
+  "120_Legendary_ShardStone": [
+   2,
+   20
+  ],
+  "121_Legendary_ShardStone": [
+   2,
+   21
+  ],
+  "122_Legendary_ShardStone": [
+   2,
+   22
+  ],
+  "123_Legendary_ShardStone": [
+   2,
+   23
+  ],
+  "124_Legendary_ShardStone": [
+   2,
+   24
+  ],
+  "125_Legendary_ShardStone": [
+   2,
+   25
+  ],
+  "126_Legendary_ShardStone": [
+   2,
+   26
+  ],
+  "130_Mythic_ShardStone": [
+   2,
+   27
+  ],
+  "131_Mythic_ShardStone": [
+   2,
+   28
+  ],
+  "132_Mythic_ShardStone": [
+   2,
+   29
+  ],
+  "133_Mythic_ShardStone": [
+   2,
+   30
+  ],
+  "134_Mythic_ShardStone": [
+   2,
+   31
+  ],
+  "135_Mythic_ShardStone": [
+   2,
+   32
+  ],
+  "136_Mythic_ShardStone": [
+   2,
+   33
+  ],
+  "137_Legendary_ShardStone": [
+   3,
+   0
+  ],
+  "138_Legendary_ShardStone": [
+   13,
+   12
+  ],
+  "72_Legendary_ShardStone": [
+   2,
+   34
+  ],
+  "73_Legendary_ShardStone": [
+   2,
+   35
+  ],
+  "74_Legendary_ShardStone": [
+   2,
+   36
+  ],
+  "75_Legendary_ShardStone": [
+   2,
+   37
+  ],
+  "76_Legendary_ShardStone": [
+   2,
+   38
+  ],
+  "77_Mythic_ShardStone": [
+   2,
+   39
+  ],
+  "78_Mythic_ShardStone": [
+   2,
+   40
+  ],
+  "79_Mythic_ShardStone": [
+   2,
+   41
+  ],
+  "80_Legendary_ShardStone": [
+   2,
+   42
+  ],
+  "81_Legendary_ShardStone": [
+   2,
+   43
+  ],
+  "82_Legendary_ShardStone": [
+   2,
+   44
+  ],
+  "83_Legendary_ShardStone": [
+   2,
+   45
+  ],
+  "84_Legendary_ShardStone": [
+   2,
+   46
+  ],
+  "85_Legendary_ShardStone": [
+   2,
+   47
+  ],
+  "86_Legendary_ShardStone": [
+   2,
+   48
+  ],
+  "87_Legendary_ShardStone": [
+   2,
+   49
+  ],
+  "88_Legendary_ShardStone": [
+   2,
+   50
+  ],
+  "Acorn": [
+   0,
+   13
+  ],
+  "Amber": [
+   0,
+   14
+  ],
+  "AmberPearl": [
+   0,
+   15
+  ],
+  "Amethyst_TW": [
+   12,
+   0
+  ],
+  "AncientArtifact_TW": [
+   12,
+   1
+  ],
+  "AncientCoin": [
+   0,
+   16
+  ],
+  "AncientGemstoneBlack": [
+   0,
+   17
+  ],
+  "AncientGemstoneGreen": [
+   0,
+   18
+  ],
+  "AncientGemstoneOrange": [
+   0,
+   19
+  ],
+  "AncientGemstonePurple": [
+   0,
+   20
+  ],
+  "AncientScroll_TW": [
+   12,
+   2
+  ],
+  "AncientSeed": [
+   0,
+   21
+  ],
+  "ArcaneScroll_BlackForest_TW": [
+   9,
+   5
+  ],
+  "ArcaneScroll_DamageBuff_TW": [
+   9,
+   6
+  ],
+  "ArcaneScroll_JumpBuff_TW": [
+   9,
+   7
+  ],
+  "ArcaneScroll_Mistlands_TW": [
+   9,
+   8
+  ],
+  "ArcaneScroll_Mountain_TW": [
+   9,
+   9
+  ],
+  "ArcaneScroll_Plains_TW": [
+   9,
+   10
+  ],
+  "ArcaneScroll_SlowfallBuff_TW": [
+   9,
+   11
+  ],
+  "ArcaneScroll_SpeedBuff_TW": [
+   9,
+   12
+  ],
+  "ArcaneScroll_Swamp_TW": [
+   9,
+   13
+  ],
+  "ArmorAshlandsMediumChest": [
+   5,
+   95
+  ],
+  "ArmorAshlandsMediumlegs": [
+   5,
+   96
+  ],
+  "ArmorBerserkerChest": [
+   7,
+   63
+  ],
+  "ArmorBerserkerLegs": [
+   5,
+   97
+  ],
+  "ArmorBerserkerUndeadChest": [
+   7,
+   64
+  ],
+  "ArmorBerserkerUndeadLegs": [
+   5,
+   98
+  ],
+  "ArmorBoldCarapaceChest_TW": [
+   11,
+   0
+  ],
+  "ArmorBoldCarapaceLegs_TW": [
+   11,
+   1
+  ],
+  "ArmorBoldChest_TW": [
+   11,
+   2
+  ],
+  "ArmorBoldFlametalChest_TW": [
+   11,
+   3
+  ],
+  "ArmorBoldFlametalLegs_TW": [
+   11,
+   4
+  ],
+  "ArmorBoldLegs_TW": [
+   11,
+   5
+  ],
+  "ArmorBronzeChest": [
+   0,
+   0
+  ],
+  "ArmorBronzeLegs": [
+   5,
+   99
+  ],
+  "ArmorCarapaceChest": [
+   5,
+   100
+  ],
+  "ArmorCarapaceLegs": [
+   5,
+   101
+  ],
+  "ArmorDeepNorthHeavyChest": [
+   5,
+   102
+  ],
+  "ArmorDeepNorthHeavylegs": [
+   5,
+   103
+  ],
+  "ArmorDeepNorthMageChest": [
+   5,
+   104
+  ],
+  "ArmorDeepNorthMagelegs": [
+   5,
+   105
+  ],
+  "ArmorDeepNorthMediumChest": [
+   5,
+   106
+  ],
+  "ArmorDeepNorthMediumlegs": [
+   5,
+   107
+  ],
+  "ArmorDress1": [
+   5,
+   108
+  ],
+  "ArmorDress10": [
+   5,
+   109
+  ],
+  "ArmorDress2": [
+   5,
+   110
+  ],
+  "ArmorDress3": [
+   5,
+   111
+  ],
+  "ArmorDress4": [
+   5,
+   112
+  ],
+  "ArmorDress5": [
+   5,
+   113
+  ],
+  "ArmorDress6": [
+   5,
+   114
+  ],
+  "ArmorDress7": [
+   5,
+   115
+  ],
+  "ArmorDress8": [
+   5,
+   116
+  ],
+  "ArmorDress9": [
+   5,
+   117
+  ],
+  "ArmorFenringChest": [
+   5,
+   118
+  ],
+  "ArmorFenringLegs": [
+   5,
+   119
+  ],
+  "ArmorFenrirBMChest_TW": [
+   11,
+   6
+  ],
+  "ArmorFenrirBMLegs_TW": [
+   11,
+   7
+  ],
+  "ArmorFenrirCarapaceChest_TW": [
+   11,
+   8
+  ],
+  "ArmorFenrirCarapaceLegs_TW": [
+   11,
+   9
+  ],
+  "ArmorFenrirChest_TW": [
+   11,
+   10
+  ],
+  "ArmorFenrirLegs_TW": [
+   11,
+   11
+  ],
+  "ArmorFlametalChest": [
+   5,
+   120
+  ],
+  "ArmorFlametalLegs": [
+   5,
+   121
+  ],
+  "ArmorGoldHeavyChestUncooked": [
+   0,
+   22
+  ],
+  "ArmorGoldHeavyHelmetUncooked": [
+   0,
+   23
+  ],
+  "ArmorGoldHeavyLegsUncooked": [
+   0,
+   24
+  ],
+  "ArmorGoldMageChestUncooked": [
+   0,
+   25
+  ],
+  "ArmorGoldMageHelmetUncooked": [
+   0,
+   26
+  ],
+  "ArmorGoldMageLegsUncooked": [
+   0,
+   27
+  ],
+  "ArmorGoldMediumChestUncooked": [
+   0,
+   28
+  ],
+  "ArmorGoldMediumHelmetUncooked": [
+   0,
+   29
+  ],
+  "ArmorGoldMediumLegsUncooked": [
+   0,
+   30
+  ],
+  "ArmorHarvester1": [
+   5,
+   122
+  ],
+  "ArmorHarvester2": [
+   5,
+   123
+  ],
+  "ArmorHunterChestBM_TW": [
+   11,
+   12
+  ],
+  "ArmorHunterChestCarapace_TW": [
+   11,
+   13
+  ],
+  "ArmorHunterChestIron_TW": [
+   11,
+   14
+  ],
+  "ArmorHunterChestSilver_TW": [
+   11,
+   15
+  ],
+  "ArmorHunterChest_TW": [
+   11,
+   16
+  ],
+  "ArmorHunterLegsBM_TW": [
+   11,
+   17
+  ],
+  "ArmorHunterLegsCarapace_TW": [
+   11,
+   18
+  ],
+  "ArmorHunterLegsIron_TW": [
+   11,
+   19
+  ],
+  "ArmorHunterLegsSilver_TW": [
+   11,
+   20
+  ],
+  "ArmorHunterLegs_TW": [
+   11,
+   21
+  ],
+  "ArmorIronChest": [
+   5,
+   124
+  ],
+  "ArmorIronLegs": [
+   5,
+   125
+  ],
+  "ArmorLeatherChest": [
+   5,
+   126
+  ],
+  "ArmorLeatherChest_TW": [
+   11,
+   22
+  ],
+  "ArmorLeatherLegs": [
+   5,
+   127
+  ],
+  "ArmorLeatherLegs_TW": [
+   11,
+   23
+  ],
+  "ArmorLegionChest_TW": [
+   11,
+   24
+  ],
+  "ArmorLegionFlametalChest_TW": [
+   11,
+   25
+  ],
+  "ArmorLegionFlametalLegs_TW": [
+   11,
+   26
+  ],
+  "ArmorLegionLegs_TW": [
+   11,
+   27
+  ],
+  "ArmorLoxChest": [
+   5,
+   128
+  ],
+  "ArmorLoxLegs": [
+   5,
+   129
+  ],
+  "ArmorMageChest": [
+   5,
+   130
+  ],
+  "ArmorMageChest_Ashlands": [
+   5,
+   131
+  ],
+  "ArmorMageLegs": [
+   5,
+   132
+  ],
+  "ArmorMageLegs_Ashlands": [
+   5,
+   133
+  ],
+  "ArmorPaddedCuirass": [
+   5,
+   134
+  ],
+  "ArmorPaddedGreaves": [
+   5,
+   135
+  ],
+  "ArmorRagsChest": [
+   5,
+   136
+  ],
+  "ArmorRagsLegs": [
+   5,
+   137
+  ],
+  "ArmorRazorbackChest_TW": [
+   11,
+   28
+  ],
+  "ArmorRazorbackLegs_TW": [
+   11,
+   29
+  ],
+  "ArmorRogueBMChest_TW": [
+   11,
+   30
+  ],
+  "ArmorRogueBMLegs_TW": [
+   11,
+   31
+  ],
+  "ArmorRogueCarapaceChest_TW": [
+   11,
+   32
+  ],
+  "ArmorRogueCarapaceLegs_TW": [
+   11,
+   33
+  ],
+  "ArmorRogueChest_TW": [
+   11,
+   34
+  ],
+  "ArmorRogueIronChest_TW": [
+   11,
+   35
+  ],
+  "ArmorRogueIronLegs_TW": [
+   11,
+   36
+  ],
+  "ArmorRogueLegs_TW": [
+   11,
+   37
+  ],
+  "ArmorRogueSilverChest_TW": [
+   11,
+   38
+  ],
+  "ArmorRogueSilverLegs_TW": [
+   11,
+   39
+  ],
+  "ArmorRootChest": [
+   5,
+   138
+  ],
+  "ArmorRootLegs": [
+   5,
+   139
+  ],
+  "ArmorSpellSlingerChest_BlackForest_TW": [
+   9,
+   131
+  ],
+  "ArmorSpellSlingerChest_Mistlands_TW": [
+   9,
+   132
+  ],
+  "ArmorSpellSlingerChest_Mountain_TW": [
+   9,
+   133
+  ],
+  "ArmorSpellSlingerChest_Plains_TW": [
+   9,
+   134
+  ],
+  "ArmorSpellSlingerChest_Swamp_TW": [
+   9,
+   135
+  ],
+  "ArmorSpellslingerLegs_BlackForest_TW": [
+   9,
+   14
+  ],
+  "ArmorSpellslingerLegs_Mistlands_TW": [
+   9,
+   15
+  ],
+  "ArmorSpellslingerLegs_Mountain_TW": [
+   9,
+   16
+  ],
+  "ArmorSpellslingerLegs_Plains_TW": [
+   9,
+   17
+  ],
+  "ArmorSpellslingerLegs_Swamp_TW": [
+   9,
+   18
+  ],
+  "ArmorTrollLeatherChest": [
+   5,
+   140
+  ],
+  "ArmorTrollLeatherLegs": [
+   5,
+   141
+  ],
+  "ArmorTunic1": [
+   5,
+   142
+  ],
+  "ArmorTunic10": [
+   5,
+   143
+  ],
+  "ArmorTunic2": [
+   5,
+   144
+  ],
+  "ArmorTunic3": [
+   5,
+   145
+  ],
+  "ArmorTunic4": [
+   5,
+   146
+  ],
+  "ArmorTunic5": [
+   5,
+   147
+  ],
+  "ArmorTunic6": [
+   5,
+   148
+  ],
+  "ArmorTunic7": [
+   5,
+   149
+  ],
+  "ArmorTunic8": [
+   5,
+   150
+  ],
+  "ArmorTunic9": [
+   5,
+   151
+  ],
+  "ArmorVidarBMChest_TW": [
+   11,
+   40
+  ],
+  "ArmorVidarBMLegs_TW": [
+   11,
+   41
+  ],
+  "ArmorVidarCarapaceChest_TW": [
+   11,
+   42
+  ],
+  "ArmorVidarCarapaceLegs_TW": [
+   11,
+   43
+  ],
+  "ArmorVidarChest_TW": [
+   11,
+   44
+  ],
+  "ArmorVidarFlametalChest_TW": [
+   11,
+   45
+  ],
+  "ArmorVidarFlametalLegs_TW": [
+   11,
+   46
+  ],
+  "ArmorVidarLegs_TW": [
+   11,
+   47
+  ],
+  "ArmorVigorousBMChest_TW": [
+   11,
+   48
+  ],
+  "ArmorVigorousBMLegs_TW": [
+   11,
+   49
+  ],
+  "ArmorVigorousCarapaceChest_TW": [
+   11,
+   50
+  ],
+  "ArmorVigorousCarapaceLegs_TW": [
+   11,
+   51
+  ],
+  "ArmorVigorousChest_TW": [
+   11,
+   52
+  ],
+  "ArmorVigorousIronChest_TW": [
+   11,
+   53
+  ],
+  "ArmorVigorousIronLegs_TW": [
+   11,
+   54
+  ],
+  "ArmorVigorousLegs_TW": [
+   11,
+   55
+  ],
+  "ArmorVigorousSilverChest_TW": [
+   11,
+   56
+  ],
+  "ArmorVigorousSilverLegs_TW": [
+   11,
+   57
+  ],
+  "ArmorWarriorBMChest_TW": [
+   11,
+   58
+  ],
+  "ArmorWarriorBMLegs_TW": [
+   11,
+   59
+  ],
+  "ArmorWarriorCarapaceChest_TW": [
+   11,
+   60
+  ],
+  "ArmorWarriorCarapaceLegs_TW": [
+   11,
+   61
+  ],
+  "ArmorWarriorChest_TW": [
+   11,
+   62
+  ],
+  "ArmorWarriorFlametalChest_TW": [
+   11,
+   63
+  ],
+  "ArmorWarriorFlametalLegs_TW": [
+   11,
+   64
+  ],
+  "ArmorWarriorLegs_TW": [
+   11,
+   65
+  ],
+  "ArmorWarriorSilverChest_TW": [
+   11,
+   66
+  ],
+  "ArmorWarriorSilverLegs_TW": [
+   11,
+   67
+  ],
+  "ArmorWolfChest": [
+   5,
+   152
+  ],
+  "ArmorWolfLegs": [
+   5,
+   153
+  ],
+  "ArrowBloodGold": [
+   5,
+   154
+  ],
+  "ArrowBone_TW": [
+   12,
+   3
+  ],
+  "ArrowBronze": [
+   5,
+   155
+  ],
+  "ArrowCarapace": [
+   5,
+   156
+  ],
+  "ArrowCharred": [
+   5,
+   157
+  ],
+  "ArrowExplosiveLightning_TW": [
+   12,
+   4
+  ],
+  "ArrowExplosivePoison_TW": [
+   12,
+   5
+  ],
+  "ArrowFire": [
+   5,
+   158
+  ],
+  "ArrowFlint": [
+   5,
+   159
+  ],
+  "ArrowFrost": [
+   5,
+   160
+  ],
+  "ArrowIron": [
+   5,
+   161
+  ],
+  "ArrowNeedle": [
+   5,
+   162
+  ],
+  "ArrowObsidian": [
+   5,
+   163
+  ],
+  "ArrowPickaxe_TW": [
+   12,
+   6
+  ],
+  "ArrowPoison": [
+   5,
+   164
+  ],
+  "ArrowSilver": [
+   5,
+   165
+  ],
+  "ArrowWood": [
+   5,
+   166
+  ],
+  "AskBladder": [
+   0,
+   31
+  ],
+  "AskHide": [
+   0,
+   32
+  ],
+  "AsksvinCarrionNeck": [
+   0,
+   33
+  ],
+  "AsksvinCarrionPelvic": [
+   0,
+   34
+  ],
+  "AsksvinCarrionRibcage": [
+   0,
+   35
+  ],
+  "AsksvinCarrionSkull": [
+   0,
+   36
+  ],
+  "AsksvinEgg": [
+   0,
+   37
+  ],
+  "AsksvinMeat": [
+   0,
+   38
+  ],
+  "AtgeirBlackmetal": [
+   5,
+   167
+  ],
+  "AtgeirBronze": [
+   5,
+   168
+  ],
+  "AtgeirFlint_TW": [
+   12,
+   7
+  ],
+  "AtgeirGold": [
+   5,
+   169
+  ],
+  "AtgeirGoldUncooked": [
+   7,
+   65
+  ],
+  "AtgeirGold_BloodLightning": [
+   5,
+   170
+  ],
+  "AtgeirGold_FrostFire": [
+   5,
+   171
+  ],
+  "AtgeirHimminAfl": [
+   5,
+   172
+  ],
+  "AtgeirIron": [
+   5,
+   173
+  ],
+  "AtgeirSilver_TW": [
+   12,
+   8
+  ],
+  "AtgeirWood": [
+   5,
+   174
+  ],
+  "AxeBerzerkr": [
+   5,
+   175
+  ],
+  "AxeBerzerkrBlood": [
+   5,
+   176
+  ],
+  "AxeBerzerkrLightning": [
+   5,
+   177
+  ],
+  "AxeBerzerkrNature": [
+   5,
+   178
+  ],
+  "AxeBlackMetal": [
+   5,
+   179
+  ],
+  "AxeBronze": [
+   5,
+   180
+  ],
+  "AxeDvergr_TW": [
+   12,
+   9
+  ],
+  "AxeEarly": [
+   5,
+   181
+  ],
+  "AxeFlametal_TW": [
+   12,
+   10
+  ],
+  "AxeFlint": [
+   5,
+   182
+  ],
+  "AxeGold": [
+   5,
+   183
+  ],
+  "AxeGoldUncooked": [
+   7,
+   66
+  ],
+  "AxeGold_BloodLightning": [
+   5,
+   184
+  ],
+  "AxeGold_FrostFire": [
+   5,
+   185
+  ],
+  "AxeHead1": [
+   0,
+   39
+  ],
+  "AxeHead2": [
+   0,
+   40
+  ],
+  "AxeIron": [
+   5,
+   186
+  ],
+  "AxeJotunBane": [
+   5,
+   187
+  ],
+  "AxeSilver_TW": [
+   12,
+   11
+  ],
+  "AxeStone": [
+   5,
+   188
+  ],
+  "AxeWood": [
+   5,
+   189
+  ],
+  "BOM_BonemassKey": [
+   13,
+   0
+  ],
+  "BOM_CrystalKey": [
+   13,
+   1
+  ],
+  "BOM_EikthyrKey": [
+   13,
+   2
+  ],
+  "BOM_LavaKey": [
+   13,
+   3
+  ],
+  "BackpackBlackForest": [
+   13,
+   8
+  ],
+  "BackpackMeadows": [
+   13,
+   4
+  ],
+  "BackpackMistlands": [
+   13,
+   5
+  ],
+  "BackpackMountains": [
+   13,
+   9
+  ],
+  "BackpackPlains": [
+   13,
+   6
+  ],
+  "BackpackSwamp": [
+   13,
+   7
+  ],
+  "BakedPoteitr": [
+   0,
+   41
+  ],
+  "BakedPoteitrUncooked": [
+   0,
+   42
+  ],
+  "BarberKit": [
+   0,
+   43
+  ],
+  "BarkaBranch": [
+   0,
+   44
+  ],
+  "Barley": [
+   0,
+   45
+  ],
+  "BarleyFlour": [
+   0,
+   46
+  ],
+  "BarleyWine": [
+   0,
+   47
+  ],
+  "BarleyWineBase": [
+   0,
+   48
+  ],
+  "BarrelRings": [
+   0,
+   49
+  ],
+  "BastardBlackmetal_TW": [
+   12,
+   12
+  ],
+  "BastardBone_TW": [
+   12,
+   13
+  ],
+  "BastardChitin_TW": [
+   12,
+   14
+  ],
+  "BastardDvergr_TW": [
+   12,
+   15
+  ],
+  "BastardFlametal_TW": [
+   12,
+   16
+  ],
+  "BastardFlint_TW": [
+   12,
+   17
+  ],
+  "BastardSilver_TW": [
+   12,
+   18
+  ],
+  "Battleaxe": [
+   5,
+   190
+  ],
+  "BattleaxeBlackmetal": [
+   5,
+   191
+  ],
+  "BattleaxeBlackmetal_TW": [
+   12,
+   19
+  ],
+  "BattleaxeBronze_TW": [
+   12,
+   20
+  ],
+  "BattleaxeCrystal": [
+   5,
+   192
+  ],
+  "BattleaxeCrystalAmethyst_TW": [
+   12,
+   21
+  ],
+  "BattleaxeCrystalEmerald_TW": [
+   12,
+   22
+  ],
+  "BattleaxeCrystal_TW": [
+   12,
+   23
+  ],
+  "BattleaxeDvergr_TW": [
+   12,
+   24
+  ],
+  "BattleaxeFlametal_TW": [
+   12,
+   25
+  ],
+  "BattleaxeFlint_TW": [
+   12,
+   26
+  ],
+  "BattleaxeGold": [
+   5,
+   193
+  ],
+  "BattleaxeGoldUncooked": [
+   7,
+   67
+  ],
+  "BattleaxeGold_BloodLightning": [
+   5,
+   194
+  ],
+  "BattleaxeGold_FrostFire": [
+   5,
+   195
+  ],
+  "BattleaxeIron_TW": [
+   12,
+   27
+  ],
+  "BattleaxeSilver_TW": [
+   12,
+   28
+  ],
+  "BattleaxeSkullSplittur": [
+   6,
+   0
+  ],
+  "BattleaxeWood": [
+   6,
+   1
+  ],
+  "BattlehammerBlackmetal_TW": [
+   12,
+   29
+  ],
+  "BattlehammerDvergr_TW": [
+   12,
+   30
+  ],
+  "BattlehammerElder_TW": [
+   12,
+   31
+  ],
+  "BattlehammerIron_TW": [
+   12,
+   32
+  ],
+  "BattlehammerSilver_TW": [
+   12,
+   33
+  ],
+  "BattlehammerTrollbone_TW": [
+   12,
+   34
+  ],
+  "BeechSeeds": [
+   0,
+   50
+  ],
+  "Bell": [
+   0,
+   51
+  ],
+  "BellFragment": [
+   0,
+   52
+  ],
+  "BeltStrength": [
+   6,
+   2
+  ],
+  "BeltYmir_TW": [
+   11,
+   68
+  ],
+  "BerryCakePlains_TW": [
+   9,
+   19
+  ],
+  "BerryCandyBlackForest_TW": [
+   9,
+   20
+  ],
+  "Bilebag": [
+   0,
+   53
+  ],
+  "BirchSeeds": [
+   0,
+   54
+  ],
+  "BjornHide": [
+   0,
+   55
+  ],
+  "BjornMeat": [
+   0,
+   56
+  ],
+  "BjornPaw": [
+   0,
+   57
+  ],
+  "BlackCore": [
+   0,
+   58
+  ],
+  "BlackMarble": [
+   0,
+   59
+  ],
+  "BlackMetal": [
+   0,
+   60
+  ],
+  "BlackMetalScrap": [
+   0,
+   61
+  ],
+  "BlackSoup": [
+   0,
+   62
+  ],
+  "Blackwood": [
+   0,
+   63
+  ],
+  "BladeYagluth_TW": [
+   12,
+   35
+  ],
+  "BlobVial": [
+   0,
+   64
+  ],
+  "BloodGoldKey": [
+   0,
+   65
+  ],
+  "BloodPudding": [
+   0,
+   66
+  ],
+  "Bloodbag": [
+   0,
+   67
+  ],
+  "Blueberries": [
+   0,
+   68
+  ],
+  "BoarJerky": [
+   0,
+   69
+  ],
+  "BoltAntler_TW": [
+   12,
+   36
+  ],
+  "BoltBlackmetal": [
+   6,
+   3
+  ],
+  "BoltBloodGold": [
+   6,
+   4
+  ],
+  "BoltBlunt_TW": [
+   12,
+   37
+  ],
+  "BoltBone": [
+   6,
+   5
+  ],
+  "BoltBronze_TW": [
+   12,
+   38
+  ],
+  "BoltCarapace": [
+   6,
+   6
+  ],
+  "BoltCharred": [
+   6,
+   7
+  ],
+  "BoltExplosiveLightning_TW": [
+   12,
+   39
+  ],
+  "BoltExplosivePoison_TW": [
+   12,
+   40
+  ],
+  "BoltFire_TW": [
+   12,
+   41
+  ],
+  "BoltFrost_TW": [
+   12,
+   42
+  ],
+  "BoltIron": [
+   6,
+   8
+  ],
+  "BoltPickaxe_TW": [
+   12,
+   43
+  ],
+  "BoltPoison_TW": [
+   12,
+   44
+  ],
+  "BoltSilver_TW": [
+   12,
+   45
+  ],
+  "BoltWood_TW": [
+   12,
+   46
+  ],
+  "BombBile": [
+   6,
+   9
+  ],
+  "BombBlob_Frost": [
+   6,
+   10
+  ],
+  "BombBlob_Lava": [
+   6,
+   11
+  ],
+  "BombBlob_Morkhalla": [
+   6,
+   12
+  ],
+  "BombBlob_Poison": [
+   6,
+   13
+  ],
+  "BombBlob_PoisonElite": [
+   6,
+   14
+  ],
+  "BombBlob_Tar": [
+   6,
+   15
+  ],
+  "BombDynamite": [
+   6,
+   16
+  ],
+  "BombLava": [
+   6,
+   17
+  ],
+  "BombOoze": [
+   6,
+   18
+  ],
+  "BombSiege": [
+   0,
+   70
+  ],
+  "BombSmoke": [
+   6,
+   19
+  ],
+  "BombSpirit_TW": [
+   12,
+   47
+  ],
+  "BoneFragments": [
+   0,
+   71
+  ],
+  "BoneMawSerpentMeat": [
+   0,
+   72
+  ],
+  "BonemawSerpentScale": [
+   0,
+   73
+  ],
+  "BonemawSerpentTooth": [
+   0,
+   74
+  ],
+  "Bow": [
+   6,
+   20
+  ],
+  "BowAshlands": [
+   6,
+   21
+  ],
+  "BowAshlandsBlood": [
+   6,
+   22
+  ],
+  "BowAshlandsRoot": [
+   6,
+   23
+  ],
+  "BowAshlandsStorm": [
+   6,
+   24
+  ],
+  "BowBlackmetal_TW": [
+   12,
+   48
+  ],
+  "BowDraugrFang": [
+   6,
+   25
+  ],
+  "BowFineWood": [
+   6,
+   26
+  ],
+  "BowGold": [
+   6,
+   27
+  ],
+  "BowGoldUncooked": [
+   7,
+   68
+  ],
+  "BowGold_BloodLightning": [
+   6,
+   28
+  ],
+  "BowGold_FrostFire": [
+   6,
+   29
+  ],
+  "BowHuntsman": [
+   6,
+   30
+  ],
+  "BowSpineSnap": [
+   6,
+   31
+  ],
+  "BowTrollBone_TW": [
+   12,
+   49
+  ],
+  "Bread": [
+   0,
+   1
+  ],
+  "BreadDough": [
+   0,
+   75
+  ],
+  "Bronze": [
+   0,
+   76
+  ],
+  "BronzeNails": [
+   0,
+   77
+  ],
+  "BronzeScrap": [
+   0,
+   78
+  ],
+  "BugMeat": [
+   0,
+   79
+  ],
+  "CandleWick": [
+   0,
+   80
+  ],
+  "CapeAsh": [
+   6,
+   32
+  ],
+  "CapeAsksvin": [
+   6,
+   33
+  ],
+  "CapeDeepNorth": [
+   6,
+   34
+  ],
+  "CapeDeepNorthMage": [
+   6,
+   35
+  ],
+  "CapeDeerHide": [
+   6,
+   36
+  ],
+  "CapeFeather": [
+   6,
+   37
+  ],
+  "CapeIronBackpack": [
+   13,
+   10
+  ],
+  "CapeLinen": [
+   6,
+   38
+  ],
+  "CapeLox": [
+   6,
+   39
+  ],
+  "CapeOdin": [
+   6,
+   40
+  ],
+  "CapeRotten_TW": [
+   12,
+   50
+  ],
+  "CapeSilverBackpack": [
+   13,
+   11
+  ],
+  "CapeSpellslinger_Blackforest_TW": [
+   9,
+   21
+  ],
+  "CapeSpellslinger_Mistlands_TW": [
+   9,
+   22
+  ],
+  "CapeSpellslinger_Mountain_TW": [
+   9,
+   23
+  ],
+  "CapeSpellslinger_Plains_TW": [
+   9,
+   24
+  ],
+  "CapeSpellslinger_Swamp_TW": [
+   9,
+   25
+  ],
+  "CapeTest": [
+   6,
+   41
+  ],
+  "CapeTrollBlack_TW": [
+   11,
+   69
+  ],
+  "CapeTrollHide": [
+   6,
+   42
+  ],
+  "CapeWolf": [
+   6,
+   43
+  ],
+  "Carapace": [
+   0,
+   81
+  ],
+  "Carrot": [
+   0,
+   82
+  ],
+  "CarrotSeeds": [
+   0,
+   83
+  ],
+  "CarrotSoup": [
+   0,
+   2
+  ],
+  "Catapult_Ammo_BloodGold": [
+   0,
+   84
+  ],
+  "Catapult_ammo": [
+   0,
+   85
+  ],
+  "CelestialFeather": [
+   0,
+   86
+  ],
+  "CeramicPlate": [
+   0,
+   87
+  ],
+  "Chain": [
+   0,
+   88
+  ],
+  "ChaosPlateArmorBody": [
+   10,
+   0
+  ],
+  "ChaosPlateHelm": [
+   10,
+   1
+  ],
+  "ChaosPlateHelmAlt": [
+   10,
+   2
+  ],
+  "ChaosPlateHelmAltT2": [
+   10,
+   3
+  ],
+  "ChaosPlateHelmAltTzeentch": [
+   10,
+   4
+  ],
+  "ChaosPlateLegs": [
+   10,
+   5
+  ],
+  "CharcoalResin": [
+   0,
+   89
+  ],
+  "CharredBone": [
+   0,
+   90
+  ],
+  "CharredCogwheel": [
+   0,
+   91
+  ],
+  "Charredskull": [
+   0,
+   92
+  ],
+  "ChickenEgg": [
+   0,
+   93
+  ],
+  "ChickenMeat": [
+   0,
+   94
+  ],
+  "Chitin": [
+   0,
+   95
+  ],
+  "ClaymoreBlackmetal_TW": [
+   12,
+   51
+  ],
+  "ClaymoreBone_TW": [
+   12,
+   52
+  ],
+  "ClaymoreBronze_TW": [
+   12,
+   53
+  ],
+  "ClaymoreChitin_TW": [
+   12,
+   54
+  ],
+  "ClaymoreDvergr_TW": [
+   12,
+   55
+  ],
+  "ClaymoreIron_TW": [
+   12,
+   56
+  ],
+  "ClaymoreSilver_TW": [
+   12,
+   57
+  ],
+  "Cloudberry": [
+   0,
+   96
+  ],
+  "Club": [
+   6,
+   44
+  ],
+  "Coal": [
+   0,
+   97
+  ],
+  "Coins": [
+   0,
+   98
+  ],
+  "CookedAsksvinMeat": [
+   0,
+   99
+  ],
+  "CookedBjornMeat": [
+   0,
+   100
+  ],
+  "CookedBoneMawSerpentMeat": [
+   0,
+   101
+  ],
+  "CookedBugMeat": [
+   0,
+   102
+  ],
+  "CookedChickenMeat": [
+   0,
+   103
+  ],
+  "CookedDeerMeat": [
+   0,
+   104
+  ],
+  "CookedEgg": [
+   0,
+   105
+  ],
+  "CookedHareMeat": [
+   0,
+   106
+  ],
+  "CookedLoxMeat": [
+   0,
+   107
+  ],
+  "CookedMeat": [
+   0,
+   3
+  ],
+  "CookedMooseMeat": [
+   0,
+   108
+  ],
+  "CookedSealBlubber": [
+   0,
+   109
+  ],
+  "CookedVoltureMeat": [
+   0,
+   110
+  ],
+  "CookedWolfMeat": [
+   0,
+   111
+  ],
+  "Copper": [
+   0,
+   112
+  ],
+  "CopperOre": [
+   0,
+   113
+  ],
+  "CopperScrap": [
+   0,
+   114
+  ],
+  "CrossbowArbalest": [
+   6,
+   45
+  ],
+  "CrossbowBlackmetal_TW": [
+   12,
+   58
+  ],
+  "CrossbowBronze_TW": [
+   12,
+   59
+  ],
+  "CrossbowChitin_TW": [
+   12,
+   60
+  ],
+  "CrossbowEikthyr_TW": [
+   12,
+   61
+  ],
+  "CrossbowGold": [
+   6,
+   46
+  ],
+  "CrossbowGoldUncooked": [
+   7,
+   69
+  ],
+  "CrossbowGold_BloodLightning": [
+   6,
+   47
+  ],
+  "CrossbowGold_FrostFire": [
+   6,
+   48
+  ],
+  "CrossbowIron_TW": [
+   12,
+   62
+  ],
+  "CrossbowRipper": [
+   6,
+   49
+  ],
+  "CrossbowRipperBlood": [
+   6,
+   50
+  ],
+  "CrossbowRipperLightning": [
+   6,
+   51
+  ],
+  "CrossbowRipperNature": [
+   6,
+   52
+  ],
+  "CrossbowSilver_TW": [
+   12,
+   63
+  ],
+  "CrossbowWood_TW": [
+   12,
+   64
+  ],
+  "CrownJewel": [
+   0,
+   115
+  ],
+  "CryptKey": [
+   0,
+   116
+  ],
+  "Crystal": [
+   0,
+   117
+  ],
+  "CudgelBronze_TW": [
+   12,
+   65
+  ],
+  "CudgelIron_TW": [
+   12,
+   66
+  ],
+  "Cultivator": [
+   6,
+   53
+  ],
+  "CuredSquirrelHamstring": [
+   0,
+   118
+  ],
+  "Dandelion": [
+   0,
+   119
+  ],
+  "DarkCrystal_TW": [
+   12,
+   67
+  ],
+  "DeerHide": [
+   0,
+   120
+  ],
+  "DeerMeat": [
+   0,
+   121
+  ],
+  "DeerStew": [
+   0,
+   122
+  ],
+  "Demister": [
+   6,
+   54
+  ],
+  "Diamond_TW": [
+   12,
+   68
+  ],
+  "DragonEgg": [
+   0,
+   123
+  ],
+  "DragonTear": [
+   0,
+   124
+  ],
+  "DualAxeDemonic_TW": [
+   12,
+   69
+  ],
+  "DualKnifeBM_TW": [
+   12,
+   70
+  ],
+  "DualKnifeBone_TW": [
+   12,
+   71
+  ],
+  "DualKnifeChitin_TW": [
+   12,
+   72
+  ],
+  "DualKnifeFlametal_TW": [
+   12,
+   73
+  ],
+  "DualKnifeIron_TW": [
+   12,
+   74
+  ],
+  "DualKnifeSilver_TW": [
+   12,
+   75
+  ],
+  "DualScytheBloodthirst_TW": [
+   12,
+   76
+  ],
+  "DualSwordScimitar_TW": [
+   12,
+   77
+  ],
+  "DvergerArbalest": [
+   6,
+   55
+  ],
+  "DvergrKey": [
+   0,
+   125
+  ],
+  "DvergrKeyFragment": [
+   0,
+   126
+  ],
+  "DvergrNeedle": [
+   0,
+   127
+  ],
+  "DyeBlack_TW": [
+   12,
+   78
+  ],
+  "DyrnwynBladeFragment": [
+   0,
+   128
+  ],
+  "DyrnwynHiltFragment": [
+   0,
+   129
+  ],
+  "DyrnwynTipFragment": [
+   0,
+   130
+  ],
+  "Ectoplasm": [
+   0,
+   131
+  ],
+  "Eitr": [
+   0,
+   132
+  ],
+  "EitrPlateBlackForest_TW": [
+   9,
+   26
+  ],
+  "EitrPlateMountain_TW": [
+   9,
+   27
+  ],
+  "EitrPlatePlains_TW": [
+   9,
+   28
+  ],
+  "EitrPlateSwamp_TW": [
+   9,
+   29
+  ],
+  "ElakingHairBundle": [
+   0,
+   133
+  ],
+  "ElderBark": [
+   0,
+   134
+  ],
+  "EliteChaosPlateArmor": [
+   10,
+   6
+  ],
+  "EliteChaosPlateArmorT2": [
+   10,
+   7
+  ],
+  "EliteChaosPlateArmorTzeentch": [
+   10,
+   8
+  ],
+  "EliteChaosPlateHelm": [
+   10,
+   9
+  ],
+  "EliteChaosPlateHelmT2": [
+   10,
+   10
+  ],
+  "EliteChaosPlateHelmTzeentch": [
+   10,
+   11
+  ],
+  "EliteChaosPlateHelmTzeentchBoss": [
+   10,
+   12
+  ],
+  "EliteChaosPlateLegs": [
+   10,
+   13
+  ],
+  "EliteChaosPlateLegsT2": [
+   10,
+   14
+  ],
+  "EliteChaosPlateLegsTzeentch": [
+   10,
+   15
+  ],
+  "Emerald_TW": [
+   12,
+   79
+  ],
+  "EnchantedWoodBlackForest_TW": [
+   9,
+   30
+  ],
+  "EnchantedWoodMistlands_TW": [
+   9,
+   31
+  ],
+  "EnchantedWoodMountain_TW": [
+   9,
+   32
+  ],
+  "EnchantedWoodPlains_TW": [
+   9,
+   33
+  ],
+  "EnchantedWoodSwamp_TW": [
+   9,
+   34
+  ],
+  "Entrails": [
+   0,
+   135
+  ],
+  "Eyescream": [
+   0,
+   136
+  ],
+  "FW_ArmorMageLegs": [
+   7,
+   148
+  ],
+  "FW_ArmorTrollLeatherChest": [
+   7,
+   149
+  ],
+  "FW_ArmorTrollLeatherLegs": [
+   7,
+   150
+  ],
+  "FabricBundle_Blackforest_TW": [
+   9,
+   35
+  ],
+  "FabricBundle_Mistlands_TW": [
+   9,
+   36
+  ],
+  "FabricBundle_Mountain_TW": [
+   9,
+   37
+  ],
+  "FabricBundle_Plains_TW": [
+   9,
+   38
+  ],
+  "FabricBundle_Swamp_TW": [
+   9,
+   39
+  ],
+  "FaderDrop": [
+   0,
+   137
+  ],
+  "FaderEmber": [
+   0,
+   138
+  ],
+  "FeastAshlands": [
+   0,
+   139
+  ],
+  "FeastAshlands_Material": [
+   0,
+   140
+  ],
+  "FeastBlackforest": [
+   0,
+   141
+  ],
+  "FeastBlackforest_Material": [
+   0,
+   142
+  ],
+  "FeastDeepNorth": [
+   0,
+   143
+  ],
+  "FeastDeepNorth_Material": [
+   0,
+   144
+  ],
+  "FeastMeadows": [
+   0,
+   145
+  ],
+  "FeastMeadows_Material": [
+   0,
+   146
+  ],
+  "FeastMistlands": [
+   0,
+   147
+  ],
+  "FeastMistlands_Material": [
+   0,
+   148
+  ],
+  "FeastMountains_Material": [
+   0,
+   149
+  ],
+  "FeastOceans": [
+   0,
+   150
+  ],
+  "FeastOceans_Material": [
+   0,
+   151
+  ],
+  "FeastPlains": [
+   0,
+   152
+  ],
+  "FeastPlains_Material": [
+   0,
+   153
+  ],
+  "FeastSwamps_Material": [
+   0,
+   154
+  ],
+  "Feaster": [
+   6,
+   56
+  ],
+  "Feathers": [
+   0,
+   155
+  ],
+  "Fiddleheadfern": [
+   0,
+   156
+  ],
+  "FierySvinstew": [
+   0,
+   157
+  ],
+  "FineWood": [
+   0,
+   158
+  ],
+  "FirCone": [
+   0,
+   159
+  ],
+  "FirConeFrost": [
+   0,
+   160
+  ],
+  "FireworksRocket_Blue": [
+   0,
+   161
+  ],
+  "FireworksRocket_Cyan": [
+   0,
+   162
+  ],
+  "FireworksRocket_Green": [
+   0,
+   163
+  ],
+  "FireworksRocket_Purple": [
+   0,
+   164
+  ],
+  "FireworksRocket_Red": [
+   0,
+   165
+  ],
+  "FireworksRocket_White": [
+   0,
+   166
+  ],
+  "FireworksRocket_Yellow": [
+   0,
+   167
+  ],
+  "Fish1": [
+   0,
+   168
+  ],
+  "Fish10": [
+   0,
+   169
+  ],
+  "Fish11": [
+   0,
+   170
+  ],
+  "Fish12": [
+   0,
+   171
+  ],
+  "Fish2": [
+   0,
+   172
+  ],
+  "Fish3": [
+   0,
+   173
+  ],
+  "Fish4_cave": [
+   0,
+   174
+  ],
+  "Fish5": [
+   0,
+   175
+  ],
+  "Fish6": [
+   0,
+   176
+  ],
+  "Fish7": [
+   0,
+   177
+  ],
+  "Fish8": [
+   0,
+   178
+  ],
+  "Fish9": [
+   0,
+   179
+  ],
+  "FishAndBread": [
+   0,
+   180
+  ],
+  "FishAndBreadUncooked": [
+   0,
+   181
+  ],
+  "FishAnglerRaw": [
+   0,
+   182
+  ],
+  "FishCooked": [
+   0,
+   183
+  ],
+  "FishRaw": [
+   0,
+   184
+  ],
+  "FishSoup": [
+   0,
+   185
+  ],
+  "FishWraps": [
+   0,
+   4
+  ],
+  "FishingBait": [
+   6,
+   57
+  ],
+  "FishingBaitAshlands": [
+   6,
+   58
+  ],
+  "FishingBaitCave": [
+   6,
+   59
+  ],
+  "FishingBaitDeepNorth": [
+   6,
+   60
+  ],
+  "FishingBaitForest": [
+   6,
+   61
+  ],
+  "FishingBaitMistlands": [
+   6,
+   62
+  ],
+  "FishingBaitOcean": [
+   6,
+   63
+  ],
+  "FishingBaitPlains": [
+   6,
+   64
+  ],
+  "FishingBaitSwamp": [
+   6,
+   65
+  ],
+  "FishingRod": [
+   6,
+   66
+  ],
+  "FistBjornClaw": [
+   6,
+   67
+  ],
+  "FistBjornUndeadClaw": [
+   6,
+   68
+  ],
+  "FistBlackmetal_TW": [
+   12,
+   80
+  ],
+  "FistBronze_TW": [
+   12,
+   81
+  ],
+  "FistChitin_TW": [
+   12,
+   82
+  ],
+  "FistDvergr_TW": [
+   12,
+   83
+  ],
+  "FistFenrirClaw": [
+   6,
+   69
+  ],
+  "FistFlametal_TW": [
+   12,
+   84
+  ],
+  "FistFlint_TW": [
+   12,
+   85
+  ],
+  "FistGold": [
+   6,
+   70
+  ],
+  "FistGoldUncooked": [
+   7,
+   70
+  ],
+  "FistGold_BloodLightning": [
+   6,
+   71
+  ],
+  "FistGold_FrostFire": [
+   6,
+   72
+  ],
+  "FistIron_TW": [
+   12,
+   86
+  ],
+  "FistQueen_TW": [
+   12,
+   87
+  ],
+  "FistSilver_TW": [
+   12,
+   88
+  ],
+  "Flametal": [
+   0,
+   186
+  ],
+  "FlametalNew": [
+   0,
+   187
+  ],
+  "FlametalOre": [
+   0,
+   188
+  ],
+  "FlametalOreNew": [
+   0,
+   189
+  ],
+  "Flax": [
+   0,
+   190
+  ],
+  "Flint": [
+   0,
+   191
+  ],
+  "FragrantBundle": [
+   0,
+   192
+  ],
+  "FreezeGland": [
+   0,
+   193
+  ],
+  "FreshSeaweed": [
+   0,
+   194
+  ],
+  "FreyjaEssence_TW": [
+   12,
+   89
+  ],
+  "FrostCore": [
+   0,
+   195
+  ],
+  "Frostwood": [
+   4,
+   0
+  ],
+  "FrozenFuel": [
+   4,
+   1
+  ],
+  "FrozenKingDrop": [
+   4,
+   2
+  ],
+  "GemstoneBlue": [
+   4,
+   3
+  ],
+  "GemstoneGreen": [
+   4,
+   4
+  ],
+  "GemstoneRed": [
+   4,
+   5
+  ],
+  "GenericMoldUncooked": [
+   4,
+   6
+  ],
+  "GiantBloodSack": [
+   4,
+   7
+  ],
+  "GlowWorm": [
+   4,
+   8
+  ],
+  "GoblinMage_Staff_TW": [
+   9,
+   40
+  ],
+  "GoblinScraps_TW": [
+   12,
+   90
+  ],
+  "GoblinTotem": [
+   4,
+   9
+  ],
+  "Gold": [
+   4,
+   10
+  ],
+  "GoldOre": [
+   4,
+   11
+  ],
+  "GrapplingHook": [
+   6,
+   73
+  ],
+  "Grausten": [
+   4,
+   12
+  ],
+  "GreatClub_TW": [
+   12,
+   91
+  ],
+  "GreatbowBlackmetal_TW": [
+   12,
+   92
+  ],
+  "GreatbowDvergr_TW": [
+   12,
+   93
+  ],
+  "GreatbowModer_TW": [
+   12,
+   94
+  ],
+  "GreydwarfEye": [
+   4,
+   13
+  ],
+  "GrizzlyBearPelt_TW": [
+   12,
+   95
+  ],
+  "Guck": [
+   4,
+   14
+  ],
+  "CS_AuroraBroth": [
+   1,
+   0
+  ],
+  "CS_Bacon": [
+   1,
+   1
+  ],
+  "CS_BarbecuedLox": [
+   1,
+   20
+  ],
+  "CS_BarrowSausagePot": [
+   1,
+   21
+  ],
+  "CS_BerryPreserve": [
+   1,
+   22
+  ],
+  "CS_BloodSausage": [
+   1,
+   2
+  ],
+  "CS_BloodSausageRaw": [
+   1,
+   3
+  ],
+  "CS_BloodTonic": [
+   1,
+   4
+  ],
+  "CS_BloodwarmStew": [
+   1,
+   23
+  ],
+  "CS_BogCream": [
+   1,
+   24
+  ],
+  "CS_BoiledEgg": [
+   1,
+   25
+  ],
+  "CS_BondiBreakfast": [
+   1,
+   26
+  ],
+  "CS_BoneBroth": [
+   1,
+   27
+  ],
+  "CS_BonemawChowder": [
+   1,
+   28
+  ],
+  "CS_BraisedVolture": [
+   1,
+   29
+  ],
+  "CS_BrewAllfather": [
+   1,
+   30
+  ],
+  "CS_BrewBloodroot": [
+   1,
+   5
+  ],
+  "CS_BrewHearthwarm": [
+   1,
+   6
+  ],
+  "CS_BrewRunewise": [
+   1,
+   31
+  ],
+  "CS_BrewShieldwall": [
+   1,
+   7
+  ],
+  "CS_BrewSkald": [
+   1,
+   32
+  ],
+  "CS_CandiedTurnip": [
+   1,
+   33
+  ],
+  "CS_CarrotButter": [
+   1,
+   34
+  ],
+  "CS_CarrotCake": [
+   1,
+   35
+  ],
+  "CS_CarrotCakeRaw": [
+   1,
+   36
+  ],
+  "CS_CarrotSticks": [
+   1,
+   8
+  ],
+  "CS_CloudberryPorridge": [
+   1,
+   37
+  ],
+  "CS_DeathcapBroth": [
+   1,
+   38
+  ],
+  "CS_DeerJerky": [
+   1,
+   39
+  ],
+  "CS_DrakeEgg": [
+   1,
+   40
+  ],
+  "CS_DrakeMochi": [
+   1,
+   41
+  ],
+  "CS_DraughtEitr4": [
+   1,
+   9
+  ],
+  "CS_DraughtEitr6": [
+   1,
+   42
+  ],
+  "CS_DraughtEitr7": [
+   1,
+   43
+  ],
+  "CS_DraughtHealth1": [
+   1,
+   10
+  ],
+  "CS_DraughtHealth3": [
+   1,
+   44
+  ],
+  "CS_DraughtHealth5": [
+   1,
+   45
+  ],
+  "CS_DraughtHealth6": [
+   1,
+   46
+  ],
+  "CS_DraughtHealth7": [
+   1,
+   47
+  ],
+  "CS_DraughtStamina1": [
+   1,
+   48
+  ],
+  "CS_DraughtStamina3": [
+   1,
+   11
+  ],
+  "CS_DraughtStamina5": [
+   1,
+   49
+  ],
+  "CS_DraughtStamina7": [
+   1,
+   50
+  ],
+  "CS_DvergrRation": [
+   1,
+   51
+  ],
+  "CS_DwarvenMushroomStew": [
+   1,
+   52
+  ],
+  "CS_EmberCream": [
+   1,
+   53
+  ],
+  "CS_EmberGlaze": [
+   1,
+   54
+  ],
+  "CS_EmberPieRaw": [
+   1,
+   55
+  ],
+  "CS_EmberWort": [
+   1,
+   56
+  ],
+  "CS_EmberforgePie": [
+   1,
+   57
+  ],
+  "CS_FeastAllfather": [
+   1,
+   58
+  ],
+  "CS_FeastAllfather_Material": [
+   1,
+   59
+  ],
+  "CS_FeastBogwitch": [
+   1,
+   60
+  ],
+  "CS_FeastBogwitch_Material": [
+   1,
+   61
+  ],
+  "CS_FeastDisablot": [
+   1,
+   62
+  ],
+  "CS_FeastDisablot_Material": [
+   1,
+   63
+  ],
+  "CS_FeastDvergr": [
+   1,
+   64
+  ],
+  "CS_FeastDvergr_Material": [
+   1,
+   65
+  ],
+  "CS_FeastFimbul": [
+   1,
+   66
+  ],
+  "CS_FeastFimbul_Material": [
+   1,
+   67
+  ],
+  "CS_FeastForgeHall": [
+   1,
+   68
+  ],
+  "CS_FeastForgeHall_Material": [
+   1,
+   69
+  ],
+  "CS_FeastHarvest": [
+   1,
+   70
+  ],
+  "CS_FeastHarvest_Material": [
+   1,
+   71
+  ],
+  "CS_FeastHearthkeeper": [
+   1,
+   72
+  ],
+  "CS_FeastHearthkeeper_Material": [
+   1,
+   73
+  ],
+  "CS_FeastJarl": [
+   1,
+   74
+  ],
+  "CS_FeastJarl_Material": [
+   1,
+   75
+  ],
+  "CS_FeastMeadhall": [
+   1,
+   76
+  ],
+  "CS_FeastMeadhall_Material": [
+   1,
+   77
+  ],
+  "CS_FeastMuspel": [
+   1,
+   78
+  ],
+  "CS_FeastMuspel_Material": [
+   1,
+   79
+  ],
+  "CS_FeastNorthernLights": [
+   1,
+   80
+  ],
+  "CS_FeastNorthernLights_Material": [
+   1,
+   81
+  ],
+  "CS_FeastSeidr": [
+   1,
+   82
+  ],
+  "CS_FeastSeidr_Material": [
+   1,
+   83
+  ],
+  "CS_FeastSkald": [
+   1,
+   84
+  ],
+  "CS_FeastSkald_Material": [
+   1,
+   85
+  ],
+  "CS_FeastWedding": [
+   1,
+   86
+  ],
+  "CS_FeastWedding_Material": [
+   1,
+   87
+  ],
+  "CS_FeastWinterNights": [
+   1,
+   88
+  ],
+  "CS_FeastWinterNights_Material": [
+   1,
+   89
+  ],
+  "CS_FeastYule": [
+   1,
+   90
+  ],
+  "CS_FeastYule_Material": [
+   1,
+   91
+  ],
+  "CS_FortifiedYellowStew": [
+   1,
+   92
+  ],
+  "CS_FriedAsksvin": [
+   1,
+   93
+  ],
+  "CS_FriedLox": [
+   1,
+   12
+  ],
+  "CS_FriedLoxRaw": [
+   1,
+   94
+  ],
+  "CS_FrostBerryCream": [
+   1,
+   95
+  ],
+  "CS_FrostCream": [
+   1,
+   96
+  ],
+  "CS_FrostMalt": [
+   1,
+   97
+  ],
+  "CS_FrostOnionSoup": [
+   1,
+   98
+  ],
+  "CS_FrostfellPlatter": [
+   1,
+   99
+  ],
+  "CS_FrostrootBroth": [
+   1,
+   100
+  ],
+  "CS_GlazedBearRoast": [
+   1,
+   101
+  ],
+  "CS_GlazedCarrots": [
+   1,
+   102
+  ],
+  "CS_GlazedFish": [
+   1,
+   103
+  ],
+  "CS_GlazedFishWrap": [
+   1,
+   104
+  ],
+  "CS_GlazedNeckTail": [
+   1,
+   105
+  ],
+  "CS_GlazedSeeker": [
+   1,
+   106
+  ],
+  "CS_GriddleCakeBatter": [
+   1,
+   107
+  ],
+  "CS_GriddleCakes": [
+   1,
+   108
+  ],
+  "CS_Haggis": [
+   1,
+   109
+  ],
+  "CS_HarePie": [
+   1,
+   110
+  ],
+  "CS_HarePieRaw": [
+   1,
+   111
+  ],
+  "CS_HearthMead": [
+   1,
+   112
+  ],
+  "CS_HearthfireMooseStew": [
+   1,
+   113
+  ],
+  "CS_Hearthstock": [
+   1,
+   114
+  ],
+  "CS_HerbBundle": [
+   1,
+   115
+  ],
+  "CS_HoneyBread": [
+   1,
+   116
+  ],
+  "CS_HoneyCakeRaw": [
+   1,
+   117
+  ],
+  "CS_HoneyRoastHare": [
+   1,
+   118
+  ],
+  "CS_HoneySausages": [
+   1,
+   119
+  ],
+  "CS_HoneySyrup": [
+   1,
+   120
+  ],
+  "CS_HuntersBrothStew": [
+   1,
+   121
+  ],
+  "CS_HuntersPie": [
+   1,
+   122
+  ],
+  "CS_HuntersPieRaw": [
+   1,
+   123
+  ],
+  "CS_JamNutBread": [
+   1,
+   124
+  ],
+  "CS_JotunBreakfast": [
+   1,
+   125
+  ],
+  "CS_Kabob": [
+   8,
+   7
+  ],
+  "CS_KabobRaw": [
+   1,
+   126
+  ],
+  "CS_KonungrOmelette": [
+   1,
+   127
+  ],
+  "CS_KonungrOmeletteRaw": [
+   1,
+   128
+  ],
+  "CS_Lard": [
+   1,
+   129
+  ],
+  "CS_LesserYellowStew": [
+   1,
+   130
+  ],
+  "CS_LingonCakeRaw": [
+   1,
+   131
+  ],
+  "CS_LingonberryCake": [
+   1,
+   132
+  ],
+  "CS_LoggersPot": [
+   1,
+   133
+  ],
+  "CS_LoxBun": [
+   1,
+   134
+  ],
+  "CS_LoxJerky": [
+   1,
+   135
+  ],
+  "CS_MagesPlatter": [
+   1,
+   136
+  ],
+  "CS_MarinatedWolf": [
+   1,
+   137
+  ],
+  "CS_MeadBase": [
+   1,
+   138
+  ],
+  "CS_MeadBaseBrewAllfather": [
+   1,
+   139
+  ],
+  "CS_MeadBaseBrewBloodroot": [
+   1,
+   13
+  ],
+  "CS_MeadBaseBrewHearthwarm": [
+   1,
+   140
+  ],
+  "CS_MeadBaseBrewRunewise": [
+   1,
+   141
+  ],
+  "CS_MeadBaseBrewShieldwall": [
+   1,
+   142
+  ],
+  "CS_MeadBaseBrewSkald": [
+   1,
+   14
+  ],
+  "CS_MeadBaseDraughtEitr4": [
+   1,
+   143
+  ],
+  "CS_MeadBaseDraughtEitr6": [
+   1,
+   144
+  ],
+  "CS_MeadBaseDraughtEitr7": [
+   1,
+   145
+  ],
+  "CS_MeadBaseDraughtHealth1": [
+   1,
+   15
+  ],
+  "CS_MeadBaseDraughtHealth3": [
+   1,
+   146
+  ],
+  "CS_MeadBaseDraughtHealth5": [
+   1,
+   147
+  ],
+  "CS_MeadBaseDraughtHealth6": [
+   1,
+   148
+  ],
+  "CS_MeadBaseDraughtHealth7": [
+   1,
+   149
+  ],
+  "CS_MeadBaseDraughtStamina1": [
+   1,
+   16
+  ],
+  "CS_MeadBaseDraughtStamina3": [
+   1,
+   150
+  ],
+  "CS_MeadBaseDraughtStamina5": [
+   1,
+   151
+  ],
+  "CS_MeadBaseDraughtStamina7": [
+   1,
+   152
+  ],
+  "CS_MeadBaseSurgeDrengr": [
+   1,
+   153
+  ],
+  "CS_MeadBaseSurgeEinherjar": [
+   1,
+   154
+  ],
+  "CS_MeadBaseSurgeValkyrie": [
+   1,
+   155
+  ],
+  "CS_MeadBaseWardBarrow": [
+   1,
+   156
+  ],
+  "CS_MeadBaseWardFire": [
+   1,
+   157
+  ],
+  "CS_MeadBaseWardFrost": [
+   1,
+   158
+  ],
+  "CS_MeadowSkewer": [
+   1,
+   159
+  ],
+  "CS_MeadowSkewerRaw": [
+   1,
+   160
+  ],
+  "CS_MidsummerCake": [
+   1,
+   161
+  ],
+  "CS_MidwinterBreakfast": [
+   1,
+   162
+  ],
+  "CS_MistwalkerStew": [
+   1,
+   163
+  ],
+  "CS_MushroomHoneySoup": [
+   1,
+   164
+  ],
+  "CS_MuspelChowder": [
+   1,
+   165
+  ],
+  "CS_NeckJerky": [
+   1,
+   166
+  ],
+  "CS_NorthernSundae": [
+   1,
+   167
+  ],
+  "CS_NutButter": [
+   1,
+   168
+  ],
+  "CS_OdinsDelight": [
+   1,
+   169
+  ],
+  "CS_Omelette": [
+   1,
+   170
+  ],
+  "CS_OmeletteRaw": [
+   1,
+   171
+  ],
+  "CS_PieCrust": [
+   1,
+   172
+  ],
+  "CS_PorkBellyRaw": [
+   1,
+   173
+  ],
+  "CS_PorkRinds": [
+   1,
+   174
+  ],
+  "CS_PorkTenderloin": [
+   1,
+   175
+  ],
+  "CS_RichStock": [
+   1,
+   176
+  ],
+  "CS_RimeHotpot": [
+   1,
+   177
+  ],
+  "CS_RunewisePorridge": [
+   1,
+   178
+  ],
+  "CS_SapCordial": [
+   1,
+   179
+  ],
+  "CS_SealHotpot": [
+   1,
+   180
+  ],
+  "CS_SearedHoneycomb": [
+   1,
+   181
+  ],
+  "CS_SeedBrew": [
+   1,
+   182
+  ],
+  "CS_SeersPot": [
+   1,
+   183
+  ],
+  "CS_SeidrBroth": [
+   1,
+   184
+  ],
+  "CS_ShieldwallLoaf": [
+   1,
+   185
+  ],
+  "CS_SmokedFishChowder": [
+   1,
+   186
+  ],
+  "CS_SmoulderBroth": [
+   1,
+   187
+  ],
+  "CS_SpiceRub": [
+   1,
+   188
+  ],
+  "CS_SpicedBarleyBrew": [
+   1,
+   189
+  ],
+  "CS_StormCream": [
+   1,
+   190
+  ],
+  "CS_StuffedChicken": [
+   1,
+   191
+  ],
+  "CS_SurgeDrengr": [
+   1,
+   17
+  ],
+  "CS_SurgeEinherjar": [
+   1,
+   18
+  ],
+  "CS_SurgeValkyrie": [
+   1,
+   192
+  ],
+  "CS_SurtrsDelight": [
+   1,
+   193
+  ],
+  "CS_TeriyakiSerpent": [
+   1,
+   194
+  ],
+  "CS_TrailRation": [
+   1,
+   195
+  ],
+  "CS_VenisonLoin": [
+   8,
+   0
+  ],
+  "CS_VolvasBrew": [
+   8,
+   1
+  ],
+  "CS_WardBarrow": [
+   1,
+   19
+  ],
+  "CS_WardFire": [
+   8,
+   2
+  ],
+  "CS_WardFrost": [
+   8,
+   3
+  ],
+  "CS_WildEgg": [
+   8,
+   4
+  ],
+  "CS_WinterSupper": [
+   8,
+   5
+  ],
+  "CS_Wort": [
+   8,
+   6
+  ],
+  "Hammer": [
+   6,
+   74
+  ],
+  "HardAntler": [
+   4,
+   15
+  ],
+  "HareMeat": [
+   4,
+   16
+  ],
+  "HatefulBlood": [
+   4,
+   17
+  ],
+  "HealthUpgrade_Bonemass": [
+   4,
+   18
+  ],
+  "HealthUpgrade_GDKing": [
+   4,
+   19
+  ],
+  "HelmetAshlandsMediumHood": [
+   6,
+   75
+  ],
+  "HelmetBerserkerHood": [
+   6,
+   76
+  ],
+  "HelmetBerserkerUndead": [
+   6,
+   77
+  ],
+  "HelmetBoldCarapace_TW": [
+   11,
+   70
+  ],
+  "HelmetBoldFlametal_TW": [
+   11,
+   71
+  ],
+  "HelmetBold_TW": [
+   11,
+   72
+  ],
+  "HelmetBronze": [
+   0,
+   5
+  ],
+  "HelmetCarapace": [
+   6,
+   78
+  ],
+  "HelmetCelebration": [
+   6,
+   79
+  ],
+  "HelmetCircletBM_Elemental_TW": [
+   9,
+   41
+  ],
+  "HelmetCircletBM_Hunter_TW": [
+   9,
+   42
+  ],
+  "HelmetCircletBM_Sneak_TW": [
+   9,
+   43
+  ],
+  "HelmetCircletBM_Stamina_TW": [
+   9,
+   44
+  ],
+  "HelmetCircletBM_TW": [
+   9,
+   45
+  ],
+  "HelmetCircletBronze_Elemental_TW": [
+   9,
+   46
+  ],
+  "HelmetCircletBronze_Hunter_TW": [
+   9,
+   47
+  ],
+  "HelmetCircletBronze_Sneak_TW": [
+   9,
+   48
+  ],
+  "HelmetCircletBronze_Stamina_TW": [
+   9,
+   49
+  ],
+  "HelmetCircletBronze_TW": [
+   9,
+   50
+  ],
+  "HelmetCircletCarapace_Elemental_TW": [
+   9,
+   51
+  ],
+  "HelmetCircletCarapace_Hunter_TW": [
+   9,
+   52
+  ],
+  "HelmetCircletCarapace_Sneak_TW": [
+   9,
+   53
+  ],
+  "HelmetCircletCarapace_Stamina_TW": [
+   9,
+   54
+  ],
+  "HelmetCircletCarapace_TW": [
+   9,
+   55
+  ],
+  "HelmetCircletIron_Elemental_TW": [
+   9,
+   56
+  ],
+  "HelmetCircletIron_Hunter_TW": [
+   9,
+   57
+  ],
+  "HelmetCircletIron_Sneak_TW": [
+   9,
+   58
+  ],
+  "HelmetCircletIron_Stamina_TW": [
+   9,
+   59
+  ],
+  "HelmetCircletIron_TW": [
+   9,
+   60
+  ],
+  "HelmetCircletSilver_Elemental_TW": [
+   9,
+   61
+  ],
+  "HelmetCircletSilver_Hunter_TW": [
+   9,
+   62
+  ],
+  "HelmetCircletSilver_Sneak_TW": [
+   9,
+   63
+  ],
+  "HelmetCircletSilver_Stamina_TW": [
+   9,
+   64
+  ],
+  "HelmetCircletSilver_TW": [
+   9,
+   65
+  ],
+  "HelmetCrownofValheim": [
+   6,
+   80
+  ],
+  "HelmetDNHeavy": [
+   6,
+   81
+  ],
+  "HelmetDNMage": [
+   6,
+   82
+  ],
+  "HelmetDNMediumHood": [
+   7,
+   71
+  ],
+  "HelmetDrake": [
+   6,
+   83
+  ],
+  "HelmetDverger": [
+   6,
+   84
+  ],
+  "HelmetFenring": [
+   6,
+   85
+  ],
+  "HelmetFenrirBM_TW": [
+   11,
+   73
+  ],
+  "HelmetFenrirCarapace_TW": [
+   11,
+   74
+  ],
+  "HelmetFenrir_TW": [
+   11,
+   75
+  ],
+  "HelmetFishingHat": [
+   6,
+   86
+  ],
+  "HelmetFlametal": [
+   6,
+   87
+  ],
+  "HelmetHat1": [
+   6,
+   88
+  ],
+  "HelmetHat10": [
+   6,
+   89
+  ],
+  "HelmetHat2": [
+   6,
+   90
+  ],
+  "HelmetHat3": [
+   6,
+   91
+  ],
+  "HelmetHat4": [
+   6,
+   92
+  ],
+  "HelmetHat5": [
+   6,
+   93
+  ],
+  "HelmetHat6": [
+   6,
+   94
+  ],
+  "HelmetHat7": [
+   6,
+   95
+  ],
+  "HelmetHat8": [
+   6,
+   96
+  ],
+  "HelmetHat9": [
+   6,
+   97
+  ],
+  "HelmetHunterBM_TW": [
+   11,
+   76
+  ],
+  "HelmetHunterCarapace_TW": [
+   11,
+   77
+  ],
+  "HelmetHunterIron_TW": [
+   11,
+   78
+  ],
+  "HelmetHunterSilver_TW": [
+   11,
+   79
+  ],
+  "HelmetHunter_TW": [
+   11,
+   80
+  ],
+  "HelmetIron": [
+   6,
+   98
+  ],
+  "HelmetLeather": [
+   6,
+   99
+  ],
+  "HelmetLeather_TW": [
+   11,
+   81
+  ],
+  "HelmetLegionFlametal_TW": [
+   11,
+   82
+  ],
+  "HelmetLegion_TW": [
+   11,
+   83
+  ],
+  "HelmetLox": [
+   6,
+   100
+  ],
+  "HelmetMage": [
+   6,
+   101
+  ],
+  "HelmetMage_Ashlands": [
+   6,
+   102
+  ],
+  "HelmetMidsummerCrown": [
+   6,
+   103
+  ],
+  "HelmetOdin": [
+   6,
+   104
+  ],
+  "HelmetPadded": [
+   6,
+   105
+  ],
+  "HelmetPointyHat": [
+   6,
+   106
+  ],
+  "HelmetRazorback_TW": [
+   11,
+   84
+  ],
+  "HelmetRogueBM_TW": [
+   11,
+   85
+  ],
+  "HelmetRogueCarapace_TW": [
+   11,
+   86
+  ],
+  "HelmetRogueIron_TW": [
+   11,
+   87
+  ],
+  "HelmetRogueSilver_TW": [
+   11,
+   88
+  ],
+  "HelmetRogue_TW": [
+   11,
+   89
+  ],
+  "HelmetRoot": [
+   6,
+   107
+  ],
+  "HelmetRootCrown": [
+   6,
+   108
+  ],
+  "HelmetSpellslinger_BlackForest_TW": [
+   9,
+   124
+  ],
+  "HelmetSpellslinger_Mistlands_TW": [
+   9,
+   125
+  ],
+  "HelmetSpellslinger_Mountain_TW": [
+   9,
+   126
+  ],
+  "HelmetSpellslinger_Plains_TW": [
+   9,
+   127
+  ],
+  "HelmetSpellslinger_Swamp_TW": [
+   9,
+   128
+  ],
+  "HelmetStrawHat": [
+   6,
+   109
+  ],
+  "HelmetSweatBand": [
+   6,
+   110
+  ],
+  "HelmetTrollLeather": [
+   6,
+   111
+  ],
+  "HelmetVidarBM_TW": [
+   11,
+   90
+  ],
+  "HelmetVidarCarapace_TW": [
+   11,
+   91
+  ],
+  "HelmetVidarFlametal_TW": [
+   11,
+   92
+  ],
+  "HelmetVidar_TW": [
+   11,
+   93
+  ],
+  "HelmetVigorousBM_TW": [
+   11,
+   94
+  ],
+  "HelmetVigorousCarapace_TW": [
+   11,
+   95
+  ],
+  "HelmetVigorousIron_TW": [
+   11,
+   96
+  ],
+  "HelmetVigorousSilver_TW": [
+   11,
+   97
+  ],
+  "HelmetVigorous_TW": [
+   11,
+   98
+  ],
+  "HelmetWarriorBM_TW": [
+   11,
+   99
+  ],
+  "HelmetWarriorCarapace_TW": [
+   11,
+   100
+  ],
+  "HelmetWarriorFlametal_TW": [
+   11,
+   101
+  ],
+  "HelmetWarriorSilver_TW": [
+   11,
+   102
+  ],
+  "HelmetWarrior_TW": [
+   11,
+   103
+  ],
+  "HelmetYule": [
+   6,
+   112
+  ],
+  "HildirKey_forestcrypt": [
+   4,
+   20
+  ],
+  "HildirKey_mountaincave": [
+   4,
+   21
+  ],
+  "HildirKey_plainsfortress": [
+   4,
+   22
+  ],
+  "Hoe": [
+   6,
+   113
+  ],
+  "Honey": [
+   4,
+   23
+  ],
+  "HoneyGlazedChicken": [
+   4,
+   24
+  ],
+  "HoneyGlazedChickenUncooked": [
+   4,
+   25
+  ],
+  "Hook": [
+   4,
+   26
+  ],
+  "Ice": [
+   4,
+   27
+  ],
+  "IceHornMountain_TW": [
+   9,
+   66
+  ],
+  "IceShoes": [
+   6,
+   114
+  ],
+  "IceSkates": [
+   6,
+   115
+  ],
+  "Iron": [
+   4,
+   28
+  ],
+  "IronNails": [
+   4,
+   29
+  ],
+  "IronOre": [
+   0,
+   6
+  ],
+  "IronScrap": [
+   4,
+   30
+  ],
+  "Ironpit": [
+   4,
+   31
+  ],
+  "JellyCakeSwamp_TW": [
+   9,
+   67
+  ],
+  "JuteBlack_TW": [
+   12,
+   96
+  ],
+  "JuteBlue": [
+   4,
+   32
+  ],
+  "JuteRed": [
+   4,
+   33
+  ],
+  "Kale": [
+   4,
+   34
+  ],
+  "KaleChips": [
+   4,
+   35
+  ],
+  "KaleChipsUncooked": [
+   4,
+   36
+  ],
+  "KaleSeeds": [
+   4,
+   37
+  ],
+  "KeysGoldUncooked": [
+   7,
+   72
+  ],
+  "KnifeBlackMetal": [
+   6,
+   116
+  ],
+  "KnifeBronze_TW": [
+   12,
+   97
+  ],
+  "KnifeButcher": [
+   6,
+   117
+  ],
+  "KnifeChitin": [
+   6,
+   118
+  ],
+  "KnifeCopper": [
+   6,
+   119
+  ],
+  "KnifeFlint": [
+   6,
+   120
+  ],
+  "KnifeGold": [
+   6,
+   121
+  ],
+  "KnifeGoldUncooked": [
+   7,
+   73
+  ],
+  "KnifeGold_BloodLightning": [
+   6,
+   122
+  ],
+  "KnifeGold_FrostFire": [
+   6,
+   123
+  ],
+  "KnifeIron_TW": [
+   12,
+   98
+  ],
+  "KnifeSilver": [
+   6,
+   124
+  ],
+  "KnifeSkollAndHati": [
+   6,
+   125
+  ],
+  "KnifeViper_TW": [
+   12,
+   99
+  ],
+  "KnifeVoid": [
+   6,
+   126
+  ],
+  "KnifeWood": [
+   6,
+   127
+  ],
+  "KnifeWrench_TW": [
+   12,
+   100
+  ],
+  "LanceBlackmetal_TW": [
+   12,
+   101
+  ],
+  "LanceDvergr_TW": [
+   12,
+   102
+  ],
+  "Lantern": [
+   6,
+   128
+  ],
+  "Lantern_DN": [
+   6,
+   129
+  ],
+  "Lantern_hooded": [
+   6,
+   130
+  ],
+  "Larva": [
+   4,
+   38
+  ],
+  "LastBossGate_RuneTile": [
+   4,
+   39
+  ],
+  "LeatherScraps": [
+   4,
+   40
+  ],
+  "Leatherstraps": [
+   4,
+   41
+  ],
+  "LinenThread": [
+   4,
+   42
+  ],
+  "Lingondricka": [
+   4,
+   43
+  ],
+  "LoxBone_TW": [
+   12,
+   103
+  ],
+  "LoxMeat": [
+   4,
+   44
+  ],
+  "LoxPelt": [
+   4,
+   45
+  ],
+  "LoxPie": [
+   4,
+   46
+  ],
+  "LoxPieUncooked": [
+   4,
+   47
+  ],
+  "MaceBronze": [
+   6,
+   131
+  ],
+  "MaceChitin_TW": [
+   12,
+   104
+  ],
+  "MaceDvergr_TW": [
+   12,
+   105
+  ],
+  "MaceEldner": [
+   6,
+   132
+  ],
+  "MaceEldnerBlood": [
+   6,
+   133
+  ],
+  "MaceEldnerLightning": [
+   6,
+   134
+  ],
+  "MaceEldnerNature": [
+   6,
+   135
+  ],
+  "MaceFlint_TW": [
+   12,
+   106
+  ],
+  "MaceGold": [
+   6,
+   136
+  ],
+  "MaceGoldUncooked": [
+   7,
+   74
+  ],
+  "MaceGold_BloodLightning": [
+   6,
+   137
+  ],
+  "MaceGold_FrostFire": [
+   6,
+   138
+  ],
+  "MaceIron": [
+   6,
+   139
+  ],
+  "MaceNeedle": [
+   6,
+   140
+  ],
+  "MaceSilver": [
+   6,
+   141
+  ],
+  "MaceWood": [
+   6,
+   142
+  ],
+  "MagicallyStuffedShroom": [
+   4,
+   48
+  ],
+  "MagicallyStuffedShroomUncooked": [
+   4,
+   49
+  ],
+  "Mandible": [
+   4,
+   50
+  ],
+  "MarinatedGreens": [
+   4,
+   51
+  ],
+  "MashedMeat": [
+   4,
+   52
+  ],
+  "MeadBaseBugRepellent": [
+   7,
+   75
+  ],
+  "MeadBaseBzerker": [
+   7,
+   76
+  ],
+  "MeadBaseEitrBlackForest_TW": [
+   9,
+   0
+  ],
+  "MeadBaseEitrLingering": [
+   7,
+   77
+  ],
+  "MeadBaseEitrMinor": [
+   7,
+   78
+  ],
+  "MeadBaseEitrMountain_TW": [
+   9,
+   1
+  ],
+  "MeadBaseFrostResist": [
+   7,
+   79
+  ],
+  "MeadBaseHasty": [
+   7,
+   80
+  ],
+  "MeadBaseHealthLingering": [
+   7,
+   81
+  ],
+  "MeadBaseHealthMajor": [
+   7,
+   82
+  ],
+  "MeadBaseHealthMedium": [
+   7,
+   83
+  ],
+  "MeadBaseHealthMinor": [
+   0,
+   7
+  ],
+  "MeadBaseLightFoot": [
+   7,
+   84
+  ],
+  "MeadBaseLightningResist_TW": [
+   9,
+   2
+  ],
+  "MeadBaseLingeringStaminaMedium_TW": [
+   9,
+   3
+  ],
+  "MeadBaseLingeringStaminaMinor_TW": [
+   9,
+   4
+  ],
+  "MeadBasePoisonResist": [
+   7,
+   85
+  ],
+  "MeadBaseStaminaLingering": [
+   7,
+   86
+  ],
+  "MeadBaseStaminaMedium": [
+   7,
+   87
+  ],
+  "MeadBaseStaminaMinor": [
+   7,
+   88
+  ],
+  "MeadBaseStrength": [
+   7,
+   89
+  ],
+  "MeadBaseSwimmer": [
+   7,
+   90
+  ],
+  "MeadBaseTamer": [
+   7,
+   91
+  ],
+  "MeadBaseTasty": [
+   7,
+   92
+  ],
+  "MeadBugRepellent": [
+   4,
+   53
+  ],
+  "MeadBzerker": [
+   4,
+   54
+  ],
+  "MeadEitrBlackForest_TW": [
+   9,
+   129
+  ],
+  "MeadEitrLingering": [
+   4,
+   55
+  ],
+  "MeadEitrMinor": [
+   4,
+   56
+  ],
+  "MeadEitrMountain_TW": [
+   9,
+   130
+  ],
+  "MeadFrostResist": [
+   4,
+   57
+  ],
+  "MeadHasty": [
+   4,
+   58
+  ],
+  "MeadHealthLingering": [
+   4,
+   59
+  ],
+  "MeadHealthMajor": [
+   4,
+   60
+  ],
+  "MeadHealthMedium": [
+   4,
+   61
+  ],
+  "MeadHealthMinor": [
+   0,
+   8
+  ],
+  "MeadLightfoot": [
+   4,
+   62
+  ],
+  "MeadLightningResist_TW": [
+   12,
+   107
+  ],
+  "MeadPoisonResist": [
+   0,
+   9
+  ],
+  "MeadStaminaLingeringMedium_TW": [
+   12,
+   108
+  ],
+  "MeadStaminaLingeringMinor_TW": [
+   12,
+   109
+  ],
+  "MeadStaminaMedium": [
+   4,
+   63
+  ],
+  "MeadStaminaMinor": [
+   0,
+   10
+  ],
+  "MeadStrength": [
+   4,
+   64
+  ],
+  "MeadSwimmer": [
+   4,
+   65
+  ],
+  "MeadTamer": [
+   4,
+   66
+  ],
+  "MeadTasty": [
+   4,
+   67
+  ],
+  "MeadTrollPheromones": [
+   4,
+   68
+  ],
+  "MeatPlatter": [
+   4,
+   69
+  ],
+  "MeatPlatterUncooked": [
+   4,
+   70
+  ],
+  "MeatballsMashedPoteitr": [
+   4,
+   71
+  ],
+  "MechanicalSpring": [
+   4,
+   72
+  ],
+  "MemorialCoal": [
+   4,
+   73
+  ],
+  "MinceMeatSauce": [
+   4,
+   74
+  ],
+  "MisthareSupreme": [
+   4,
+   75
+  ],
+  "MisthareSupremeUncooked": [
+   4,
+   76
+  ],
+  "MoldArmorGoldChest": [
+   7,
+   93
+  ],
+  "MoldArmorGoldHelmet": [
+   7,
+   94
+  ],
+  "MoldArmorGoldLegs": [
+   7,
+   95
+  ],
+  "MoldArmorMageChest": [
+   7,
+   96
+  ],
+  "MoldArmorMageHelmet": [
+   7,
+   97
+  ],
+  "MoldArmorMageLegs": [
+   7,
+   98
+  ],
+  "MoldArmorMediumHelmet": [
+   7,
+   99
+  ],
+  "MoldArmorMediumLegs": [
+   7,
+   100
+  ],
+  "MoldArmormediumChest": [
+   7,
+   101
+  ],
+  "MoldAtgeir": [
+   7,
+   102
+  ],
+  "MoldAxe": [
+   7,
+   103
+  ],
+  "MoldAxe2H": [
+   7,
+   104
+  ],
+  "MoldBow": [
+   7,
+   105
+  ],
+  "MoldCrossbow": [
+   7,
+   106
+  ],
+  "MoldFistweapon": [
+   7,
+   107
+  ],
+  "MoldKeys": [
+   7,
+   108
+  ],
+  "MoldKnife": [
+   7,
+   109
+  ],
+  "MoldMace": [
+   7,
+   110
+  ],
+  "MoldMace2H": [
+   7,
+   111
+  ],
+  "MoldShieldBuckler": [
+   7,
+   112
+  ],
+  "MoldShieldRound": [
+   7,
+   113
+  ],
+  "MoldShieldTower": [
+   7,
+   114
+  ],
+  "MoldSmallParts": [
+   7,
+   115
+  ],
+  "MoldSpear": [
+   7,
+   116
+  ],
+  "MoldStaffOrbofAhri": [
+   7,
+   117
+  ],
+  "MoldStafffrostorbs": [
+   7,
+   118
+  ],
+  "MoldStaffspiritcaller": [
+   7,
+   119
+  ],
+  "MoldStaffthunderblood": [
+   7,
+   120
+  ],
+  "MoldSword": [
+   7,
+   121
+  ],
+  "MoldSword2H": [
+   7,
+   122
+  ],
+  "MoleClaws": [
+   4,
+   77
+  ],
+  "MoltenCore": [
+   4,
+   78
+  ],
+  "MooseHide": [
+   4,
+   79
+  ],
+  "MooseKebab": [
+   4,
+   80
+  ],
+  "MooseMeat": [
+   4,
+   81
+  ],
+  "MooseSinew": [
+   4,
+   82
+  ],
+  "MorgenHeart": [
+   4,
+   83
+  ],
+  "MorgenSinew": [
+   4,
+   84
+  ],
+  "Mushroom": [
+   4,
+   85
+  ],
+  "MushroomBlue": [
+   4,
+   86
+  ],
+  "MushroomBzerker": [
+   4,
+   87
+  ],
+  "MushroomDeathcap_TW": [
+   9,
+   68
+  ],
+  "MushroomDevilstongue_TW": [
+   9,
+   69
+  ],
+  "MushroomJotunPuffs": [
+   4,
+   88
+  ],
+  "MushroomMagecap": [
+   4,
+   89
+  ],
+  "MushroomOmelette": [
+   4,
+   90
+  ],
+  "MushroomSmokePuff": [
+   4,
+   91
+  ],
+  "MushroomWitcheye_TW": [
+   9,
+   70
+  ],
+  "MushroomWizardbutter_TW": [
+   9,
+   71
+  ],
+  "MushroomYellow": [
+   4,
+   92
+  ],
+  "NeckTail": [
+   4,
+   93
+  ],
+  "Needle": [
+   4,
+   94
+  ],
+  "NornThread": [
+   4,
+   95
+  ],
+  "Oat": [
+   4,
+   96
+  ],
+  "OatFlour": [
+   4,
+   97
+  ],
+  "OatMilk": [
+   4,
+   98
+  ],
+  "OatSeeds": [
+   4,
+   99
+  ],
+  "OatmealLingonberryJam": [
+   4,
+   100
+  ],
+  "Obsidian": [
+   4,
+   101
+  ],
+  "Onion": [
+   4,
+   102
+  ],
+  "OnionSeeds": [
+   4,
+   103
+  ],
+  "OnionSoup": [
+   4,
+   104
+  ],
+  "Onyx_TW": [
+   12,
+   110
+  ],
+  "Ooze": [
+   4,
+   105
+  ],
+  "OozeMork": [
+   4,
+   106
+  ],
+  "OrbFrostFire": [
+   4,
+   107
+  ],
+  "OrbThunderBlood": [
+   4,
+   108
+  ],
+  "OvenPancake": [
+   4,
+   109
+  ],
+  "OvenPancakeUncooked": [
+   4,
+   110
+  ],
+  "Pancakes": [
+   4,
+   111
+  ],
+  "PickaxeAntler": [
+   6,
+   143
+  ],
+  "PickaxeBlackMetal": [
+   6,
+   144
+  ],
+  "PickaxeBronze": [
+   6,
+   145
+  ],
+  "PickaxeFader_TW": [
+   12,
+   111
+  ],
+  "PickaxeIron": [
+   6,
+   146
+  ],
+  "PickaxeSilver_TW": [
+   12,
+   112
+  ],
+  "PickaxeStone": [
+   6,
+   147
+  ],
+  "PineCone": [
+   4,
+   112
+  ],
+  "PiquantPie": [
+   4,
+   113
+  ],
+  "PiquantPieUncooked": [
+   4,
+   114
+  ],
+  "PlayerUnarmed": [
+   6,
+   148
+  ],
+  "Pot_Shard_Green": [
+   4,
+   115
+  ],
+  "Pot_Shard_Red": [
+   4,
+   116
+  ],
+  "Poteitr": [
+   4,
+   117
+  ],
+  "PoteitrSeeds": [
+   4,
+   118
+  ],
+  "PotionAquatic_TW": [
+   9,
+   72
+  ],
+  "PotionLumberjack_TW": [
+   9,
+   73
+  ],
+  "PotionMiner_TW": [
+   9,
+   74
+  ],
+  "PotionOx_TW": [
+   9,
+   75
+  ],
+  "PotionRejuvenationMedium_TW": [
+   9,
+   76
+  ],
+  "PotionRejuvenationMinor_TW": [
+   9,
+   77
+  ],
+  "PotionSkills_TW": [
+   9,
+   78
+  ],
+  "PotionSneak_TW": [
+   9,
+   79
+  ],
+  "PotionSpeed_TW": [
+   9,
+   80
+  ],
+  "PotionStoneskin_TW": [
+   9,
+   81
+  ],
+  "PowderedDragonEgg": [
+   4,
+   119
+  ],
+  "ProustitePowder": [
+   4,
+   120
+  ],
+  "ProwlerFang_TW": [
+   12,
+   113
+  ],
+  "Pukeberries": [
+   4,
+   121
+  ],
+  "PulledBear": [
+   4,
+   122
+  ],
+  "PungentPebbles": [
+   4,
+   123
+  ],
+  "QueenBee": [
+   4,
+   124
+  ],
+  "QueenDrop": [
+   4,
+   125
+  ],
+  "QueensJam": [
+   4,
+   126
+  ],
+  "Raspberry": [
+   4,
+   127
+  ],
+  "RawMeat": [
+   4,
+   128
+  ],
+  "RazorbackLeather_TW": [
+   12,
+   114
+  ],
+  "RazorbackTusk_TW": [
+   12,
+   115
+  ],
+  "Resin": [
+   4,
+   129
+  ],
+  "RingBlackForest_TW": [
+   9,
+   82
+  ],
+  "RingMistlands_TW": [
+   9,
+   83
+  ],
+  "RingMountain_TW": [
+   9,
+   84
+  ],
+  "RingPlains_TW": [
+   9,
+   85
+  ],
+  "RingSwamp_TW": [
+   9,
+   86
+  ],
+  "RoastedCrustPie": [
+   4,
+   130
+  ],
+  "RoastedCrustPieUncooked": [
+   4,
+   131
+  ],
+  "Root": [
+   4,
+   132
+  ],
+  "RottenMeat": [
+   4,
+   133
+  ],
+  "RottenPelt_TW": [
+   12,
+   116
+  ],
+  "RoundLog": [
+   4,
+   134
+  ],
+  "RoyalJelly": [
+   4,
+   135
+  ],
+  "Ruby": [
+   4,
+   136
+  ],
+  "RuneAlgiz_TW": [
+   12,
+   157
+  ],
+  "RuneBer_TW": [
+   12,
+   158
+  ],
+  "RuneDagaz_TW": [
+   12,
+   159
+  ],
+  "RuneEihwaz_TW": [
+   12,
+   160
+  ],
+  "RuneFehu_TW": [
+   12,
+   161
+  ],
+  "RuneJara_TW": [
+   12,
+   162
+  ],
+  "RuneMannaz_TW": [
+   12,
+   163
+  ],
+  "RuneOthala_TW": [
+   12,
+   164
+  ],
+  "RunePerth_TW": [
+   12,
+   165
+  ],
+  "RuneRaidho_TW": [
+   12,
+   166
+  ],
+  "RuneThurisaz_TW": [
+   12,
+   167
+  ],
+  "SaddleAsksvin": [
+   4,
+   137
+  ],
+  "SaddleLox": [
+   4,
+   138
+  ],
+  "SaddleMoose": [
+   4,
+   139
+  ],
+  "Salad": [
+   4,
+   140
+  ],
+  "Sap": [
+   4,
+   141
+  ],
+  "Sapphire_TW": [
+   12,
+   117
+  ],
+  "Sausages": [
+   4,
+   142
+  ],
+  "ScaleHide": [
+   4,
+   143
+  ],
+  "ScorchingMedley": [
+   4,
+   144
+  ],
+  "Scythe": [
+   6,
+   149
+  ],
+  "ScytheHandle": [
+   4,
+   145
+  ],
+  "ScytheVampiric_TW": [
+   12,
+   118
+  ],
+  "SealBlubber": [
+   4,
+   146
+  ],
+  "SealHide": [
+   4,
+   147
+  ],
+  "SealSoup": [
+   4,
+   148
+  ],
+  "SeekerAspic": [
+   4,
+   149
+  ],
+  "SerpentMeat": [
+   4,
+   150
+  ],
+  "SerpentMeatCooked": [
+   4,
+   151
+  ],
+  "SerpentScale": [
+   4,
+   152
+  ],
+  "SerpentStew": [
+   4,
+   153
+  ],
+  "ShardBonemass_TW": [
+   9,
+   87
+  ],
+  "ShardElder_TW": [
+   9,
+   88
+  ],
+  "ShardModer_TW": [
+   9,
+   89
+  ],
+  "ShardQueen_TW": [
+   9,
+   90
+  ],
+  "ShardYagluth_TW": [
+   9,
+   91
+  ],
+  "SharpeningStone": [
+   4,
+   154
+  ],
+  "ShieldBanded": [
+   6,
+   150
+  ],
+  "ShieldBlackmetal": [
+   6,
+   151
+  ],
+  "ShieldBlackmetalBuckler_TW": [
+   12,
+   119
+  ],
+  "ShieldBlackmetalTower": [
+   6,
+   152
+  ],
+  "ShieldBoneTower": [
+   6,
+   153
+  ],
+  "ShieldBronzeBanded_TW": [
+   12,
+   120
+  ],
+  "ShieldBronzeBuckler": [
+   6,
+   154
+  ],
+  "ShieldBronzeTower_TW": [
+   12,
+   121
+  ],
+  "ShieldBucklerGoldUncooked": [
+   7,
+   123
+  ],
+  "ShieldCarapace": [
+   6,
+   155
+  ],
+  "ShieldCarapaceBuckler": [
+   6,
+   156
+  ],
+  "ShieldCarapaceTower_TW": [
+   12,
+   122
+  ],
+  "ShieldChitinBuckler_TW": [
+   12,
+   123
+  ],
+  "ShieldChitinTower_TW": [
+   12,
+   124
+  ],
+  "ShieldChitin_TW": [
+   12,
+   125
+  ],
+  "ShieldCore": [
+   4,
+   155
+  ],
+  "ShieldFlametal": [
+   6,
+   157
+  ],
+  "ShieldFlametalTower": [
+   6,
+   158
+  ],
+  "ShieldGold": [
+   6,
+   159
+  ],
+  "ShieldGoldBuckler": [
+   6,
+   160
+  ],
+  "ShieldGoldTower": [
+   6,
+   161
+  ],
+  "ShieldIronBuckler": [
+   6,
+   162
+  ],
+  "ShieldIronSquare": [
+   6,
+   163
+  ],
+  "ShieldIronTower": [
+   6,
+   164
+  ],
+  "ShieldKnight": [
+   6,
+   165
+  ],
+  "ShieldRoots": [
+   6,
+   166
+  ],
+  "ShieldRoundGoldUncooked": [
+   7,
+   124
+  ],
+  "ShieldSerpentscale": [
+   6,
+   167
+  ],
+  "ShieldSilver": [
+   6,
+   168
+  ],
+  "ShieldSilverBuckler_TW": [
+   12,
+   126
+  ],
+  "ShieldTowerGoldUncooked": [
+   7,
+   125
+  ],
+  "ShieldWood": [
+   6,
+   169
+  ],
+  "ShieldWoodTower": [
+   6,
+   170
+  ],
+  "ShocklateSmoothie": [
+   4,
+   156
+  ],
+  "Shovel": [
+   6,
+   171
+  ],
+  "ShroomSoupBlackForest_TW": [
+   9,
+   92
+  ],
+  "ShroomSoupMountain_TW": [
+   9,
+   93
+  ],
+  "ShroomSoupPlains_TW": [
+   9,
+   94
+  ],
+  "ShroomSoupSwamp_TW": [
+   9,
+   95
+  ],
+  "Silver": [
+   4,
+   157
+  ],
+  "SilverNecklace": [
+   4,
+   158
+  ],
+  "SilverOre": [
+   4,
+   159
+  ],
+  "SizzlingBerryBroth": [
+   4,
+   160
+  ],
+  "SledgeBlackmetal_TW": [
+   12,
+   127
+  ],
+  "SledgeBonemass_TW": [
+   12,
+   128
+  ],
+  "SledgeBronze_TW": [
+   12,
+   129
+  ],
+  "SledgeCheat": [
+   6,
+   172
+  ],
+  "SledgeDemolisher": [
+   6,
+   173
+  ],
+  "SledgeDemolisher_TW": [
+   12,
+   130
+  ],
+  "SledgeFlametal_TW": [
+   12,
+   131
+  ],
+  "SledgeGold": [
+   6,
+   174
+  ],
+  "SledgeGoldUncooked": [
+   7,
+   126
+  ],
+  "SledgeGold_BloodLightning": [
+   6,
+   175
+  ],
+  "SledgeGold_FrostFire": [
+   6,
+   176
+  ],
+  "SledgeIron": [
+   6,
+   177
+  ],
+  "SledgeIron_TW": [
+   12,
+   132
+  ],
+  "SledgeSilver_TW": [
+   12,
+   133
+  ],
+  "SledgeStagbreaker": [
+   6,
+   178
+  ],
+  "SledgeStagbreaker_TW": [
+   12,
+   134
+  ],
+  "SledgeWood": [
+   6,
+   179
+  ],
+  "SmallPartsGoldUncooked": [
+   7,
+   127
+  ],
+  "SmokedFish": [
+   4,
+   161
+  ],
+  "SmokedMooseMeat": [
+   4,
+   162
+  ],
+  "Snowball": [
+   6,
+   180
+  ],
+  "SnowballBig": [
+   6,
+   181
+  ],
+  "Softtissue": [
+   4,
+   163
+  ],
+  "Sparkler": [
+   6,
+   182
+  ],
+  "SparklingShroomshake": [
+   4,
+   164
+  ],
+  "SpearBlackmetal_TW": [
+   12,
+   135
+  ],
+  "SpearBronze": [
+   6,
+   183
+  ],
+  "SpearCarapace": [
+   6,
+   184
+  ],
+  "SpearChitin": [
+   6,
+   185
+  ],
+  "SpearElderbark": [
+   6,
+   186
+  ],
+  "SpearFlint": [
+   6,
+   187
+  ],
+  "SpearGold": [
+   6,
+   188
+  ],
+  "SpearGoldUncooked": [
+   7,
+   128
+  ],
+  "SpearGold_BloodLightning": [
+   6,
+   189
+  ],
+  "SpearGold_FrostFire": [
+   6,
+   190
+  ],
+  "SpearSplitner": [
+   6,
+   191
+  ],
+  "SpearSplitner_Blood": [
+   6,
+   192
+  ],
+  "SpearSplitner_Lightning": [
+   6,
+   193
+  ],
+  "SpearSplitner_Nature": [
+   6,
+   194
+  ],
+  "SpearWolfFang": [
+   6,
+   195
+  ],
+  "SpearWood": [
+   7,
+   0
+  ],
+  "SpiceAshlands": [
+   4,
+   165
+  ],
+  "SpiceDeepNorth": [
+   4,
+   166
+  ],
+  "SpiceForests": [
+   4,
+   167
+  ],
+  "SpiceMistlands": [
+   4,
+   168
+  ],
+  "SpiceMountains": [
+   4,
+   169
+  ],
+  "SpiceOceans": [
+   4,
+   170
+  ],
+  "SpicePlains": [
+   4,
+   171
+  ],
+  "SpicyMarmalade": [
+   4,
+   172
+  ],
+  "StaffBlackforest_TW": [
+   9,
+   96
+  ],
+  "StaffClusterbomb": [
+   7,
+   1
+  ],
+  "StaffFireball": [
+   7,
+   2
+  ],
+  "StaffFrostOrbs": [
+   7,
+   3
+  ],
+  "StaffFrostOrbsUncooked": [
+   4,
+   173
+  ],
+  "StaffGolem_TW": [
+   9,
+   97
+  ],
+  "StaffGreenRoots": [
+   7,
+   4
+  ],
+  "StaffIceShards": [
+   7,
+   5
+  ],
+  "StaffLightning": [
+   7,
+   6
+  ],
+  "StaffMistlands_TW": [
+   9,
+   98
+  ],
+  "StaffMountain_TW": [
+   9,
+   99
+  ],
+  "StaffOrbofAhri": [
+   7,
+   7
+  ],
+  "StaffOrbofAhriUncooked": [
+   4,
+   174
+  ],
+  "StaffPlains_TW": [
+   9,
+   100
+  ],
+  "StaffRedTroll": [
+   7,
+   8
+  ],
+  "StaffShield": [
+   7,
+   9
+  ],
+  "StaffSkeleton": [
+   7,
+   129
+  ],
+  "StaffSpiritCaller": [
+   7,
+   10
+  ],
+  "StaffSpiritCallerUncooked": [
+   4,
+   175
+  ],
+  "StaffSurtling_TW": [
+   9,
+   101
+  ],
+  "StaffSwamp_TW": [
+   9,
+   102
+  ],
+  "StaffThunderBlood": [
+   7,
+   11
+  ],
+  "StaffThunderbloodUncooked": [
+   4,
+   176
+  ],
+  "Staffbase_BlackForest_TW": [
+   9,
+   103
+  ],
+  "Staffbase_Mistlands_TW": [
+   9,
+   104
+  ],
+  "Staffbase_Mountain_TW": [
+   9,
+   105
+  ],
+  "Staffbase_Plains_TW": [
+   9,
+   106
+  ],
+  "Staffbase_Swamp_TW": [
+   9,
+   107
+  ],
+  "Staffcore_BlackForest_TW": [
+   9,
+   108
+  ],
+  "Staffcore_Mistlands_TW": [
+   9,
+   109
+  ],
+  "Staffcore_Mountain_TW": [
+   9,
+   110
+  ],
+  "Staffcore_Plains_TW": [
+   9,
+   111
+  ],
+  "Staffcore_Swamp_TW": [
+   9,
+   112
+  ],
+  "StaminaUpgrade_Greydwarf": [
+   4,
+   177
+  ],
+  "StaminaUpgrade_Troll": [
+   4,
+   178
+  ],
+  "StaminaUpgrade_Wraith": [
+   4,
+   179
+  ],
+  "Stone": [
+   4,
+   180
+  ],
+  "StoneRock": [
+   4,
+   181
+  ],
+  "SulfurStone": [
+   4,
+   182
+  ],
+  "SurtlingCore": [
+   4,
+   183
+  ],
+  "SwordBlackmetal": [
+   7,
+   12
+  ],
+  "SwordBone_TW": [
+   12,
+   136
+  ],
+  "SwordBronze": [
+   7,
+   13
+  ],
+  "SwordCheat": [
+   7,
+   14
+  ],
+  "SwordChitin_TW": [
+   12,
+   137
+  ],
+  "SwordDyrnwyn": [
+   7,
+   15
+  ],
+  "SwordFlint_TW": [
+   12,
+   138
+  ],
+  "SwordGold": [
+   7,
+   16
+  ],
+  "SwordGoldUncooked": [
+   7,
+   130
+  ],
+  "SwordGold_BloodLightning": [
+   7,
+   17
+  ],
+  "SwordGold_FrostFire": [
+   7,
+   18
+  ],
+  "SwordIron": [
+   0,
+   11
+  ],
+  "SwordIronFire": [
+   7,
+   19
+  ],
+  "SwordMistwalker": [
+   7,
+   20
+  ],
+  "SwordNiedhogg": [
+   7,
+   21
+  ],
+  "SwordNiedhoggBlood": [
+   7,
+   22
+  ],
+  "SwordNiedhoggLightning": [
+   7,
+   23
+  ],
+  "SwordNiedhoggNature": [
+   7,
+   24
+  ],
+  "SwordScimitar_TW": [
+   12,
+   139
+  ],
+  "SwordSilver": [
+   7,
+   25
+  ],
+  "SwordWood": [
+   7,
+   26
+  ],
+  "T0ChaosPlateArmor": [
+   10,
+   16
+  ],
+  "T0ChaosPlateHelm": [
+   10,
+   17
+  ],
+  "T0ChaosPlateLegs": [
+   10,
+   18
+  ],
+  "T1ChaosPlateArmor": [
+   10,
+   19
+  ],
+  "T1ChaosPlateHelm": [
+   10,
+   20
+  ],
+  "T1ChaosPlateLegs": [
+   10,
+   21
+  ],
+  "T2ChaosPlateArmor": [
+   10,
+   22
+  ],
+  "T2ChaosPlateHelm": [
+   10,
+   23
+  ],
+  "T2ChaosPlateLegs": [
+   10,
+   24
+  ],
+  "THSwordGold": [
+   7,
+   27
+  ],
+  "THSwordGoldUncooked": [
+   7,
+   131
+  ],
+  "THSwordGold_BloodLightning": [
+   7,
+   28
+  ],
+  "THSwordGold_FrostFire": [
+   7,
+   29
+  ],
+  "THSwordKrom": [
+   7,
+   30
+  ],
+  "THSwordSlayer": [
+   7,
+   31
+  ],
+  "THSwordSlayerBlood": [
+   7,
+   32
+  ],
+  "THSwordSlayerLightning": [
+   7,
+   33
+  ],
+  "THSwordSlayerNature": [
+   7,
+   34
+  ],
+  "THSwordWood": [
+   7,
+   35
+  ],
+  "Tankard": [
+   7,
+   36
+  ],
+  "TankardAnniversary": [
+   7,
+   37
+  ],
+  "TankardOdin": [
+   7,
+   38
+  ],
+  "Tankard_dvergr": [
+   7,
+   39
+  ],
+  "Tar": [
+   4,
+   184
+  ],
+  "Thistle": [
+   4,
+   185
+  ],
+  "ThrowAxeBlackmetal_TW": [
+   12,
+   140
+  ],
+  "ThrowAxeBronze_TW": [
+   12,
+   141
+  ],
+  "ThrowAxeDvergr_TW": [
+   12,
+   142
+  ],
+  "ThrowAxeFlint_TW": [
+   12,
+   143
+  ],
+  "ThrowAxeIron_TW": [
+   12,
+   144
+  ],
+  "ThrowAxeSilver_TW": [
+   12,
+   145
+  ],
+  "Thunderstone": [
+   4,
+   186
+  ],
+  "Tin": [
+   4,
+   187
+  ],
+  "TinOre": [
+   4,
+   188
+  ],
+  "Topaz_TW": [
+   12,
+   146
+  ],
+  "Torch": [
+   7,
+   40
+  ],
+  "TorchMist": [
+   7,
+   41
+  ],
+  "TridentBlackmetal_TW": [
+   12,
+   147
+  ],
+  "TrinketBlackDamageHealth": [
+   7,
+   42
+  ],
+  "TrinketBlackStamina": [
+   7,
+   43
+  ],
+  "TrinketBloodGoldHealth": [
+   7,
+   44
+  ],
+  "TrinketBloodGoldStamina": [
+   7,
+   45
+  ],
+  "TrinketBronzeHealth": [
+   7,
+   46
+  ],
+  "TrinketBronzeStamina": [
+   7,
+   47
+  ],
+  "TrinketCarapaceEitr": [
+   7,
+   48
+  ],
+  "TrinketChitinSwim": [
+   7,
+   49
+  ],
+  "TrinketFlametalEitr": [
+   7,
+   50
+  ],
+  "TrinketFlametalStaminaHealth": [
+   7,
+   51
+  ],
+  "TrinketIronHealth": [
+   7,
+   52
+  ],
+  "TrinketIronStamina": [
+   7,
+   53
+  ],
+  "TrinketScaleStaminaDamage": [
+   7,
+   54
+  ],
+  "TrinketSilverDamage": [
+   7,
+   55
+  ],
+  "TrinketSilverResist": [
+   7,
+   56
+  ],
+  "TrollBone_TW": [
+   12,
+   148
+  ],
+  "TrollHide": [
+   4,
+   189
+  ],
+  "TrophyAbomination": [
+   4,
+   190
+  ],
+  "TrophyAsksvin": [
+   4,
+   191
+  ],
+  "TrophyBarka": [
+   4,
+   192
+  ],
+  "TrophyBjorn": [
+   4,
+   193
+  ],
+  "TrophyBjornUndead": [
+   4,
+   194
+  ],
+  "TrophyBlob": [
+   4,
+   195
+  ],
+  "TrophyBlob_Frost": [
+   5,
+   0
+  ],
+  "TrophyBlob_Lava": [
+   5,
+   1
+  ],
+  "TrophyBlob_Morkhalla": [
+   5,
+   2
+  ],
+  "TrophyBoar": [
+   5,
+   3
+  ],
+  "TrophyBonemass": [
+   5,
+   4
+  ],
+  "TrophyBonemawSerpent": [
+   5,
+   5
+  ],
+  "TrophyCharredArcher": [
+   5,
+   6
+  ],
+  "TrophyCharredMage": [
+   5,
+   7
+  ],
+  "TrophyCharredMelee": [
+   5,
+   8
+  ],
+  "TrophyCultist": [
+   5,
+   9
+  ],
+  "TrophyCultist_Hildir": [
+   5,
+   10
+  ],
+  "TrophyDeathsquito": [
+   5,
+   11
+  ],
+  "TrophyDeer": [
+   5,
+   12
+  ],
+  "TrophyDeerWhite": [
+   5,
+   13
+  ],
+  "TrophyDragonQueen": [
+   5,
+   14
+  ],
+  "TrophyDraugr": [
+   5,
+   15
+  ],
+  "TrophyDraugrElite": [
+   5,
+   16
+  ],
+  "TrophyDraugrFem": [
+   5,
+   17
+  ],
+  "TrophyDvergr": [
+   5,
+   18
+  ],
+  "TrophyEikthyr": [
+   5,
+   19
+  ],
+  "TrophyElaking": [
+   5,
+   20
+  ],
+  "TrophyFader": [
+   5,
+   21
+  ],
+  "TrophyFallenValkyrie": [
+   5,
+   22
+  ],
+  "TrophyFenring": [
+   5,
+   23
+  ],
+  "TrophyFrostTroll": [
+   5,
+   24
+  ],
+  "TrophyGhost": [
+   5,
+   25
+  ],
+  "TrophyGjall": [
+   5,
+   26
+  ],
+  "TrophyGoblin": [
+   5,
+   27
+  ],
+  "TrophyGoblinBrute": [
+   5,
+   28
+  ],
+  "TrophyGoblinBruteBrosBrute": [
+   5,
+   29
+  ],
+  "TrophyGoblinBruteBrosShaman": [
+   5,
+   30
+  ],
+  "TrophyGoblinKing": [
+   5,
+   31
+  ],
+  "TrophyGoblinShaman": [
+   5,
+   32
+  ],
+  "TrophyGreydwarf": [
+   5,
+   33
+  ],
+  "TrophyGreydwarfBrute": [
+   5,
+   34
+  ],
+  "TrophyGreydwarfShaman": [
+   5,
+   35
+  ],
+  "TrophyGrowth": [
+   5,
+   36
+  ],
+  "TrophyHare": [
+   5,
+   37
+  ],
+  "TrophyHatchling": [
+   5,
+   38
+  ],
+  "TrophyJotunWarrior": [
+   5,
+   39
+  ],
+  "TrophyJotunWitch": [
+   5,
+   40
+  ],
+  "TrophyKvastur": [
+   5,
+   41
+  ],
+  "TrophyLeech": [
+   5,
+   42
+  ],
+  "TrophyLox": [
+   5,
+   43
+  ],
+  "TrophyMole": [
+   5,
+   44
+  ],
+  "TrophyMoose": [
+   5,
+   45
+  ],
+  "TrophyMorgen": [
+   5,
+   46
+  ],
+  "TrophyNeck": [
+   5,
+   47
+  ],
+  "TrophySGolem": [
+   5,
+   48
+  ],
+  "TrophySeal": [
+   5,
+   49
+  ],
+  "TrophySeeker": [
+   5,
+   50
+  ],
+  "TrophySeekerBrute": [
+   5,
+   51
+  ],
+  "TrophySeekerQueen": [
+   5,
+   52
+  ],
+  "TrophySerpent": [
+   5,
+   53
+  ],
+  "TrophySheep_TW": [
+   9,
+   113
+  ],
+  "TrophySkeleton": [
+   5,
+   54
+  ],
+  "TrophySkeletonHildir": [
+   5,
+   55
+  ],
+  "TrophySkeletonPoison": [
+   5,
+   56
+  ],
+  "TrophySurtling": [
+   5,
+   57
+  ],
+  "TrophyTheElder": [
+   5,
+   58
+  ],
+  "TrophyTick": [
+   5,
+   59
+  ],
+  "TrophyUlv": [
+   5,
+   60
+  ],
+  "TrophyVolture": [
+   5,
+   61
+  ],
+  "TrophyWolf": [
+   5,
+   62
+  ],
+  "TrophyWraith": [
+   5,
+   63
+  ],
+  "TrophyWrithan": [
+   5,
+   64
+  ],
+  "Turnip": [
+   5,
+   65
+  ],
+  "TurnipSeeds": [
+   5,
+   66
+  ],
+  "TurnipStew": [
+   5,
+   67
+  ],
+  "TurretBolt": [
+   7,
+   57
+  ],
+  "TurretBoltBloodgold": [
+   7,
+   58
+  ],
+  "TurretBoltBone": [
+   7,
+   59
+  ],
+  "TurretBoltFlametal": [
+   7,
+   60
+  ],
+  "TurretBoltWood": [
+   7,
+   61
+  ],
+  "UncookedBerryCakePlains_TW": [
+   9,
+   114
+  ],
+  "UndeadBjornRibcage": [
+   5,
+   68
+  ],
+  "Upgrader0Armor": [
+   7,
+   132
+  ],
+  "Upgrader0Weapon": [
+   7,
+   133
+  ],
+  "Upgrader1Armor": [
+   7,
+   134
+  ],
+  "Upgrader1Weapon": [
+   7,
+   135
+  ],
+  "Upgrader2Armor": [
+   7,
+   136
+  ],
+  "Upgrader2Weapon": [
+   7,
+   137
+  ],
+  "Upgrader3Armor": [
+   7,
+   138
+  ],
+  "Upgrader3Weapon": [
+   7,
+   139
+  ],
+  "Upgrader4Armor": [
+   7,
+   140
+  ],
+  "Upgrader4Weapon": [
+   7,
+   141
+  ],
+  "Upgrader5Armor": [
+   7,
+   142
+  ],
+  "Upgrader5Weapon": [
+   7,
+   143
+  ],
+  "Upgrader6Armor": [
+   7,
+   144
+  ],
+  "Upgrader6Weapon": [
+   7,
+   145
+  ],
+  "Upgrader7Armor": [
+   7,
+   146
+  ],
+  "Upgrader7Weapon": [
+   7,
+   147
+  ],
+  "VegvisirShard_Bonemass": [
+   5,
+   69
+  ],
+  "VenomousFang_TW": [
+   12,
+   149
+  ],
+  "VikingCupcake": [
+   5,
+   70
+  ],
+  "VikingCupcakeUncooked": [
+   5,
+   71
+  ],
+  "VineGreenSeeds": [
+   5,
+   72
+  ],
+  "Vineberry": [
+   5,
+   73
+  ],
+  "VineberrySeeds": [
+   5,
+   74
+  ],
+  "Voidplasm": [
+   5,
+   75
+  ],
+  "VoltureEgg": [
+   5,
+   76
+  ],
+  "VoltureMeat": [
+   5,
+   77
+  ],
+  "WarpikeBlackmetal_TW": [
+   12,
+   150
+  ],
+  "WarpikeBone_TW": [
+   12,
+   151
+  ],
+  "WarpikeChitin_TW": [
+   12,
+   152
+  ],
+  "WarpikeDvergr_TW": [
+   12,
+   153
+  ],
+  "WarpikeElder_TW": [
+   12,
+   154
+  ],
+  "WarpikeFlametal_TW": [
+   12,
+   155
+  ],
+  "WarpikeObsidian_TW": [
+   12,
+   156
+  ],
+  "Wishbone": [
+   7,
+   62
+  ],
+  "Wisp": [
+   5,
+   78
+  ],
+  "WitheredBone": [
+   5,
+   79
+  ],
+  "WolfClaw": [
+   5,
+   80
+  ],
+  "WolfFang": [
+   5,
+   81
+  ],
+  "WolfHairBundle": [
+   5,
+   82
+  ],
+  "WolfJerky": [
+   5,
+   83
+  ],
+  "WolfMeat": [
+   5,
+   84
+  ],
+  "WolfMeatSkewer": [
+   5,
+   85
+  ],
+  "WolfPelt": [
+   5,
+   86
+  ],
+  "Wood": [
+   0,
+   12
+  ],
+  "WoolScraps_TW": [
+   9,
+   115
+  ],
+  "WoolYarn_Black_TW": [
+   9,
+   116
+  ],
+  "WoolYarn_Blue_TW": [
+   9,
+   117
+  ],
+  "WoolYarn_Brown_TW": [
+   9,
+   118
+  ],
+  "WoolYarn_Green_TW": [
+   9,
+   119
+  ],
+  "WoolYarn_Red_TW": [
+   9,
+   120
+  ],
+  "WoolYarn_Teal_TW": [
+   9,
+   121
+  ],
+  "WoolYarn_White_TW": [
+   9,
+   122
+  ],
+  "WoolYarn_Yellow_TW": [
+   9,
+   123
+  ],
+  "WrithanRoots": [
+   5,
+   87
+  ],
+  "YagluthDrop": [
+   5,
+   88
+  ],
+  "YggdrasilPorridge": [
+   5,
+   89
+  ],
+  "YggdrasilWood": [
+   5,
+   90
+  ],
+  "YmirRemains": [
+   5,
+   91
+  ],
+  "chest_hildir1": [
+   5,
+   92
+  ],
+  "chest_hildir2": [
+   5,
+   93
+  ],
+  "chest_hildir3": [
+   5,
+   94
+  ]
+ },
+ "orient": {
+  "BowAshlandsBlood": "antitranspose",
+  "BowDraugrFang": "antitranspose",
+  "CrossbowArbalest": "transpose",
+  "CrossbowGold": "transpose",
+  "CrossbowGold_BloodLightning": "transpose",
+  "CrossbowGold_FrostFire": "transpose",
+  "CrossbowRipper": "transpose",
+  "CrossbowRipperBlood": "transpose",
+  "CrossbowRipperLightning": "transpose",
+  "CrossbowRipperNature": "transpose",
+  "ShieldCarapaceBuckler": "rot270",
+  "ShieldKnight": "rot180",
+  "TurretBoltFlametal": "transpose"
+ }
+}

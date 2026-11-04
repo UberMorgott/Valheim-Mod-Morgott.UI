@@ -1,0 +1,8 @@
+{
+  "style": "Game status-effect icon for Valheim (Norse viking survival game), in the style of the Epic Loot mod item icons: hand-painted semi-realistic, rich saturated colours, strong rim light and a soft magical glow, bold silhouette that stays readable at 32 pixels, one centred emblem that fills the frame, fully transparent background (PNG with alpha channel), no text, no letters, no numbers, no border, no frame, no background square or circle plate. Subject: ",
+  "items": {
+    "bleed": "three heavy dark-red blood drops falling from a fresh slash wound mark, glossy crimson with a bright highlight (bleeding damage over time)",
+    "impale": "a broken iron spear head stuck point-first in a bleeding wound, dark-red blood running down the shaft (impaled, bleeding)",
+    "paralyze": "a crackling yellow-white lightning chain coiled tight around a frozen stiff viking boot (paralyzed, cannot move)"
+  }
+}

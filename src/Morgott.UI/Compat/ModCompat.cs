@@ -65,5 +65,9 @@ namespace Morgott.UI.Compat
         public const string CreaturesFrame = "CR_Frame";
         public const string CreaturesGuid = Morgott.Core.Contracts.CreaturesGuid;
         public const string StarLevelSystemGuid = "MidnightsFX.StarLevelSystem";
+
+        // ---- Icons\ModStatusIcons, Compat\CurrencyPocketTooltip (read from the installed plugins' [BepInPlugin])
+        public const string WarfareGuid = "Therzie.Warfare";
+        public const string CurrencyPocketGuid = "Azumatt.CurrencyPocket";
     }
 }

@@ -131,6 +131,9 @@ namespace Morgott.UI
             Translations.Load(typeof(Plugin).Assembly, "Morgott.UI.Translations.");
             // Shared VFX (Core IVfx) do not depend on the theme: registered even when the skin stays inactive.
             if (!CoreApi.Headless) Services.Register<IVfx>(VfxProvider.Instance = new VfxProvider(System.IO.Path.GetDirectoryName(Info.Location)));
+            // Icons and compat text do not depend on the theme either (MorgottTweaks moved them here, TASKS 4.5).
+            _harmony = new Harmony(Contracts.UiGuid);
+            Icons.IconRestyle.Register(Config, _harmony);
             var wanted = new Dictionary<string, bool>();
             foreach (var (family, does) in Families)
             {
@@ -223,7 +226,6 @@ namespace Morgott.UI
             if (WatchTheme.Value) ThemeWatcher.Attach(gameObject);
 
             var patchStart = Stopwatch.GetTimestamp();
-            _harmony = new Harmony(Contracts.UiGuid);
             // M7: precise mod panels + the fallback restyler for every UI no family owns, Jotunn windows, IMGUI fonts
             // (their own runtime hooks), set up before the class patches that read their state.
             Screens.TooltipAdapter.Harmony = _harmony;
@@ -244,6 +246,14 @@ namespace Morgott.UI
             if (OwnershipRegistry.IsOwned(OwnershipRegistry.Cursor)) CursorSkin.Apply();
             var ms = (Stopwatch.GetTimestamp() - patchStart) * 1000.0 / Stopwatch.Frequency;
             Log.LogInfo($"[Morgott.UI] {Version} ready; init {(patchStart - _initStart) * 1000.0 / Stopwatch.Frequency:0} ms theme + ownership, {ms:0} ms patches");
+        }
+
+        // After every plugin's Awake: Warfare, Epic Loot and CurrencyPocket may load after us.
+        private void Start()
+        {
+            if (_harmony == null) return; // inactive (Core API mismatch)
+            Icons.ModStatusIcons.Register(Config, _harmony);
+            Compat.CurrencyPocketTooltip.Register(Config, _harmony);
         }
 
         private void OnDestroy()
