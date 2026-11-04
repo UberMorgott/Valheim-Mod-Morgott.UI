@@ -157,6 +157,10 @@ namespace Morgott.UI.InventoryScreen
             {
                 var b = d ? d.Backing : null;
                 if (!b || !b.gameObject.activeInHierarchy || !b.IsChildOf(root) || RenderGate.IsConcealed(b)) continue;
+                // A tooltip is no window: vanilla puts it under the hovered element's nearest canvas (UITooltip.OnHoverStart),
+                // which inside a gated panel is that panel's kept RenderGate canvas, i.e. under the inventory root. As a
+                // cover it hid the recipe list / ornaments / quick cells under it while shown (user 2026-11-04).
+                if (b.GetComponentInParent<Screens.TooltipPlacer>(true)) continue;
                 if (!b.TryGetComponent<UnityEngine.UI.Graphic>(out var g) || !g.enabled || g.color.a < 0.999f || !g.canvas) continue;
                 var canvas = g.canvas.rootCanvas;
                 var cam = canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera;
