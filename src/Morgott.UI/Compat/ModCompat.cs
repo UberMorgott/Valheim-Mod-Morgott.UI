@@ -44,18 +44,6 @@ namespace Morgott.UI.Compat
         // ---- own mods: what the API does not carry yet
         // AdventureBackpacks fork 1.9.15+: docking API (AbApi); no name fallback.
         public const string AbApiType = "AdventureBackpacks.API.ABAPI";
-        // MorgottTweaks: footer trash plate, CraftingFilter row / search / tabs, RecipeChains box, ZDO keys it publishes.
-        public const string MtTrashPlate = "MT_Trash";
-        public const string MtCraftFilter = "MT_CraftFilter";
-        public const string MtCraftSearch = "MT_CraftSearch";
-        public const string MtCraftTabPrefix = "MT_CraftTab_";
-        public const string MtCategoryIcon = "MT_Icon";
-        // CraftingFilter sub-group row (MorgottTweaks 1.128.0): MT_CraftFilter/Subs/MT_CraftSub_<group>, first = All.
-        public const string MtCraftSubRow = "Subs";
-        public const string MtCraftSubPrefix = "MT_CraftSub_";
-        public const string MtChainTree = "MT_ChainTree";
-        public const string MtChainCraftButton = "MT_ChainCraftButton";
-        public const string MtGuid = "morgott.valheim.tweaks";
         // Morgott.Creatures (was Vaettir): rarity frame child per enemy HUD (its tier sprite), its plugin id.
         public const string CreaturesFrame = "CR_Frame";
         public const string CreaturesGuid = Morgott.Core.Contracts.CreaturesGuid;

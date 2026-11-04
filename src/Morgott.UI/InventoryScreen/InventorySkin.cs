@@ -274,7 +274,7 @@ namespace Morgott.UI.InventoryScreen
         }
 
         // Footer stat plates: vanilla Armor / Weight, CurrencyPocket CoinPocketUI, MorgottTweaks MT_Trash.
-        private static readonly string[] StatPlates = { "Armor", ModCompat.CoinPocketPlate, "Weight", ModCompat.MtTrashPlate };
+        private static readonly string[] StatPlates = { "Armor", ModCompat.CoinPocketPlate, "Weight", Morgott.Core.Contracts.Trash };
 
         private static bool IsVanillaBackground(Transform t) =>
             t.name == "selected_frame" || t.name.StartsWith("BraidLineHorisontalMedium", StringComparison.Ordinal) && !t.parent.name.StartsWith("Title", StringComparison.Ordinal) ||
@@ -306,7 +306,7 @@ namespace Morgott.UI.InventoryScreen
                 else if (t.name == "Weight" && t.parent && (t.parent == _gui.m_player || t.parent.GetComponentInChildren<InventoryGrid>(true))) ctx.Role(image, "plate.stat", "weight plate (InventoryGui.m_weight / m_containerWeight)");
                 else if (t.name == "weight_icon") ctx.Role(image, "glyph.stat.weight", "weight plate icon");
                 else if (t.name == "armor_icon" && t.parent && t.parent.name == "Armor") ctx.Role(image, "glyph.stat.armor", "armor plate icon (InventoryGui.m_armor)");
-                else if (t.name == "armor_icon" && t.parent && t.parent.name == ModCompat.MtTrashPlate) ctx.Role(image, "glyph.trash", "MorgottTweaks trash plate icon");
+                else if (t.name == "armor_icon" && t.parent && t.parent.name == Morgott.Core.Contracts.Trash) ctx.Role(image, "glyph.trash", "MorgottTweaks trash plate icon");
                 else if (t.name == "armor_icon" && t.parent && t.parent.name == ModCompat.CoinPocketPlate) ctx.Role(image, "content", "MorgottTweaks coin pocket: item icon");
                 else if (t.name == "Background" && t.parent && t.parent.parent == _gui.m_info) ctx.Role(image, "tab.background", "info tab button background (Info/<tab>/Background)");
                 else if ((t.name == "Icon" || t.name == "Image") && t.parent && t.parent.parent == _gui.m_info) ctx.Role(image, "content", "info tab icon (Button.targetGraphic, keeps its picture)");
@@ -1216,7 +1216,7 @@ namespace Morgott.UI.InventoryScreen
         {
             RectTransform PlateOf(TMP_Text text) => text && text.transform.parent is RectTransform pr && pr != _gui.m_player && pr != _gui.m_info ? pr : null;
             RectTransform Named(string name) => (_gui.m_player.Find(name) ?? (_gui.m_info ? _gui.m_info.Find(name) : null)) as RectTransform;
-            _sidePlates[0] = Named(ModCompat.MtTrashPlate);
+            _sidePlates[0] = Named(Morgott.Core.Contracts.Trash);
             _sidePlates[1] = PlateOf(_gui.m_armor);
             _sidePlates[2] = PlateOf(_gui.m_weight);
             _sidePlates[3] = Named(ModCompat.CoinPocketPlate);

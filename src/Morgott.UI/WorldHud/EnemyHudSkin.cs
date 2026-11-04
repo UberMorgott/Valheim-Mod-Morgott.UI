@@ -50,7 +50,7 @@ namespace Morgott.UI.WorldHud
 
         private static readonly int EsHash = "mt_es".GetStableHashCode();
         private static readonly int EsMaxHash = "mt_es_max".GetStableHashCode();
-        private static readonly int StgHash = "mt_stg".GetStableHashCode();
+        private static readonly int StgHash = Morgott.Core.Contracts.Stagger.GetStableHashCode();
 
         private sealed class State
         {
@@ -791,7 +791,7 @@ namespace Morgott.UI.WorldHud
         [HarmonyPatch(typeof(EnemyHud), nameof(EnemyHud.UpdateHuds))]
         [HarmonyPostfix]
         [HarmonyPriority(Priority.Last)]
-        [HarmonyAfter(ModCompat.CreaturesGuid, ModCompat.MtGuid, ModCompat.StarLevelSystemGuid)]
+        [HarmonyAfter(ModCompat.CreaturesGuid, Morgott.Core.Contracts.PatcherGuid, ModCompat.StarLevelSystemGuid)]
         private static void UpdateHuds_Postfix(EnemyHud __instance)
         {
             try { EnemyHudSkin.Update(__instance); }

@@ -335,7 +335,7 @@ namespace Morgott.UI.CraftingScreen
         private RectTransform Filter()
         {
             var list = RecipeList();
-            var f = list ? list.Find(ModCompat.MtCraftFilter) as RectTransform : null;
+            var f = list ? list.Find(Morgott.Core.Contracts.CraftFilter) as RectTransform : null;
             return f && f.gameObject.activeInHierarchy ? f : null;
         }
 
@@ -354,7 +354,7 @@ namespace Morgott.UI.CraftingScreen
                 else if (_gui.m_repairPanel && t == _gui.m_repairPanel || _gui.m_repairPanelSelection && t == _gui.m_repairPanelSelection) ctx.Role(image, "skip", "vanilla repair plate (hidden, round repair button)");
                 else if (t.name == "Decription" && t.parent == _crafting) ctx.Role(image, "skip", "vanilla detail backdrop (replaced by the detail well)");
                 else if (t.name == "requirements" && t.parent && t.parent.name == "Decription") ctx.Role(image, "skip", "vanilla requirement row backdrop (hidden)");
-                else if (t.name == ModCompat.MtChainTree) ctx.Role(image, "craft.missing", "RecipeChains 'missing' box (MorgottTweaks; RuneSkin adds its tree scroll)");
+                else if (t.name == Morgott.Core.Contracts.ChainTree) ctx.Role(image, "craft.missing", "RecipeChains 'missing' box (MorgottTweaks; RuneSkin adds its tree scroll)");
                 else if (image.GetComponent<ScrollRect>()) ctx.Role(image, "skip", "recipe scroll view hit area (drawn clear, list well behind)");
                 else if (_gui.m_craftingStationLevelRoot && t == _gui.m_craftingStationLevelRoot) ctx.Role(image, "craft.badge", "station level badge (InventoryGui.m_craftingStationLevelRoot)");
                 else if (_gui.m_craftingStationIcon && image == _gui.m_craftingStationIcon) ctx.Role(image, "content", "station icon (CraftingStation.m_icon)");
@@ -372,14 +372,14 @@ namespace Morgott.UI.CraftingScreen
                 else if (_gui.m_repairButtonGlow && image == _gui.m_repairButtonGlow) ctx.Role(image, "content", "repair glow (vanilla pulses it; Epic Loot finds RepairButton/Glow)");
                 else if (IsTab(t, out var tabTarget)) ctx.Role(image, tabTarget ? (IsCategory(t) ? "craft.category" : "craft.tab") : t.name == "Selected" ? "skip" : "content",
                     tabTarget ? "crafting tab button (selected = interactable off: sprite disabled state)" : "tab child");
-                else if (t.name == ModCompat.MtCraftSearch && image.GetComponent<Selectable>()) ctx.Role(image, "craft.search", "CraftingFilter search field");
+                else if (t.name == Morgott.Core.Contracts.CraftSearch && image.GetComponent<Selectable>()) ctx.Role(image, "craft.search", "CraftingFilter search field");
                 else if (Row(t, out var row)) RowImage(ctx, image, row);
                 else if (IsRequirementCell(t)) ctx.Role(image, MissingShown(t.gameObject) ? "craft.socket.missing" : "craft.socket", "requirement socket (m_recipeRequirementList cell)");
                 else if (_gui.m_minStationLevelIcon && t == _gui.m_minStationLevelIcon.transform.parent && t.parent == Requirements()) ctx.Role(image, "craft.socket", "required station level: its own requirement socket (level, parent of MinLevel)");
                 else if (_gui.m_minStationLevelIcon && t == _gui.m_minStationLevelIcon.transform) ctx.Role(image, "content", "required station level icon (MinLevel, shows the station's icon)");
                 else if (t.name == "res_icon" || t.parent && t.parent.name == "level" || t.name == "MinLevel") ctx.Role(image, "content", "requirement icon / min station level glyph");
-                else if (t.name == ModCompat.MtChainTree) ctx.Role(image, "craft.missing", "RecipeChains 'missing' box (MorgottTweaks)");
-                else if (_gui.m_recipeIcon && image == _gui.m_recipeIcon || t.name == "magicItemIconBG" || t.name == ModCompat.MtCategoryIcon) ctx.Role(image, "content", "item icon / magic background / category icon");
+                else if (t.name == Morgott.Core.Contracts.ChainTree) ctx.Role(image, "craft.missing", "RecipeChains 'missing' box (MorgottTweaks)");
+                else if (_gui.m_recipeIcon && image == _gui.m_recipeIcon || t.name == "magicItemIconBG" || t.name == Morgott.Core.Contracts.CraftIcon) ctx.Role(image, "content", "item icon / magic background / category icon");
                 else if (Leftover(image)) ctx.Role(image, "content", "vanilla crafting graphic kept (no theme role): " + (image.sprite ? image.sprite.name : "no sprite"));
             }
             foreach (var g in _crafting.GetComponentsInChildren<Graphic>(true))
@@ -489,7 +489,7 @@ namespace Morgott.UI.CraftingScreen
 
         // CraftingFilter's category row (Tabs) or its sub-group row (Subs).
         private static bool IsFilterRow(Transform row) =>
-            (row.name == "Tabs" || row.name == ModCompat.MtCraftSubRow) && row.parent && row.parent.name == ModCompat.MtCraftFilter;
+            (row.name == "Tabs" || row.name == Morgott.Core.Contracts.CraftSubs) && row.parent && row.parent.name == Morgott.Core.Contracts.CraftFilter;
 
         private bool Row(Transform t, out Transform row)
         {
@@ -630,7 +630,7 @@ namespace Morgott.UI.CraftingScreen
                     if (c.gameObject.activeSelf && c.TryGetComponent<Button>(out _)) _cats.Add((RectTransform)c);
                 }
             _subs.Clear();
-            var subRoot = filter ? filter.Find(ModCompat.MtCraftSubRow) : null;
+            var subRoot = filter ? filter.Find(Morgott.Core.Contracts.CraftSubs) : null;
             if (subRoot && subRoot.gameObject.activeSelf)
                 for (var n = 0; n < subRoot.childCount; n++)
                 {
@@ -649,7 +649,7 @@ namespace Morgott.UI.CraftingScreen
             i.Tabs = _tabs.Count;
             i.Categories = _cats.Count;
             i.SubCategories = _subs.Count;
-            i.Search = filter && filter.Find("Search/MT_CraftSearch");
+            i.Search = filter && filter.Find(Morgott.Core.Contracts.CraftSearchPath);
             i.Requirements = _reqActive.Count + (_gui.m_minStationLevelIcon && _gui.m_minStationLevelIcon.gameObject.activeSelf ? 1 : 0);
             // Round repair button only while something can be repaired (vanilla UpdateRepair: interactable); otherwise
             // the craft button takes the whole row (mockup-1: no empty socket beside it).
@@ -826,7 +826,7 @@ namespace Morgott.UI.CraftingScreen
             if (tabsRoot && !o.CategoryRow.IsEmpty) Geo.Place(_canvas, tabsRoot, o.CategoryRow);
             FilterTabs(_cats, o.Categories, _catArrows);
             // Sub-group row (MT_CraftSub_<group>: skill / slot / ammo icon from CraftingFilter, "All" gets the kit glyph).
-            var subRoot = filter.Find(ModCompat.MtCraftSubRow) as RectTransform;
+            var subRoot = filter.Find(Morgott.Core.Contracts.CraftSubs) as RectTransform;
             if (subRoot && !o.SubCategoryRow.IsEmpty) Geo.Place(_canvas, subRoot, o.SubCategoryRow);
             FilterTabs(_subs, o.SubCategories, _subArrows);
             SearchField(o, filter.Find("Search") as RectTransform);
@@ -846,13 +846,13 @@ namespace Morgott.UI.CraftingScreen
                 foreach (var c in Children.Of(tab))
                 {
                     if (!(c is RectTransform rt)) continue;
-                    if (glyph && (NameCache.Of(c) == ModCompat.MtCategoryIcon || NameCache.Of(c) == "Text"))
+                    if (glyph && (NameCache.Of(c) == Morgott.Core.Contracts.CraftIcon || NameCache.Of(c) == "Text"))
                     {
                         // The kit glyph replaces CraftingFilter's item icon / "All" text (mockup: one glyph family).
                         if (c.TryGetComponent<Graphic>(out var g) && g.enabled) g.enabled = false;
                         continue;
                     }
-                    if (NameCache.Of(c) == ModCompat.MtCategoryIcon) Geo.Place(_canvas, rt, inner);
+                    if (NameCache.Of(c) == Morgott.Core.Contracts.CraftIcon) Geo.Place(_canvas, rt, inner);
                     else if (NameCache.Of(c) == "Text" && c.TryGetComponent<TMP_Text>(out var label))
                     {
                         Geo.Place(_canvas, rt, cell);
@@ -867,7 +867,7 @@ namespace Morgott.UI.CraftingScreen
 
         private void SearchField(CraftingLayout o, RectTransform search)
         {
-            var field = search ? search.Find(ModCompat.MtCraftSearch) as RectTransform : null;
+            var field = search ? search.Find(Morgott.Core.Contracts.CraftSearch) as RectTransform : null;
             if (search && !o.Search.IsEmpty) Geo.Place(_canvas, search, o.Search);
             if (field && !o.Search.IsEmpty)
             {
@@ -924,11 +924,11 @@ namespace Morgott.UI.CraftingScreen
             if (!_catKeys.TryGetValue(tab, out var key))
             {
                 var tabName = NameCache.Of(tab);
-                if (tabName.StartsWith(ModCompat.MtCraftTabPrefix, StringComparison.Ordinal))
-                    key = CategoryGlyphs.TryGetValue(tabName.Substring(ModCompat.MtCraftTabPrefix.Length), out var k) ? "cat." + k : null;
-                else if (tabName.StartsWith(ModCompat.MtCraftSubPrefix, StringComparison.Ordinal))
+                if (tabName.StartsWith(Morgott.Core.Contracts.CraftTabPrefix, StringComparison.Ordinal))
+                    key = CategoryGlyphs.TryGetValue(tabName.Substring(Morgott.Core.Contracts.CraftTabPrefix.Length), out var k) ? "cat." + k : null;
+                else if (tabName.StartsWith(Morgott.Core.Contracts.CraftSubPrefix, StringComparison.Ordinal))
                 {
-                    var group = tabName.Substring(ModCompat.MtCraftSubPrefix.Length);
+                    var group = tabName.Substring(Morgott.Core.Contracts.CraftSubPrefix.Length);
                     key = group == "All" ? "cat.all" : "sub." + group.ToLowerInvariant();
                     if (ThemeTokens.Role("craft.glyph." + key) == null) key = null;
                 }
@@ -1233,7 +1233,7 @@ namespace Morgott.UI.CraftingScreen
 
         private Box Chain(CraftingLayout o)
         {
-            if (!_chain) _chain = _crafting.Find(ModCompat.MtChainTree) as RectTransform;
+            if (!_chain) _chain = _crafting.Find(Morgott.Core.Contracts.ChainTree) as RectTransform;
             if (!_chain || !_chain.gameObject.activeInHierarchy) return default;
             var k = _in.Scale;
             var box = Geo.BoxOf(_canvas, _chain);
@@ -1269,7 +1269,7 @@ namespace Morgott.UI.CraftingScreen
                 sr.content = text;
             }
             // Viewport = the text area: from the box top down to the chain button (or the box bottom).
-            var button = _chain.Find(ModCompat.MtChainCraftButton) as RectTransform;
+            var button = _chain.Find(Morgott.Core.Contracts.ChainCraftButton) as RectTransform;
             var bottom = box.Bottom;
             if (button && button.gameObject.activeSelf) bottom = Geo.BoxOf(_canvas, button).Y;
             Geo.Place(_canvas, _chainView, new Box(box.X, box.Y, box.W, Mathf.Max(1f, bottom - box.Y)));
