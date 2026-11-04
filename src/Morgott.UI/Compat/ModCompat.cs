@@ -21,11 +21,6 @@ namespace Morgott.UI.Compat
         // m_player, kept by its static reference, cells parked into it by ParkHiddenCell).
         public const string EaqsHiddenRoot = "EaqsHiddenSlotRoot";
 
-        // ---- VNEI (MSchmoecker): item browser docked over the crafting body
-        public const string VneiGuid = "com.maxsch.valheim.vnei";
-        public const string VneiBaseUi = "VNEI.UI.BaseUI";
-        public const string VneiPanel = "VNEI(Clone)";
-
 
         // ---- Epic Loot (RandyKnapp)
         public const string EpicLootGuid = "randyknapp.mods.epicloot";

@@ -38,8 +38,6 @@ namespace Morgott.UI.ModScreens
             [ModCompat.EpicLootTemperPanel] = OwnershipRegistry.EpicLootTemper,
             [ModCompat.EpicLootAbilityBar] = OwnershipRegistry.ModHud,
             [ModCompat.EpicLootDebugText] = OwnershipRegistry.ModHud,
-            // VNEI attaches its window to the crafting panel (a Crafting family root).
-            [ModCompat.VneiBaseUi] = OwnershipRegistry.ModUi,
             // Epic Loot's config-update prompt lives under StartGui (the pre-world menu family root).
             [ModCompat.EpicLootConfigMessage] = OwnershipRegistry.ModUi,
         };

@@ -6,7 +6,7 @@ using Xunit;
 
 namespace Morgott.UI.Tests
 {
-    // M3 polish: info tab row, skill sort order, VNEI grid fit, RecipeChains height cap, repair-free button row.
+    // M3 polish: info tab row, skill sort order, RecipeChains height cap, repair-free button row.
     public class InfoPolishTests
     {
         [Theory]
@@ -51,19 +51,6 @@ namespace Morgott.UI.Tests
             Assert.Equal(new[] { 1, 2, 0, 3 }, InfoMath.SkillOrder(levels, names, 1, StringComparer.Ordinal));
             Assert.Equal(new[] { 1, 2, 3, 0 }, InfoMath.SkillOrder(levels, names, 2, StringComparer.Ordinal));
             Assert.Equal(new[] { 0, 1, 2, 3 }, InfoMath.SkillOrder(levels, names, 0, StringComparer.Ordinal));
-        }
-
-        [Fact]
-        public void VneiGridFitsTheBody()
-        {
-            var (x, y) = CraftingMath.VneiCells(560f, 600f, 1f);
-            Assert.Equal(11, x); // 11*50+10 = 560
-            Assert.Equal(10, y); // 10*50+100 = 600
-            Assert.True(x * 50f + 10f <= 560f && y * 50f + 100f <= 600f);
-            var (sx, sy) = CraftingMath.VneiCells(560f, 600f, 2f);
-            Assert.Equal((5, 4), (sx, sy));
-            Assert.Equal((1, 1), CraftingMath.VneiCells(10f, 10f, 1f));
-            Assert.Equal((1, 1), CraftingMath.VneiCells(500f, 500f, 0f));
         }
 
         [Fact]

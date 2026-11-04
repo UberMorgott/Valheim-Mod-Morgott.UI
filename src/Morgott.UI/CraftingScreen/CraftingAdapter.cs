@@ -5,7 +5,7 @@ using Morgott.UI.Compat;
 namespace Morgott.UI.CraftingScreen
 {
     // Family "Crafting" hooks (installed only while RuneSkin owns Crafting and Inventory). No transpilers, no skipped
-    // originals: InventoryGui.Awake builds the skin after every other Awake postfix (VNEI, CraftingFilter, Epic Loot,
+    // originals: InventoryGui.Awake builds the skin after every other Awake postfix (CraftingFilter, Epic Loot,
     // RecipeChains add their objects there); InventoryGui.Update postfix after them; SetupRequirementList prefix
     // only grows the requirement cell array so vanilla's paging (InventoryGui.cs:1665) never pages.
     [HarmonyPatch]
@@ -15,12 +15,10 @@ namespace Morgott.UI.CraftingScreen
         private static bool Prepare() => OwnershipRegistry.IsOwned(OwnershipRegistry.Inventory) && OwnershipRegistry.IsOwned(OwnershipRegistry.Crafting);
 
         private const string ValheimPlus = ModCompat.ValheimPlusGuid;
-        private const string Vnei = ModCompat.VneiGuid;
 
         [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.Awake))]
         [HarmonyPostfix]
         [HarmonyPriority(PatchOrder.Crafting)]
-        [HarmonyAfter(Vnei)]
         private static void Awake_Postfix(InventoryGui __instance)
         {
             try { CraftingSkin.Attach(__instance); }
@@ -30,7 +28,7 @@ namespace Morgott.UI.CraftingScreen
         [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.Update))]
         [HarmonyPostfix]
         [HarmonyPriority(PatchOrder.Crafting)]
-        [HarmonyAfter(ValheimPlus, Vnei)]
+        [HarmonyAfter(ValheimPlus)]
         private static void Update_Postfix()
         {
             var skin = CraftingSkin.Instance;

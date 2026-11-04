@@ -287,21 +287,6 @@ namespace Morgott.UI.CraftingScreen
             return f;
         }
 
-        // VNEI's tab is up = its docked panel exists and its browser (BaseUI.root) is shown (BaseUI.SetVisibility); the
-        // panel VNEI(Clone) stays active on every tab. A VNEI without that field: the panel alone decides.
-        public static bool VneiUp(bool panelActive, bool browserKnown, bool browserShown) =>
-            panelActive && (!browserKnown || browserShown);
-
-        // VNEI item grid (BaseUI.RebuildSize: root = x*50+10 by y*50+100 VNEI units) that fits a box of w x h canvas
-        // units, `unit` canvas units per VNEI unit; at least 1 x 1.
-        public static (int X, int Y) VneiCells(float w, float h, float unit)
-        {
-            if (!(unit > 0f)) return (1, 1);
-            var x = (int)Math.Floor((w / unit - 10f) / 50f);
-            var y = (int)Math.Floor((h / unit - 100f) / 50f);
-            return (Math.Max(1, x), Math.Max(1, y));
-        }
-
         // RecipeChains box height cap: its own height, at most `max` and at most the room between `top` (description
         // minimum) and the box bottom, never under `min` (a header line + a line of tree).
         public static float ChainHeight(float height, float bottom, float top, float max, float min)

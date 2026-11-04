@@ -23,15 +23,6 @@ namespace Morgott.UI.Tests
             Assert.Equal(FadeParkMove.None, FadeParkMath.Decide(shown: true, home: true, hostInFade: true));
 
         [Fact]
-        public void VneiTabUpOnlyWhileItsBrowserShows()
-        {
-            Assert.False(Morgott.UI.CraftingScreen.CraftingMath.VneiUp(panelActive: true, browserKnown: true, browserShown: false)); // craft tab
-            Assert.True(Morgott.UI.CraftingScreen.CraftingMath.VneiUp(panelActive: true, browserKnown: true, browserShown: true));
-            Assert.False(Morgott.UI.CraftingScreen.CraftingMath.VneiUp(panelActive: false, browserKnown: true, browserShown: true));
-            Assert.True(Morgott.UI.CraftingScreen.CraftingMath.VneiUp(panelActive: true, browserKnown: false, browserShown: false));
-        }
-
-        [Fact]
         public void HostOutsideTheFadeGroupNeverParksAndTakesItsSubtreeBack()
         {
             Assert.Equal(FadeParkMove.None, FadeParkMath.Decide(shown: false, home: true, hostInFade: false));

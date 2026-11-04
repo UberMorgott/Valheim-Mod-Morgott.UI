@@ -16,8 +16,6 @@ namespace Morgott.UI.ItemBrowser
 
         public static ConfigEntry<bool> Cheat, CheatCreatures, KnownOnly;
         public static ConfigEntry<KeyboardShortcut> Hotkey;
-        // Old-mode harness switch (ui-runeskin-vnei): false lets VNEI's own tab / hotkeys work beside ours (BrowserTab).
-        public static bool MuteVnei = true;
 
         public static BrowserIndex Index { get; private set; }
         public static int Generation { get; private set; }

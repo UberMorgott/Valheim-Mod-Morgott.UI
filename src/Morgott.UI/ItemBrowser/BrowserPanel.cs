@@ -112,7 +112,6 @@ namespace Morgott.UI.ItemBrowser
         {
             Instance = this;
             _gui = gui;
-            Vnei.Patch();
             var canvas = gui.GetComponentInParent<Canvas>();
             _canvas = canvas ? (RectTransform)canvas.rootCanvas.transform : null;
             var src = gui.m_tabUpgrade;
@@ -143,7 +142,6 @@ namespace Morgott.UI.ItemBrowser
 
         public void Open()
         {
-            Vnei.Hide(_gui);
             if (!_up)
             {
                 // The vanilla tab selection (selected = not interactable) comes back on Close (Codex review: a workbench
@@ -175,8 +173,8 @@ namespace Morgott.UI.ItemBrowser
             SetBody(true);
         }
 
-        // Vanilla UpdateCraftingPanel / SetupCrafting re-set the tab interactables, VNEI's per-tab SetTabInactive listener
-        // re-shows the vanilla body after our click: the up state is re-applied each frame (change-only writes).
+        // Vanilla UpdateCraftingPanel / SetupCrafting and other mods re-set the tab interactables / the vanilla body
+        // after our click: the up state is re-applied each frame (change-only writes).
         internal void Enforce()
         {
             if (!_up) return;
@@ -216,7 +214,6 @@ namespace Morgott.UI.ItemBrowser
                 Close();
                 return;
             }
-            Vnei.Hide(_gui);
             Enforce();
             var typing = _search && _search.isFocused;
             Block(typing);

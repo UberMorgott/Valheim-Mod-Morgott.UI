@@ -23,7 +23,7 @@ namespace Morgott.UI
     [BepInProcess("valheim.exe")]
     public sealed class Plugin : BaseUnityPlugin
     {
-        public const string Version = "0.27.1";
+        public const string Version = "0.27.2";
 
         public static ManualLogSource Log { get; private set; }
         public static ConfigEntry<float> SkinScale { get; private set; }

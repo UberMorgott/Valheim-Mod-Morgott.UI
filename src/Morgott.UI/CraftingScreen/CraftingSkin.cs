@@ -16,7 +16,7 @@ namespace Morgott.UI.CraftingScreen
     // Family "Crafting" (M3, mockup-1 crafting column = right column of layout A). Owns the look and the geometry of
     // InventoryGui.m_crafting inside the box InventoryMath gives (same top / bottom / gutters as dock and centre).
     // Reposition, never rebuild: every vanilla child keeps its parent and name, because mods find them by path -
-    // VNEI (Crafting/RecipeList, Crafting/Decription, its tab clone under TabsButtons), Epic Loot (row "icon" +
+    // our item browser (Crafting/RecipeList, Crafting/Decription), Epic Loot (row "icon" +
     // sibling "magicItemIconBG", RepairButton/Glow), ValheimPlus CraftFromChest (SetupRequirement prefix: res_icon /
     // res_name / res_amount), MorgottTweaks CraftingFilter (MT_CraftFilter under RecipeList) and RecipeChains
     // (MT_ChainTree docks above the highest active requirement cell). Geometry runs in LateUpdate, after the
@@ -31,7 +31,7 @@ namespace Morgott.UI.CraftingScreen
         private InventoryGui _gui;
         private RectTransform _crafting, _canvas, _host;
         private Canvas _rootCanvas;
-        private Image _listWell, _detailWell, _vneiWell, _craftGlyph, _progressFrame;
+        private Image _listWell, _detailWell, _browserWell, _craftGlyph, _progressFrame;
         private Button _minus, _plus;
         private TMP_InputField _amountField;
         private TMP_Text _amountText;
@@ -77,7 +77,6 @@ namespace Morgott.UI.CraftingScreen
             BuildOwn();
             ScreenRegistry.Register(_crafting, Context);
             ScreenRegistry.Restyle(_crafting);
-            Compat.FadePark.Attach(gui); // VNEI's hidden browser out of the inventory's fade group
             Plugin.Log.LogInfo("[Morgott.UI] crafting column attached");
         }
 
@@ -133,8 +132,8 @@ namespace Morgott.UI.CraftingScreen
             var detail = _crafting.Find("Decription");
             _listWell = OwnImage(Prefix + "ListWell", "craft.well", "recipe list well (frame_inset)", 0);
             _detailWell = OwnImage(Prefix + "DetailWell", "craft.well", "detail well (frame_inset)", detail ? detail.GetSiblingIndex() : 1);
-            _vneiWell = OwnImage(Prefix + "VneiWell", "craft.well", "VNEI browser well (frame_inset)", 0);
-            _vneiWell.enabled = false;
+            _browserWell = OwnImage(Prefix + "BrowserWell", "craft.well", "item browser well (frame_inset)", 0);
+            _browserWell.enabled = false;
             // Craft / upgrade glyph left of the craft button's label (art: glyph_act_craft / _upgrade on button_*).
             if (_gui.m_craftButton)
             {
@@ -345,8 +344,6 @@ namespace Morgott.UI.CraftingScreen
         private ScreenContext Context()
         {
             var ctx = new ScreenContext(ScreenId, OwnershipRegistry.Crafting);
-            var vnei = _crafting.Find(ModCompat.VneiPanel);
-            if (vnei) ctx.Exclude(vnei, "VNEI item browser panel: mod panel (M7), placed over the body by RuneSkin");
             if (ItemBrowser.BrowserPanel.Root) ctx.Exclude(ItemBrowser.BrowserPanel.Root, "item browser (ITEMS tab): own graphics, styled at build");
             foreach (var image in _crafting.GetComponentsInChildren<Image>(true))
             {
@@ -419,7 +416,7 @@ namespace Morgott.UI.CraftingScreen
 
         // The rows' own context: exactly the roles Context() gives a row's graphics (rows are leaves of the crafting root:
         // no earlier Context() rule matches inside a row), without rebuilding the whole crafting root's context - that
-        // walked every graphic of m_crafting (~1500 with VNEI's pool) with name / parent tests on each open.
+        // walked every graphic of m_crafting (~1500 with a mod's pooled cells) with name / parent tests on each open.
         private readonly List<Graphic> _rowGraphics = new List<Graphic>(64);
 
         private ScreenContext RowContext(List<InventoryGui.RecipeDataPair> rows)
@@ -720,40 +717,23 @@ namespace Morgott.UI.CraftingScreen
             List(o);
             Detail(o);
             Buttons(o);
-            // VNEI's tab hides Crafting/RecipeList and Crafting/Decription while its browser is up (MainVneiHandler
-            // SetTabActive / SetTabInactive): the wells behind them follow, so neither well nor their column seam shows
-            // under VNEI's grid.
+            // Our ITEMS tab hides Crafting/RecipeList and Crafting/Decription while it is up (BrowserPanel.SetBody): the
+            // wells behind them follow, so neither well nor their column seam shows under the browser.
             var recipeList = RecipeList();
             var detailRoot = _crafting.Find("Decription");
             WellShown(_listWell, !recipeList || recipeList.gameObject.activeSelf);
             WellShown(_detailWell, !detailRoot || detailRoot.gameObject.activeSelf);
-            var vnei = _crafting.Find(ModCompat.VneiPanel) as RectTransform;
-            // VNEI's tab is up while its browser (BaseUI.root) is shown: VNEI(Clone) itself stays active on every tab,
-            // BaseUI.SetVisibility toggles root (MainVneiHandler.SetTabActive / SetTabInactive). The old activeSelf test
-            // of VNEI(Clone) kept the VNEI well drawn on the craft tab too.
-            var browser = vnei ? VneiBrowser(vnei, out _) : null;
-            var vneiUp = CraftingMath.VneiUp(vnei && vnei.gameObject.activeSelf, _vneiRoot != null, browser && browser.gameObject.activeInHierarchy);
-            // Docked, VNEI switches its own woodpanel off (MainVneiHandler.CreateBaseUI) and the two wells are hidden
-            // above, so only the panel glass (fill_glass, alpha 0.9) was left behind its grid: the world showed through.
-            // One opaque well spans VNEI's whole body instead, like the list/detail wells on the craft tab.
-            // Our ITEMS tab (ItemBrowser.BrowserPanel) takes the same body box and the same well (design section 1).
+            // One opaque well spans the browser's body (design section 1), like the list/detail wells on the craft tab.
             var ours = ItemBrowser.BrowserPanel.Up;
-            WellShown(_vneiWell, vneiUp || ours);
-            if (!vneiUp && !ours) return;
+            WellShown(_browserWell, ours);
+            if (!ours) return;
             var top = o.Search.IsEmpty ? o.List.Y : o.Search.Y;
             var area = new Box(o.List.X, top, o.Detail.Right - o.List.X, o.ButtonRow.Bottom - top);
-            if (ours)
-            {
-                // Mockup A: the browser spans ~6 % more than the craft columns (into the frame margin), ~8 px inner margin.
-                var pad = area.W * 0.015f;
-                area = new Box(area.X - area.W * 0.03f, area.Y, area.W * 1.06f, area.H);
-                if (_vneiWell) Geo.Place(_canvas, _vneiWell.rectTransform, area);
-                ItemBrowser.BrowserPanel.Instance.Place(_canvas, new Box(area.X + pad, area.Y + pad, area.W - 2f * pad, area.H - 2f * pad));
-                return;
-            }
-            if (_vneiWell) Geo.Place(_canvas, _vneiWell.rectTransform, area);
-            Geo.Place(_canvas, vnei, area);
-            VneiFit(vnei, area);
+            // Mockup A: the browser spans ~6 % more than the craft columns (into the frame margin), ~8 px inner margin.
+            var pad = area.W * 0.015f;
+            area = new Box(area.X - area.W * 0.03f, area.Y, area.W * 1.06f, area.H);
+            if (_browserWell) Geo.Place(_canvas, _browserWell.rectTransform, area);
+            ItemBrowser.BrowserPanel.Instance.Place(_canvas, new Box(area.X + pad, area.Y + pad, area.W - 2f * pad, area.H - 2f * pad));
         }
 
         private static void WellShown(Image well, bool on)
@@ -763,87 +743,6 @@ namespace Morgott.UI.CraftingScreen
             if (well.enabled != want) well.enabled = want;
         }
 
-        // VNEI's item browser (VNEI.UI.BaseUI) sizes its grid in whole 50-unit cells: root = X*50+10 by Y*50+100
-        // (BaseUI.RebuildSize); attached to crafting it takes the vanilla panel's size once (MainVneiHandler: SetSize
-        // from Crafting.sizeDelta). Here the cell counts follow the body box (BaseUI.SetSize(false, x, y), only on change)
-        // and the grid root is centred in it. Reflection: VNEI is optional and not referenced.
-        private static Type _vneiType;
-        private static System.Reflection.MethodInfo _vneiSetSize;
-        private static System.Reflection.FieldInfo _vneiRoot, _vneiDrag;
-        private static System.Reflection.PropertyInfo _vneiX, _vneiY;
-        private static bool _vneiLooked;
-        private Component _vneiUi;
-        private (int x, int y) _vneiCells;
-
-        private static void VneiLookup()
-        {
-            if (!_vneiLooked)
-            {
-                _vneiLooked = true;
-                _vneiType = Morgott.Core.TypeLookup.ByFullName(ModCompat.VneiBaseUi);
-                if (_vneiType != null)
-                {
-                    _vneiSetSize = HarmonyLib.AccessTools.Method(_vneiType, "SetSize", new[] { typeof(bool), typeof(int), typeof(int) });
-                    _vneiRoot = HarmonyLib.AccessTools.Field(_vneiType, "root");
-                    _vneiDrag = HarmonyLib.AccessTools.Field(_vneiType, "dragHandler");
-                    _vneiX = HarmonyLib.AccessTools.Property(_vneiType, "ItemSizeX");
-                    _vneiY = HarmonyLib.AccessTools.Property(_vneiType, "ItemSizeY");
-                }
-                if (_vneiSetSize == null || _vneiRoot == null || _vneiX == null || _vneiY == null)
-                    Plugin.Log.LogInfo("[Morgott.UI] VNEI BaseUI.SetSize/root not found: its grid keeps its own size");
-            }
-        }
-
-        // VNEI's browser (BaseUI.root) of the docked panel, null without VNEI / that field.
-        private static RectTransform VneiBrowser(RectTransform vnei, out Component ui)
-        {
-            VneiLookup();
-            ui = _vneiType != null ? vnei.GetComponent(_vneiType) : null;
-            return ui && _vneiRoot != null ? _vneiRoot.GetValue(ui) as RectTransform : null;
-        }
-
-        // Called only while VNEI's browser is up (Apply: VneiUp). Hidden (or parked out of the fade group, FadePark) its
-        // grid size is not seen: fitted when the browser shows. Fitting it every crafting frame (VNEI(Clone) stays active
-        // on every tab) re-ran SetSize -> RebuildSize -> SearchUI.RebuildCells (destroys and instantiates all X x Y item
-        // cells) whenever the open frames gave the body another whole-cell count.
-        private void VneiFit(RectTransform vnei, Box area)
-        {
-            if (_vneiSetSize == null) return;
-            var browser = VneiBrowser(vnei, out var ui);
-            if (!ui || !browser || !browser.gameObject.activeInHierarchy) return;
-            // Canvas units per VNEI local unit (its own scale chain).
-            var u = vnei.lossyScale.x / Mathf.Max(Geo.WorldPerUnit(_canvas), 1e-6f);
-            if (u <= 0f) return;
-            var (x, y) = CraftingMath.VneiCells(area.W, area.H, u);
-            try
-            {
-                // Reflection reads box their ints: asked only when the wanted cell counts or the VNEI instance changed.
-                if (ui != _vneiUi || x != _vneiCells.x || y != _vneiCells.y)
-                {
-                    if ((int)_vneiX.GetValue(ui, null) != x || (int)_vneiY.GetValue(ui, null) != y) _vneiSetSize.Invoke(ui, new object[] { false, x, y });
-                    _vneiUi = ui;
-                    _vneiCells = (x, y);
-                }
-                if (browser != vnei)
-                {
-                    var w = (x * 50f + 10f) * u;
-                    var h = (y * 50f + 100f) * u;
-                    Geo.Place(_canvas, browser, new Box(area.X + (area.W - w) / 2f, area.Y, w, h));
-                    // VNEI's root follows its drag handle every frame (BaseUI.LateUpdate: root.anchoredPosition =
-                    // dragHandler.anchoredPosition; same parent / anchors / pivot in its prefab). Moving root alone made
-                    // the two LateUpdates fight: the grid jumped by half the body's spare height inside each frame, so
-                    // UITooltip.LateUpdate (UITooltip.cs:87) found the pointer outside the hovered cell and hid its
-                    // tooltip (user bug 2026-11-03: no VNEI tooltip moving the pointer up the grid). The handle goes too.
-                    var handle = _vneiDrag != null ? _vneiDrag.GetValue(ui) as RectTransform : null;
-                    if (handle && handle.anchoredPosition != browser.anchoredPosition) handle.anchoredPosition = browser.anchoredPosition;
-                }
-            }
-            catch (Exception e)
-            {
-                _vneiSetSize = null;
-                Plugin.Log.LogWarning($"[Morgott.UI] VNEI grid fit disabled: {e.GetBaseException().Message}");
-            }
-        }
 
         // The window's one header (RuneWindowHeader: drag / double-click reset, position persisted): station icon in the
         // icon slot, the station name centred (rune face, mirrored from m_craftingStationName), the level star in the aux
@@ -853,7 +752,6 @@ namespace Morgott.UI.CraftingScreen
         public void PrewarmHeader()
         {
             if (_crafting) Restyle.RuneWindowHeader.Ensure(_crafting, Restyle.WindowMove.Crafting);
-            VneiLookup(); // VNEI's BaseUI members resolved ahead of the first Apply too
         }
 
         private void Header(CraftingLayout o)
