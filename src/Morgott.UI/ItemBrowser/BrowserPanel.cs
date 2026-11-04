@@ -314,7 +314,18 @@ namespace Morgott.UI.ItemBrowser
                 var n = i;
                 _cats[i] = Btn(g, "Cat" + i, "ib.square", out _, () => { _cat = _cat == n ? -1 : n; _gridScroll = 0; _dirty = true; });
                 _catGlyphs[i] = Img(_cats[i].transform, "Glyph", "ib.cat." + CatKeys[i]);
-                if (i == 0) _catGlyphs[i].rectTransform.localRotation = Quaternion.Euler(0f, 0f, -45f); // mockup 04: diagonal sword
+                if (i == 0)
+                {
+                    // Mockup 04: diagonal sword. Rotated inside an unrotated box (Geo.Place positions by world corners).
+                    var box = (RectTransform)new GameObject("GlyphBox", typeof(RectTransform)).transform;
+                    box.SetParent(_cats[0].transform, false);
+                    var g0 = _catGlyphs[0].rectTransform;
+                    g0.SetParent(box, false);
+                    g0.anchorMin = Vector2.zero;
+                    g0.anchorMax = Vector2.one;
+                    g0.offsetMin = g0.offsetMax = Vector2.zero;
+                    g0.localRotation = Quaternion.Euler(0f, 0f, -45f);
+                }
             }
             _caption = Txt(g, "Caption", "text.body", TextAlignmentOptions.Left);
             _empty = Txt(g, "Empty", "text.muted", TextAlignmentOptions.Top, FontStyles.Italic);
@@ -514,7 +525,7 @@ namespace Morgott.UI.ItemBrowser
         private void Select(Button b, bool on)
         {
             if (b.interactable == on) b.interactable = !on;
-            PlateFit((Image)b.targetGraphic, b.targetGraphic.GetComponent<SkinMark>()?.Role == "ib.square" ? 1f : 1.6f); // squares keep their full cyan rim
+            PlateFit((Image)b.targetGraphic, b.targetGraphic.GetComponent<SkinMark>()?.Role == "ib.square" ? 0.8f : 2.2f); // squares: a full cyan rim; tabs: light corners
         }
 
         private static string L(string token) => Browser.Localize(token);
@@ -576,7 +587,7 @@ namespace Morgott.UI.ItemBrowser
                 if (!items) { Off(_cats[i]); continue; }
                 var cx = i * (UnitW - CatH) / (_cats.Length - 1);
                 Put(_cats[i], cx, CatY, CatH, CatH);
-                Put(_catGlyphs[i], cx + 7f, CatY + 7f, CatH - 14f, CatH - 14f);
+                Put(i == 0 ? _catGlyphs[i].transform.parent : _catGlyphs[i].transform, cx + 7f, CatY + 7f, CatH - 14f, CatH - 14f);
                 Select(_cats[i], i == _cat);
             }
             var list = Results();
@@ -697,6 +708,7 @@ namespace Morgott.UI.ItemBrowser
 
             // Header: icon, name, favorite, type, description, mod + prefab id, quality selector.
             Put(_pageSocket, 0f, 50f, 100f, 100f);
+            PlateFit(_pageSocket, 0.6f); // a heavier bevel than the list sockets (mockup 05 header)
             Put(_pageIcon, 8f, 58f, 84f, 84f);
             SetIcon(_pageIcon, e.Id);
             Put(_pageName, 113f, 50f, 390f, 34f);
@@ -850,13 +862,31 @@ namespace Morgott.UI.ItemBrowser
                 src.Quality = 1;
                 Chip(src, x0, y, 290f, h, 0f, NameOf(r.Icon), 19f);
             }
+            // Two chips per line, ending 10 units before the station rule (x 390); the amount has its own label so a
+            // long name loses letters, never its quantity.
+            var chipW = (380f - x0 - 6f) / 2f;
             for (var i = 0; i < r.Inputs.Length; i++)
             {
-                var c = _inChips.Next(n => Chip("InChip" + n, "text.accent"));
+                var c = _inChips.Next(n =>
+                {
+                    var s = Chip("InChip" + n, "text.accent");
+                    s.D = Txt(s.Rt, "Amount", "text.accent", TextAlignmentOptions.Left);
+                    return s;
+                });
                 var st = r.Inputs[i];
                 c.Id = st.Prefab;
                 c.Quality = i == 0 && r.BaseQuality > 0 ? r.BaseQuality : 1;
-                Chip(c, x0 + i % 2 * 152f, iy + i / 2 * PageModel.LineH, 150f, PageModel.LineH, 34f, $"{NameOf(st.Prefab)} x{Amount(st)}", 18f);
+                var cx = x0 + i % 2 * (chipW + 6f);
+                var cy = iy + i / 2 * PageModel.LineH;
+                var amount = "x" + Amount(st);
+                var amountW = 10f * amount.Length + 4f;
+                Chip(c, cx, cy, chipW - amountW, PageModel.LineH, 34f, NameOf(st.Prefab), 18f);
+                // Amount right after the name (rendered width, local -> layout units), at most at the chip's end.
+                var nameW = chipW - amountW - 40f;
+                var local = c.A.rectTransform.rect.width;
+                var shown = local > 0f ? Mathf.Min(nameW, c.A.GetPreferredValues(c.A.text).x * nameW / local) : nameW;
+                Put(c.D, cx + 40f + shown + 5f, cy, amountW, PageModel.LineH);
+                Text(c.D, amount, 18f);
             }
             if (r.Right != null || r.Recipe && r.Inputs.Length > 0)
             {
