@@ -1090,6 +1090,7 @@
     { "token": "size.hud.text.glow.softness", "value": 0.6 },
     { "token": "size.info.page.title.w", "value": 920 },
     { "token": "size.info.page.corner", "value": 126 },
+    { "token": "size.info.page.title.end", "value": 200 },
     { "token": "size.info.pad", "value": 22 },
     { "token": "size.info.header", "value": 64 },
     { "token": "size.info.summary", "value": 48 },

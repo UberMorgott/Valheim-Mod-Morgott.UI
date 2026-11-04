@@ -262,6 +262,7 @@ namespace Morgott.UI.InfoScreens
                 var x = 949f * u;
                 var nb = new Box(x, 33f * u, Mathf.Max(0f, Mathf.Min(768f * u, esc.X - 48f * u - x)), 55f * u);
                 Geo.Place(_canvas, _name.rectTransform, nb);
+                Ends(_name, ThemeTokens.GetFloat("size.info.page.title.end", 200f) * u * 55f / 68f);
                 if (_nameText)
                 {
                     var who = Player.m_localPlayer ? Player.m_localPlayer.GetPlayerName() : "";
@@ -279,6 +280,7 @@ namespace Morgott.UI.InfoScreens
                 header.Place(_canvas, new Box((full.W - titleW) / 2f, 135f * u, titleW, 68f * u), null, auxW);
                 // Mockup 02 page title: bold sans caps (the theme's font.body.bold), not the window headers' display face.
                 if (header.FaceToken != "font.body.bold") header.FaceToken = "font.body.bold";
+                Ends(header.Plate, ThemeTokens.GetFloat("size.info.page.title.end", 200f) * u);
                 if (header.Title && (header.Title.fontStyle & FontStyles.UpperCase) != FontStyles.UpperCase) header.Title.fontStyle |= FontStyles.UpperCase;
             }
             var top = 232f * u;
@@ -301,6 +303,17 @@ namespace Morgott.UI.InfoScreens
                 }
             Tint(decor.Backing, "color.info.page.bg");
             Tint(decor.transform.Find("Glass"), "color.info.page.glass");
+        }
+
+        // Banner end blocks at `end` canvas units (mockup 02: ~200 px knotwork per end on the 68 px title band; at the
+        // header_plaque's default density they drew ~105): the plate's sprite density is set so its fixed left border
+        // (the knotwork block, header_plaque border 230 sprite px) spans `end`; the art keeps its aspect (rails scale too).
+        private void Ends(Image plate, float end)
+        {
+            if (!plate || !plate.sprite || end <= 0f || plate.sprite.border.x <= 0f || !plate.canvas) return;
+            var r = Mathf.Abs(plate.rectTransform.lossyScale.x / Mathf.Max(1e-6f, _canvas.lossyScale.x));
+            var mul = plate.sprite.border.x * plate.canvas.referencePixelsPerUnit / (plate.sprite.pixelsPerUnit * end / Mathf.Max(1e-6f, r));
+            if (Mathf.Abs(plate.pixelsPerUnitMultiplier - mul) > 0.0005f) plate.pixelsPerUnitMultiplier = mul;
         }
 
         private static void Tint(Transform t, string token)
