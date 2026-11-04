@@ -145,7 +145,19 @@ namespace Morgott.UI.Icons
                 Plugin.Log.LogWarning($"[IconRestyle] {path} missing, icons unchanged.");
                 return false;
             }
-            if (!Atlas.TryParse(File.ReadAllText(path), out var atlas, out var error))
+            Atlas atlas;
+            string error;
+            try
+            {
+                // A bad number (FormatException / OverflowException) or an unreadable file must not stop Plugin.Awake.
+                if (!Atlas.TryParse(File.ReadAllText(path), out atlas, out error)) error ??= "invalid";
+            }
+            catch (Exception e)
+            {
+                atlas = null;
+                error = e.Message;
+            }
+            if (atlas == null)
             {
                 Plugin.Log.LogError($"[IconRestyle] {ManifestFile}: {error}");
                 return false;
