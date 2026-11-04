@@ -123,6 +123,8 @@ namespace Morgott.UI.Tests
             Assert.Equal("no icon", ix.Add(new Entry { Id = "TorchMist", Name = "$item_torch", Type = EntryType.Item, Hidden = "no icon" }).Hidden); // first reason kept
             Assert.Null(ix.Add(new Entry { Id = "CapeLinen", Name = "$item_cape_linen", Type = EntryType.Item }).Hidden);
             Assert.Equal(new[] { "CapeLinen" }, ix.Search("cape", null, null, Loc, Mod).Select(e => e.Id));
+            Assert.Equal(new[] { "CapeLinen", "CapeTest" }, ix.Search("cape", null, null, Loc, Mod, unlisted: true).Select(e => e.Id).OrderBy(i => i));
+            Assert.Empty(ix.Search("torch", null, null, Loc, Mod, unlisted: true)); // other hide reasons stay hidden
         }
 
         [Fact]

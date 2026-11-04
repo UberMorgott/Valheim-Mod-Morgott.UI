@@ -213,6 +213,9 @@ namespace Morgott.UI.ItemBrowser
 
         public enum TakeMode { One, Stack, Materials }
 
+        // Vanilla devcommands state; also shows the unlisted test / dev prefabs in the grid (user, 2026-11-04).
+        public static bool Devcommands => Console.instance && Console.instance.IsCheatsEnabled();
+
         // Admin (Jotunn), devcommands, or a world without build / craft cost (VNEI DisplayItem.WorldAllowsCheating keys
         // 24 / 25 = GlobalKeys.NoBuildCost / NoCraftCost); never plain single player.
         public static bool CanTake =>
@@ -220,7 +223,7 @@ namespace Morgott.UI.ItemBrowser
             // devcommands as vanilla reads it (Terminal.IsCheatsEnabled: m_cheat only counts on the server / single player).
             // Jotunn's PlayerIsAdmin is true for the local server too (single player / host): admin counts on a remote
             // server only, else plain single player could take (47i item-coverage-take-gate, 2026-11-04).
-            (Console.instance && Console.instance.IsCheatsEnabled() ||
+            (Devcommands ||
              ZNet.instance && !ZNet.instance.IsServer() && Jotunn.Managers.SynchronizationManager.Instance.PlayerIsAdmin ||
              ZoneSystem.instance && (ZoneSystem.instance.GetGlobalKey(GlobalKeys.NoBuildCost) || ZoneSystem.instance.GetGlobalKey(GlobalKeys.NoCraftCost)));
 

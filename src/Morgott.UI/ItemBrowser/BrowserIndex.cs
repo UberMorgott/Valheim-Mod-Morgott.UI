@@ -28,7 +28,8 @@ namespace Morgott.UI.ItemBrowser
 
         // Vanilla prefabs the player can never get or meet: test / dev objects, unused duplicates (CapeTest next to the
         // real capes, unused iron ore, NPC-only Dverger weapons, boss power items). Same ids VNEI hides (its
-        // ItemBlacklist.json, vanilla only).
+        // ItemBlacklist.json, vanilla only). Listed only with devcommands on (Search unlisted = true, user 2026-11-04).
+        public const string UnlistedReason = "unlisted";
         private static readonly HashSet<string> Unlisted = new HashSet<string>(StringComparer.Ordinal)
         {
             "Rock_destructible_test", "TrainingDummy", "HealthUpgrade_Bonemass", "HealthUpgrade_GDKing",
@@ -42,7 +43,7 @@ namespace Morgott.UI.ItemBrowser
         public Entry Add(Entry e)
         {
             if (Entries.TryGetValue(e.Id, out var had)) return had;
-            if (e.Hidden == null && Unlisted.Contains(e.Id)) e.Hidden = "unlisted";
+            if (e.Hidden == null && Unlisted.Contains(e.Id)) e.Hidden = UnlistedReason;
             Entries[e.Id] = e;
             return e;
         }
@@ -97,13 +98,13 @@ namespace Morgott.UI.ItemBrowser
 
         /// <summary>Visible entries matching the query: words against the localized name or the prefab id, "@x" against
         /// the mod GUID / name; type null = All (Other included), Favorites passes its own filter.</summary>
-        public List<Entry> Search(string query, EntryType? type, Func<Entry, bool> filter, Func<string, string> localize, Func<string, string> modName)
+        public List<Entry> Search(string query, EntryType? type, Func<Entry, bool> filter, Func<string, string> localize, Func<string, string> modName, bool unlisted = false)
         {
             var words = (query ?? "").ToLowerInvariant().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
             var hits = new List<KeyValuePair<string, Entry>>();
             foreach (var e in Entries.Values)
             {
-                if (e.Hidden != null || type.HasValue && e.Type != type.Value || filter != null && !filter(e)) continue;
+                if (e.Hidden != null && !(unlisted && e.Hidden == UnlistedReason) || type.HasValue && e.Type != type.Value || filter != null && !filter(e)) continue;
                 var name = localize(e.Name) ?? e.Id;
                 if (Matches(words, name.ToLowerInvariant(), e.Id.ToLowerInvariant(), (e.Mod ?? "valheim").ToLowerInvariant() + " " + (modName(e.Mod) ?? "").ToLowerInvariant()))
                     hits.Add(new KeyValuePair<string, Entry>(name, e));

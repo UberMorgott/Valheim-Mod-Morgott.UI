@@ -52,7 +52,7 @@ namespace Morgott.UI.ItemBrowser
         private readonly History _history = new History();
         private List<Entry> _results = new List<Entry>();
         private int _resultsGen = -1;
-        private bool _resultsKnownOnly;
+        private bool _resultsKnownOnly, _resultsDev;
         private string _resultsQuery;
         private int _resultsType = -1;
 
@@ -513,9 +513,11 @@ namespace Morgott.UI.ItemBrowser
         private List<Entry> Results()
         {
             var known = Browser.KnownOnly.Value;
-            if (_resultsGen == Browser.Generation && _resultsQuery == _query && _resultsType == _type && _resultsKnownOnly == known) return _results;
+            var dev = Browser.Devcommands;
+            if (_resultsGen == Browser.Generation && _resultsQuery == _query && _resultsType == _type && _resultsKnownOnly == known && _resultsDev == dev) return _results;
             var fav = _type == 5 ? Browser.Favorites() : null;
-            _results = Browser.Index.Search(_query, TypeOf[_type], e => (!known || Browser.Known(e)) && (fav == null || fav.Contains(e.Id)), L, Browser.ModName);
+            _results = Browser.Index.Search(_query, TypeOf[_type], e => (!known || Browser.Known(e)) && (fav == null || fav.Contains(e.Id)), L, Browser.ModName, dev);
+            _resultsDev = dev;
             _resultsGen = Browser.Generation;
             _resultsQuery = _query;
             _resultsType = _type;
