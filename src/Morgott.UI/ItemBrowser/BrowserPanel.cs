@@ -57,7 +57,7 @@ namespace Morgott.UI.ItemBrowser
         private GameObject _gridView;
         private TMP_InputField _search;
         private Image _searchBack, _searchGlyph, _track, _thumb, _typeStar;
-        private TMP_Text _caption, _empty;
+        private TMP_Text _caption, _empty, _hint;
         private readonly Button[] _types = new Button[6];
         private readonly TMP_Text[] _typeLabels = new TMP_Text[6];
         private readonly Button[] _cats = new Button[CatKeys.Length];
@@ -241,6 +241,7 @@ namespace Morgott.UI.ItemBrowser
         {
             if (_blocked == on) return;
             _blocked = on;
+            _dirty = true; // the search hint hides while the field has focus
             Jotunn.Managers.GUIManager.BlockInput(on);
         }
 
@@ -305,13 +306,13 @@ namespace Morgott.UI.ItemBrowser
             for (var i = 0; i < _types.Length; i++)
             {
                 var n = i;
-                _types[i] = Btn(g, "Type" + i, "craft.category", out _typeLabels[i], () => { _type = n; _gridScroll = 0; _dirty = true; });
+                _types[i] = Btn(g, "Type" + i, "craft.tab", out _typeLabels[i], () => { _type = n; _gridScroll = 0; _dirty = true; });
             }
             _typeStar = Img(_types[5].transform, "Star", "ib.star.type");
             for (var i = 0; i < _cats.Length; i++)
             {
                 var n = i;
-                _cats[i] = Btn(g, "Cat" + i, "craft.category", out _, () => { _cat = _cat == n ? -1 : n; _gridScroll = 0; _dirty = true; });
+                _cats[i] = Btn(g, "Cat" + i, "craft.tab", out _, () => { _cat = _cat == n ? -1 : n; _gridScroll = 0; _dirty = true; });
                 _catGlyphs[i] = Img(_cats[i].transform, "Glyph", "ib.cat." + CatKeys[i]);
             }
             _caption = Txt(g, "Caption", "text.body", TextAlignmentOptions.Left);
@@ -322,7 +323,7 @@ namespace Morgott.UI.ItemBrowser
 
             _pageView = Child("Page").gameObject;
             var p = _pageView.transform;
-            _backPlate = Img(p, "BackPlate", "craft.category");
+            _backPlate = Img(p, "BackPlate", "craft.tab");
             _back = Btn(p, "Back", "craft.arrow.left", out _, () => Nav(_history.Back(), false));
             _crumb = Txt(p, "Crumb", "text.body", TextAlignmentOptions.Left);
             _pageSocket = Img(p, "IconSocket", "craft.socket");
@@ -330,7 +331,7 @@ namespace Morgott.UI.ItemBrowser
             Tip(_pageIcon.gameObject, () => _pageId, () => _quality);
             _pageIcon.gameObject.GetComponent<Hit>().Click = e => { if (e.button == PointerEventData.InputButton.Right) TakeUI(_pageId, _quality, _variant); };
             _pageName = Txt(p, "Name", "text.ember", TextAlignmentOptions.Left, FontStyles.Bold);
-            _fav = Btn(p, "Favorite", "craft.category", out _, () => { Browser.ToggleFavorite(_pageId); _resultsGen = -1; _dirty = true; });
+            _fav = Btn(p, "Favorite", "craft.tab", out _, () => { Browser.ToggleFavorite(_pageId); _resultsGen = -1; _dirty = true; });
             _favOn = Img(_fav.transform, "StarOn", "ib.star.full");
             _favOff = Img(_fav.transform, "StarOff", "ib.star.empty");
             _pageType = Txt(p, "Type", "text.body", TextAlignmentOptions.Left);
@@ -338,10 +339,10 @@ namespace Morgott.UI.ItemBrowser
             _pageDesc.textWrappingMode = TextWrappingModes.Normal;
             _pageMod = Txt(p, "Mod", "text.muted", TextAlignmentOptions.Left, FontStyles.Italic);
             _qualLabel = Txt(p, "QualityLabel", "text.body", TextAlignmentOptions.Right);
-            _fromHeader = Img(p, "FromHeader", "inventory.hotbar.header");
+            _fromHeader = Img(p, "FromHeader", "decor.plaque");
             _fromLabel = Txt(p, "FromLabel", "text.body", TextAlignmentOptions.Center, FontStyles.Bold);
             _fromNote = Txt(p, "FromNote", "text.muted", TextAlignmentOptions.Center, FontStyles.Italic);
-            _usedHeader = Img(p, "UsedHeader", "inventory.hotbar.header");
+            _usedHeader = Img(p, "UsedHeader", "decor.plaque");
             _usedLabel = Txt(p, "UsedLabel", "text.body", TextAlignmentOptions.Center, FontStyles.Bold);
             _usedNote = Txt(p, "UsedNote", "text.muted", TextAlignmentOptions.Center, FontStyles.Italic);
             _pageView.SetActive(false);
@@ -397,12 +398,12 @@ namespace Morgott.UI.ItemBrowser
             var area = new GameObject("Text Area", typeof(RectTransform), typeof(RectMask2D)).GetComponent<RectTransform>();
             area.SetParent(back.rectTransform, false);
             var text = Txt(area, "Text", "text.body", TextAlignmentOptions.Left);
-            var hint = Txt(area, "Placeholder", "text.muted", TextAlignmentOptions.Left, FontStyles.Italic);
-            hint.text = Browser.Localize("$ib_search");
+            // Hint as a sibling of the field, shown by the layout (inside the RectMask2D viewport the TMP placeholder
+            // stayed invisible in run 20261104-213108).
+            _hint = Txt(_gridView.transform, "SearchHint", "text.muted", TextAlignmentOptions.Left, FontStyles.Italic);
             var f = back.gameObject.AddComponent<TMP_InputField>();
             f.textViewport = area;
             f.textComponent = text;
-            f.placeholder = hint;
             f.targetGraphic = back;
             f.transition = Selectable.Transition.None;
             f.navigation = new Navigation { mode = Navigation.Mode.None };
@@ -477,14 +478,14 @@ namespace Morgott.UI.ItemBrowser
         }
 
         // Text shrunk to fit its box (Russian labels are longer than the mockup's).
-        private void Fit(TMP_Text t, string s, float size)
+        private void Fit(TMP_Text t, string s, float size, float min = 0.85f)
         {
             if (t.text != s) t.text = s;
             var fs = size * _k * _f;
-            if (t.enableAutoSizing && Mathf.Abs(t.fontSizeMax - fs) < 0.05f) return;
+            if (t.enableAutoSizing && Mathf.Abs(t.fontSizeMax - fs) < 0.05f && Mathf.Abs(t.fontSizeMin - fs * min) < 0.05f) return;
             t.enableAutoSizing = true;
             t.fontSizeMax = fs;
-            t.fontSizeMin = fs * 0.7f;
+            t.fontSizeMin = fs * min;
         }
 
         private static void Off(Component c)
@@ -546,6 +547,12 @@ namespace Morgott.UI.ItemBrowser
             Put(_searchGlyph, 10f, 7f, 22f, 22f);
             Put(_search.textViewport, 40f, 2f, 500f, 32f);
             foreach (var t in _search.textViewport.GetComponentsInChildren<TMP_Text>(true)) { Put(t, 40f, 2f, 500f, 32f); Text(t, t.text, 20f); }
+            if (_query.Length == 0 && !_search.isFocused)
+            {
+                Put(_hint, 40f, 2f, 500f, 32f);
+                Text(_hint, L("$ib_search"), 20f);
+            }
+            else Off(_hint);
             var x = 0f;
             for (var i = 0; i < _types.Length; i++)
             {
@@ -595,7 +602,7 @@ namespace Morgott.UI.ItemBrowser
                 Text(c.D, "★", 16f);
                 c.D.enabled = fav.Contains(c.Id);
                 Put(c.A, cx - 4f, cy + CellH + 2f, CellW + 8f, 38f);
-                Fit(c.A, L(list[n].Name), 15f);
+                Fit(c.A, L(list[n].Name), 16f);
             }
             // Thin scrollbar: track over the grid's rows, thumb = visible share.
             if (_gridScrollMax > 0)
@@ -696,9 +703,9 @@ namespace Morgott.UI.ItemBrowser
             Put(_pageType, 113f, 86f, 250f, 22f);
             Fit(_pageType, TypeName(e), 18f);
             Put(_pageDesc, 113f, 109f, 250f, 24f);
-            Fit(_pageDesc, L(e.Desc) ?? "", 16f);
+            Text(_pageDesc, L(e.Desc) ?? "", 16f);
             Put(_pageMod, 113f, 133f, 250f, 20f);
-            Fit(_pageMod, $"{Browser.ModName(e.Mod)} · {e.Id}", 15f);
+            Text(_pageMod, $"{Browser.ModName(e.Mod)} · {e.Id}", 15f);
             _quality = Mathf.Clamp(_quality, 1, e.MaxQuality);
             var top = 152f;
             if (e.MaxQuality > 1)
@@ -709,7 +716,7 @@ namespace Morgott.UI.ItemBrowser
                 while (_quals.Count < e.MaxQuality)
                 {
                     var n = _quals.Count + 1;
-                    _quals.Add(Btn(_pageView.transform, "Q" + n, "craft.category", out _, () => { _quality = n; _variant = 0; _pageScroll = 0; _dirty = true; }));
+                    _quals.Add(Btn(_pageView.transform, "Q" + n, "craft.tab", out _, () => { _quality = n; _variant = 0; _pageScroll = 0; _dirty = true; }));
                 }
                 for (var i = 0; i < _quals.Count; i++)
                 {
@@ -735,7 +742,7 @@ namespace Morgott.UI.ItemBrowser
             while (_variants.Count < vLabels.Count)
             {
                 var n = _variants.Count;
-                _variants.Add(Btn(_pageView.transform, "Variant" + n, "craft.category", out _, () => { _variant = n; _dirty = true; }));
+                _variants.Add(Btn(_pageView.transform, "Variant" + n, "craft.tab", out _, () => { _variant = n; _dirty = true; }));
             }
             var vy = Mathf.Max(top, 158f) + 8f;
             for (var i = 0; i < _variants.Count; i++)
@@ -804,8 +811,17 @@ namespace Morgott.UI.ItemBrowser
 
         private void Header(Image plate, TMP_Text label, string text, float y)
         {
-            Put(plate, 0f, y, UnitW, 34f);
-            Put(label, 60f, y, UnitW - 120f, 34f);
+            Put(plate, 0f, y, UnitW, 36f);
+            // Knotwork plate (header_plaque): its end knots scale with the band's height (CraftingSkin.FrameInset formula).
+            var s = plate.sprite;
+            var h = plate.rectTransform.rect.height;
+            var canvas = _canvas ? _canvas.GetComponent<Canvas>() : null;
+            if (s && h > 0f && canvas)
+            {
+                var mult = s.rect.height * canvas.referencePixelsPerUnit / (s.pixelsPerUnit * h);
+                if (Mathf.Abs(plate.pixelsPerUnitMultiplier - mult) > 0.001f) plate.pixelsPerUnitMultiplier = mult;
+            }
+            Put(label, 100f, y, UnitW - 200f, 36f);
             Fit(label, text, 20f);
         }
 
@@ -842,7 +858,7 @@ namespace Morgott.UI.ItemBrowser
                 var st = r.Inputs[i];
                 c.Id = st.Prefab;
                 c.Quality = i == 0 && r.BaseQuality > 0 ? r.BaseQuality : 1;
-                Chip(c, x0 + i % 2 * 145f, iy + i / 2 * 30f, 140f, 28f, 26f, $"{NameOf(st.Prefab)} x{Amount(st)}", 17f);
+                Chip(c, x0 + i % 2 * 148f, iy + i / 2 * 30f, 144f, 30f, 30f, $"{NameOf(st.Prefab)} x{Amount(st)}", 18f);
             }
             if (r.Right != null || r.Recipe && r.Inputs.Length > 0)
             {
@@ -853,7 +869,7 @@ namespace Morgott.UI.ItemBrowser
                 var label = r.Right == null ? L("$ib_by_hand") : r.R.StationLevel > 1 ? $"{NameOf(r.Right)} {L("$ib_level_short")}{r.R.StationLevel}" : NameOf(r.Right);
                 // Output amount / conditions ("any one ingredient", per star) under the station when there are any.
                 var note = Chance(r, used ? r.Icon : _pageId);
-                Chip(st, 398f, note.Length > 0 ? y + 4f : y + (h - 36f) / 2f, UnitW - 398f, note.Length > 0 ? 30f : 36f, r.Right == null ? 0f : 30f, label, 17f);
+                Chip(st, 398f, note.Length > 0 ? y + 2f : y + (h - 42f) / 2f, UnitW - 398f, note.Length > 0 ? 34f : 42f, r.Right == null ? 0f : note.Length > 0 ? 34f : 40f, label, 18f);
                 if (note.Length > 0)
                 {
                     var t = _chances.Next(n => Txt(_pageView.transform, "Chance" + n, "text.accent", TextAlignmentOptions.Right));
@@ -867,7 +883,7 @@ namespace Morgott.UI.ItemBrowser
                 Put(t, 330f, y, UnitW - 340f, h);
                 Fit(t, Chance(r, used ? r.Icon : _pageId), 18f);
             }
-            Rule(0f, y + h - 2f, UnitW, 2f);
+            Rule(0f, y + h - 3f, UnitW, 3f);
         }
 
         // Clear hit area with an optional icon (size 0 = text only) and its text.

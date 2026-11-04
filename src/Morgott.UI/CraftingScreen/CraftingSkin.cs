@@ -31,7 +31,7 @@ namespace Morgott.UI.CraftingScreen
         private InventoryGui _gui;
         private RectTransform _crafting, _canvas, _host;
         private Canvas _rootCanvas;
-        private Image _listWell, _detailWell, _browserWell, _craftGlyph, _progressFrame;
+        private Image _listWell, _detailWell, _craftGlyph, _progressFrame;
         private Button _minus, _plus;
         private TMP_InputField _amountField;
         private TMP_Text _amountText;
@@ -132,8 +132,6 @@ namespace Morgott.UI.CraftingScreen
             var detail = _crafting.Find("Decription");
             _listWell = OwnImage(Prefix + "ListWell", "craft.well", "recipe list well (frame_inset)", 0);
             _detailWell = OwnImage(Prefix + "DetailWell", "craft.well", "detail well (frame_inset)", detail ? detail.GetSiblingIndex() : 1);
-            _browserWell = OwnImage(Prefix + "BrowserWell", "craft.well", "item browser well (frame_inset)", 0);
-            _browserWell.enabled = false;
             // Craft / upgrade glyph left of the craft button's label (art: glyph_act_craft / _upgrade on button_*).
             if (_gui.m_craftButton)
             {
@@ -723,16 +721,13 @@ namespace Morgott.UI.CraftingScreen
             var detailRoot = _crafting.Find("Decription");
             WellShown(_listWell, !recipeList || recipeList.gameObject.activeSelf);
             WellShown(_detailWell, !detailRoot || detailRoot.gameObject.activeSelf);
-            // One opaque well spans the browser's body (design section 1), like the list/detail wells on the craft tab.
-            var ours = ItemBrowser.BrowserPanel.Up;
-            WellShown(_browserWell, ours);
-            if (!ours) return;
+            // The browser sits on the window glass, no well (mockups 2026-11-04 04/05).
+            if (!ItemBrowser.BrowserPanel.Up) return;
             var top = o.Search.IsEmpty ? o.List.Y : o.Search.Y;
             var area = new Box(o.List.X, top, o.Detail.Right - o.List.X, o.ButtonRow.Bottom - top);
             // Mockup A: the browser spans ~6 % more than the craft columns (into the frame margin), ~8 px inner margin.
             var pad = area.W * 0.015f;
             area = new Box(area.X - area.W * 0.03f, area.Y, area.W * 1.06f, area.H);
-            if (_browserWell) Geo.Place(_canvas, _browserWell.rectTransform, area);
             ItemBrowser.BrowserPanel.Instance.Place(_canvas, new Box(area.X + pad, area.Y + pad, area.W - 2f * pad, area.H - 2f * pad));
         }
 
