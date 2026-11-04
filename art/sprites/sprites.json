@@ -3377,6 +3377,29 @@
       "atlas": "hires"
     },
     {
+      "name": "glyph_cat_trophy",
+      "file": "glyph_cat_trophy.png",
+      "size": [
+        48,
+        48
+      ],
+      "border": {
+        "left": 0,
+        "bottom": 0,
+        "right": 0,
+        "top": 0
+      },
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "imageType": "Simple",
+      "fillCenter": true,
+      "token": "glyph.cat.trophy",
+      "notes": "Item browser category trophies: stag head (mockup 04; Codex image gen 2026-11-04, style of glyph_cat_fish); white mask, tint like glyph_cat_*",
+      "atlas": "hires"
+    },
+    {
       "name": "glyph_cat_fish",
       "file": "glyph_cat_fish.png",
       "size": [
