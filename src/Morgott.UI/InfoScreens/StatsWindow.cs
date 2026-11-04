@@ -16,10 +16,10 @@ namespace Morgott.UI.InfoScreens
 {
     // Family "CharacterStats" (batch P, stats-full-b.png): the character stats window, opened by a 5th button in the
     // inventory's info row (a clone of the Achievements button, like the vanilla tabs) or the Hud.StatsKey shortcut.
-    // A full-screen page (InfoPage -> FullWindow: opaque scrim, the inventory panels and HUD hidden while it is open): the mockup's 1920x1080 design frame
-    // mapped onto the canvas (StatsMath.Map), the user-approved painted chrome (frame, plaque, card frames, close
-    // button) in four quarters, the title on the rune face, a 4x2 grid of cards (resources, resistances, movement and
-    // weight, defense, food, rest, battle enchantments, ward); the active effects stay on the compendium page. Every value comes from the live game objects (StatsReader, cited per row); Epic Loot and
+    // A full-screen info page with the same chrome as the others (InfoPage, mockup 2026-11-04/02: tab row, ITEMS, name,
+    // Esc, title band; user 2026-11-04 - the painted stats chrome is gone): a 4x2 grid of framed cards (resources,
+    // resistances, movement and weight, defense, food, rest, battle enchantments, ward), the stats-full-b design grid
+    // scaled uniformly into the page's content box; the active effects stay on the compendium page. Every value comes from the live game objects (StatsReader, cited per row); Epic Loot and
     // MorgottTweaks through their public APIs (StatsSources, soft). A card whose rows do not fit scrolls (mouse wheel,
     // slim handle). Values refresh every Hud.StatsRefresh seconds while open (pooled rows, StringBuilder -> TMP, no
     // per-frame allocation); layout runs on open and on canvas size change.
@@ -56,7 +56,7 @@ namespace Morgott.UI.InfoScreens
         internal sealed class Card
         {
             public int Index;
-            public Image HeaderIcon, Divider, Handle;
+            public Image Frame, HeaderIcon, Divider, Handle;
             public TMP_Text Title;
             public string LongestWord = "";
             public RectTransform View;
@@ -76,28 +76,11 @@ namespace Morgott.UI.InfoScreens
         private InventoryGui _gui;
         private RectTransform _canvas, _root;
         private Canvas _canvasComp;
-        private Image _scrim, _closeImage;
-
-        // Frame and title plaque pieces (Codex 4x redraws of the stats-full-b parts): bands / rails / plaque field tile,
-        // knot corners and plaque ends sit at their design rects (size.stats.piece.<name>.x/y/w/h).
-        private sealed class Piece
-        {
-            public string Name;
-            public Image Image;
-            public float X, Y, W, H;
-        }
-
-        private static readonly (string name, string role, float x, float y, float w, float h)[] PieceDefs =
-        {
-            ("ChromeTL", "stats.chrome.tl", 0f, 0f, 960f, 540f),
-            ("ChromeTR", "stats.chrome.tr", 960f, 0f, 960f, 540f),
-            ("ChromeBL", "stats.chrome.bl", 0f, 540f, 960f, 540f),
-            ("ChromeBR", "stats.chrome.br", 960f, 540f, 960f, 540f),
-        };
-
-        private readonly List<Piece> _pieces = new List<Piece>(12);
+        // The page frame (InfoPage chrome like every info page, user 2026-11-04: the painted stats chrome is gone).
+        private RectTransform _frame;
+        private InfoPage _page;
         private TMP_Text _title;
-        private Button _close, _button;
+        private Button _button;
         private readonly Card[] _cards = new Card[8];
         private float _nextRefresh, _scale;
         private Vector2 _laidOut;
@@ -131,15 +114,14 @@ namespace Morgott.UI.InfoScreens
             var hiSprite = ThemeTokens.GetSprite("sprite.stats.chrome.tl");
             if (hiSprite && hiSprite.texture) hiSprite.texture.mipMapBias = T("size.stats.mip.bias", -0.7f);
             _button = CreateButton(gui);
-            WindowMove.OnMoved(WindowMove.Stats, () => _layoutDirty = true);
             ScreenRegistry.Register(_root, Context);
-            // Full-screen info page (InfoPage): opening it closes the other info pages and they close it; its own opaque scrim
-            // (color.stats.backdrop, alpha 1) is the backdrop, the painted chrome the frame.
-            InfoPage.Ensure(_root, null, null, () =>
+            // Full-screen info page (InfoPage): opening it closes the other info pages and they close it; the page chrome
+            // (tab row with this window's own tab = the CharacterStats button, ITEMS, name, Esc, title band) like the others.
+            _page = InfoPage.Ensure(_root, _frame, ButtonName, () =>
             {
                 _shownInventory = false; // a page switch keeps the inventory
                 Close();
-            }, _close);
+            });
             Plugin.Log.LogInfo($"[Morgott.UI] character stats window attached (button={(bool)_button})");
         }
 
@@ -190,35 +172,22 @@ namespace Morgott.UI.InfoScreens
 
         private void Build()
         {
-            // Own role (color.stats.backdrop, opaque): a theme restyle must not turn it back into the translucent scrim.
-            _scrim = Img(_root, "Scrim", "stats.backdrop", "opaque full-screen backdrop of the stats page (click closes)");
-            _scrim.raycastTarget = true;
-            var scrimButton = _scrim.gameObject.AddComponent<Button>();
-            scrimButton.transition = Selectable.Transition.None;
-            scrimButton.navigation = new Navigation { mode = Navigation.Mode.None };
-            scrimButton.onClick.AddListener(Close);
-            // The painted chrome (frame, plaque, card frames and glass, close button) under everything; its quarters
-            // catch clicks inside the window so they do not reach the scrim.
-            foreach (var d in PieceDefs)
-            {
-                var img = Img(_root, d.name, d.role, "painted window chrome quarter (user-approved Codex edit of stats-full-b)");
-                img.raycastTarget = true;
-                _pieces.Add(new Piece { Name = d.name, Image = img, X = d.x, Y = d.y, W = d.w, H = d.h });
-            }
+            // The page frame (panel stack like the other info pages; InfoPage lays it out and draws the backdrop), the
+            // cards over it, the title mirrored into the page's title band.
+            _frame = (RectTransform)new GameObject("RuneSkinStatsFrame", typeof(RectTransform)).transform;
+            _frame.SetParent(_root, false);
+            PanelDecor.Ensure(_frame, "size.panel.glass.inset", glass: true, plaque: false);
             for (var i = 0; i < _cards.Length; i++) _cards[i] = MakeCard(i);
-            _title = Txt(_root, "Title", "stats.title", TextAlignmentOptions.Center);
+            _title = Txt(_frame, "Title", "stats.title", TextAlignmentOptions.Center);
             _title.SetText(Words.Get("$ui_stats_title"));
-            _closeImage = Img(_root, "Close", "stats.hit", "click area of the painted close button (the chrome draws it)");
-            _closeImage.raycastTarget = true;
-            _close = _closeImage.gameObject.AddComponent<Button>();
-            _close.targetGraphic = _closeImage;
-            _close.navigation = new Navigation { mode = Navigation.Mode.None };
-            _close.onClick.AddListener(Close);
         }
 
         private Card MakeCard(int i)
         {
             var c = new Card { Index = i };
+            // Card frame (the painted chrome drew it before): the framed key art of the compendium pane (mockup 02).
+            c.Frame = Img(_root, "Card" + i + "Frame", "info.tab", "stats card frame (as the compendium reading pane)");
+            c.Frame.preserveAspect = false;
             var view = new GameObject("Card" + i + "View", typeof(RectTransform));
             c.View = (RectTransform)view.transform;
             c.View.SetParent(_root, false);
@@ -608,16 +577,11 @@ namespace Morgott.UI.InfoScreens
 
         private float T(string token, float fallback) => ThemeTokens.GetFloat(token, fallback);
 
-        private Box D(float x, float y, float w, float h)
-        {
-            var r = _canvas.rect;
-            var b = StatsMath.Map(r.width, r.height, _scale, x, y, w, h);
-            return new Box(b.X + _moved.x, b.Y + _moved.y, b.W, b.H);
-        }
+        // Design px of the card grid (stats-full-b: 4 x 2 cards from (68, 133), 448.3 / 435 pitch) mapped into the page's
+        // content box: uniform scale _scale, centred (_off = canvas position of design (0, 0)).
+        private Box D(float x, float y, float w, float h) => new Box(_off.x + x * _scale, _off.y + y * _scale, w * _scale, h * _scale);
 
-        // User offset of the window (WindowMove, canvas units), applied to every design rect; the scrim stays full screen.
-        private Vector2 _moved;
-        private WindowDrag _drag;
+        private Vector2 _off;
 
         private void Place(RectTransform rt, Box b) => Geo.Place(_canvas, rt, b);
 
@@ -638,44 +602,24 @@ namespace Morgott.UI.InfoScreens
 
         private void LayoutAll()
         {
-            if (!_canvas) return;
+            if (!_canvas || !_page) return;
             _layoutDirty = false;
             var rect = _canvas.rect;
             _laidOut = rect.size;
-            _scale = StatsMath.FitScale(rect.width, rect.height);
-            if (_scale <= 0f) return;
             Place(_root, new Box(0f, 0f, rect.width, rect.height));
-            Place(_scrim.rectTransform, new Box(0f, 0f, rect.width, rect.height));
-            _moved = Vector2.zero;
-            _moved = WindowMove.Applied(WindowMove.Stats, D(0f, 0f, StatsMath.DesignW, StatsMath.DesignH), _canvas);
-            // The window's one header (RuneWindowHeader: drag, double-click reset) on the painted title plaque of the chrome
-            // (size.stats.title.*: centred on the window's top strip, inside the frame, left of the painted close cap),
-            // standard height, its plate drawn over the painted plaque (face right after the chrome pieces), the chrome's
-            // title text mirrored into it. User 2026-10-26: a header across the whole drag area with the strip clipped away
-            // read as a detached full-width bar above the frame, the close button outside it.
-            var header = RuneWindowHeader.Ensure(_root, WindowMove.Stats);
-            if (header)
-            {
-                header.Adopt(_title, Words.Get("$ui_stats_title"));
-                header.DrawAfter = _pieces.Count > 0 ? _pieces[_pieces.Count - 1].Image.transform : null;
-                _drag = header.Drag;
-                var row = D(T("size.stats.title.x", 760f), T("size.stats.title.y", 34f), T("size.stats.title.w", 522f), T("size.stats.title.h", 62f));
-                var hh = Mathf.Min(row.H, WindowHeaderMath.HeaderHeight(ThemeTokens.GetFloat("size.win.header", 40f), Responsive.ResponsiveContext.SkinScale));
-                header.Place(_canvas, new Box(row.X, row.Y + (row.H - hh) / 2f, row.W, hh));
-            }
-            foreach (var p in _pieces)
-            {
-                var k = "size.stats.piece." + p.Name;
-                Place(p.Image.rectTransform, D(T(k + ".x", p.X), T(k + ".y", p.Y), T(k + ".w", p.W), T(k + ".h", p.H)));
-            }
-            Place(_title.rectTransform, D(T("size.stats.title.x", 760f), T("size.stats.title.y", 34f), T("size.stats.title.w", 522f), T("size.stats.title.h", 62f)));
-            Font(_title, T("size.stats.font.title", 52f));
-            _title.enableAutoSizing = false;
-            _title.characterSpacing = T("size.stats.title.spacing", 6f);
-            Place(_closeImage.rectTransform, D(T("size.stats.close.x", 1804f), T("size.stats.close.y", 44f), T("size.stats.close.w", 78f), T("size.stats.close.h", 78f)));
+            var inv = InventorySkin.Instance;
+            var header = RuneWindowHeader.Ensure(_frame, WindowMove.Stats);
+            if (header) header.Adopt(_title, Words.Get("$ui_stats_title"));
+            var c = _page.Layout(inv ? inv.SkinScaleValue : 1f, header);
+            var gx = T("size.stats.card.x0", 68f);
+            var gy = T("size.stats.card.y0", 133f);
+            var gw = 3f * T("size.stats.card.px", 448.3f) + T("size.stats.card.w", 439f);
+            var gh = T("size.stats.card.py", 435f) + T("size.stats.card.h", 421f);
+            _scale = Mathf.Min(c.W / gw, c.H / gh);
+            if (_scale <= 0f) return;
+            _off = new Vector2(c.X + (c.W - gw * _scale) / 2f - gx * _scale, c.Y + (c.H - gh * _scale) / 2f - gy * _scale);
             for (var i = 0; i < _cards.Length; i++) LayoutCard(_cards[i]);
         }
-
         private void LayoutCard(Card c)
         {
             var col = c.Index % 4;
@@ -683,6 +627,7 @@ namespace Morgott.UI.InfoScreens
             var b = StatsMath.Card(col, row, T("size.stats.card.x0", 68f), T("size.stats.card.y0", 133f), T("size.stats.card.w", 439f), T("size.stats.card.h", 421f),
                 T("size.stats.card.px", 448.3f), T("size.stats.card.py", 435f));
             c.Box = b;
+            Place(c.Frame.rectTransform, D(b.X, b.Y, b.W, b.H));
             var pad = T("size.stats.card.pad", 20f);
             var headH = T("size.stats.card.header", 88f);
             // Category icon at its native size (cut 1:1 from the mockup: 1 sprite px = 1 design px), capped.

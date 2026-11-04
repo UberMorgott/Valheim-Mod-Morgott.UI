@@ -74,8 +74,11 @@ namespace Morgott.UI.InfoScreens
                     _sources.Add(b);
         }
 
+        // The panel's own tab: its persistent onClick target is `method` (vanilla tabs), or the tab is named `method`
+        // (own buttons wired by code: the stats window's CharacterStats).
         private static bool Opens(Button b, string method)
         {
+            if (b.name == method) return true;
             var ev = b.onClick;
             for (var i = 0; i < ev.GetPersistentEventCount(); i++)
                 if (ev.GetPersistentMethodName(i) == method) return true;

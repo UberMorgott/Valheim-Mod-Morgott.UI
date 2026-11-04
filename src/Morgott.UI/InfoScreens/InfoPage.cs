@@ -99,7 +99,7 @@ namespace Morgott.UI.InfoScreens
             p._itemsLabel = ItemBrowser.Browser.Localize("$ib_tab");
             p._name = InfoArt.OwnImage(frame, "RuneSkinPageName", "decor.plaque", "page top bar: character name banner (mockup 02)");
             p._name.preserveAspect = false;
-            p._nameText = InfoArt.RowText(p._name.transform, "Label", "window.title", TextAlignmentOptions.Center);
+            p._nameText = InfoArt.RowText(p._name.transform, "Label", "dialog.subject", TextAlignmentOptions.Center); // bold sans (mockup 02)
             p._rule = new GameObject("RuneSkinPageRule", typeof(RectTransform)).AddComponent<Image>();
             p._rule.transform.SetParent(frame, false);
             p._rule.raycastTarget = false;
@@ -266,7 +266,14 @@ namespace Morgott.UI.InfoScreens
             }
             if (_rule) Geo.Place(_canvas, _rule.rectTransform, new Box(19f * u, 111f * u, Mathf.Max(0f, full.W - 38f * u), 2f * u));
             var titleW = Mathf.Min(full.W, ThemeTokens.GetFloat("size.info.page.title.w", 920f) * u);
-            if (header) header.Place(_canvas, new Box((full.W - titleW) / 2f, 135f * u, titleW, 68f * u), null, auxW);
+            if (header)
+            {
+                header.Place(_canvas, new Box((full.W - titleW) / 2f, 135f * u, titleW, 68f * u), null, auxW);
+                // Mockup 02 page title: bold sans caps (the theme's font.body.bold), not the window headers' display face.
+                var bold = ThemeTokens.GetFont("font.body.bold");
+                if (header.Title && bold && header.Title.font != bold) header.Title.font = bold;
+                if (header.Title && (header.Title.fontStyle & FontStyles.UpperCase) != FontStyles.UpperCase) header.Title.fontStyle |= FontStyles.UpperCase;
+            }
             var top = 232f * u;
             return new Box(61f * u, top, Mathf.Max(0f, full.W - 121f * u), Mathf.Max(0f, full.H - top - 82f * u));
         }
