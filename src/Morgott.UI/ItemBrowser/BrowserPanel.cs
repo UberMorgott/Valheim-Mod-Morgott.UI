@@ -22,6 +22,9 @@ namespace Morgott.UI.ItemBrowser
     {
         public const string TabName = "MorgottItemsTab";
         private const float UnitW = 550f, Cell = 61f, RowH = 66f;
+        // Mockup A grid (docs\mockups\item-browser\a-crafting-tab-grid.png at 1920x1080): tall sockets 56x78, pitch 60 x 84,
+        // grid well left of a detail well, both from y 90; pager + hint row under the wells.
+        private const float WellTop = 90f, CellX = 60f, CellY = 84f, CellTop = 102f, Footer = 82f;
         private static readonly string[] TypeTokens = { "$ib_type_all", "$ib_type_items", "$ib_type_pieces", "$ib_type_creatures", "$ib_type_stations", "$ib_type_favorites" };
         private static readonly float[] TypeW = { 58f, 74f, 72f, 96f, 92f, 118f };
         private static readonly EntryType?[] TypeOf = { null, EntryType.Item, EntryType.Piece, EntryType.Creature, EntryType.Station, null };
@@ -60,7 +63,7 @@ namespace Morgott.UI.ItemBrowser
         private readonly Button[] _types = new Button[6];
         private readonly TMP_Text[] _typeLabels = new TMP_Text[6];
         private readonly List<Slot> _cells = new List<Slot>();
-        private Image _detailWell, _detailIcon, _divTop, _divBottom, _stationIcon;
+        private Image _gridWell, _prevPlate, _nextPlate, _detailWell, _detailIcon, _divTop, _divBottom, _stationIcon;
         private TMP_Text _detailName, _detailType, _stationText, _arrow, _noRecipe;
         private readonly List<Slot> _reqRows = new List<Slot>();
         private Slot _outRow;
@@ -290,6 +293,7 @@ namespace Morgott.UI.ItemBrowser
                 var n = i;
                 _types[i] = Btn(g, "Type" + i, "craft.category", out _typeLabels[i], () => { _type = n; _gridPage = 0; _dirty = true; });
             }
+            _gridWell = Img(g, "GridWell", "craft.well");
             _detailWell = Img(g, "DetailWell", "craft.well");
             _detailIcon = Img(g, "DetailIcon", "content", true);
             Tip(_detailIcon.gameObject, () => _selected, () => 1);
@@ -308,6 +312,8 @@ namespace Morgott.UI.ItemBrowser
             Img(_usedButton.transform, "Glyph", "glyph.link");
             _fromButton = Btn(g, "ObtainedFrom", "craft.category", out _, () => OpenPage(_selected, false));
             Img(_fromButton.transform, "Glyph", "glyph.panel.chest");
+            _prevPlate = Img(g, "PrevPlate", "craft.category");
+            _nextPlate = Img(g, "NextPlate", "craft.category");
             _prev = Btn(g, "Prev", "craft.arrow.left", out _, () => { _gridPage--; _dirty = true; });
             _next = Btn(g, "Next", "craft.arrow.right", out _, () => { _gridPage++; _dirty = true; });
             _pagerText = Txt(g, "Pager", "text.body", TextAlignmentOptions.Center);
@@ -455,6 +461,17 @@ namespace Morgott.UI.ItemBrowser
             Geo.Place(_canvas, rt, new Box(_a.X + x * _k, _a.Y + y * _k, w * _k, h * _k));
         }
 
+        // Text shrunk to fit its box (Russian tab names are longer than the mockup's English ones).
+        private void Fit(TMP_Text t, string s, float size)
+        {
+            if (t.text != s) t.text = s;
+            var fs = size * _k * _f;
+            if (t.enableAutoSizing && Mathf.Abs(t.fontSizeMax - fs) < 0.05f) return;
+            t.enableAutoSizing = true;
+            t.fontSizeMax = fs;
+            t.fontSizeMin = fs * 0.7f;
+        }
+
         private void Off(Component c)
         {
             if (c && c.gameObject.activeSelf) c.gameObject.SetActive(false);
@@ -499,29 +516,32 @@ namespace Morgott.UI.ItemBrowser
             Put(_gridView.transform, 0f, 0f, UnitW, _a.H / _k);
             if (Browser.Index == null) return;
             var h = _a.H / _k;
-            Put(_searchBack, 0f, 0f, 380f, 40f);
-            Put(_searchGlyph, 10f, 8f, 24f, 24f);
-            Put(_search.textViewport, 44f, 4f, 326f, 32f);
-            foreach (var t in _search.textViewport.GetComponentsInChildren<TMP_Text>(true)) { Put(t, 44f, 4f, 326f, 32f); Text(t, t.text, 18f); }
-            Put(_knownButton, 392f, 4f, 158f, 32f);
-            Put(_knownBox, 392f, 7f, 26f, 26f);
-            Put(_knownCheck, 392f, 7f, 26f, 26f);
+            Put(_searchBack, 0f, 0f, 362f, 38f);
+            Put(_searchGlyph, 12f, 7f, 24f, 24f);
+            Put(_search.textViewport, 46f, 3f, 308f, 32f);
+            foreach (var t in _search.textViewport.GetComponentsInChildren<TMP_Text>(true)) { Put(t, 46f, 3f, 308f, 32f); Text(t, t.text, 19f); }
+            Put(_knownButton, 394f, 3f, 156f, 32f);
+            Put(_knownBox, 394f, 6f, 26f, 26f);
+            Put(_knownCheck, 394f, 6f, 26f, 26f);
             _knownCheck.enabled = Browser.KnownOnly.Value;
-            Put(_knownLabel, 426f, 4f, 124f, 32f);
-            Text(_knownLabel, L("$ib_known_only"), 18f);
+            Put(_knownLabel, 430f, 3f, 120f, 32f);
+            Fit(_knownLabel, L("$ib_known_only"), 18f);
             var x = 0f;
             for (var i = 0; i < _types.Length; i++)
             {
-                Put(_types[i], x, 52f, TypeW[i], 34f);
-                Put(_typeLabels[i], x, 52f, TypeW[i], 34f);
-                Text(_typeLabels[i], (i == 5 ? "★ " : "") + L(TypeTokens[i]), 17f);
+                Put(_types[i], x, 50f, TypeW[i], 32f);
+                Put(_typeLabels[i], x + 3f, 50f, TypeW[i] - 6f, 32f);
+                Fit(_typeLabels[i], (i == 5 ? "★ " : "") + L(TypeTokens[i]), 16f);
                 if (_types[i].interactable != (i != _type)) _types[i].interactable = i != _type;
                 x += TypeW[i] + 8f;
             }
 
             var list = Results();
-            var rows = Math.Max(1, (int)((h - 98f - 82f) / Cell));
+            var wellBottom = h - Footer;
+            Put(_gridWell, 0f, WellTop, 362f, wellBottom - WellTop);
+            var rows = Math.Max(1, (int)((wellBottom - CellTop + CellY - CellX) / CellY));
             var per = rows * 6;
+            if (_selected == null && list.Count > 0) _selected = list[0].Id; // mockup A: the page opens on a selected entry
             var pages = Math.Max(1, (list.Count + per - 1) / per);
             _gridPage = Mathf.Clamp(_gridPage, 0, pages - 1);
             while (_cells.Count < per) _cells.Add(GridCell(_cells.Count));
@@ -532,10 +552,11 @@ namespace Morgott.UI.ItemBrowser
                 if (i >= per) { Off(c.Back); continue; }
                 var n = _gridPage * per + i;
                 c.Id = n < list.Count ? list[n].Id : null;
-                Put(c.Back, i % 6 * Cell, 98f + i / 6 * Cell, Cell - 2f, Cell - 2f);
-                Put(c.Icon, i % 6 * Cell + 7f, 98f + i / 6 * Cell + 7f, Cell - 16f, Cell - 16f);
+                float cx = 3f + i % 6 * CellX, cy = CellTop + i / 6 * CellY;
+                Put(c.Back, cx, cy, CellX - 4f, CellY - 6f);
+                Put(c.Icon, cx + 6f, cy + 13f, CellX - 16f, CellX - 16f);
                 SetIcon(c.Icon, c.Id);
-                Put(c.D, i % 6 * Cell + Cell - 22f, 98f + i / 6 * Cell + 1f, 18f, 18f);
+                Put(c.D, cx + CellX - 24f, cy + 2f, 18f, 18f);
                 Text(c.D, "★", 16f);
                 c.D.enabled = c.Id != null && fav.Contains(c.Id);
                 var sel = c.Id != null && c.Id == _selected;
@@ -545,17 +566,20 @@ namespace Morgott.UI.ItemBrowser
                     m.Outcome = Restyler.Apply(c.Back, m, ThemeTokens.Role(m.Role)) ? Outcome.Styled : Outcome.Degraded;
                 }
             }
-            Detail(rows);
-            var py = h - 74f;
-            Put(_prev, 366f / 2f - 82f, py, 34f, 32f);
-            Put(_pagerText, 366f / 2f - 40f, py, 80f, 32f);
+            Detail(wellBottom);
+            var py = wellBottom + 12f;
+            const float mid = UnitW / 2f;
+            Put(_prevPlate, mid - 90f, py, 38f, 34f);
+            Put(_prev, mid - 82f, py + 6f, 22f, 22f);
+            Put(_pagerText, mid - 40f, py, 80f, 34f);
             Text(_pagerText, $"{_gridPage + 1} / {pages}", 18f);
-            Put(_next, 366f / 2f + 48f, py, 34f, 32f);
+            Put(_nextPlate, mid + 52f, py, 38f, 34f);
+            Put(_next, mid + 60f, py + 6f, 22f, 22f);
             _prev.interactable = _gridPage > 0;
             _next.interactable = _gridPage < pages - 1;
             if (Browser.CanTake)
             {
-                Put(_hint, 0f, h - 34f, UnitW, 26f);
+                Put(_hint, 0f, py + 44f, UnitW, 24f);
                 Text(_hint, L("$ib_hint_take"), 16f);
             }
             else Off(_hint);
@@ -602,10 +626,10 @@ namespace Morgott.UI.ItemBrowser
         }
 
         // Detail pane: the selected entry's craft (else build / conversion) recipe, quality 1 (mockup A).
-        private void Detail(int rows)
+        private void Detail(float bottom)
         {
-            const float X = 374f, W = 176f, Y = 98f;
-            var h = rows * Cell - 2f;
+            const float X = 368f, W = 182f, Y = WellTop;
+            var h = bottom - Y;
             Put(_detailWell, X, Y, W, h);
             var e = _selected != null && Browser.Index.Entries.TryGetValue(_selected, out var x) ? x : null;
             if (e == null)
