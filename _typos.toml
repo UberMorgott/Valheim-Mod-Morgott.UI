@@ -31,3 +31,7 @@ BA_WorldBossBar = "BA_WorldBossBar"
 GetRemaningTime = "GetRemaningTime"
 # Vanilla field Player.m_eiterRegen (assembly_valheim Player.cs:252), character stats eitr regen.
 m_eiterRegen = "m_eiterRegen"
+
+[default.extend-words]
+# Vanilla spear prefab spelling (SpearSplitner*), item icon atlas keys in Assets/ItemIcons/ItemIcons.json.
+splitner = "splitner"
