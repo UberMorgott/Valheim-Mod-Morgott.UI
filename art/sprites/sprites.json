@@ -3331,6 +3331,29 @@
       "atlas": "hires"
     },
     {
+      "name": "glyph_cat_fish",
+      "file": "glyph_cat_fish.png",
+      "size": [
+        48,
+        48
+      ],
+      "border": {
+        "left": 0,
+        "bottom": 0,
+        "right": 0,
+        "top": 0
+      },
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "imageType": "Simple",
+      "fillCenter": true,
+      "token": "glyph.cat.fish",
+      "notes": "Item browser category: fish (Codex image gen 2026-11-04, style of glyph_cat_*); white mask, tint like glyph_cat_*",
+      "atlas": "hires"
+    },
+    {
       "name": "glyph_sub_unarmed",
       "file": "glyph_sub_unarmed.png",
       "size": [
