@@ -70,7 +70,7 @@ namespace Morgott.UI.Icons
         {
             if (_prefetch == null) return;
             foreach (var task in _prefetch)
-                task?.ContinueWith(t =>
+                _ = task?.ContinueWith(t =>
                 {
                     if (t.Status == TaskStatus.RanToCompletion) t.Result.Dispose();
                 }, TaskScheduler.Default);
@@ -306,9 +306,9 @@ namespace Morgott.UI.Icons
             error = null;
             if (!SimpleJson.SimpleJson.TryDeserializeObject(json, out var parsed) || !(parsed is IDictionary<string, object> root))
                 return Fail("not a JSON object", out error);
-            if (!Format.Equals(Get(root, "format") as string)) return Fail($"format must be \"{Format}\"", out error);
+            if (!string.Equals(Format, Get(root, "format") as string, StringComparison.Ordinal)) return Fail($"format must be \"{Format}\"", out error);
             if (Int(root, "version") != Version) return Fail($"unsupported version (want {Version})", out error);
-            if (!"bc7".Equals(Get(root, "encoding") as string) || !"gzip".Equals(Get(root, "compression") as string))
+            if (!string.Equals("bc7", Get(root, "encoding") as string, StringComparison.Ordinal) || !string.Equals("gzip", Get(root, "compression") as string, StringComparison.Ordinal))
                 return Fail("encoding must be bc7, compression gzip", out error);
             var a = new Atlas { CellSize = Int(root, "cell"), Columns = Int(root, "cols"), Gutter = Int(root, "gutter"), Mips = Int(root, "mips") };
             if (a.CellSize <= 0 || a.Columns <= 0 || a.Gutter < 0 || a.Mips < 1)
