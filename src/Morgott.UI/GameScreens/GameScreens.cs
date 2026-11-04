@@ -657,8 +657,9 @@ namespace Morgott.UI.GameScreens
             // Mockup 02 columns (px at 1080): topic keys 480 x 65 every 75 from (61, 240), list scrollbar to x 580; the
             // framed reading pane from x 612 to the content's right edge, inner text 24 px in.
             var u = canvas.rect.height / 1080f;
-            // The list's scroll view insets its rows ~20 px: the column starts 20 px further left (run 20261104-214645: rows at 81).
-            var listBox = new InventoryScreen.Box(c.X - 20f * u, c.Y + 8f * u, 539f * u, c.H - 8f * u);
+            // The list's scroll view insets its rows ~30 px: the column starts 30 px further left (runs 20261104-214645 /
+            // -222221: rows at 81 / 71, mockup 61).
+            var listBox = new InventoryScreen.Box(c.X - 30f * u, c.Y + 8f * u, 549f * u, c.H - 8f * u);
             if (frame.Find("TextList") is RectTransform list) InventoryScreen.Geo.Place(canvas, list, listBox);
             Rows(d, canvas, u);
             var pane = new InventoryScreen.Box(c.X + 551f * u, c.Y, Mathf.Max(0f, c.W - 551f * u), c.H);
@@ -671,6 +672,11 @@ namespace Morgott.UI.GameScreens
             foreach (Transform child in frame)
                 if (child.name.EndsWith("TextArea", StringComparison.Ordinal) && child is RectTransform area) InventoryScreen.Geo.Place(canvas, area, text);
             Reading(d, u);
+            // Vanilla column backdrops (TextBackdrop, restyled as popup glass) are not in mockup 02: the list sits on the page,
+            // the pane on its flat teal fill (run 20261104-222221: pane read #0B1417 instead of #02171B).
+            foreach (Transform child in frame)
+                if (child.name == "TextList" || child.name.EndsWith("TextArea", StringComparison.Ordinal)) InfoScreens.InfoArt.Unpaint(child);
+            if (frame.Find("TextList/SkillList") is Transform skillList) InfoScreens.InfoArt.Unpaint(skillList);
             // The active effects list copied the text scroll's rect once (ActiveEffectsList.Create): keep it on it.
             var scroll = d.m_textArea ? d.m_textArea.GetComponentInParent<ScrollRect>(true) : null;
             if (scroll && scroll.transform.parent.Find(ActiveEffectsPage.RootName) is RectTransform fx)
@@ -707,14 +713,14 @@ namespace Morgott.UI.GameScreens
             return img;
         }
 
-        // Topic keys: pitch 75, 480 x 68 (row space = list space), the name left in the key (FillTextList places row i
+        // Topic keys: pitch 75, 480 x 70 (row space = list space), the name left in the key (FillTextList places row i
         // at -i * m_spacing, TextsDialog.cs:114; repositioned here, m_spacing kept in step for the next fill).
         private static void Rows(TextsDialog d, RectTransform canvas, float u)
         {
             if (!d.m_listRoot) return;
             var r = Mathf.Abs(d.m_listRoot.lossyScale.y / Mathf.Max(1e-6f, canvas.lossyScale.y));
             var pitch = 75f * u / Mathf.Max(1e-6f, r);
-            var h = 68f * u / Mathf.Max(1e-6f, r);
+            var h = 70f * u / Mathf.Max(1e-6f, r);
             var w = 480f * u / Mathf.Max(1e-6f, r);
             if (Mathf.Abs(d.m_spacing - pitch) > 0.01f) d.m_spacing = pitch;
             var n = 0;
@@ -732,6 +738,8 @@ namespace Morgott.UI.GameScreens
                     sel.anchorMax = Vector2.one;
                     sel.offsetMin = sel.offsetMax = Vector2.zero;
                 }
+                // Drawn over the key plate (vanilla orders selected before bkg: the cyan state stayed hidden, run 20261104-222221).
+                if (row.Find("selected") is Transform s2 && row.Find("bkg") is Transform bk && s2.GetSiblingIndex() < bk.GetSiblingIndex()) s2.SetSiblingIndex(bk.GetSiblingIndex());
                 if (Utils.FindChild(row, "name") is RectTransform name && name.TryGetComponent<TMP_Text>(out var label))
                 {
                     var a = new Vector2(0f, 0f);

@@ -11,6 +11,14 @@ namespace Morgott.UI.InfoScreens
     // Shared helpers of the info panels (skills, trophies): own images / texts, row-space rects, labels, the panel box.
     internal static class InfoArt
     {
+        // A vanilla backdrop image not drawn (a Mask keeps masking, its graphic hidden); the object stays.
+        public static void Unpaint(Transform t)
+        {
+            if (!t || !t.TryGetComponent<Image>(out var img)) return;
+            if (t.TryGetComponent<Mask>(out var mask)) { if (mask.showMaskGraphic) mask.showMaskGraphic = false; }
+            else if (img.enabled) img.enabled = false;
+        }
+
         public static Image OwnImage(Transform parent, string name, string role, string reason)
         {
             var image = new GameObject(name, typeof(RectTransform)).AddComponent<Image>();

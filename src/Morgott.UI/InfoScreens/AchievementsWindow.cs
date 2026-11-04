@@ -9,7 +9,7 @@ namespace Morgott.UI.InfoScreens
     // Achievements (InventoryGui.m_achievementsPanel: a full-screen root - blur, darken, the AchFrame window, the AchDetails
     // popup) as a full-screen info page like skills / trophies (InfoPage: AchFrame fills the screen, tab row, Esc). The
     // header is the one RuneWindowHeader as the page title: title = the frame's "topic", the completion count
-    // ("completionRate") in its aux slot; the list container fills the body above the close row (close button centred,
+    // ("completionRate") right-aligned under it; the list container fills the body above the close row (close button centred,
     // the cheated note right of it). Without the inventory layout (no InventorySkin) the vanilla placement stays.
     public sealed class AchievementsWindow : MonoBehaviour
     {
@@ -60,13 +60,15 @@ namespace Morgott.UI.InfoScreens
                     case "cheatedText": cheated = rt; break;
                 }
             }
-            var countW = count ? ThemeTokens.GetFloat("size.info.count.w", 150f) * k : 0f;
-            var inner = _page.Layout(k, header, countW);
+            var inner = _page.Layout(k, header);
             if (inner.W <= 0f || inner.H <= 0f) return;
-            if (header && count)
+            if (count)
             {
-                Geo.Place(_canvas, count.rectTransform, header.AuxBox);
-                InfoArt.Label(count, TextAlignmentOptions.MidlineRight, header.AuxBox.H * 0.5f, 13f);
+                // Right-aligned under the title band (as trophies: the banner's knotwork ends fill its aux slot).
+                var countW = ThemeTokens.GetFloat("size.info.count.w", 150f) * k * 1.8f;
+                var countBox = new Box(inner.Right - countW, inner.Y - 28f * k, countW, 24f * k);
+                Geo.Place(_canvas, count.rectTransform, countBox);
+                InfoArt.Label(count, TextAlignmentOptions.MidlineRight, countBox.H * 0.8f, 13f);
             }
             var rowH = close && close.gameObject.activeSelf ? 46f * k : 0f;
             var bodyH = Mathf.Max(0f, inner.H - (rowH > 0f ? rowH + gap : 0f));

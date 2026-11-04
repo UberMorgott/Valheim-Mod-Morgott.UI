@@ -270,7 +270,7 @@ namespace Morgott.UI.InfoScreens
             var k = inv.SkinScaleValue;
             var gap = ThemeTokens.GetFloat("size.info.trophy.gap", 8f) * k;
             // Full-screen page (InfoPage: tab row, Esc, the window's one header as the centred page title, "topic"
-            // mirrored, the unlocked / total count in its aux slot); no knots.
+            // mirrored; the unlocked / total count right-aligned under it); no knots.
             var header = RuneWindowHeader.Ensure(_frame, WindowMove.Trophies);
             foreach (var c in Children.Of(_frame))
             {
@@ -279,13 +279,12 @@ namespace Morgott.UI.InfoScreens
                 else if (c.name == "Closebutton") Geo.SetScale(rt, 0f); // the selected tab closes (mockup: no close button)
             }
             var countW = ThemeTokens.GetFloat("size.info.count.w", 150f) * k;
-            var inner = _page.Layout(k, header, countW);
+            var inner = _page.Layout(k, header);
             if (inner.W <= 0f || inner.H <= 0f) return;
-            if (header)
-            {
-                Geo.Place(_canvas, _count.rectTransform, header.AuxBox);
-                InfoArt.Label(_count, TextAlignmentOptions.MidlineRight, header.AuxBox.H * 0.5f, 13f);
-            }
+            // The count right-aligned under the title band (in its aux slot it overlapped the page banner's knotwork ends).
+            var countBox = new Box(inner.Right - countW * 1.8f, inner.Y - 28f * k, countW * 1.8f, 24f * k);
+            Geo.Place(_canvas, _count.rectTransform, countBox);
+            InfoArt.Label(_count, TextAlignmentOptions.MidlineRight, countBox.H * 0.8f, 13f);
             if (_knotL) Geo.SetScale(_knotL.rectTransform, 0f);
             if (_knotR) Geo.SetScale(_knotR.rectTransform, 0f);
             var y = inner.Y;
@@ -332,6 +331,9 @@ namespace Morgott.UI.InfoScreens
             // Grid: the scroll view fills the rest; cells fill its width (columns from the cell token).
             var view = _gui.m_trophieListRoot.GetComponentInParent<ScrollRect>(true);
             var vr = view ? (RectTransform)view.transform : null;
+            // Vanilla list containers between the frame and the scroll view keep their old rect: their dark plate showed as a
+            // 1260 x 26 strip under the title (run 20261104-222221).
+            for (var a = vr ? vr.parent : null; a && a != _frame; a = a.parent) InfoArt.Unpaint(a);
             var bar = _gui.m_trophyListScroll ? (RectTransform)_gui.m_trophyListScroll.transform : null;
             var barW = 16f * k;
             var grid = new Box(inner.X, y, inner.W, inner.Bottom - y);
