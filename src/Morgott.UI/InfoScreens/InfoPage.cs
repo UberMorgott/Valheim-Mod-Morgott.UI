@@ -59,7 +59,10 @@ namespace Morgott.UI.InfoScreens
             return c;
         }
 
-        public static Rect ScreenRect() => new Rect(0f, 0f, Screen.width, Screen.height);
+        // The whole screen plus one screen on each side: a full-screen page covers every UI part, also those reaching past the
+        // screen edge, which CoverCull only gates when they lie fully inside the opaque area (run 20261104-205914: the
+        // minimap's RuneSkin_DayPhase stayed drawn under every page).
+        public static Rect ScreenRect() => new Rect(-Screen.width, -Screen.height, 3f * Screen.width, 3f * Screen.height);
 
         // frame null (stats: own painted chrome over its own opaque scrim): single-page + FullWindow only.
         public static InfoPage Ensure(RectTransform root, RectTransform frame, string openMethod, Action close, Selectable focus = null)
@@ -70,7 +73,6 @@ namespace Morgott.UI.InfoScreens
             p._focus = focus;
             var canvas = root.GetComponentInParent<Canvas>(true);
             p._canvas = canvas ? (RectTransform)canvas.rootCanvas.transform : null;
-            p.EnsureGroup(root);
             if (!frame || p._back) return p;
             p._back = new GameObject(BackName, typeof(RectTransform)).AddComponent<Image>();
             p._back.transform.SetParent(frame.parent, false);
@@ -86,22 +88,37 @@ namespace Morgott.UI.InfoScreens
         }
 
         // Gamepad focus follows the page: vanilla OnOpen* only activates the inventory's Info group (m_uiGroups[2],
-        // InventoryGui.cs:2349) - the header row, hidden under the page. A page without its own UIGroupHandler gets one
-        // ranked above every inventory group (UIGroupHandler.IsHighestPriority: the active group of the highest priority
-        // takes the focus), so while it shows the inventory groups are inactive and the pad lands on the page (its own
-        // tab, else Esc / the given control); closed (inactive), the inventory's groups take over again.
-        private void EnsureGroup(RectTransform root)
+        // InventoryGui.cs:2349) - the header row, hidden under the page - and the group of the highest priority that is
+        // active in the hierarchy takes the focus (UIGroupHandler.IsHighestPriority; a user-inactive one then blocks every
+        // lower one: run 20261104-205914 skills / texts had no active group at all). On open the page's own groups (or one
+        // added to its root when it has none) are lifted above every other group, relative order kept (achievements
+        // details popup), the outermost one user-active; its default element = the page's own tab (else Esc / the given
+        // control) when it has none. Closed (inactive), the inventory's groups take over again.
+        private void Focus()
         {
-            if (_group || root.GetComponentInChildren<UIGroupHandler>(true)) return;
-            var gui = root.GetComponentInParent<InventoryGui>(true);
-            var top = 0;
-            if (gui && gui.m_uiGroups != null)
-                foreach (var g in gui.m_uiGroups)
-                    if (g) top = Mathf.Max(top, g.m_groupPriority);
-            _group = root.gameObject.AddComponent<UIGroupHandler>();
-            _group.m_groupPriority = top + 1;
+            var inside = new List<UIGroupHandler>(GetComponentsInChildren<UIGroupHandler>(true));
+            if (inside.Count == 0) inside.Add(gameObject.AddComponent<UIGroupHandler>());
+            var top = int.MinValue;
+            foreach (var g in FindObjectsByType<UIGroupHandler>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+                if (g && !g.transform.IsChildOf(transform)) top = Mathf.Max(top, g.m_groupPriority);
+            var min = int.MaxValue;
+            _group = null;
+            foreach (var g in inside)
+            {
+                min = Mathf.Min(min, g.m_groupPriority);
+                if (!_group || Depth(g.transform) < Depth(_group.transform)) _group = g;
+            }
+            if (top != int.MinValue && min <= top)
+                foreach (var g in inside) g.m_groupPriority += top + 1 - min;
+            _group.SetActive(true);
         }
 
+        private int Depth(Transform t)
+        {
+            var d = 0;
+            for (; t && t != transform; t = t.parent) d++;
+            return d;
+        }
         private static Button MakeEsc(RectTransform frame, Action close)
         {
             var go = new GameObject(EscName, typeof(RectTransform));
@@ -131,6 +148,7 @@ namespace Morgott.UI.InfoScreens
             FullWindow.Enter(transform, ScreenRect); // first: a closing page then never restores the inventory in between
             foreach (var p in All.ToArray())
                 if (p && p != this && p.isActiveAndEnabled) p._close?.Invoke();
+            Focus();
         }
 
         private void OnDisable() => FullWindow.Exit(transform);
@@ -143,16 +161,32 @@ namespace Morgott.UI.InfoScreens
             {
                 var own = _tabs?.OwnButton;
                 var focus = own ? own.gameObject : _esc ? _esc.gameObject : _focus ? _focus.gameObject : null;
-                if (_group.m_defaultElement != focus) _group.m_defaultElement = focus;
+                if (focus && (!_group.m_defaultElement || !_group.m_defaultElement.activeInHierarchy)) _group.m_defaultElement = focus;
             }
             if (!_back || !_canvas || !_frame) return;
-            if (_back.color.a < 1f || _back.sprite) { _back.sprite = null; _back.color = Backing(); } // a restyle pass must not thin it
+            // Drawn only where the frame's own opaque panel backing does not fill the screen (run 20261104-205914
+            // overdraw-skills / -trophies: fully under SkillsFrame/RuneSkinPanel/Backing); hidden it still takes the clicks
+            // beside the frame's art (alpha 0 + culled mesh: not drawn, still a raycast target).
+            var want = Backing();
+            if (BackingCovers()) want.a = 0f;
+            if (!_back.canvasRenderer.cullTransparentMesh) _back.canvasRenderer.cullTransparentMesh = true;
+            if (_back.color != want || _back.sprite) { _back.sprite = null; _back.color = want; } // a restyle pass must not change it
             var at = _back.transform.GetSiblingIndex();
             var f = _frame.GetSiblingIndex();
             if (at != f - 1) _back.transform.SetSiblingIndex(at < f ? f - 1 : f); // right under the frame
             Geo.Place(_canvas, _back.rectTransform, Full(_canvas));
             var inv = InventorySkin.Instance;
             if (OnLayout != null && inv) OnLayout(inv.SkinScaleValue);
+        }
+
+        private bool BackingCovers()
+        {
+            var decor = _frame.GetComponentInChildren<PanelDecor>(false);
+            var b = decor ? decor.Backing : null;
+            if (!b || !b.gameObject.activeInHierarchy || !b.TryGetComponent<Image>(out var img) || !img.enabled || img.color.a < 0.999f) return false;
+            var box = Geo.BoxOf(_canvas, b);
+            var full = Full(_canvas);
+            return box.X <= 0.5f && box.Y <= 0.5f && box.Right >= full.W - 0.5f && box.Bottom >= full.H - 0.5f;
         }
 
         public static Box Full(RectTransform canvas) => new Box(0f, 0f, canvas.rect.width, canvas.rect.height);
