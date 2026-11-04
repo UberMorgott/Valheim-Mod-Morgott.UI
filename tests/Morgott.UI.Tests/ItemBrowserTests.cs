@@ -169,5 +169,12 @@ namespace Morgott.UI.Tests
             Assert.Equal(Fp(2), Fp(2));
             Assert.NotEqual(BrowserIndex.Mix(BrowserIndex.Mix(BrowserIndex.Seed, "ab"), "c"), BrowserIndex.Mix(BrowserIndex.Mix(BrowserIndex.Seed, "a"), "bc"));
         }
+
+        [Theory]
+        [InlineData("ashland_pot1_green", "Ashlands pot (green)")]
+        [InlineData("CastleKit_brazier", "Castle brazier")]
+        [InlineData("Pickable_Stone", "Pickable stone")]
+        [InlineData("vfx_Destroyed(Clone)", "Destroyed")]
+        public void Unnamed_sources_get_readable_names(string id, string want) => Assert.Equal(want, SourceNames.Readable(id));
     }
 }

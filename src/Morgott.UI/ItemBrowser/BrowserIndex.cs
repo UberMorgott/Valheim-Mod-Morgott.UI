@@ -54,7 +54,7 @@ namespace Morgott.UI.ItemBrowser
             Relations.Add(r);
             // A recipe is no browsable thing (its station / inputs are); other bare sources (loot tables, rocks) are.
             if (!Entries.ContainsKey(r.Source))
-                Add(new Entry { Id = r.Source, Name = r.Source, Type = EntryType.Other, Hidden = r.Kind == RelationKind.Craft || r.Kind == RelationKind.Upgrade ? "recipe" : null });
+                Add(new Entry { Id = r.Source, Name = SourceNames.Readable(r.Source), Type = EntryType.Other, Hidden = r.Kind == RelationKind.Craft || r.Kind == RelationKind.Upgrade ? "recipe" : null });
             foreach (var s in r.Outputs) To(_from, s.Prefab, r);
             foreach (var s in r.Inputs) To(_used, s.Prefab, r);
             To(_used, r.Source, r); // a creature's drops, a tool's pieces, a nest's harvest

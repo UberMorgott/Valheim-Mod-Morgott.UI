@@ -69,6 +69,7 @@
     <Compile Include="..\..\src\Morgott.UI\Screens\DamageIconText.cs" Link="Linked\DamageIconText.cs" />
     <Compile Include="..\..\src\Morgott.UI\Screens\AdrenalineText.cs" Link="Linked\AdrenalineText.cs" />
     <Compile Include="..\..\src\Morgott.UI\ItemBrowser\BrowserIndex.cs" Link="Linked\BrowserIndex.cs" />
+    <Compile Include="..\..\src\Morgott.UI\ItemBrowser\SourceNames.cs" Link="Linked\SourceNames.cs" />
     <Compile Include="..\..\src\Morgott.UI\Icons\ModStatusIconMap.cs" Link="Linked\ModStatusIconMap.cs" />
     <EmbeddedResource Include="..\..\src\Morgott.UI\Theme\default-theme.json" LogicalName="Morgott.UI.default-theme.json" />
     <None Include="..\..\src\Morgott.UI\Assets\status_icons.json" Link="icons\status_icons.json" CopyToOutputDirectory="PreserveNewest" />

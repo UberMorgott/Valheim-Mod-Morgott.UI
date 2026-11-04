@@ -71,7 +71,7 @@ namespace Morgott.UI.ItemBrowser
                 if (named || string.IsNullOrEmpty(token)) return;
                 named = true;
                 var e = _ix.Add(new Entry { Id = id, Name = token, Type = EntryType.Other, Mod = _mod(id) });
-                if (e.Type == EntryType.Other && e.Name == id) e.Name = token; // entered earlier as a bare relation source
+                if (e.Type == EntryType.Other && (e.Name == id || e.Name == SourceNames.Readable(id))) e.Name = token; // entered earlier as a bare relation source
             }
             foreach (var c in go.GetComponents<Component>())
                 switch (c)
@@ -148,6 +148,9 @@ namespace Morgott.UI.ItemBrowser
                         }
                         break;
                 }
+            // No named component above: the hover text vanilla shows on it (HoverText.m_text, a $token), else BrowserIndex keeps
+            // SourceNames.Readable(id).
+            if (!named && go.TryGetComponent<HoverText>(out var hover)) Name(hover.m_text);
         }
 
         // One relation per table entry; a lone entry keeps the table's drop chance, a weighted table reports NaN (design 3).
