@@ -116,6 +116,16 @@ namespace Morgott.UI.Tests
         }
 
         [Fact]
+        public void UnlistedVanillaPrefabsAreHidden()
+        {
+            var ix = Sample();
+            Assert.Equal("unlisted", ix.Add(new Entry { Id = "CapeTest", Name = "$item_cape_test", Type = EntryType.Item }).Hidden);
+            Assert.Equal("no icon", ix.Add(new Entry { Id = "TorchMist", Name = "$item_torch", Type = EntryType.Item, Hidden = "no icon" }).Hidden); // first reason kept
+            Assert.Null(ix.Add(new Entry { Id = "CapeLinen", Name = "$item_cape_linen", Type = EntryType.Item }).Hidden);
+            Assert.Equal(new[] { "CapeLinen" }, ix.Search("cape", null, null, Loc, Mod).Select(e => e.Id));
+        }
+
+        [Fact]
         public void ModFilterMatchesGuidOrName()
         {
             var ix = Sample();

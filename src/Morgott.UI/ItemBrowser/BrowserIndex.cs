@@ -26,10 +26,23 @@ namespace Morgott.UI.ItemBrowser
         private readonly Dictionary<string, List<Relation>> _used = new Dictionary<string, List<Relation>>(StringComparer.Ordinal);
         private static readonly List<Relation> None = new List<Relation>();
 
+        // Vanilla prefabs the player can never get or meet: test / dev objects, unused duplicates (CapeTest next to the
+        // real capes, unused iron ore, NPC-only Dverger weapons, boss power items). Same ids VNEI hides (its
+        // ItemBlacklist.json, vanilla only).
+        private static readonly HashSet<string> Unlisted = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "Rock_destructible_test", "TrainingDummy", "HealthUpgrade_Bonemass", "HealthUpgrade_GDKing",
+            "StaminaUpgrade_Greydwarf", "StaminaUpgrade_Troll", "StaminaUpgrade_Wraith", "IronOre", "MineRock_Iron",
+            "Pickable_BogIronOre", "Trailership", "FirTree_oldLog", "TrophyDraugrFem", "CapeTest", "DvergerArbalest",
+            "DvergerArbalest_shoot", "DvergerStaffSupport", "DvergerTest", "EvilHeart_Forest", "EvilHeart_Swamp",
+            "TorchMist", "FishAnglerRaw", "fallenvalkyrie_screech", "fallenvalkyrie_swoopattack", "fallenvalkyrie_wingspin",
+        };
+
         // First writer wins: the vanilla scan adds its entries before any relation names a pseudo source.
         public Entry Add(Entry e)
         {
             if (Entries.TryGetValue(e.Id, out var had)) return had;
+            if (e.Hidden == null && Unlisted.Contains(e.Id)) e.Hidden = "unlisted";
             Entries[e.Id] = e;
             return e;
         }

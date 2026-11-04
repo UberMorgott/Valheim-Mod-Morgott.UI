@@ -46,7 +46,7 @@ namespace Morgott.UI.ItemBrowser
 
         // state
         private string _query = "";
-        private int _type = 1, _gridPage, _rowScroll;
+        private int _type = 1, _gridPage, _rowScroll, _rowScrollMax, _gridPages = 1; // maxima from the last layout
         private bool _usedTab;
         private string _selected, _pageId;
         private readonly History _history = new History();
@@ -243,8 +243,20 @@ namespace Morgott.UI.ItemBrowser
             else if (ZInput.GetMouseButtonDown(4) || ZInput.GetKeyDown(KeyCode.RightArrow)) { var f = _history.Forward(); if (f != null) Nav(f, false); }
             var wheel = ZInput.GetMouseScrollWheel();
             if (wheel == 0f || !RectTransformUtility.RectangleContainsScreenPoint(_root, ZInput.pointerPosition, null)) return;
-            if (_pageId != null) _rowScroll = Math.Max(0, _rowScroll + (wheel < 0 ? 1 : -1));
-            else _gridPage += wheel < 0 ? 1 : -1;
+            // Relayout only when the position moves: a tick at either end changes nothing on screen.
+            var step = wheel < 0 ? 1 : -1;
+            if (_pageId != null)
+            {
+                var next = Mathf.Clamp(_rowScroll + step, 0, _rowScrollMax);
+                if (next == _rowScroll) return;
+                _rowScroll = next;
+            }
+            else
+            {
+                var next = Mathf.Clamp(_gridPage + step, 0, _gridPages - 1);
+                if (next == _gridPage) return;
+                _gridPage = next;
+            }
             _dirty = true;
         }
 
@@ -546,6 +558,7 @@ namespace Morgott.UI.ItemBrowser
             var per = rows * 6;
             if (_selected == null && list.Count > 0) _selected = list[0].Id; // mockup A: the page opens on a selected entry
             var pages = Math.Max(1, (list.Count + per - 1) / per);
+            _gridPages = pages;
             _gridPage = Mathf.Clamp(_gridPage, 0, pages - 1);
             while (_cells.Count < per) _cells.Add(GridCell(_cells.Count));
             var fav = Browser.Favorites();
@@ -779,13 +792,12 @@ namespace Morgott.UI.ItemBrowser
             if (_usedTabButton.interactable == _usedTab) _usedTabButton.interactable = !_usedTab;
 
             var y = 238f;
-            var tileRows = used.Count == 0 ? 0 : Math.Max(1, Math.Min((used.Count + 6) / 7, _usedTab ? 99 : 1));
-            var tilesH = tileRows * 132f;
             var rowsShown = 0;
             if (!_usedTab)
             {
                 var maxRows = Math.Max(1, (int)((h - y - (used.Count > 0 ? 132f : 0f) - 8f) / RowH));
-                _rowScroll = Mathf.Clamp(_rowScroll, 0, Math.Max(0, from.Count - maxRows));
+                _rowScrollMax = Math.Max(0, from.Count - maxRows);
+                _rowScroll = Mathf.Clamp(_rowScroll, 0, _rowScrollMax);
                 rowsShown = Math.Min(maxRows, from.Count - _rowScroll);
                 while (_rows.Count < rowsShown) _rows.Add(SourceRow(_rows.Count));
                 for (var i = 0; i < rowsShown; i++) Row(_rows[i], from[_rowScroll + i], e.Id, y + i * RowH, i == 0);
@@ -793,14 +805,21 @@ namespace Morgott.UI.ItemBrowser
             }
             for (var i = rowsShown; i < _rows.Count; i++) Off(_rows[i].Back);
             var maxTiles = Math.Max(0, (int)((h - y) / 132f)) * 7;
-            var first = _usedTab ? Math.Min(_rowScroll * 7, Math.Max(0, used.Count - maxTiles)) : 0;
-            if (!_usedTab) maxTiles = Math.Min(maxTiles, 7);
+            var first = 0;
+            if (_usedTab)
+            {
+                // Whole tile rows: the last page stays column-aligned, scrolling stops at the last row.
+                _rowScrollMax = Math.Max(0, (used.Count + 6) / 7 - maxTiles / 7);
+                _rowScroll = Mathf.Clamp(_rowScroll, 0, _rowScrollMax);
+                first = _rowScroll * 7;
+            }
+            else maxTiles = Math.Min(maxTiles, 7);
             var tiles = Math.Min(maxTiles, used.Count - first);
             while (_tiles.Count < tiles) _tiles.Add(Tile(_tiles.Count));
             for (var i = 0; i < _tiles.Count; i++)
             {
                 var t = _tiles[i];
-                if (i >= tiles) { Off(t.Back); continue; }
+                if (i >= tiles) { Off(t.Back); Off(t.A); continue; }
                 t.Id = used[first + i];
                 var tx = i % 7 * (UnitW / 7f);
                 var ty = y + i / 7 * 132f;
@@ -810,7 +829,6 @@ namespace Morgott.UI.ItemBrowser
                 Put(t.A, tx, ty + 68f, UnitW / 7f, 58f);
                 Text(t.A, NameOf(t.Id), 16f);
             }
-            _ = tilesH;
             if (tiles > 0) Put(_pageDivBottom, 0f, y + (tiles + 6) / 7 * 132f + 4f, UnitW, 3f);
             else Off(_pageDivBottom);
         }
@@ -835,7 +853,9 @@ namespace Morgott.UI.ItemBrowser
         private Slot Tile(int i)
         {
             var s = NewSlot(_pageView.transform, "Tile" + i, "craft.socket"); // mockup B: framed tiles
-            s.A = Txt(s.Rt, "Name", "text.body", TextAlignmentOptions.Top);
+            // Name under the socket, a sibling of it: as a child CellFit.KeepTexts pulls it back into the cell every
+            // LateUpdate while each relayout puts it back (labels jittered on every wheel tick).
+            s.A = Txt(_pageView.transform, "TileName" + i, "text.body", TextAlignmentOptions.Top);
             s.A.textWrappingMode = TextWrappingModes.Normal;
             Hook(s, e =>
             {
