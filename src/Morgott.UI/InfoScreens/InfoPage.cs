@@ -85,7 +85,9 @@ namespace Morgott.UI.InfoScreens
             p._back.color = Backing();
             DollCell.Mark(p._back, "content", "full-screen info page backdrop (opaque)");
             foreach (var img in root.GetComponentsInChildren<Image>(true))
-                if ((img.name == "blur" || img.name == "darken") && !img.transform.IsChildOf(frame)) p._dims.Add(img);
+                // Vanilla blur / darken and the full-screen click-outside closer (no outside on a full page; drawn
+                // transparent under the backdrop: run 20261104-214645 overdraw-texts).
+                if ((img.name == "blur" || img.name == "darken" || img.name == "Closebutton") && !img.transform.IsChildOf(frame)) p._dims.Add(img);
             var gui = root.GetComponentInParent<InventoryGui>(true);
             if (gui && openMethod != null) p._tabs = new InfoTabs(gui, frame, openMethod, close);
             p._esc = MakeKey(frame, EscName, "page close key cap (mockup 02: Esc top right)", () => close?.Invoke());
@@ -117,7 +119,11 @@ namespace Morgott.UI.InfoScreens
         // control) when it has none. Closed (inactive), the inventory's groups take over again.
         private void Focus()
         {
-            var inside = new List<UIGroupHandler>(GetComponentsInChildren<UIGroupHandler>(true));
+            // Only groups that take part now: an inactive vanilla sub-group lifted alone left skills / texts without any
+            // active group (run 20261104-214645).
+            var inside = new List<UIGroupHandler>();
+            foreach (var g in GetComponentsInChildren<UIGroupHandler>(false))
+                if (g.enabled) inside.Add(g);
             if (inside.Count == 0) inside.Add(gameObject.AddComponent<UIGroupHandler>());
             var top = int.MinValue;
             foreach (var g in FindObjectsByType<UIGroupHandler>(FindObjectsInactive.Include, FindObjectsSortMode.None))
@@ -260,6 +266,8 @@ namespace Morgott.UI.InfoScreens
                 {
                     var who = Player.m_localPlayer ? Player.m_localPlayer.GetPlayerName() : "";
                     if (_nameText.text != who) _nameText.text = who;
+                    var silver = ThemeTokens.GetColor("color.info.page.name", new Color(0.92f, 0.9f, 0.89f, 1f)); // mockup 02 #EBE5E3
+                    if (_nameText.color != silver) _nameText.color = silver;
                     Geo.Place(_canvas, _nameText.rectTransform, new Box(nb.X + nb.W * 0.2f, nb.Y, nb.W * 0.6f, nb.H));
                     InfoArt.Label(_nameText, TextAlignmentOptions.Center, 30f * u, 14f, upper: true);
                 }
@@ -270,15 +278,15 @@ namespace Morgott.UI.InfoScreens
             {
                 header.Place(_canvas, new Box((full.W - titleW) / 2f, 135f * u, titleW, 68f * u), null, auxW);
                 // Mockup 02 page title: bold sans caps (the theme's font.body.bold), not the window headers' display face.
-                var bold = ThemeTokens.GetFont("font.body.bold");
-                if (header.Title && bold && header.Title.font != bold) header.Title.font = bold;
+                if (header.FaceToken != "font.body.bold") header.FaceToken = "font.body.bold";
                 if (header.Title && (header.Title.fontStyle & FontStyles.UpperCase) != FontStyles.UpperCase) header.Title.fontStyle |= FontStyles.UpperCase;
             }
             var top = 232f * u;
             return new Box(61f * u, top, Mathf.Max(0f, full.W - 121f * u), Mathf.Max(0f, full.H - top - 82f * u));
         }
 
-        // The page look of its panel stack: corner caps ~90 mockup px, the page background (backing + a faint glass:
+        // The page look of its panel stack: corner caps with a ~90 mockup px ornament (the cap sprite rect is ~1.4x its
+        // visible copper: rect 126 -> ~90 visible; run 20261104-214645 measured 64 at rect 90), the page background (backing + a faint glass:
         // mockup 02 empty patch #01161B; the inventory windows keep the shared #101C22 + full glass).
         private void Skin(PanelDecor decor, float u, RectTransform host)
         {

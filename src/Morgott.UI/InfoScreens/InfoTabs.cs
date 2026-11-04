@@ -26,7 +26,6 @@ namespace Morgott.UI.InfoScreens
         private readonly Action _close;
         private readonly List<Tab> _tabs = new List<Tab>(8);
         private readonly List<Button> _sources = new List<Button>(8);
-        private Image _strip;
 
         private sealed class Tab
         {
@@ -133,15 +132,6 @@ namespace Morgott.UI.InfoScreens
             Collect();
             while (_tabs.Count < _sources.Count) _tabs.Add(Make(_tabs.Count));
             var n = _sources.Count;
-            // Carved ledge under the row (tab_strip; the tabs overlap its top by ~4 px, art README "M3 polish").
-            if (!_strip)
-            {
-                _strip = InfoArt.OwnImage(_parent, Prefix + "Strip", "info.tab.strip", "ledge under the info tab row (tab_strip)");
-                _strip.preserveAspect = false;
-                var stack = _parent.Find(PanelDecor.ChildName);
-                _strip.rectTransform.SetSiblingIndex(stack ? stack.GetSiblingIndex() + 1 : 0); // above the panel glass, under the tabs
-            }
-            if (_strip.enabled && n > 0) Geo.Place(canvas, _strip.rectTransform, new Box(row.X, row.Bottom - 4f * k, row.W, 16f * k));
             var cells = InfoMath.TabRow(row, n, ThemeTokens.GetFloat("share.info.tab.aspect", 1.3f), gap >= 0f ? gap : ThemeTokens.GetFloat("size.info.tab.gap", 10f) * k);
             for (var i = 0; i < _tabs.Count; i++)
             {

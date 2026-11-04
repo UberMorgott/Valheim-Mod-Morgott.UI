@@ -48,6 +48,9 @@ namespace Morgott.UI.Restyle
         // Painted window chrome the face must draw over (a sibling of the band, e.g. the stats window's chrome quarters):
         // the face goes right after it instead of after the panel stack / scrim.
         public Transform DrawAfter;
+
+        // Title face token (default the rune display face; the full-screen info pages use font.body.bold, mockup 02).
+        public string FaceToken = "font.display";
         private string _fallback = "", _fallbackKey, _static, _staticKey, _staticLang, _staticText;
         private int _styled = -1;
         private float _stretch, _iconShare, _auxShare;
@@ -701,7 +704,7 @@ namespace Morgott.UI.Restyle
                 if (Title.textWrappingMode != TextWrappingModes.NoWrap) Title.textWrappingMode = TextWrappingModes.NoWrap;
                 if (Title.overflowMode != TextOverflowModes.Ellipsis) Title.overflowMode = TextOverflowModes.Ellipsis;
             }
-            var face = ThemeTokens.GetFont("font.display");
+            var face = ThemeTokens.GetFont(FaceToken);
             if (face && Title.font != face)
             {
                 Title.font = face;

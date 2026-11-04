@@ -657,17 +657,20 @@ namespace Morgott.UI.GameScreens
             // Mockup 02 columns (px at 1080): topic keys 480 x 65 every 75 from (61, 240), list scrollbar to x 580; the
             // framed reading pane from x 612 to the content's right edge, inner text 24 px in.
             var u = canvas.rect.height / 1080f;
-            var listBox = new InventoryScreen.Box(c.X, c.Y + 8f * u, 519f * u, c.H - 8f * u);
+            // The list's scroll view insets its rows ~20 px: the column starts 20 px further left (run 20261104-214645: rows at 81).
+            var listBox = new InventoryScreen.Box(c.X - 20f * u, c.Y + 8f * u, 539f * u, c.H - 8f * u);
             if (frame.Find("TextList") is RectTransform list) InventoryScreen.Geo.Place(canvas, list, listBox);
             Rows(d, canvas, u);
             var pane = new InventoryScreen.Box(c.X + 551f * u, c.Y, Mathf.Max(0f, c.W - 551f * u), c.H);
-            var paneFrame = PaneFrame(frame);
+            var paneFrame = PaneFrame(frame, out var paneFill);
             if (paneFrame) InventoryScreen.Geo.Place(canvas, paneFrame.rectTransform, pane);
+            if (paneFill) InventoryScreen.Geo.Place(canvas, paneFill.rectTransform, pane);
+            if (paneFrame && paneFrame.fillCenter) paneFrame.fillCenter = false; // outline only; the flat teal fill under it
             var text = new InventoryScreen.Box(pane.X + 24f * u, pane.Y + 16f * u, Mathf.Max(0f, pane.W - 36f * u), Mathf.Max(0f, pane.H - 28f * u));
             // The reading pane: vanilla TextArea and Epic Loot's clone of it (EpicLootMagicTextArea, a sibling it shows instead).
             foreach (Transform child in frame)
                 if (child.name.EndsWith("TextArea", StringComparison.Ordinal) && child is RectTransform area) InventoryScreen.Geo.Place(canvas, area, text);
-            Reading(d);
+            Reading(d, u);
             // The active effects list copied the text scroll's rect once (ActiveEffectsList.Create): keep it on it.
             var scroll = d.m_textArea ? d.m_textArea.GetComponentInParent<ScrollRect>(true) : null;
             if (scroll && scroll.transform.parent.Find(ActiveEffectsPage.RootName) is RectTransform fx)
@@ -683,26 +686,35 @@ namespace Morgott.UI.GameScreens
 
         private const string PaneName = "RuneSkinTextsPane";
 
-        // The reading pane's frame (mockup 02: cyan bevelled outline round the text): own image under the text area.
-        private static Image PaneFrame(RectTransform frame)
+        // The reading pane (mockup 02: cyan bevelled outline round the text over a flat teal #02171B; the key art's own
+        // fill read grey #0C1316, run 20261104-214645): a flat fill and the key art as outline, under the text area.
+        private static Image PaneFrame(RectTransform frame, out Image fill)
         {
+            fill = null;
             var area = frame.Find("TextArea");
             if (!area) return null;
+            fill = frame.Find(PaneName + "Fill")?.GetComponent<Image>();
             if (frame.Find(PaneName) is Transform t && t.TryGetComponent<Image>(out var have)) return have;
+            fill = new GameObject(PaneName + "Fill", typeof(RectTransform)).AddComponent<Image>();
+            fill.transform.SetParent(frame, false);
+            fill.raycastTarget = false;
+            fill.color = ThemeTokens.GetColor("color.info.page.pane", new Color(0.008f, 0.09f, 0.106f, 1f));
+            InventoryScreen.DollCell.Mark(fill, "content", "compendium reading pane fill (mockup 02 #02171B)");
+            fill.transform.SetSiblingIndex(area.GetSiblingIndex());
             var img = InfoScreens.InfoArt.OwnImage(frame, PaneName, "info.tab", "compendium reading pane frame (mockup 02)");
             img.preserveAspect = false;
             img.transform.SetSiblingIndex(area.GetSiblingIndex());
             return img;
         }
 
-        // Topic keys: pitch 75, 480 x 65 (row space = list space), the name left in the key (FillTextList places row i
+        // Topic keys: pitch 75, 480 x 68 (row space = list space), the name left in the key (FillTextList places row i
         // at -i * m_spacing, TextsDialog.cs:114; repositioned here, m_spacing kept in step for the next fill).
         private static void Rows(TextsDialog d, RectTransform canvas, float u)
         {
             if (!d.m_listRoot) return;
             var r = Mathf.Abs(d.m_listRoot.lossyScale.y / Mathf.Max(1e-6f, canvas.lossyScale.y));
             var pitch = 75f * u / Mathf.Max(1e-6f, r);
-            var h = 65f * u / Mathf.Max(1e-6f, r);
+            var h = 68f * u / Mathf.Max(1e-6f, r);
             var w = 480f * u / Mathf.Max(1e-6f, r);
             if (Mathf.Abs(d.m_spacing - pitch) > 0.01f) d.m_spacing = pitch;
             var n = 0;
@@ -713,6 +725,13 @@ namespace Morgott.UI.GameScreens
                 if (row.anchoredPosition != pos) row.anchoredPosition = pos;
                 var size = new Vector2(row.anchorMin.x == row.anchorMax.x ? w : row.sizeDelta.x, h);
                 if (row.sizeDelta != size) row.sizeDelta = size;
+                // The selected state fills the key (vanilla's 314 x 32 strip stayed small under the 480 x 68 key).
+                if (row.Find("selected") is RectTransform sel && (sel.anchorMin != Vector2.zero || sel.anchorMax != Vector2.one || sel.offsetMin != Vector2.zero || sel.offsetMax != Vector2.zero))
+                {
+                    sel.anchorMin = Vector2.zero;
+                    sel.anchorMax = Vector2.one;
+                    sel.offsetMin = sel.offsetMax = Vector2.zero;
+                }
                 if (Utils.FindChild(row, "name") is RectTransform name && name.TryGetComponent<TMP_Text>(out var label))
                 {
                     var a = new Vector2(0f, 0f);
@@ -732,7 +751,7 @@ namespace Morgott.UI.GameScreens
 
         // The reading pane text fills the pane (vanilla content is 820 px wide, centred): the scroll content stretches to
         // the viewport, its texts to the content; topic left, orange (mockup 02).
-        private static void Reading(TextsDialog d)
+        private static void Reading(TextsDialog d, float u)
         {
             if (!d.m_textArea || !(d.m_textArea.transform.parent is RectTransform content)) return;
             if (content.anchorMin.x != 0f || content.anchorMax.x != 1f)
@@ -763,8 +782,24 @@ namespace Morgott.UI.GameScreens
                 var orange = ThemeTokens.GetColor("color.info.page.topic", new Color(0.95f, 0.63f, 0.24f, 1f));
                 if (d.m_textAreaTopic.color != orange) d.m_textAreaTopic.color = orange;
                 if ((d.m_textAreaTopic.fontStyle & FontStyles.UpperCase) != FontStyles.UpperCase) d.m_textAreaTopic.fontStyle |= FontStyles.UpperCase;
+                Face(d.m_textAreaTopic, "font.body.bold", 36f * u); // mockup 02: bold sans topic, not the rune face
             }
-            if (d.m_textArea && d.m_textArea.horizontalAlignment != HorizontalAlignmentOptions.Left) d.m_textArea.horizontalAlignment = HorizontalAlignmentOptions.Left;
+            if (d.m_textArea)
+            {
+                if (d.m_textArea.horizontalAlignment != HorizontalAlignmentOptions.Left) d.m_textArea.horizontalAlignment = HorizontalAlignmentOptions.Left;
+                Face(d.m_textArea, "font.body", 26f * u); // mockup 02: regular sans ~26 px body
+            }
+        }
+
+        private static void Face(TMP_Text t, string token, float size)
+        {
+            var f = ThemeTokens.GetFont(token);
+            if (f && t.font != f)
+            {
+                t.font = f;
+                if (f.material) t.fontSharedMaterial = f.material;
+            }
+            if (Mathf.Abs(t.fontSize - size) > 0.05f) t.fontSize = size;
         }
     }
 

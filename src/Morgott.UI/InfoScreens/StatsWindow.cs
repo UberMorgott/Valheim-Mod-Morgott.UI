@@ -56,7 +56,7 @@ namespace Morgott.UI.InfoScreens
         internal sealed class Card
         {
             public int Index;
-            public Image Frame, HeaderIcon, Divider, Handle;
+            public Image Fill, Frame, HeaderIcon, Divider, Handle;
             public TMP_Text Title;
             public string LongestWord = "";
             public RectTransform View;
@@ -185,7 +185,13 @@ namespace Morgott.UI.InfoScreens
         private Card MakeCard(int i)
         {
             var c = new Card { Index = i };
-            // Card frame (the painted chrome drew it before): the framed key art of the compendium pane (mockup 02).
+            // Card frame (the painted chrome drew it before) like the compendium reading pane (mockup 02): flat teal fill,
+            // the key art as outline.
+            c.Fill = new GameObject("Card" + i + "Fill", typeof(RectTransform)).AddComponent<Image>();
+            c.Fill.transform.SetParent(_root, false);
+            c.Fill.raycastTarget = false;
+            c.Fill.color = ThemeTokens.GetColor("color.info.page.pane", new Color(0.008f, 0.09f, 0.106f, 1f));
+            DollCell.Mark(c.Fill, "content", "stats card fill (mockup 02 pane #02171B)");
             c.Frame = Img(_root, "Card" + i + "Frame", "info.tab", "stats card frame (as the compendium reading pane)");
             c.Frame.preserveAspect = false;
             var view = new GameObject("Card" + i + "View", typeof(RectTransform));
@@ -627,7 +633,9 @@ namespace Morgott.UI.InfoScreens
             var b = StatsMath.Card(col, row, T("size.stats.card.x0", 68f), T("size.stats.card.y0", 133f), T("size.stats.card.w", 439f), T("size.stats.card.h", 421f),
                 T("size.stats.card.px", 448.3f), T("size.stats.card.py", 435f));
             c.Box = b;
+            Place(c.Fill.rectTransform, D(b.X, b.Y, b.W, b.H));
             Place(c.Frame.rectTransform, D(b.X, b.Y, b.W, b.H));
+            if (c.Frame.fillCenter) c.Frame.fillCenter = false; // outline only over the flat fill
             var pad = T("size.stats.card.pad", 20f);
             var headH = T("size.stats.card.header", 88f);
             // Category icon at its native size (cut 1:1 from the mockup: 1 sprite px = 1 design px), capped.
