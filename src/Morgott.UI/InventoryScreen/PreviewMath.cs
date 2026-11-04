@@ -71,16 +71,6 @@ namespace Morgott.UI.InventoryScreen
             return ((float)d, (float)(yMin + lo * 2.0 * tan * (d - nearLo)));
         }
 
-        // A measured point belongs to the figure: not more than `BelowFeet` metres under the body model's posed sole (boot
-        // soles, a cape hem), not more than `AboveHead` metres over the body
-        // model's posed top (helmet crests, a back weapon's tip), not more than `Aside` metres from the turn axis (a held
-        // weapon). Geometry beyond is detached from the body (user 2026-11-04: Warfare cape_trollblack_TW 'cape2' tens of
-        // metres off, the figure shrank to a few pixels). No body measured (NaN) = no bounds.
-        public static bool InFigure(float x, float y, float z, float bodyLo, float bodyHi) =>
-            float.IsNaN(bodyLo) || float.IsNaN(bodyHi) ||
-            (y >= bodyLo - BelowFeet && y <= bodyHi + AboveHead && x * x + z * z <= Aside * Aside);
-
-        public const float BelowFeet = 0.25f, AboveHead = 1.5f, Aside = 2.5f;
 
         // Shortest height span FitHeight frames (no renderer bounds yet / a degenerate box).
         public const float MinSpan = 0.5f;

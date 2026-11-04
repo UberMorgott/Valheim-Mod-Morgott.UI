@@ -609,45 +609,10 @@ namespace Morgott.UI.InventoryScreen
             nearLo = nearHi = 0f;
             if (!_bake) _bake = new Mesh { name = "RuneSkinPreviewBake" };
             _clone.GetComponentsInChildren(false, _renderers);
-            float bodyLo = float.NaN, bodyHi = float.NaN;
-            Renderer stray = null;
-            var strayAt = Vector3.zero;
-            var owner = new List<Renderer>(_renderers.Count);
-            var spans = new List<int>(_renderers.Count);
             foreach (var r in _renderers)
-            {
-                if (!r || !r.enabled) continue;
-                var first = _points.Count;
-                Collect(r);
-                if (r != _vis.m_bodyModel) { owner.Add(r); spans.Add(first); continue; }
-                for (var i = first; i < _points.Count; i++)
-                {
-                    var y = _points[i].y;
-                    if (!(y >= bodyLo)) bodyLo = y;
-                    if (!(y <= bodyHi)) bodyHi = y;
-                }
-            }
-            // The figure = the body model's posed span plus what lies around it: geometry far under the feet, over the
-            // head or aside is detached from the body (user 2026-11-03 MP run: a renderer tens of metres under the feet;
-            // 2026-11-04: Warfare's black troll cape 'cape2' the same, the figure a few pixels tall).
-            for (var k = 0; k < owner.Count && !stray; k++)
-                for (int i = spans[k], end = k + 1 < spans.Count ? spans[k + 1] : _points.Count; i < end; i++)
-                {
-                    var p = _points[i];
-                    if (PreviewMath.InFigure(p.x, p.y, p.z, bodyLo, bodyHi)) continue;
-                    stray = owner[k];
-                    strayAt = p;
-                    break;
-                }
-            if (stray)
-            {
-                var what = $"measure dropped points of {stray.GetType().Name} '{Diagnostics.SkinDiagnostics.PathOf(stray.transform, _clone.transform)}' at ({strayAt.x:0.0}, {strayAt.y:0.0}, {strayAt.z:0.0}) m, body {bodyLo:0.00}..{bodyHi:0.00} (magica {InCloth(stray.transform)}, unity cloth {stray.GetComponent("Cloth") != null}, frame {Time.frameCount - _settleAt + SettleFrames} after refresh)";
-                Note(what);
-                Plugin.Log.LogInfo("[Morgott.UI] character preview " + what);
-            }
+                if (r && r.enabled) Collect(r);
             foreach (var p in _points)
             {
-                if (!PreviewMath.InFigure(p.x, p.y, p.z, bodyLo, bodyHi)) continue;
                 if (p.y < lo) lo = p.y;
                 if (p.y > hi) hi = p.y;
             }
@@ -661,7 +626,6 @@ namespace Morgott.UI.InventoryScreen
                 var band = (hi - lo) * ExtremeBand;
                 foreach (var p in _points)
                 {
-                    if (!PreviewMath.InFigure(p.x, p.y, p.z, bodyLo, bodyHi)) continue;
                     if (p.y <= lo + band) nearLo = Mathf.Max(nearLo, Mathf.Sqrt(p.x * p.x + p.z * p.z));
                     if (p.y >= hi - band) nearHi = Mathf.Max(nearHi, Mathf.Sqrt(p.x * p.x + p.z * p.z));
                 }
@@ -676,24 +640,18 @@ namespace Morgott.UI.InventoryScreen
             _posedNearHi = nearHi;
         }
 
-        // Under a MagicaCloth2 component (no assembly reference: by namespace, as Keep does).
-        private static bool InCloth(Transform t)
-        {
-            for (; t; t = t.parent)
-                foreach (var c in t.GetComponents<MonoBehaviour>())
-                    if (c && (c.GetType().Namespace ?? "").StartsWith("MagicaCloth2", StringComparison.Ordinal)) return true;
-            return false;
-        }
-
         // The drawn mesh points of one renderer (rig-relative) into _points.
         private void Collect(Renderer r)
         {
             if (r is SkinnedMeshRenderer s)
             {
                 if (!s.sharedMesh) return;
-                s.BakeMesh(_bake, true); // unscaled local space: localToWorldMatrix applies the scale once
+                // BakeMesh(useScale: true) already holds the renderer's scale: only its position and rotation go to world.
+                // localToWorldMatrix applied the scale twice (run 20261104-174443-2: Warfare cape2 at lossyScale 95 baked to
+                // y -0.86..0.71 m, through localToWorld -30..45 m; the figure shrank to a few pixels).
+                s.BakeMesh(_bake, true);
                 _bake.GetVertices(_verts);
-                var m = s.transform.localToWorldMatrix;
+                var m = Matrix4x4.TRS(s.transform.position, s.transform.rotation, Vector3.one);
                 foreach (var v in _verts) _points.Add(m.MultiplyPoint3x4(v) - Origin);
             }
             else if (r is MeshRenderer && r.TryGetComponent<MeshFilter>(out var mf) && mf.sharedMesh && mf.sharedMesh.isReadable)
