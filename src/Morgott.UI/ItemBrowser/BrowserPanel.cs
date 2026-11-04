@@ -833,7 +833,7 @@ namespace Morgott.UI.ItemBrowser
             Put(sock.Icon, 10f, y + 9f, s - 12f, sh - 10f);
             SetIcon(sock.Icon, r.Icon);
             var x0 = used ? 94f : 81f;
-            var iy = y + (used ? 40f : (h - 30f * r.Lines) / 2f);
+            var iy = y + (used ? 38f : (h - PageModel.LineH * r.Lines) / 2f);
             if (used)
             {
                 var title = _titles.Next(n => Chip("RowTitle" + n, "text.ember"));
@@ -854,7 +854,7 @@ namespace Morgott.UI.ItemBrowser
                 var st = r.Inputs[i];
                 c.Id = st.Prefab;
                 c.Quality = i == 0 && r.BaseQuality > 0 ? r.BaseQuality : 1;
-                Chip(c, x0 + i % 2 * 152f, iy + i / 2 * 30f, 150f, 30f, 30f, $"{NameOf(st.Prefab)} x{Amount(st)}", 18f);
+                Chip(c, x0 + i % 2 * 152f, iy + i / 2 * PageModel.LineH, 150f, PageModel.LineH, 34f, $"{NameOf(st.Prefab)} x{Amount(st)}", 18f);
             }
             if (r.Right != null || r.Recipe && r.Inputs.Length > 0)
             {

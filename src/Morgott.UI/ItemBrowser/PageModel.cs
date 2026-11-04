@@ -25,7 +25,7 @@ namespace Morgott.UI.ItemBrowser
     // variants (also the Ctrl take), the row-height scroll.
     public static class PageModel
     {
-        public const float RowH = 61f, UsedRowH = 83f, LineH = 30f, InputsPerLine = 2;
+        public const float RowH = 61f, UsedRowH = 83f, LineH = 34f, InputsPerLine = 2;
 
         // Tools first (a weapon whose skill is Pickaxes / Fishing is a tool), then the item type.
         public static ItemCategory Categorize(ItemDrop.ItemData.ItemType type, Skills.SkillType skill, bool buildPieces, float food, float stamina, float eitr, bool consumeEffect)
