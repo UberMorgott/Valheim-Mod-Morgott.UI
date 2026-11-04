@@ -59,11 +59,15 @@ namespace Morgott.UI.Tests
         }
 
         [Fact]
-        public void FloorSitsUnderTheBodySoleOrIsOpen()
+        public void FigureBoundsKeepTheBodyAndDropDetachedGeometry()
         {
-            Assert.Equal(-0.25f, PreviewMath.Floor(0f), 4);
-            Assert.True(PreviewMath.Floor(0.1f) > -30f); // a point tens of metres under the feet is dropped
-            Assert.True(float.IsNegativeInfinity(PreviewMath.Floor(float.NaN)));
+            Assert.True(PreviewMath.InFigure(0f, -0.2f, 0f, 0f, 1.8f)); // boot sole
+            Assert.True(PreviewMath.InFigure(0.3f, 3.2f, 0f, 0f, 1.8f)); // helmet crest / back weapon tip
+            Assert.True(PreviewMath.InFigure(1.2f, 1f, 0.5f, 0f, 1.8f)); // held weapon aside
+            Assert.False(PreviewMath.InFigure(0f, -29.7f, 0f, 0f, 1.8f)); // cape2 tens of metres under the feet
+            Assert.False(PreviewMath.InFigure(0f, 30f, 0f, 0f, 1.8f)); // ... or over the head
+            Assert.False(PreviewMath.InFigure(20f, 1f, 0f, 0f, 1.8f)); // ... or aside
+            Assert.True(PreviewMath.InFigure(0f, 30f, 0f, float.NaN, float.NaN)); // no body measured: no bounds
         }
 
         [Fact]

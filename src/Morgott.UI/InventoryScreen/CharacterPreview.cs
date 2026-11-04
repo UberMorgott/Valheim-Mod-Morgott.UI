@@ -609,33 +609,45 @@ namespace Morgott.UI.InventoryScreen
             nearLo = nearHi = 0f;
             if (!_bake) _bake = new Mesh { name = "RuneSkinPreviewBake" };
             _clone.GetComponentsInChildren(false, _renderers);
-            var bodyLo = float.NaN;
-            Renderer lowest = null;
-            var lowestY = float.MaxValue;
+            float bodyLo = float.NaN, bodyHi = float.NaN;
+            Renderer stray = null;
+            var strayAt = Vector3.zero;
+            var owner = new List<Renderer>(_renderers.Count);
+            var spans = new List<int>(_renderers.Count);
             foreach (var r in _renderers)
             {
                 if (!r || !r.enabled) continue;
                 var first = _points.Count;
                 Collect(r);
+                if (r != _vis.m_bodyModel) { owner.Add(r); spans.Add(first); continue; }
                 for (var i = first; i < _points.Count; i++)
                 {
                     var y = _points[i].y;
-                    if (r == _vis.m_bodyModel && !(y >= bodyLo)) bodyLo = y;
-                    if (y < lowestY) { lowestY = y; lowest = r; }
+                    if (!(y >= bodyLo)) bodyLo = y;
+                    if (!(y <= bodyHi)) bodyHi = y;
                 }
             }
-            // Feet = the body model's posed sole: geometry further below is not the figure (user 2026-11-03, MP run:
-            // a figure ~1/25 of the alcove pinned at its top - one renderer reached tens of metres under the feet).
-            var floor = PreviewMath.Floor(bodyLo);
-            if (lowest && lowestY < floor)
+            // The figure = the body model's posed span plus what lies around it: geometry far under the feet, over the
+            // head or aside is detached from the body (user 2026-11-03 MP run: a renderer tens of metres under the feet;
+            // 2026-11-04: Warfare's black troll cape 'cape2' the same, the figure a few pixels tall).
+            for (var k = 0; k < owner.Count && !stray; k++)
+                for (int i = spans[k], end = k + 1 < spans.Count ? spans[k + 1] : _points.Count; i < end; i++)
+                {
+                    var p = _points[i];
+                    if (PreviewMath.InFigure(p.x, p.y, p.z, bodyLo, bodyHi)) continue;
+                    stray = owner[k];
+                    strayAt = p;
+                    break;
+                }
+            if (stray)
             {
-                var what = $"measure dropped {lowest.GetType().Name} '{Diagnostics.SkinDiagnostics.PathOf(lowest.transform, _clone.transform)}' {lowestY - bodyLo:0.0} m under the feet (cloth {InCloth(lowest.transform)}, frame {Time.frameCount - _settleAt + SettleFrames} after refresh)";
+                var what = $"measure dropped points of {stray.GetType().Name} '{Diagnostics.SkinDiagnostics.PathOf(stray.transform, _clone.transform)}' at ({strayAt.x:0.0}, {strayAt.y:0.0}, {strayAt.z:0.0}) m, body {bodyLo:0.00}..{bodyHi:0.00} (magica {InCloth(stray.transform)}, unity cloth {stray.GetComponent("Cloth") != null}, frame {Time.frameCount - _settleAt + SettleFrames} after refresh)";
                 Note(what);
                 Plugin.Log.LogInfo("[Morgott.UI] character preview " + what);
             }
             foreach (var p in _points)
             {
-                if (p.y < floor) continue;
+                if (!PreviewMath.InFigure(p.x, p.y, p.z, bodyLo, bodyHi)) continue;
                 if (p.y < lo) lo = p.y;
                 if (p.y > hi) hi = p.y;
             }
@@ -649,7 +661,7 @@ namespace Morgott.UI.InventoryScreen
                 var band = (hi - lo) * ExtremeBand;
                 foreach (var p in _points)
                 {
-                    if (p.y < floor) continue;
+                    if (!PreviewMath.InFigure(p.x, p.y, p.z, bodyLo, bodyHi)) continue;
                     if (p.y <= lo + band) nearLo = Mathf.Max(nearLo, Mathf.Sqrt(p.x * p.x + p.z * p.z));
                     if (p.y >= hi - band) nearHi = Mathf.Max(nearHi, Mathf.Sqrt(p.x * p.x + p.z * p.z));
                 }
