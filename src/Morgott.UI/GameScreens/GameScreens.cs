@@ -626,8 +626,9 @@ namespace Morgott.UI.GameScreens
                 foreach (var b in r.GetComponentsInChildren<Button>(true))
                 {
                     if (!row || !(b.transform == row || b.name == row.name || b.name == row.name + "(Clone)")) continue;
-                    if (b.targetGraphic is Image bg) ctx.Role(bg, "craft.row", "compendium topic row");
-                    if (b.transform.Find("selected") is Transform sel && sel.TryGetComponent<Image>(out var si)) ctx.Role(si, "craft.row.selected", "compendium topic selected");
+                    // Mockup 2026-11-04/02: framed topic keys (480 x 65), the selected one with the cyan glow (info tab art).
+                    if (b.targetGraphic is Image bg) ctx.Role(bg, "info.tab", "compendium topic row (framed key, mockup 02)");
+                    if (b.transform.Find("selected") is Transform sel && sel.TryGetComponent<Image>(out var si)) ctx.Role(si, "info.tab.selected", "compendium topic selected (cyan glow, mockup 02)");
                     foreach (var t in b.GetComponentsInChildren<TMP_Text>(true)) ctx.Role(t, "text.body", "compendium topic name");
                 }
                 ctx.Role(d.m_textAreaTopic, "text.header", "reading pane topic (serif)");
@@ -653,14 +654,20 @@ namespace Morgott.UI.GameScreens
             if (frame.Find("Closebutton") is RectTransform close) InventoryScreen.Geo.SetScale(close, 0f); // Esc / the own tab close (mockup: no close button)
             var c = page.Layout(k, header);
             if (c.W <= 0f || c.H <= 0f) return;
-            if (frame.Find("bkg") is RectTransform bkg) InventoryScreen.Geo.Place(canvas, bkg, InfoScreens.InfoPage.Full(canvas)); // the panel stack host
-            var listW = Mathf.Min(c.W * 0.32f, ThemeTokens.GetFloat("size.info.texts.list.w", 500f) * k);
-            var gap = ThemeTokens.GetFloat("size.info.texts.gap", 40f) * k;
-            if (frame.Find("TextList") is RectTransform list) InventoryScreen.Geo.Place(canvas, list, new InventoryScreen.Box(c.X, c.Y, listW, c.H));
+            // Mockup 02 columns (px at 1080): topic keys 480 x 65 every 75 from (61, 240), list scrollbar to x 580; the
+            // framed reading pane from x 612 to the content's right edge, inner text 24 px in.
+            var u = canvas.rect.height / 1080f;
+            var listBox = new InventoryScreen.Box(c.X, c.Y + 8f * u, 519f * u, c.H - 8f * u);
+            if (frame.Find("TextList") is RectTransform list) InventoryScreen.Geo.Place(canvas, list, listBox);
+            Rows(d, canvas, u);
+            var pane = new InventoryScreen.Box(c.X + 551f * u, c.Y, Mathf.Max(0f, c.W - 551f * u), c.H);
+            var paneFrame = PaneFrame(frame);
+            if (paneFrame) InventoryScreen.Geo.Place(canvas, paneFrame.rectTransform, pane);
+            var text = new InventoryScreen.Box(pane.X + 24f * u, pane.Y + 16f * u, Mathf.Max(0f, pane.W - 36f * u), Mathf.Max(0f, pane.H - 28f * u));
             // The reading pane: vanilla TextArea and Epic Loot's clone of it (EpicLootMagicTextArea, a sibling it shows instead).
-            var pane = new InventoryScreen.Box(c.X + listW + gap, c.Y, c.W - listW - gap, c.H);
             foreach (Transform child in frame)
-                if (child.name.EndsWith("TextArea", StringComparison.Ordinal) && child is RectTransform area) InventoryScreen.Geo.Place(canvas, area, pane);
+                if (child.name.EndsWith("TextArea", StringComparison.Ordinal) && child is RectTransform area) InventoryScreen.Geo.Place(canvas, area, text);
+            Reading(d);
             // The active effects list copied the text scroll's rect once (ActiveEffectsList.Create): keep it on it.
             var scroll = d.m_textArea ? d.m_textArea.GetComponentInParent<ScrollRect>(true) : null;
             if (scroll && scroll.transform.parent.Find(ActiveEffectsPage.RootName) is RectTransform fx)
@@ -672,6 +679,92 @@ namespace Morgott.UI.GameScreens
                 if (fx.anchoredPosition != src.anchoredPosition) fx.anchoredPosition = src.anchoredPosition;
                 if (fx.sizeDelta != src.sizeDelta) fx.sizeDelta = src.sizeDelta;
             }
+        }
+
+        private const string PaneName = "RuneSkinTextsPane";
+
+        // The reading pane's frame (mockup 02: cyan bevelled outline round the text): own image under the text area.
+        private static Image PaneFrame(RectTransform frame)
+        {
+            var area = frame.Find("TextArea");
+            if (!area) return null;
+            if (frame.Find(PaneName) is Transform t && t.TryGetComponent<Image>(out var have)) return have;
+            var img = InfoScreens.InfoArt.OwnImage(frame, PaneName, "info.tab", "compendium reading pane frame (mockup 02)");
+            img.preserveAspect = false;
+            img.transform.SetSiblingIndex(area.GetSiblingIndex());
+            return img;
+        }
+
+        // Topic keys: pitch 75, 480 x 65 (row space = list space), the name left in the key (FillTextList places row i
+        // at -i * m_spacing, TextsDialog.cs:114; repositioned here, m_spacing kept in step for the next fill).
+        private static void Rows(TextsDialog d, RectTransform canvas, float u)
+        {
+            if (!d.m_listRoot) return;
+            var r = Mathf.Abs(d.m_listRoot.lossyScale.y / Mathf.Max(1e-6f, canvas.lossyScale.y));
+            var pitch = 75f * u / Mathf.Max(1e-6f, r);
+            var h = 65f * u / Mathf.Max(1e-6f, r);
+            var w = 480f * u / Mathf.Max(1e-6f, r);
+            if (Mathf.Abs(d.m_spacing - pitch) > 0.01f) d.m_spacing = pitch;
+            var n = 0;
+            foreach (var info in d.m_texts)
+            {
+                if (!info.m_listElement || !(info.m_listElement.transform is RectTransform row)) continue;
+                var pos = new Vector2(row.anchoredPosition.x, -n * pitch);
+                if (row.anchoredPosition != pos) row.anchoredPosition = pos;
+                var size = new Vector2(row.anchorMin.x == row.anchorMax.x ? w : row.sizeDelta.x, h);
+                if (row.sizeDelta != size) row.sizeDelta = size;
+                if (Utils.FindChild(row, "name") is RectTransform name && name.TryGetComponent<TMP_Text>(out var label))
+                {
+                    var a = new Vector2(0f, 0f);
+                    var b = new Vector2(1f, 1f);
+                    if (name.anchorMin != a || name.anchorMax != b) { name.anchorMin = a; name.anchorMax = b; }
+                    var lo = new Vector2(28f * u / r, 0f);
+                    var hi = new Vector2(-16f * u / r, 0f);
+                    if (name.offsetMin != lo || name.offsetMax != hi) { name.offsetMin = lo; name.offsetMax = hi; }
+                    InfoScreens.InfoArt.Label(label, TextAlignmentOptions.MidlineLeft, 28f * u / r, 14f);
+                }
+                n++;
+            }
+            var listH = n * pitch;
+            if (n > 0 && Mathf.Abs(d.m_listRoot.sizeDelta.y - listH) > 0.5f && d.m_listRoot.anchorMin.y == d.m_listRoot.anchorMax.y)
+                d.m_listRoot.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, Mathf.Max(d.m_baseListSize, listH));
+        }
+
+        // The reading pane text fills the pane (vanilla content is 820 px wide, centred): the scroll content stretches to
+        // the viewport, its texts to the content; topic left, orange (mockup 02).
+        private static void Reading(TextsDialog d)
+        {
+            if (!d.m_textArea || !(d.m_textArea.transform.parent is RectTransform content)) return;
+            if (content.anchorMin.x != 0f || content.anchorMax.x != 1f)
+            {
+                content.anchorMin = new Vector2(0f, content.anchorMin.y);
+                content.anchorMax = new Vector2(1f, content.anchorMax.y);
+                content.sizeDelta = new Vector2(0f, content.sizeDelta.y);
+                content.anchoredPosition = new Vector2(0f, content.anchoredPosition.y);
+            }
+            if (content.TryGetComponent<HorizontalOrVerticalLayoutGroup>(out var lg))
+            {
+                if (!lg.childControlWidth) lg.childControlWidth = true;
+                if (!lg.childForceExpandWidth) lg.childForceExpandWidth = true;
+            }
+            else
+                foreach (var t in new TMP_Text[] { d.m_textAreaTopic, d.m_textArea })
+                    if (t && t.transform.parent == content && t.rectTransform.anchorMin.x != 0f)
+                    {
+                        var rt = t.rectTransform;
+                        rt.anchorMin = new Vector2(0f, rt.anchorMin.y);
+                        rt.anchorMax = new Vector2(1f, rt.anchorMax.y);
+                        rt.sizeDelta = new Vector2(0f, rt.sizeDelta.y);
+                        rt.anchoredPosition = new Vector2(0f, rt.anchoredPosition.y);
+                    }
+            if (d.m_textAreaTopic)
+            {
+                if (d.m_textAreaTopic.horizontalAlignment != HorizontalAlignmentOptions.Left) d.m_textAreaTopic.horizontalAlignment = HorizontalAlignmentOptions.Left;
+                var orange = ThemeTokens.GetColor("color.info.page.topic", new Color(0.95f, 0.63f, 0.24f, 1f));
+                if (d.m_textAreaTopic.color != orange) d.m_textAreaTopic.color = orange;
+                if ((d.m_textAreaTopic.fontStyle & FontStyles.UpperCase) != FontStyles.UpperCase) d.m_textAreaTopic.fontStyle |= FontStyles.UpperCase;
+            }
+            if (d.m_textArea && d.m_textArea.horizontalAlignment != HorizontalAlignmentOptions.Left) d.m_textArea.horizontalAlignment = HorizontalAlignmentOptions.Left;
         }
     }
 

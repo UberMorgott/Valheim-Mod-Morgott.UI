@@ -19,8 +19,10 @@ namespace Morgott.UI.InfoScreens
     //   :517-541) always acts on the visible page;
     // - every frame the vanilla blur (gui_blur grab pass) / darken outside the frame stay off and an own opaque backdrop
     //   (panel backing colour) fills the canvas right under the frame (over the vanilla click-outside closer);
-    // - Layout: the frame fills the canvas; tab row (InfoTabs) top left, Esc key cap top right, the page title (window
-    //   header) centred under them; returns the content box. The page is not movable (no WindowMove offset).
+    // - Layout (mockup 02 geometry): the frame's panel stack runs along the screen edge (rails, ~90 px corner caps, page
+    //   background); top bar = tab row (InfoTabs), ITEMS key (the inventory's ITEMS tab), character name banner, Esc key
+    //   cap, a rule under it; the page title (window header) centred under the bar; returns the content box. The page is
+    //   not movable (no WindowMove offset).
     public sealed class InfoPage : MonoBehaviour
     {
         public const string BackName = "RuneSkinPageBack";
@@ -32,7 +34,10 @@ namespace Morgott.UI.InfoScreens
         private Action _close;
         private InfoTabs _tabs;
         private Image _back;
-        private Button _esc;
+        private Button _esc, _items;
+        private string _itemsLabel = "";
+        private Image _name, _rule;
+        private TMP_Text _nameText;
         private readonly List<Image> _dims = new List<Image>(2);
         private UIGroupHandler _group;
         private Selectable _focus;
@@ -54,7 +59,7 @@ namespace Morgott.UI.InfoScreens
 
         private static Color Backing()
         {
-            var c = ThemeTokens.GetColor("color.panel.backing", new Color(0.063f, 0.11f, 0.133f, 1f));
+            var c = ThemeTokens.GetColor("color.info.page.bg", new Color(0f, 0.086f, 0.11f, 1f));
             c.a = 1f;
             return c;
         }
@@ -83,7 +88,23 @@ namespace Morgott.UI.InfoScreens
                 if ((img.name == "blur" || img.name == "darken") && !img.transform.IsChildOf(frame)) p._dims.Add(img);
             var gui = root.GetComponentInParent<InventoryGui>(true);
             if (gui && openMethod != null) p._tabs = new InfoTabs(gui, frame, openMethod, close);
-            p._esc = MakeEsc(frame, close);
+            p._esc = MakeKey(frame, EscName, "page close key cap (mockup 02: Esc top right)", () => close?.Invoke());
+            // ITEMS (mockup 02 top bar): the item browser lives only in the inventory's right-hand ITEMS tab (user
+            // 2026-11-04) - the page closes (the inventory stays) and that tab opens.
+            p._items = MakeKey(frame, "RuneSkinPageItems", "page top bar: inventory ITEMS tab (mockup 02)", () =>
+            {
+                close?.Invoke();
+                ItemBrowser.BrowserPanel.Instance?.Open();
+            });
+            p._itemsLabel = ItemBrowser.Browser.Localize("$ib_tab");
+            p._name = InfoArt.OwnImage(frame, "RuneSkinPageName", "decor.plaque", "page top bar: character name banner (mockup 02)");
+            p._name.preserveAspect = false;
+            p._nameText = InfoArt.RowText(p._name.transform, "Label", "window.title", TextAlignmentOptions.Center);
+            p._rule = new GameObject("RuneSkinPageRule", typeof(RectTransform)).AddComponent<Image>();
+            p._rule.transform.SetParent(frame, false);
+            p._rule.raycastTarget = false;
+            p._rule.color = ThemeTokens.GetColor("color.info.page.rule", new Color(0.36f, 0.5f, 0.53f, 1f));
+            DollCell.Mark(p._rule, "content", "page top bar separator (mockup 02: rule under the bar)");
             return p;
         }
 
@@ -119,19 +140,18 @@ namespace Morgott.UI.InfoScreens
             for (; t && t != transform; t = t.parent) d++;
             return d;
         }
-        private static Button MakeEsc(RectTransform frame, Action close)
+        private static Button MakeKey(RectTransform frame, string name, string reason, Action click)
         {
-            var go = new GameObject(EscName, typeof(RectTransform));
+            var go = new GameObject(name, typeof(RectTransform));
             go.transform.SetParent(frame, false);
             var back = go.AddComponent<Image>();
             var b = go.AddComponent<Button>();
             b.targetGraphic = back;
             b.navigation = new Navigation { mode = Navigation.Mode.Automatic }; // gamepad reaches it from the tab row
-            b.onClick.AddListener(() => close?.Invoke());
-            var mark = DollCell.Mark(back, "info.tab", "page close key cap (mockup 02: Esc top right)");
+            b.onClick.AddListener(() => click());
+            var mark = DollCell.Mark(back, "info.tab", reason);
             mark.Outcome = Restyler.Apply(back, mark, ThemeTokens.Role(mark.Role)) ? Outcome.Styled : Outcome.Degraded;
-            var text = InfoArt.RowText(go.transform, "Label", "text.body", TextAlignmentOptions.Center);
-            text.SetText("Esc");
+            InfoArt.RowText(go.transform, "Label", "text.body", TextAlignmentOptions.Center).fontStyle |= FontStyles.Bold;
             return b;
         }
 
@@ -179,9 +199,12 @@ namespace Morgott.UI.InfoScreens
             if (OnLayout != null && inv) OnLayout(inv.SkinScaleValue);
         }
 
+        // The page frame's own panel stack (on the frame, or on its vanilla "bkg" child: compendium).
+        private PanelDecor Decor() => PanelDecor.Of(_frame) ?? (_frame.Find("bkg") is Transform b ? PanelDecor.Of(b) : null);
+
         private bool BackingCovers()
         {
-            var decor = _frame.GetComponentInChildren<PanelDecor>(false);
+            var decor = Decor();
             var b = decor ? decor.Backing : null;
             if (!b || !b.gameObject.activeInHierarchy || !b.TryGetComponent<Image>(out var img) || !img.enabled || img.color.a < 0.999f) return false;
             var box = Geo.BoxOf(_canvas, b);
@@ -191,42 +214,96 @@ namespace Morgott.UI.InfoScreens
 
         public static Box Full(RectTransform canvas) => new Box(0f, 0f, canvas.rect.width, canvas.rect.height);
 
-        // Lays the frame and the page chrome out; returns the content box (canvas units) under the title.
+        // Mockup 02 geometry (px at 1920x1080) mapped by the canvas height: u = canvas units per mockup px. Rows of the
+        // top bar keep their left offsets, the Esc key cap its right offset; the content box spans what is left.
+        private const float MockH = 1080f;
+
+        // Lays the frame and the page chrome out; returns the content box (canvas units): list / pane area of mockup 02
+        // (x 61 .. W-60, y 232 .. H-82).
         // shortcut: the whole canvas, not Screen.safeArea (PC: equal); inset by the safe area when consoles / notches matter.
         public Box Layout(float k, RuneWindowHeader header, float auxW = 0f)
         {
             if (!_canvas || !_frame) return default;
             var full = Full(_canvas);
+            var u = full.H / MockH;
             Geo.SetScale(_frame, 1f);
-            Geo.Place(_canvas, _frame, full);
-            var pad = Mathf.Max(ThemeTokens.GetFloat("size.info.pad", 22f) * k, PanelDecor.KeepOut(_frame, _canvas));
-            var inner = new Box(pad, pad, full.W - 2f * pad, full.H - 2f * pad);
-            var gap = 8f * k;
-            var barH = ThemeTokens.GetFloat("size.info.tabs", 70f) * k;
+            var decor = Decor();
+            var host = decor ? (RectTransform)decor.transform.parent : null;
+            // The stack reaches past its host by its pad: the host is inset by that reach so the rails run along the
+            // screen edge (before, the compendium's 40 px pad pushed rails and corners off screen).
+            var reach = 0f;
+            if (decor && host)
+            {
+                var d = (RectTransform)decor.transform;
+                reach = Mathf.Max(0f, (d.rect.width - host.rect.width) / 2f) * Mathf.Abs(host.lossyScale.x / Mathf.Max(1e-6f, _canvas.lossyScale.x));
+            }
+            var inset = new Box(reach, reach, full.W - 2f * reach, full.H - 2f * reach);
+            Geo.Place(_canvas, _frame, host == _frame ? inset : full);
+            if (host && host != _frame) Geo.Place(_canvas, host, inset);
+            if (decor) Skin(decor, u, host);
             if (_tabs != null)
             {
                 var n = _tabs.Count;
-                var tabGap = ThemeTokens.GetFloat("size.info.tab.gap", 10f) * k;
-                var rowW = Mathf.Min(inner.W * 0.6f, n * barH * ThemeTokens.GetFloat("share.info.tab.aspect", 1.3f) + Mathf.Max(0, n - 1) * tabGap);
-                _tabs.Layout(_canvas, new Box(inner.X, inner.Y, rowW, barH), k);
+                var w = 85f * u;
+                var g = 19f * u;
+                _tabs.Layout(_canvas, new Box(109f * u, 27f * u, n * w + Mathf.Max(0, n - 1) * g, 66f * u), k, g);
             }
-            if (_esc)
+            var esc = new Box(full.W - 155f * u, 37f * u, 75f * u, 48f * u);
+            if (_esc) Key(_esc, esc, "Esc", 26f * u);
+            if (_items) Key(_items, new Box(639f * u, 32f * u, 266f * u, 56f * u), _itemsLabel, 28f * u);
+            if (_name)
             {
-                var h = barH * 0.62f;
-                var b = new Box(inner.Right - h * 1.5f, inner.Y + (barH - h) / 2f, h * 1.5f, h);
-                Geo.Place(_canvas, (RectTransform)_esc.transform, b);
-                if (_esc.transform.Find("Label") is RectTransform l && l.TryGetComponent<TMP_Text>(out var t))
+                var x = 949f * u;
+                var nb = new Box(x, 33f * u, Mathf.Max(0f, Mathf.Min(768f * u, esc.X - 48f * u - x)), 55f * u);
+                Geo.Place(_canvas, _name.rectTransform, nb);
+                if (_nameText)
                 {
-                    Geo.Place(_canvas, l, b);
-                    InfoArt.Label(t, TextAlignmentOptions.Center, h * 0.5f, 12f);
+                    var who = Player.m_localPlayer ? Player.m_localPlayer.GetPlayerName() : "";
+                    if (_nameText.text != who) _nameText.text = who;
+                    Geo.Place(_canvas, _nameText.rectTransform, new Box(nb.X + nb.W * 0.2f, nb.Y, nb.W * 0.6f, nb.H));
+                    InfoArt.Label(_nameText, TextAlignmentOptions.Center, 30f * u, 14f, upper: true);
                 }
             }
-            var y = inner.Y + barH + 2f * gap;
-            var headerH = WindowHeaderMath.HeaderHeight(ThemeTokens.GetFloat("size.win.header", 40f), k);
-            var titleW = Mathf.Min(inner.W, ThemeTokens.GetFloat("size.info.page.title.w", 920f) * k);
-            if (header) header.Place(_canvas, new Box((full.W - titleW) / 2f, y, titleW, headerH), null, auxW);
-            y += headerH + 2f * gap;
-            return new Box(inner.X, y, inner.W, Mathf.Max(0f, inner.Bottom - y));
+            if (_rule) Geo.Place(_canvas, _rule.rectTransform, new Box(19f * u, 111f * u, Mathf.Max(0f, full.W - 38f * u), 2f * u));
+            var titleW = Mathf.Min(full.W, ThemeTokens.GetFloat("size.info.page.title.w", 920f) * u);
+            if (header) header.Place(_canvas, new Box((full.W - titleW) / 2f, 135f * u, titleW, 68f * u), null, auxW);
+            var top = 232f * u;
+            return new Box(61f * u, top, Mathf.Max(0f, full.W - 121f * u), Mathf.Max(0f, full.H - top - 82f * u));
+        }
+
+        // The page look of its panel stack: corner caps ~90 mockup px, the page background (backing + a faint glass:
+        // mockup 02 empty patch #01161B; the inventory windows keep the shared #101C22 + full glass).
+        private void Skin(PanelDecor decor, float u, RectTransform host)
+        {
+            var ratio = Mathf.Abs(host.lossyScale.x / Mathf.Max(1e-6f, _canvas.lossyScale.x));
+            var caps = decor.CornerCaps;
+            if (caps != null)
+                foreach (var c in caps)
+                {
+                    if (!c || c.rect.width <= 0f) continue;
+                    var s = ThemeTokens.GetFloat("size.info.page.corner", 90f) * u / (c.rect.width * ratio);
+                    if (Mathf.Abs(c.localScale.x - s) > 0.001f) c.localScale = new Vector3(s, s, 1f);
+                }
+            Tint(decor.Backing, "color.info.page.bg");
+            Tint(decor.transform.Find("Glass"), "color.info.page.glass");
+        }
+
+        private static void Tint(Transform t, string token)
+        {
+            if (!t || !t.TryGetComponent<Image>(out var img)) return;
+            var c = ThemeTokens.GetColor(token, img.color);
+            if (img.color != c) img.color = c;
+        }
+
+        private void Key(Button b, Box box, string label, float size)
+        {
+            Geo.Place(_canvas, (RectTransform)b.transform, box);
+            if (b.transform.Find("Label") is RectTransform l && l.TryGetComponent<TMP_Text>(out var t))
+            {
+                if (t.text != label) t.text = label;
+                Geo.Place(_canvas, l, box);
+                InfoArt.Label(t, TextAlignmentOptions.Center, size, 12f, upper: true);
+            }
         }
     }
 }

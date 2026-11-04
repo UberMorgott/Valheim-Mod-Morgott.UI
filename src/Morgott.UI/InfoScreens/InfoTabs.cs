@@ -123,8 +123,9 @@ namespace Morgott.UI.InfoScreens
             if (!t.Own) t.Source.onClick.Invoke();
         }
 
-        // Lays the row out centred in `row` (canvas box); tabs a little wider than tall, never past the row.
-        public void Layout(RectTransform canvas, Box row, float k)
+        // Lays the row out centred in `row` (canvas box); tabs a little wider than tall, never past the row; `gap` in canvas
+        // units (default: the size.info.tab.gap token).
+        public void Layout(RectTransform canvas, Box row, float k, float gap = -1f)
         {
             Collect();
             while (_tabs.Count < _sources.Count) _tabs.Add(Make(_tabs.Count));
@@ -138,7 +139,7 @@ namespace Morgott.UI.InfoScreens
                 _strip.rectTransform.SetSiblingIndex(stack ? stack.GetSiblingIndex() + 1 : 0); // above the panel glass, under the tabs
             }
             if (_strip.enabled && n > 0) Geo.Place(canvas, _strip.rectTransform, new Box(row.X, row.Bottom - 4f * k, row.W, 16f * k));
-            var cells = InfoMath.TabRow(row, n, ThemeTokens.GetFloat("share.info.tab.aspect", 1.3f), ThemeTokens.GetFloat("size.info.tab.gap", 10f) * k);
+            var cells = InfoMath.TabRow(row, n, ThemeTokens.GetFloat("share.info.tab.aspect", 1.3f), gap >= 0f ? gap : ThemeTokens.GetFloat("size.info.tab.gap", 10f) * k);
             for (var i = 0; i < _tabs.Count; i++)
             {
                 var t = _tabs[i];
@@ -160,6 +161,8 @@ namespace Morgott.UI.InfoScreens
                 var sprite = IconOf(src);
                 if (t.Icon.sprite != sprite) t.Icon.sprite = sprite;
                 if (t.Icon.enabled != (bool)sprite) t.Icon.enabled = sprite;
+                var tint = ThemeTokens.GetColor("color.info.tab.icon", Color.white); // mockup 02: copper icons
+                if (t.Icon.color != tint) t.Icon.color = tint;
                 var b = cells[i];
                 Geo.Place(canvas, t.Back.rectTransform, b);
                 var side = Mathf.Min(b.W, b.H) * (1f - 2f * ThemeTokens.GetFloat("share.inv.tab.icon.inset", 0.16f));
