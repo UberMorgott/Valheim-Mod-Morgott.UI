@@ -110,8 +110,8 @@ namespace Morgott.UI.PlayerHud
                     Plugin.Log.LogWarning($"[Morgott.UI] MorgottTweaks Belt API {version} != {BeltMath.SupportedApi}: belt row off.");
                     return;
                 }
-                var kindType = Morgott.Core.TypeLookup.ByFullName("Morgott.Power.BeltKind");
-                var stateType = Morgott.Core.TypeLookup.ByFullName("Morgott.Power.BeltSlotState");
+                var kindType = Morgott.Core.TypeLookup.ByFullName("Morgott.Core.BeltKind");
+                var stateType = Morgott.Core.TypeLookup.ByFullName("Morgott.Core.BeltSlotState");
                 if (kindType == null || stateType == null) return;
                 _enabled = Getter<bool>(belt, "Enabled");
                 _version = Getter<int>(belt, "Version");
