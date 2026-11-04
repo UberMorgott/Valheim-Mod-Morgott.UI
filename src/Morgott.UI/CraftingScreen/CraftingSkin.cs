@@ -744,7 +744,9 @@ namespace Morgott.UI.CraftingScreen
             var area = new Box(o.List.X, top, o.Detail.Right - o.List.X, o.ButtonRow.Bottom - top);
             if (ours)
             {
-                var pad = area.W * 0.015f; // mockup A: ~8 px inner margin at 1920x1080
+                // Mockup A: the browser spans ~6 % more than the craft columns (into the frame margin), ~8 px inner margin.
+                var pad = area.W * 0.015f;
+                area = new Box(area.X - area.W * 0.03f, area.Y, area.W * 1.06f, area.H);
                 if (_vneiWell) Geo.Place(_canvas, _vneiWell.rectTransform, area);
                 ItemBrowser.BrowserPanel.Instance.Place(_canvas, new Box(area.X + pad, area.Y + pad, area.W - 2f * pad, area.H - 2f * pad));
                 return;

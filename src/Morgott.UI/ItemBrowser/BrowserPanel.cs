@@ -22,10 +22,10 @@ namespace Morgott.UI.ItemBrowser
     public sealed class BrowserPanel : MonoBehaviour
     {
         public const string TabName = "MorgottItemsTab";
-        private const float UnitW = 550f, Cell = 61f, RowH = 66f;
+        private const float UnitW = 550f, Cell = 61f, RowH = 76f;
         // Mockup A grid (docs\mockups\item-browser\a-crafting-tab-grid.png at 1920x1080): tall sockets 56x78, pitch 60 x 84,
         // grid well left of a detail well, both from y 90; pager + hint row under the wells.
-        private const float WellTop = 100f, CellX = 60f, CellY = 84f, CellTop = 116f, Footer = 82f, GridRows = 6f;
+        private const float WellTop = 108f, CellX = 60f, CellY = 84f, CellTop = 124f, Footer = 82f, GridRows = 6f;
         private static readonly string[] TypeTokens = { "$ib_type_all", "$ib_type_items", "$ib_type_pieces", "$ib_type_creatures", "$ib_type_stations", "$ib_type_favorites" };
         private static readonly float[] TypeW = { 58f, 74f, 72f, 96f, 92f, 118f };
         private static readonly EntryType?[] TypeOf = { null, EntryType.Item, EntryType.Piece, EntryType.Creature, EntryType.Station, null };
@@ -75,7 +75,7 @@ namespace Morgott.UI.ItemBrowser
         private GameObject _pageView;
         private Button _back;
         private TMP_Text _crumb, _pageName, _pageType, _pageDesc;
-        private Image _pageIcon, _backPlate, _pageDivTop, _pageDivBottom;
+        private Image _pageIcon, _backPlate, _pageDivTop, _pageDivBottom, _pageDivTabs;
         private Button _fromTab, _usedTabButton;
         private TMP_Text _fromTabLabel, _usedTabLabel;
         private readonly List<Slot> _rows = new List<Slot>();
@@ -325,6 +325,7 @@ namespace Morgott.UI.ItemBrowser
             _backPlate = Img(p, "BackPlate", "craft.category");
             _pageDivTop = Img(p, "DividerTop", "divider");
             _pageDivBottom = Img(p, "DividerBottom", "divider");
+            _pageDivTabs = Img(p, "DividerTabs", "divider");
             _back = Btn(p, "Back", "craft.arrow.left", out _, () => Nav(_history.Back(), false));
             _crumb = Txt(p, "Crumb", "text.body", TextAlignmentOptions.Left);
             _pageIcon = Img(p, "Icon", "content", true);
@@ -533,9 +534,9 @@ namespace Morgott.UI.ItemBrowser
             var x = 0f;
             for (var i = 0; i < _types.Length; i++)
             {
-                Put(_types[i], x, 54f, TypeW[i], 36f);
-                Put(_typeLabels[i], x + 3f, 54f, TypeW[i] - 6f, 36f);
-                Fit(_typeLabels[i], (i == 5 ? "★ " : "") + L(TypeTokens[i]), 18f);
+                Put(_types[i], x, 58f, TypeW[i], 38f);
+                Put(_typeLabels[i], x + 3f, 58f, TypeW[i] - 6f, 38f);
+                Fit(_typeLabels[i], (i == 5 ? "★ " : "") + L(TypeTokens[i]), 19f);
                 if (_types[i].interactable != (i != _type)) _types[i].interactable = i != _type;
                 x += TypeW[i] + 8f;
             }
@@ -544,6 +545,7 @@ namespace Morgott.UI.ItemBrowser
             var wellBottom = h - Footer;
             Put(_gridWell, 0f, WellTop, 362f, wellBottom - WellTop);
             var rows = Math.Max(1, (int)Math.Min(GridRows, (wellBottom - CellTop + CellY - CellX) / CellY)); // mockup A: six rows, space below
+            var pitch = Math.Max(CellY, (wellBottom - CellTop - 40f) / rows); // taller body: taller sockets, the mockup's gap under row six kept
             var per = rows * 6;
             if (_selected == null && list.Count > 0) _selected = list[0].Id; // mockup A: the page opens on a selected entry
             var pages = Math.Max(1, (list.Count + per - 1) / per);
@@ -556,9 +558,9 @@ namespace Morgott.UI.ItemBrowser
                 if (i >= per) { Off(c.Back); continue; }
                 var n = _gridPage * per + i;
                 c.Id = n < list.Count ? list[n].Id : null;
-                float cx = 3f + i % 6 * CellX, cy = CellTop + i / 6 * CellY;
-                Put(c.Back, cx, cy, CellX - 4f, CellY - 6f);
-                Put(c.Icon, cx + 6f, cy + 13f, CellX - 16f, CellX - 16f);
+                float cx = 3f + i % 6 * CellX, cy = CellTop + i / 6 * pitch;
+                Put(c.Back, cx, cy, CellX - 4f, pitch - 6f);
+                Put(c.Icon, cx + 6f, cy + (pitch - 6f - (CellX - 16f)) / 2f, CellX - 16f, CellX - 16f);
                 SetIcon(c.Icon, c.Id);
                 Put(c.D, cx + CellX - 24f, cy + 2f, 18f, 18f);
                 Text(c.D, "★", 16f);
@@ -769,6 +771,7 @@ namespace Morgott.UI.ItemBrowser
 
             var from = Browser.Index.ObtainedFrom(e.Id).OrderBy(r => Rank(r.Kind)).ToList(); // recipes first (stable), then drops
             var used = Browser.Index.UsedInResults(e.Id);
+            Put(_pageDivTabs, 0f, 226f, UnitW, 3f);
             Put(_fromTab, 26f, 184f, 196f, 38f);
             Put(_fromTabLabel, 26f, 184f, 196f, 38f);
             Fit(_fromTabLabel, L("$ib_obtained_from"), 20f);
@@ -778,7 +781,7 @@ namespace Morgott.UI.ItemBrowser
             if (_fromTab.interactable == !_usedTab) _fromTab.interactable = _usedTab;
             if (_usedTabButton.interactable == _usedTab) _usedTabButton.interactable = !_usedTab;
 
-            var y = 232f;
+            var y = 238f;
             var tileRows = used.Count == 0 ? 0 : Math.Max(1, Math.Min((used.Count + 6) / 7, _usedTab ? 99 : 1));
             var tilesH = tileRows * 132f;
             var rowsShown = 0;
@@ -808,7 +811,7 @@ namespace Morgott.UI.ItemBrowser
                 Put(t.Icon, tx + 8f, ty, UnitW / 7f - 16f, 66f);
                 SetIcon(t.Icon, t.Id);
                 Put(t.A, tx, ty + 68f, UnitW / 7f, 58f);
-                Text(t.A, NameOf(t.Id), 15f);
+                Text(t.A, NameOf(t.Id), 16f);
             }
             _ = tilesH;
             if (tiles > 0) Put(_pageDivBottom, 0f, y + (tiles + 6) / 7 * 132f + 4f, UnitW, 3f);
@@ -822,6 +825,7 @@ namespace Morgott.UI.ItemBrowser
             s.B = Txt(s.Rt, "Kind", "text.muted", TextAlignmentOptions.Left);
             s.C = Txt(s.Rt, "Amount", "text.body", TextAlignmentOptions.Center);
             s.D = Txt(s.Rt, "Chance", "text.body", TextAlignmentOptions.Right);
+            s.D.textWrappingMode = TextWrappingModes.Normal; // long conditions ("weighted, draws 2-4") wrap instead of an ellipsis
             Hook(s, e =>
             {
                 if (e.button == PointerEventData.InputButton.Right) { Take(s.Id, 1); return; }
@@ -857,10 +861,10 @@ namespace Morgott.UI.ItemBrowser
                 m.Outcome = Restyler.Apply(s.Back, m, ThemeTokens.Role(role)) ? Outcome.Styled : Outcome.Degraded;
             }
             Put(s.Back, 0f, y, UnitW, RowH - 2f);
-            Put(s.Icon, 14f, y + 5f, 56f, 56f);
+            Put(s.Icon, 16f, y + 7f, 62f, 62f);
             SetIcon(s.Icon, who);
-            Put(s.A, 90f, y + 8f, 250f, 26f);
-            Fit(s.A, who == null ? L("$ib_by_hand") : r.StationLevel > 0 ? $"{NameOf(who)} {r.StationLevel}" : NameOf(who), 21f);
+            Put(s.A, 100f, y + 10f, 250f, 28f);
+            Fit(s.A, who == null ? L("$ib_by_hand") : r.StationLevel > 0 ? $"{NameOf(who)} ({L("$ib_level")} {r.StationLevel})" : NameOf(who), 21f);
             var kind = L("$ib_kind_" + r.Kind.ToString().ToLowerInvariant());
             if (r.Quality > 1) kind += " → " + L("$ib_quality") + " " + r.Quality;
             if (r.Inputs.Length > 0)
@@ -869,8 +873,8 @@ namespace Morgott.UI.ItemBrowser
                 foreach (var x in r.Inputs) ins.Add($"{Amount(x)} {NameOf(x.Prefab)}");
                 kind += ": " + string.Join(", ", ins);
             }
-            Put(s.B, 90f, y + 34f, 280f, 24f);
-            Fit(s.B, kind, 17f);
+            Put(s.B, 100f, y + 40f, 270f, 26f);
+            Fit(s.B, kind, 18f);
             var o = Array.Find(r.Outputs, x => x.Prefab == item);
             Put(s.C, 360f, y, 70f, RowH);
             Text(s.C, "x" + Amount(o), 21f);
