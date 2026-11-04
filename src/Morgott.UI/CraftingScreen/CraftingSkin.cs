@@ -347,6 +347,7 @@ namespace Morgott.UI.CraftingScreen
             var ctx = new ScreenContext(ScreenId, OwnershipRegistry.Crafting);
             var vnei = _crafting.Find(ModCompat.VneiPanel);
             if (vnei) ctx.Exclude(vnei, "VNEI item browser panel: mod panel (M7), placed over the body by RuneSkin");
+            if (ItemBrowser.BrowserPanel.Root) ctx.Exclude(ItemBrowser.BrowserPanel.Root, "item browser (ITEMS tab): own graphics, styled at build");
             foreach (var image in _crafting.GetComponentsInChildren<Image>(true))
             {
                 var t = image.transform;
@@ -735,10 +736,19 @@ namespace Morgott.UI.CraftingScreen
             // Docked, VNEI switches its own woodpanel off (MainVneiHandler.CreateBaseUI) and the two wells are hidden
             // above, so only the panel glass (fill_glass, alpha 0.9) was left behind its grid: the world showed through.
             // One opaque well spans VNEI's whole body instead, like the list/detail wells on the craft tab.
-            WellShown(_vneiWell, vneiUp);
-            if (!vneiUp) return;
+            // Our ITEMS tab (ItemBrowser.BrowserPanel) takes the same body box and the same well (design section 1).
+            var ours = ItemBrowser.BrowserPanel.Up;
+            WellShown(_vneiWell, vneiUp || ours);
+            if (!vneiUp && !ours) return;
             var top = o.Search.IsEmpty ? o.List.Y : o.Search.Y;
             var area = new Box(o.List.X, top, o.Detail.Right - o.List.X, o.ButtonRow.Bottom - top);
+            if (ours)
+            {
+                var pad = Mathf.Clamp(o.Detail.X - o.List.Right, 4f, 24f); // the column gap as the well's inner margin
+                if (_vneiWell) Geo.Place(_canvas, _vneiWell.rectTransform, area);
+                ItemBrowser.BrowserPanel.Instance.Place(_canvas, new Box(area.X + pad, area.Y + pad, area.W - 2f * pad, area.H - 2f * pad));
+                return;
+            }
             if (_vneiWell) Geo.Place(_canvas, _vneiWell.rectTransform, area);
             Geo.Place(_canvas, vnei, area);
             VneiFit(vnei, area);

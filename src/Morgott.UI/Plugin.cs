@@ -238,6 +238,8 @@ namespace Morgott.UI
             // rebuilt InventoryGui.Awake 6x, Hud.Awake 2x, InventoryGui.Update 2x). Ties between RuneSkin's own
             // postfixes on one method are explicit (PatchOrder): class order in the assembly is not a contract.
             // WorldHud.PlayHudAdapter has no Prepare: each of its hooks gates per family (PlayHud.Owned).
+            ItemBrowser.Browser.Bind(Config);
+            if (OwnershipRegistry.IsOwned(OwnershipRegistry.Crafting)) Jotunn.Utils.ModQuery.Enable(); // item browser: prefab -> mod
             _harmony.PatchAll(typeof(Plugin).Assembly);
             if (OwnershipRegistry.IsOwned(OwnershipRegistry.Cursor)) CursorSkin.Apply();
             var ms = (Stopwatch.GetTimestamp() - patchStart) * 1000.0 / Stopwatch.Frequency;

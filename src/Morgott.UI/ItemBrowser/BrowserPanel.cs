@@ -133,27 +133,41 @@ namespace Morgott.UI.ItemBrowser
 
         private void OnDestroy()
         {
+            Block(false);
             if (Instance == this) Instance = null;
         }
 
         public void Open()
         {
             Vnei.Hide(_gui);
+            if (!_up)
+            {
+                // The vanilla tab selection (selected = not interactable) comes back on Close (Codex review: a workbench
+                // reopened on Upgrade otherwise).
+                _craftWas = _gui.m_tabCraft.interactable;
+                _upgradeWas = _gui.m_tabUpgrade.interactable;
+            }
             _up = true;
             Browser.EnsureReady();
+            _resultsGen = -1; // known sets may have grown since the last open
             _dirty = true;
             Enforce();
         }
+
+        private bool _craftWas = true, _upgradeWas = true;
+        private float _nextCheck;
 
         public void Close()
         {
             if (!_up) return;
             _up = false;
-            Jotunn.Managers.GUIManager.BlockInput(false);
+            Block(false);
             _root.gameObject.SetActive(false);
             UITooltip.HideTooltip();
             Browser.DropQueue();
             if (_tab) _tab.interactable = true;
+            _gui.m_tabCraft.interactable = _craftWas;
+            _gui.m_tabUpgrade.interactable = _upgradeWas;
             SetBody(true);
         }
 
@@ -201,10 +215,25 @@ namespace Morgott.UI.ItemBrowser
             Vnei.Hide(_gui);
             Enforce();
             var typing = _search && _search.isFocused;
-            Jotunn.Managers.GUIManager.BlockInput(typing);
-            if (Browser.EnsureReady() != _resultsGen) _dirty = true;
+            Block(typing);
+            // Fingerprint (hash over every recipe) once a second, not per frame.
+            if (Time.unscaledTime >= _nextCheck)
+            {
+                _nextCheck = Time.unscaledTime + 1f;
+                if (Browser.EnsureReady() != _resultsGen) _dirty = true;
+            }
             if (!typing) Keys();
             Browser.RenderQueued();
+        }
+
+        // Game input off while the search field has focus; toggled on change only (BlockInput is shared with other mods).
+        private bool _blocked;
+
+        private void Block(bool on)
+        {
+            if (_blocked == on) return;
+            _blocked = on;
+            Jotunn.Managers.GUIManager.BlockInput(on);
         }
 
         private void Keys()

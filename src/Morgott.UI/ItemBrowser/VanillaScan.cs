@@ -20,11 +20,12 @@ namespace Morgott.UI.ItemBrowser
             try
             {
                 var prefabs = new List<GameObject>();
-                foreach (var go in ObjectDB.instance.m_items) if (go) prefabs.Add(go);
+                var seen = new HashSet<GameObject>(); // m_namedPrefabs repeats m_prefabs and the ObjectDB items
+                foreach (var go in ObjectDB.instance.m_items) if (go && seen.Add(go)) prefabs.Add(go);
                 if (ZNetScene.instance)
                 {
-                    foreach (var go in ZNetScene.instance.m_prefabs) if (go) prefabs.Add(go);
-                    foreach (var go in ZNetScene.instance.m_namedPrefabs.Values) if (go) prefabs.Add(go);
+                    foreach (var go in ZNetScene.instance.m_prefabs) if (go && seen.Add(go)) prefabs.Add(go);
+                    foreach (var go in ZNetScene.instance.m_namedPrefabs.Values) if (go && seen.Add(go)) prefabs.Add(go);
                 }
                 foreach (var go in prefabs) Entry(go);
                 foreach (var go in prefabs) Sources(go);
@@ -50,7 +51,7 @@ namespace Morgott.UI.ItemBrowser
                 if (s.m_icons == null || s.m_icons.Length == 0) e.Hidden = "no icon";
             }
             else if (go.TryGetComponent<Piece>(out var piece))
-                e = new Entry { Type = go.GetComponent<CraftingStation>() ? EntryType.Station : EntryType.Piece, Name = piece.m_name, Desc = piece.m_description, Hidden = piece.m_icon ? null : "no icon" };
+                e = new Entry { Type = IsStation(go) ? EntryType.Station : EntryType.Piece, Name = piece.m_name, Desc = piece.m_description, Hidden = piece.m_icon ? null : "no icon" };
             else if (go.TryGetComponent<Character>(out var c) && !(c is Player))
                 e = new Entry { Type = EntryType.Creature, Name = c.m_name };
             if (e == null) return; // other prefabs enter as relation sources only (BrowserIndex.Add)
@@ -84,8 +85,14 @@ namespace Morgott.UI.ItemBrowser
                     case DropOnDestroyed dd: Table(RelationKind.Destroy, id, dd.m_dropWhenDestroyed); break;
                     case MineRock mr: Name(mr.m_name); Table(RelationKind.Mine, id, mr.m_dropItems); break;
                     case MineRock5 mr5: Name(mr5.m_name); Table(RelationKind.Mine, id, mr5.m_dropItems); break;
-                    case TreeBase tb: Table(RelationKind.Tree, id, tb.m_dropWhenDestroyed); break;
-                    case TreeLog tl: Table(RelationKind.Tree, id, tl.m_dropWhenDestroyed); break;
+                    case TreeBase tb:
+                        Table(RelationKind.Tree, id, tb.m_dropWhenDestroyed);
+                        Spawned(RelationKind.Tree, id, tb.m_logPrefab, tb.m_stubPrefab); // tree -> log -> wood chain
+                        break;
+                    case TreeLog tl:
+                        Table(RelationKind.Tree, id, tl.m_dropWhenDestroyed);
+                        Spawned(RelationKind.Tree, id, tl.m_subLogPrefab);
+                        break;
                     case Destructible de when de.m_spawnWhenDestroyed:
                         Add(RelationKind.Destroy, id, null, new[] { new Stack(de.m_spawnWhenDestroyed.name) }, null, 0, 0);
                         break;
@@ -148,7 +155,7 @@ namespace Morgott.UI.ItemBrowser
         {
             if (t?.m_drops == null) return;
             var alone = t.m_drops.Count == 1;
-            var cond = alone ? null : t.m_oneOfEach ? $"$ib_cond_draws {t.m_dropMin}-{t.m_dropMax} $ib_cond_oneofeach" : $"$ib_cond_draws {t.m_dropMin}-{t.m_dropMax}";
+            var cond = alone && t.m_dropMin == 1 && t.m_dropMax == 1 ? null : t.m_oneOfEach ? $"$ib_cond_draws {t.m_dropMin}-{t.m_dropMax} $ib_cond_oneofeach" : $"$ib_cond_draws {t.m_dropMin}-{t.m_dropMax}";
             foreach (var d in t.m_drops)
                 if (d.m_item)
                     Add(kind, source, null, new[] { new Stack(d.m_item.name, Math.Max(0, d.m_stackMin), Math.Max(Math.Max(0, d.m_stackMin), d.m_stackMax), alone ? Mathf.Clamp01(t.m_dropChance) : float.NaN) }, null, 0, 0, cond);
@@ -161,7 +168,7 @@ namespace Morgott.UI.ItemBrowser
             for (var q = 1; q <= max; q++)
             {
                 var ins = Req(r.m_resources, q);
-                if (q == 1 && (ins.Length == 0 || r.m_noCraftOnlyUpgrade)) continue;
+                if (q == 1 && r.m_noCraftOnlyUpgrade) continue; // upgrade-only recipe
                 if (q > 1 && ins.Length == 0) continue;
                 CraftingStation station;
                 int level;
@@ -169,7 +176,8 @@ namespace Morgott.UI.ItemBrowser
                 try { station = r.GetRequiredStation(q); level = r.GetRequiredStationLevel(q); }
                 catch (Exception) { station = q == 1 ? r.m_craftingStation : r.m_repairStation ? r.m_repairStation : r.m_craftingStation; level = r.m_minStationLevel; }
                 var amount = q == 1 ? Math.Max(1, r.m_amount) : 1;
-                Add(q == 1 ? RelationKind.Craft : RelationKind.Upgrade, r.name, ins, new[] { new Stack(r.m_item.name, amount, amount) }, Station(station), station ? level : 0, q);
+                Add(q == 1 ? RelationKind.Craft : RelationKind.Upgrade, r.name, ins, new[] { new Stack(r.m_item.name, amount, amount) }, Station(station), station ? level : 0, q,
+                    r.m_requireOnlyOneIngredient ? "$ib_cond_anyone" : null);
             }
         }
 
@@ -186,6 +194,15 @@ namespace Morgott.UI.ItemBrowser
         }
 
         private static string Station(CraftingStation s) => s ? s.gameObject.name : null;
+
+        // Stations tab: crafting stations and the converters (design 2: a station page lists what it crafts / converts).
+        private static bool IsStation(GameObject go) =>
+            go.GetComponent<CraftingStation>() || go.GetComponent<Smelter>() || go.GetComponent<Fermenter>() || go.GetComponent<CookingStation>() || go.GetComponent<Incinerator>();
+
+        private static void Spawned(RelationKind kind, string source, params GameObject[] spawns)
+        {
+            foreach (var s in spawns) if (s) Add(kind, source, null, new[] { new Stack(s.name) }, null, 0, 0);
+        }
 
         private static void Add(RelationKind kind, string source, Stack[] ins, Stack[] outs, string station, int level, int quality, string cond = null) =>
             _ix.Add(new Relation { Kind = kind, Source = source, Inputs = ins ?? Array.Empty<Stack>(), Outputs = outs, Station = station, StationLevel = level, Quality = quality, Conditions = cond });

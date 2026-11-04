@@ -81,7 +81,13 @@ namespace Morgott.UI.ItemBrowser
             catch (System.Exception e) { Plugin.Log.LogWarning($"[Morgott.UI] VNEI mute failed (its tab may open beside ITEMS): {e.Message}"); }
         }
 
-        private static bool SetTabActive_Prefix() => !Muted;
+        // Old mode (MuteVnei off): VNEI's tab may open; ours closes first so the two never share the body.
+        private static bool SetTabActive_Prefix()
+        {
+            if (Muted) return false;
+            if (BrowserPanel.Up) BrowserPanel.Instance.Close();
+            return true;
+        }
 
         private static void SetVisibility_Prefix(ref bool visible)
         {

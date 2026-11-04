@@ -75,7 +75,9 @@ namespace Morgott.UI.ItemBrowser
             foreach (var r in ObjectDB.instance.m_recipes)
             {
                 if (!r) continue;
-                h = BrowserIndex.Mix(BrowserIndex.Mix(h, r.name), r.m_enabled ? 1 : 0);
+                h = BrowserIndex.Mix(BrowserIndex.Mix(h, r.name), (r.m_enabled ? 1 : 0) | (r.m_requireOnlyOneIngredient ? 2 : 0) | (r.m_noCraftOnlyUpgrade ? 4 : 0));
+                h = BrowserIndex.Mix(BrowserIndex.Mix(h, r.m_item ? r.m_item.name : null), r.m_amount * 31 + r.m_minStationLevel);
+                h = BrowserIndex.Mix(BrowserIndex.Mix(h, r.m_craftingStation ? r.m_craftingStation.name : null), r.m_repairStation ? r.m_repairStation.name : null);
                 if (r.m_resources == null) continue;
                 foreach (var q in r.m_resources)
                     if (q?.m_resItem) h = BrowserIndex.Mix(BrowserIndex.Mix(BrowserIndex.Mix(h, q.m_resItem.name), q.m_amount), q.m_amountPerLevel);
@@ -217,7 +219,8 @@ namespace Morgott.UI.ItemBrowser
         // 24 / 25 = GlobalKeys.NoBuildCost / NoCraftCost); never plain single player.
         public static bool CanTake =>
             Cheat != null && Cheat.Value && Player.m_localPlayer &&
-            (Terminal.m_cheat || Jotunn.Managers.SynchronizationManager.Instance.PlayerIsAdmin ||
+            // devcommands as vanilla reads it (Terminal.IsCheatsEnabled: m_cheat only counts on the server / single player).
+            (Console.instance && Console.instance.IsCheatsEnabled() || Jotunn.Managers.SynchronizationManager.Instance.PlayerIsAdmin ||
              ZoneSystem.instance && (ZoneSystem.instance.GetGlobalKey(GlobalKeys.NoBuildCost) || ZoneSystem.instance.GetGlobalKey(GlobalKeys.NoCraftCost)));
 
         /// <returns>null when taken, else why not. The gate is checked here, not only in the UI (design 7).</returns>
@@ -256,11 +259,9 @@ namespace Morgott.UI.ItemBrowser
             if (!item) return "no item";
             var n = stack ? item.m_itemData.m_shared.m_maxStackSize : amount;
             if (n <= 0) return null;
-            var got = Player.m_localPlayer.PickupPrefab(item.gameObject, n, false);
-            if (got == null) return "inventory full";
-            got.m_quality = quality;
-            got.m_durability = got.GetMaxDurability();
-            return null;
+            // Quality set at insertion (Inventory.AddItem by name), so it never merges into a stack of another quality.
+            var got = Player.m_localPlayer.GetInventory().AddItem(item.gameObject.name, n, quality, 0, 0L, "", true);
+            return got == null ? "inventory full" : null;
         }
 
         // ---------------------------------------------------------------- harness probe
