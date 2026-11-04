@@ -6,6 +6,7 @@ Moved from MorgottTweaks 03f7d99: `Modules/IconRestyle.cs` -> `Icons/IconRestyle
 `ModStatusIconMapTests`.
 
 Stay in MorgottTweaks (universal; Morgott.UI is client-only, absent on the dedicated server):
+
 - `Core/IconText.cs`: status-effect icon texts of auras / boss gems (`AurasEffect.cs:156`, `BossGems.cs:490,557`,
   `BossGemDownsides.cs:312`).
 - `Core/IconTint.cs`: recoloured icons of items registered by MT (`EarlyMagicModule.cs:136`, `HarvestMagicModule.cs:85`,
@@ -17,6 +18,7 @@ Stay in MorgottTweaks (universal; Morgott.UI is client-only, absent on the dedic
   `Assets/ItemIcons`).
 
 Kept:
+
 - Atlas format v2 (`mt-item-icons`, manifest validation, BC7 + gzip, page prefetch on worker threads, lazy page load,
   drop of unused prefetched pages after `OnItemsRegistered`), swap rules (`m_icons[0]` copy, variants kept, first original
   kept in `Originals`, ZNetScene copies), Priority.Last postfixes on `ObjectDB.Awake` / `CopyOtherDB`, the shipped files in
@@ -30,6 +32,7 @@ Kept:
 - Translation texts (English + Russian).
 
 Intended changes:
+
 - Keys `$mt_cp_coin_drop[_desc]` -> `$ui_cp_coin_drop[_desc]`; sprite / texture names `MT_ItemIcon_*` / `MT_ItemIcons_N` /
   `MT_StatusIcon_*` -> `UI_ItemIcon_*` / `UI_ItemIcons_N` / `UI_StatusIcon_*` (only the harness reads them: patch
   `handoff-4.5-tools.patch`).
