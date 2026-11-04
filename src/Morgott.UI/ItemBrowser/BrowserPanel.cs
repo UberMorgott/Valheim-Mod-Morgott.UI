@@ -312,7 +312,7 @@ namespace Morgott.UI.ItemBrowser
             for (var i = 0; i < _cats.Length; i++)
             {
                 var n = i;
-                _cats[i] = Btn(g, "Cat" + i, "craft.tab", out _, () => { _cat = _cat == n ? -1 : n; _gridScroll = 0; _dirty = true; });
+                _cats[i] = Btn(g, "Cat" + i, "ib.square", out _, () => { _cat = _cat == n ? -1 : n; _gridScroll = 0; _dirty = true; });
                 _catGlyphs[i] = Img(_cats[i].transform, "Glyph", "ib.cat." + CatKeys[i]);
             }
             _caption = Txt(g, "Caption", "text.body", TextAlignmentOptions.Left);
@@ -323,15 +323,15 @@ namespace Morgott.UI.ItemBrowser
 
             _pageView = Child("Page").gameObject;
             var p = _pageView.transform;
-            _backPlate = Img(p, "BackPlate", "craft.tab");
+            _backPlate = Img(p, "BackPlate", "ib.square");
             _back = Btn(p, "Back", "craft.arrow.left", out _, () => Nav(_history.Back(), false));
             _crumb = Txt(p, "Crumb", "text.body", TextAlignmentOptions.Left);
-            _pageSocket = Img(p, "IconSocket", "craft.socket");
+            _pageSocket = Img(p, "IconSocket", "plate.side");
             _pageIcon = Img(p, "Icon", "content", true);
             Tip(_pageIcon.gameObject, () => _pageId, () => _quality);
             _pageIcon.gameObject.GetComponent<Hit>().Click = e => { if (e.button == PointerEventData.InputButton.Right) TakeUI(_pageId, _quality, _variant); };
             _pageName = Txt(p, "Name", "text.ember", TextAlignmentOptions.Left, FontStyles.Bold);
-            _fav = Btn(p, "Favorite", "craft.tab", out _, () => { Browser.ToggleFavorite(_pageId); _resultsGen = -1; _dirty = true; });
+            _fav = Btn(p, "Favorite", "ib.square", out _, () => { Browser.ToggleFavorite(_pageId); _resultsGen = -1; _dirty = true; });
             _favOn = Img(_fav.transform, "StarOn", "ib.star.full");
             _favOff = Img(_fav.transform, "StarOff", "ib.star.empty");
             _pageType = Txt(p, "Type", "text.body", TextAlignmentOptions.Left);
@@ -603,7 +603,7 @@ namespace Morgott.UI.ItemBrowser
                 Put(c.D, cx + CellW - 22f, cy + 2f, 18f, 18f);
                 Text(c.D, "★", 16f);
                 c.D.enabled = fav.Contains(c.Id);
-                Put(c.A, cx - 4f, cy + CellH + 2f, CellW + 8f, 38f);
+                Put(c.A, cx, cy + CellH + 2f, CellW, 38f); // within the cell width: neighbours never touch
                 Fit(c.A, L(list[n].Name), 16f);
             }
             // Thin scrollbar: track over the grid's rows, thumb = visible share.
@@ -707,7 +707,7 @@ namespace Morgott.UI.ItemBrowser
             Put(_pageType, 113f, 86f, 250f, 22f);
             Fit(_pageType, TypeName(e), 18f);
             Put(_pageDesc, 113f, 109f, 250f, 24f);
-            Text(_pageDesc, L(e.Desc) ?? "", 16f);
+            Text(_pageDesc, System.Text.RegularExpressions.Regex.Replace(L(e.Desc) ?? "", "</?size[^>]*>", ""), 16f); // mods size their own tags
             Put(_pageMod, 113f, 133f, 250f, 20f);
             Text(_pageMod, $"{Browser.ModName(e.Mod)} · {e.Id}", 15f);
             _quality = Mathf.Clamp(_quality, 1, e.MaxQuality);
@@ -720,7 +720,7 @@ namespace Morgott.UI.ItemBrowser
                 while (_quals.Count < e.MaxQuality)
                 {
                     var n = _quals.Count + 1;
-                    _quals.Add(Btn(_pageView.transform, "Q" + n, "craft.tab", out _, () => { _quality = n; _variant = 0; _pageScroll = 0; _dirty = true; }));
+                    _quals.Add(Btn(_pageView.transform, "Q" + n, "ib.square", out _, () => { _quality = n; _variant = 0; _pageScroll = 0; _dirty = true; }));
                 }
                 for (var i = 0; i < _quals.Count; i++)
                 {
@@ -858,7 +858,7 @@ namespace Morgott.UI.ItemBrowser
             }
             if (r.Right != null || r.Recipe && r.Inputs.Length > 0)
             {
-                Rule(390f, y + 8f, 2f, h - 16f);
+                Rule(390f, y + 8f, 1.5f, h - 16f);
                 var st = _stations.Next(n => Chip("Station" + n, "text.body"));
                 st.Id = r.Right;
                 st.Quality = 1;
@@ -879,7 +879,7 @@ namespace Morgott.UI.ItemBrowser
                 Put(t, 330f, y, UnitW - 340f, h);
                 Fit(t, Chance(r, used ? r.Icon : _pageId), 18f);
             }
-            Rule(0f, y + h - 3f, UnitW, 3f);
+            Rule(0f, y + h - 2f, UnitW, 1.5f);
         }
 
         // Clear hit area with an optional icon (size 0 = text only) and its text.
@@ -894,7 +894,7 @@ namespace Morgott.UI.ItemBrowser
             else Off(c.Icon);
             var tx = icon > 0f ? icon + 6f : 0f;
             Put(c.A, x + tx, y, w - tx, h);
-            Fit(c.A, text, size);
+            Text(c.A, text, size); // one size per row (a long name gets an ellipsis, never a smaller font)
         }
 
         // Sliced plate drawn at its own proportions for this height (CraftingSkin.FrameInset formula); thin > 1 = thinner
