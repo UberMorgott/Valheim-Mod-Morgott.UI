@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Morgott.Core;
 using Morgott.UI.Classify;
 using Morgott.UI.InfoScreens;
@@ -24,7 +25,7 @@ namespace Morgott.UI.ItemBrowser
         private const float UnitW = 550f, Cell = 61f, RowH = 66f;
         // Mockup A grid (docs\mockups\item-browser\a-crafting-tab-grid.png at 1920x1080): tall sockets 56x78, pitch 60 x 84,
         // grid well left of a detail well, both from y 90; pager + hint row under the wells.
-        private const float WellTop = 90f, CellX = 60f, CellY = 84f, CellTop = 102f, Footer = 82f;
+        private const float WellTop = 100f, CellX = 60f, CellY = 84f, CellTop = 116f, Footer = 82f, GridRows = 6f;
         private static readonly string[] TypeTokens = { "$ib_type_all", "$ib_type_items", "$ib_type_pieces", "$ib_type_creatures", "$ib_type_stations", "$ib_type_favorites" };
         private static readonly float[] TypeW = { 58f, 74f, 72f, 96f, 92f, 118f };
         private static readonly EntryType?[] TypeOf = { null, EntryType.Item, EntryType.Piece, EntryType.Creature, EntryType.Station, null };
@@ -74,7 +75,7 @@ namespace Morgott.UI.ItemBrowser
         private GameObject _pageView;
         private Button _back;
         private TMP_Text _crumb, _pageName, _pageType, _pageDesc;
-        private Image _pageIcon;
+        private Image _pageIcon, _backPlate, _pageDivTop, _pageDivBottom;
         private Button _fromTab, _usedTabButton;
         private TMP_Text _fromTabLabel, _usedTabLabel;
         private readonly List<Slot> _rows = new List<Slot>();
@@ -297,7 +298,7 @@ namespace Morgott.UI.ItemBrowser
             _detailWell = Img(g, "DetailWell", "craft.well");
             _detailIcon = Img(g, "DetailIcon", "content", true);
             Tip(_detailIcon.gameObject, () => _selected, () => 1);
-            _detailName = Txt(g, "DetailName", "craft.title", TextAlignmentOptions.Center);
+            _detailName = Txt(g, "DetailName", "text.body", TextAlignmentOptions.Center, FontStyles.Bold);
             _detailType = Txt(g, "DetailType", "text.muted", TextAlignmentOptions.Center, FontStyles.Italic);
             _divTop = Img(g, "DividerTop", "divider");
             _divBottom = Img(g, "DividerBottom", "divider");
@@ -321,11 +322,14 @@ namespace Morgott.UI.ItemBrowser
 
             _pageView = Child("Page").gameObject;
             var p = _pageView.transform;
+            _backPlate = Img(p, "BackPlate", "craft.category");
+            _pageDivTop = Img(p, "DividerTop", "divider");
+            _pageDivBottom = Img(p, "DividerBottom", "divider");
             _back = Btn(p, "Back", "craft.arrow.left", out _, () => Nav(_history.Back(), false));
             _crumb = Txt(p, "Crumb", "text.body", TextAlignmentOptions.Left);
             _pageIcon = Img(p, "Icon", "content", true);
             Tip(_pageIcon.gameObject, () => _pageId, () => 1);
-            _pageName = Txt(p, "Name", "craft.title", TextAlignmentOptions.Left);
+            _pageName = Txt(p, "Name", "text.body", TextAlignmentOptions.Left, FontStyles.Bold);
             _pageType = Txt(p, "Type", "text.body", TextAlignmentOptions.Left);
             _pageDesc = Txt(p, "Desc", "text.muted", TextAlignmentOptions.TopLeft, FontStyles.Italic);
             _pageDesc.textWrappingMode = TextWrappingModes.Normal;
@@ -516,22 +520,22 @@ namespace Morgott.UI.ItemBrowser
             Put(_gridView.transform, 0f, 0f, UnitW, _a.H / _k);
             if (Browser.Index == null) return;
             var h = _a.H / _k;
-            Put(_searchBack, 0f, 0f, 362f, 38f);
-            Put(_searchGlyph, 12f, 7f, 24f, 24f);
-            Put(_search.textViewport, 46f, 3f, 308f, 32f);
-            foreach (var t in _search.textViewport.GetComponentsInChildren<TMP_Text>(true)) { Put(t, 46f, 3f, 308f, 32f); Text(t, t.text, 19f); }
-            Put(_knownButton, 394f, 3f, 156f, 32f);
-            Put(_knownBox, 394f, 6f, 26f, 26f);
-            Put(_knownCheck, 394f, 6f, 26f, 26f);
+            Put(_searchBack, 0f, 0f, 362f, 42f);
+            Put(_searchGlyph, 12f, 8f, 26f, 26f);
+            Put(_search.textViewport, 48f, 4f, 306f, 34f);
+            foreach (var t in _search.textViewport.GetComponentsInChildren<TMP_Text>(true)) { Put(t, 48f, 4f, 306f, 34f); Text(t, t.text, 21f); }
+            Put(_knownButton, 394f, 5f, 156f, 32f);
+            Put(_knownBox, 394f, 8f, 26f, 26f);
+            Put(_knownCheck, 394f, 8f, 26f, 26f);
             _knownCheck.enabled = Browser.KnownOnly.Value;
-            Put(_knownLabel, 430f, 3f, 120f, 32f);
-            Fit(_knownLabel, L("$ib_known_only"), 18f);
+            Put(_knownLabel, 430f, 5f, 120f, 32f);
+            Fit(_knownLabel, L("$ib_known_only"), 20f);
             var x = 0f;
             for (var i = 0; i < _types.Length; i++)
             {
-                Put(_types[i], x, 50f, TypeW[i], 32f);
-                Put(_typeLabels[i], x + 3f, 50f, TypeW[i] - 6f, 32f);
-                Fit(_typeLabels[i], (i == 5 ? "★ " : "") + L(TypeTokens[i]), 16f);
+                Put(_types[i], x, 54f, TypeW[i], 36f);
+                Put(_typeLabels[i], x + 3f, 54f, TypeW[i] - 6f, 36f);
+                Fit(_typeLabels[i], (i == 5 ? "★ " : "") + L(TypeTokens[i]), 18f);
                 if (_types[i].interactable != (i != _type)) _types[i].interactable = i != _type;
                 x += TypeW[i] + 8f;
             }
@@ -539,7 +543,7 @@ namespace Morgott.UI.ItemBrowser
             var list = Results();
             var wellBottom = h - Footer;
             Put(_gridWell, 0f, WellTop, 362f, wellBottom - WellTop);
-            var rows = Math.Max(1, (int)((wellBottom - CellTop + CellY - CellX) / CellY));
+            var rows = Math.Max(1, (int)Math.Min(GridRows, (wellBottom - CellTop + CellY - CellX) / CellY)); // mockup A: six rows, space below
             var per = rows * 6;
             if (_selected == null && list.Count > 0) _selected = list[0].Id; // mockup A: the page opens on a selected entry
             var pages = Math.Max(1, (list.Count + per - 1) / per);
@@ -642,7 +646,7 @@ namespace Morgott.UI.ItemBrowser
             Put(_detailIcon, X + 38f, Y + 10f, 100f, 90f);
             SetIcon(_detailIcon, e.Id);
             Put(_detailName, X + 6f, Y + 104f, W - 12f, 30f);
-            Text(_detailName, L(e.Name), 22f);
+            Fit(_detailName, L(e.Name), 24f);
             Put(_detailType, X + 6f, Y + 134f, W - 12f, 22f);
             Text(_detailType, TypeName(e), 16f);
             Put(_divTop, X + 8f, Y + 162f, W - 16f, 3f);
@@ -683,7 +687,7 @@ namespace Morgott.UI.ItemBrowser
                 y += 34f;
             }
             Put(_divBottom, X + 8f, y + 6f, W - 16f, 3f);
-            var by = Math.Max(y + 20f, Y + h - 96f);
+            var by = y + 22f; // mockup A: the two page buttons right under the recipe
             Put(_usedButton, X + 6f, by, W - 12f, 38f);
             Put(_usedButton.transform.Find("Glyph"), X + 14f, by + 8f, 22f, 22f);
             Put(_usedButton.transform.Find("Label"), X + 40f, by, W - 52f, 38f);
@@ -744,35 +748,37 @@ namespace Morgott.UI.ItemBrowser
             Put(_pageView.transform, 0f, 0f, UnitW, h);
             // The one search field moves to the page's top row (typing there returns to the grid).
             _searchBack.transform.SetParent(_pageView.transform, false);
-            Put(_back, 0f, 0f, 36f, 36f);
-            Put(_crumb, 46f, 0f, 300f, 36f);
-            Text(_crumb, $"{L(TypeTokens[_type])} > {L(e.Name)}", 18f);
+            Put(_backPlate, 0f, 0f, 40f, 40f);
+            Put(_back, 9f, 9f, 22f, 22f);
+            Put(_crumb, 54f, 2f, 292f, 36f);
+            Fit(_crumb, $"{L(TypeTokens[_type])} > {L(e.Name)}", 20f);
+            Put(_pageDivTop, 0f, 48f, UnitW, 3f);
             Put(_searchBack, 356f, 0f, 194f, 36f);
             Put(_searchGlyph, 362f, 7f, 22f, 22f);
             Put(_search.textViewport, 390f, 2f, 154f, 32f);
             foreach (var t in _search.textViewport.GetComponentsInChildren<TMP_Text>(true)) { Put(t, 390f, 2f, 154f, 32f); Text(t, t.text, 16f); }
-            Put(_pageIcon, 10f, 50f, 100f, 100f);
+            Put(_pageIcon, 10f, 60f, 110f, 110f);
             SetIcon(_pageIcon, e.Id);
-            Put(_pageName, 130f, 50f, 420f, 34f);
-            Text(_pageName, L(e.Name), 26f);
-            Put(_pageType, 130f, 86f, 420f, 24f);
-            Text(_pageType, TypeName(e), 17f);
-            Put(_pageDesc, 130f, 110f, 420f, 46f);
-            Text(_pageDesc, L(e.Desc) ?? "", 16f);
+            Put(_pageName, 136f, 62f, 414f, 38f);
+            Fit(_pageName, L(e.Name), 30f);
+            Put(_pageType, 136f, 102f, 414f, 26f);
+            Text(_pageType, TypeName(e), 19f);
+            Put(_pageDesc, 136f, 130f, 414f, 46f);
+            Text(_pageDesc, L(e.Desc) ?? "", 18f);
             _pageDesc.textWrappingMode = TextWrappingModes.Normal;
 
-            var from = Browser.Index.ObtainedFrom(e.Id);
+            var from = Browser.Index.ObtainedFrom(e.Id).OrderBy(r => Rank(r.Kind)).ToList(); // recipes first (stable), then drops
             var used = Browser.Index.UsedInResults(e.Id);
-            Put(_fromTab, 26f, 164f, 196f, 36f);
-            Put(_fromTabLabel, 26f, 164f, 196f, 36f);
-            Text(_fromTabLabel, L("$ib_obtained_from"), 18f);
-            Put(_usedTabButton, 232f, 164f, 164f, 36f);
-            Put(_usedTabLabel, 232f, 164f, 164f, 36f);
-            Text(_usedTabLabel, $"{L("$ib_used_in")} ({used.Count})", 18f);
+            Put(_fromTab, 26f, 184f, 196f, 38f);
+            Put(_fromTabLabel, 26f, 184f, 196f, 38f);
+            Fit(_fromTabLabel, L("$ib_obtained_from"), 20f);
+            Put(_usedTabButton, 232f, 184f, 164f, 38f);
+            Put(_usedTabLabel, 232f, 184f, 164f, 38f);
+            Fit(_usedTabLabel, $"{L("$ib_used_in")} ({used.Count})", 20f);
             if (_fromTab.interactable == !_usedTab) _fromTab.interactable = _usedTab;
             if (_usedTabButton.interactable == _usedTab) _usedTabButton.interactable = !_usedTab;
 
-            var y = 210f;
+            var y = 232f;
             var tileRows = used.Count == 0 ? 0 : Math.Max(1, Math.Min((used.Count + 6) / 7, _usedTab ? 99 : 1));
             var tilesH = tileRows * 132f;
             var rowsShown = 0;
@@ -798,13 +804,15 @@ namespace Morgott.UI.ItemBrowser
                 t.Id = used[first + i];
                 var tx = i % 7 * (UnitW / 7f);
                 var ty = y + i / 7 * 132f;
-                Put(t.Back, tx + 2f, ty, UnitW / 7f - 4f, 128f);
+                Put(t.Back, tx + 2f, ty, UnitW / 7f - 4f, 66f);
                 Put(t.Icon, tx + 8f, ty, UnitW / 7f - 16f, 66f);
                 SetIcon(t.Icon, t.Id);
                 Put(t.A, tx, ty + 68f, UnitW / 7f, 58f);
                 Text(t.A, NameOf(t.Id), 15f);
             }
             _ = tilesH;
+            if (tiles > 0) Put(_pageDivBottom, 0f, y + (tiles + 6) / 7 * 132f + 4f, UnitW, 3f);
+            else Off(_pageDivBottom);
         }
 
         private Slot SourceRow(int i)
@@ -825,7 +833,7 @@ namespace Morgott.UI.ItemBrowser
 
         private Slot Tile(int i)
         {
-            var s = NewSlot(_pageView.transform, "Tile" + i, null);
+            var s = NewSlot(_pageView.transform, "Tile" + i, "craft.socket"); // mockup B: framed tiles
             s.A = Txt(s.Rt, "Name", "text.body", TextAlignmentOptions.Top);
             s.A.textWrappingMode = TextWrappingModes.Normal;
             Hook(s, e =>
@@ -852,7 +860,7 @@ namespace Morgott.UI.ItemBrowser
             Put(s.Icon, 14f, y + 5f, 56f, 56f);
             SetIcon(s.Icon, who);
             Put(s.A, 90f, y + 8f, 250f, 26f);
-            Text(s.A, who == null ? L("$ib_by_hand") : r.StationLevel > 0 ? $"{NameOf(who)} {r.StationLevel}" : NameOf(who), 19f);
+            Fit(s.A, who == null ? L("$ib_by_hand") : r.StationLevel > 0 ? $"{NameOf(who)} {r.StationLevel}" : NameOf(who), 21f);
             var kind = L("$ib_kind_" + r.Kind.ToString().ToLowerInvariant());
             if (r.Quality > 1) kind += " → " + L("$ib_quality") + " " + r.Quality;
             if (r.Inputs.Length > 0)
@@ -862,14 +870,14 @@ namespace Morgott.UI.ItemBrowser
                 kind += ": " + string.Join(", ", ins);
             }
             Put(s.B, 90f, y + 34f, 280f, 24f);
-            Text(s.B, kind, 15f);
+            Fit(s.B, kind, 17f);
             var o = Array.Find(r.Outputs, x => x.Prefab == item);
             Put(s.C, 360f, y, 70f, RowH);
-            Text(s.C, "x" + Amount(o), 19f);
+            Text(s.C, "x" + Amount(o), 21f);
             Put(s.D, 420f, y, 120f, RowH);
             var chance = float.IsNaN(o.Chance) ? L("$ib_weighted") : o.Chance >= 1f && r.Conditions == null ? "" : $"{o.Chance * 100f:0.#}%";
             if (r.Conditions != null) chance = (chance + " " + L(r.Conditions)).Trim();
-            Text(s.D, chance, 18f);
+            Fit(s.D, chance, 20f);
         }
     }
 }
