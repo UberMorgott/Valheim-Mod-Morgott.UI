@@ -29,7 +29,7 @@ Needs Morgott.Core and Jotunn.
 - `[Ownership] <Family>` - families Morgott.UI styles; frozen at startup.
 - `[Diagnostics] RequireAssets` - take a family only when its art loaded.
 - `[Layout] SkinScale` - 0.85-1.15 on top of the game's UI scale.
-- `[IconRestyle] Enabled` - one icon style for every item the shipped atlas lists (atlas built by MorgottTweaks
+- `[IconRestyle] Enabled` - one icon style for every item the shipped atlas lists (atlas built by Morgott.Patcher
   `tools/iconstyle`, renders from Morgott.DevTools.IconCapture); independent of the theme.
 - `[Compat] ModStatusIcons` - icons for Warfare bleeding / impale and Epic Loot paralyze (they ship none);
   `[Compat] CurrencyPocketTooltip` - CurrencyPocket's English "Coin Drop" tooltip translated.

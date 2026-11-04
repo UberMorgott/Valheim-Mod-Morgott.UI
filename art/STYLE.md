@@ -1,4 +1,4 @@
-# RuneSkin style sheet (from the approved mockups)
+# Morgott.UI style sheet (from the approved mockups)
 
 Targets: `D:\tmp\cx-augaskin\mockup-1.png` (inventory + crafting, 1672x941), `hud-status-b.png` (HUD).
 Measurements are mockup px at 1672 width; "ref px" = 1920 reference (x 1.148); sprites are authored at

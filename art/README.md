@@ -1,4 +1,4 @@
-# RuneSkin art pipeline
+# Morgott.UI art pipeline (was RuneSkin)
 
 ## Rebuild (from the repo root, PowerShell)
 
@@ -124,9 +124,9 @@ damage text A, notifications A, centre message B, biome banner B, large map `m4-
   `minimap_wind_socket` upper-right + `glyph_wind` (rotate; sailing only); `glyph_time_sun` / `glyph_time_moon` on the top arc
   (tint text_active / text_header); biome name on `tab_normal` under the ring.
 - Boss bar: `frame_boss` (Sliced, window transparent, inset L/R 154 T/B 34 sprite px) over `bar_trough` + `bar_enemy_fill`
-  (tint pool health); name on `header_plaque` above. Vaettir: this is the Unique tier for boss EnemyHud bars.
-- Enemy bars: `frame_enemy_normal|magic|rare|unique` (Vaettir tiers 1/2/3/boss) = the `VT_Frame` Sliced child stretched over the
-  Health bar, all 120x36 sprite, borders L/R 36 T/B 14, fillCenter off; template rim disabled under it; stars hidden (Vaettir
+  (tint pool health); name on `header_plaque` above. Morgott.Creatures: this is the Unique tier for boss EnemyHud bars.
+- Enemy bars: `frame_enemy_normal|magic|rare|unique` (Morgott.Creatures tiers 1/2/3/boss) = the `CR_Frame` Sliced child stretched over the
+  Health bar, all 120x36 sprite, borders L/R 36 T/B 14, fillCenter off; template rim disabled under it; stars hidden (Morgott.Creatures
   §6.2). Fill `bar_enemy_fill` (white mask, tint health red; tamed = vanilla green). Name above: body font + dark outline.
 - Damage text: font only. Body font (PT Sans; the display serif has old-style digits), TMP Bold / SDF dilate ~0.2, dark outline
   ~1 ref px, ~24 ref px, crit ~30-36; colours physical text_body, crit text_active, fire #f08a3a, frost #8ac8f0,
@@ -163,7 +163,7 @@ count (scroll).
 
 ## M6 sprites (vanilla in-game screens)
 
-Inventory of unowned screens: `docs/screen-inventory.md`. Picks (Codex, user asleep; mockups in `D:\tmp\cx-augaskin`): build HUD
+Picks (Codex, user asleep; mockups in `D:\tmp\cx-augaskin`): build HUD
 `m6-build-a` (+ stealth eye from B), trader `m6-trader-a`, sign input + text viewer `m6-text-a` (+ raven bubble from B), black screens
 `m6-load-b` (respawn without a progress bar), ship HUD `m6-ship-b`, compendium / split / barber `m6-dialogs-a`. Codex final: 15 of 16
 groups 8/10, ship ladder 7 (reefed sail, round cap). New: `glyph_stealth_eye`, `glyph_crosshair`, `glyph_ship_oar`,
@@ -214,11 +214,11 @@ from B. Codex final: 10 of 10 groups 8/10 (tab_* redraw kept out of scope: share
 - Adventure board: panel + rail title, tabs `tab_*` + `glyph_board_*`; bounty rows `row_recipe_*`, target portrait `button_round`,
   rewards `socket_req`, status plate `field_search` + text (available text_active, accepted rune_glow, done text_ok; always text, not
   colour only), accept `button_normal|disabled`; currencies `plate_currency` (+ `glyph_coins`).
-- Vaettir target panel: `frame_target` (Sliced, content inset 20 sprite px) housing the tier socket, tier-coloured serif name, HP bar
+- Morgott.Creatures target panel: `frame_target` (Sliced, content inset 20 sprite px) housing the tier socket, tier-coloured serif name, HP bar
   (`bar_trough` + `bar_enemy_fill` + tick lines + `frame_enemy_<tier>`) and status sockets `socket_status`; raid timer: rail title with
   `knot` + `bar_frame_action` over `bar_trough` + `bar_fill` tint #f08a3a. Boss bar stays `frame_boss` (M4).
-- Hamingja bleed-out: popup + ember serif title + `bar_frame_action` + `bar_fill` tint #8f989f (worn silver) + timer; surrender
-  `button_normal` "[E] ..." only when Hamingja offers it. Ally markers: `plate_marker` (name, distance / timer, slim
+- Morgott.Survival bleed-out: popup + ember serif title + `bar_frame_action` + `bar_fill` tint #8f989f (worn silver) + timer; surrender
+  `button_normal` "[E] ..." only when Morgott.Survival offers it. Ally markers: `plate_marker` (name, distance / timer, slim
   `bar_skill_trough`/`bar_skill_fill`), off-screen = `arrow_marker` (points left; flip/rotate) on the edge side; downed = `glyph_death`.
 ## Integrated action header (2026-10-27, variant A plinth)
 
