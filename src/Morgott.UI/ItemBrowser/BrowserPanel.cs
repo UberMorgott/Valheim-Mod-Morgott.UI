@@ -314,6 +314,7 @@ namespace Morgott.UI.ItemBrowser
                 var n = i;
                 _cats[i] = Btn(g, "Cat" + i, "ib.square", out _, () => { _cat = _cat == n ? -1 : n; _gridScroll = 0; _dirty = true; });
                 _catGlyphs[i] = Img(_cats[i].transform, "Glyph", "ib.cat." + CatKeys[i]);
+                if (i == 0) _catGlyphs[i].rectTransform.localRotation = Quaternion.Euler(0f, 0f, -45f); // mockup 04: diagonal sword
             }
             _caption = Txt(g, "Caption", "text.body", TextAlignmentOptions.Left);
             _empty = Txt(g, "Empty", "text.muted", TextAlignmentOptions.Top, FontStyles.Italic);
@@ -371,6 +372,7 @@ namespace Morgott.UI.ItemBrowser
         private static TMP_Text Txt(Transform parent, string name, string role, TextAlignmentOptions align, FontStyles style = FontStyles.Normal)
         {
             var t = InfoArt.RowText(parent, name, role, align);
+            OwnFit.Claim(t); // sized by this layout: TextInset's truncation shrink took ellipsized chips down to 12 (run 20261104-225215)
             t.fontStyle = style;
             t.textWrappingMode = TextWrappingModes.NoWrap;
             t.overflowMode = TextOverflowModes.Ellipsis;
@@ -512,7 +514,7 @@ namespace Morgott.UI.ItemBrowser
         private void Select(Button b, bool on)
         {
             if (b.interactable == on) b.interactable = !on;
-            PlateFit((Image)b.targetGraphic, 1.6f);
+            PlateFit((Image)b.targetGraphic, b.targetGraphic.GetComponent<SkinMark>()?.Role == "ib.square" ? 1f : 1.6f); // squares keep their full cyan rim
         }
 
         private static string L(string token) => Browser.Localize(token);
