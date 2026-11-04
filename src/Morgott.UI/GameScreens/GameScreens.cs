@@ -657,7 +657,10 @@ namespace Morgott.UI.GameScreens
             var listW = Mathf.Min(c.W * 0.32f, ThemeTokens.GetFloat("size.info.texts.list.w", 500f) * k);
             var gap = ThemeTokens.GetFloat("size.info.texts.gap", 40f) * k;
             if (frame.Find("TextList") is RectTransform list) InventoryScreen.Geo.Place(canvas, list, new InventoryScreen.Box(c.X, c.Y, listW, c.H));
-            if (frame.Find("TextArea") is RectTransform area) InventoryScreen.Geo.Place(canvas, area, new InventoryScreen.Box(c.X + listW + gap, c.Y, c.W - listW - gap, c.H));
+            // The reading pane: vanilla TextArea and Epic Loot's clone of it (EpicLootMagicTextArea, a sibling it shows instead).
+            var pane = new InventoryScreen.Box(c.X + listW + gap, c.Y, c.W - listW - gap, c.H);
+            foreach (Transform child in frame)
+                if (child.name.EndsWith("TextArea", StringComparison.Ordinal) && child is RectTransform area) InventoryScreen.Geo.Place(canvas, area, pane);
             // The active effects list copied the text scroll's rect once (ActiveEffectsList.Create): keep it on it.
             var scroll = d.m_textArea ? d.m_textArea.GetComponentInParent<ScrollRect>(true) : null;
             if (scroll && scroll.transform.parent.Find(ActiveEffectsPage.RootName) is RectTransform fx)
