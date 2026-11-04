@@ -97,6 +97,7 @@ namespace Morgott.UI.InventoryScreen
         // Posed height span (MeasureHeight), the equipment revision it was measured for and the bake scratch mesh.
         private int _measuredFor = int.MinValue, _settleAt;
         private const int SettleFrames = 30;
+        private bool _clothSettled;
         private float _posedLo, _posedHi, _posedNearLo, _posedNearHi;
         private readonly List<Vector3> _points = new List<Vector3>();
         // Share of the height span at each end whose points' depth counts for the perspective fit (feet, helmet).
@@ -603,6 +604,10 @@ namespace Morgott.UI.InventoryScreen
                 return;
             }
             if (_measuredFor != _applied) _settleAt = Time.frameCount + SettleFrames;
+            // A Unity Cloth's render bounds come from its simulation: in the refresh frame the cloth just attached has
+            // not simulated at the preview pose yet and its bounds are those of the bone skinning (troll cape2: -8.99..46.82 m,
+            // run 20261104-184701; the figure shrank on every equip until the re-measure). Cloth joins at the re-measure.
+            _clothSettled = settle;
             _measuredFor = _applied;
             lo = float.MaxValue;
             hi = float.MinValue;
@@ -665,7 +670,7 @@ namespace Morgott.UI.InventoryScreen
                 // 20261104-174443-2 / -181346).
                 if (s.TryGetComponent<Cloth>(out var cloth) && cloth.enabled)
                 {
-                    AddCorners(s.bounds);
+                    if (_clothSettled) AddCorners(s.bounds);
                     return;
                 }
                 s.BakeMesh(_bake, true); // scaled local space: localToWorldMatrix to world
