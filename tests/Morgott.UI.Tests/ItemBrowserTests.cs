@@ -128,6 +128,21 @@ namespace Morgott.UI.Tests
         }
 
         [Fact]
+        public void NpcGearNothingProducesIsUnlisted()
+        {
+            var ix = Sample();
+            ix.Add(new Entry { Id = "FW_CapeWolf", Name = "$item_cape_wolf", Type = EntryType.Item });
+            ix.Add(new Entry { Id = "FW_KnifeSilver", Name = "$item_knife_silver", Type = EntryType.Item });
+            ix.Add(Drop("FallenWarrior", "FW_KnifeSilver")); // its own CharacterDrop makes it obtainable
+            foreach (var id in new[] { "FW_CapeWolf", "FW_KnifeSilver", "Bronze", "Seagal" }) ix.NpcGear.Add(id);
+            ix.HideNpcOnlyGear();
+            Assert.Equal(BrowserIndex.UnlistedReason, ix.Entries["FW_CapeWolf"].Hidden);
+            Assert.Null(ix.Entries["FW_KnifeSilver"].Hidden);
+            Assert.Null(ix.Entries["Bronze"].Hidden);  // crafted
+            Assert.Null(ix.Entries["Seagal"].Hidden);  // no item
+        }
+
+        [Fact]
         public void ModFilterMatchesGuidOrName()
         {
             var ix = Sample();

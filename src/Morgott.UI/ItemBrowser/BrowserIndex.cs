@@ -39,6 +39,17 @@ namespace Morgott.UI.ItemBrowser
             "TorchMist", "FishAnglerRaw", "fallenvalkyrie_screech", "fallenvalkyrie_swoopattack", "fallenvalkyrie_wingspin",
         };
 
+        /// <summary>Items a humanoid wears (default / random items and sets), filled by the vanilla scan.</summary>
+        public readonly HashSet<string> NpcGear = new HashSet<string>(StringComparer.Ordinal);
+
+        /// <summary>After every relation is in (scan + providers): NPC gear nothing produces (FallenWarrior FW_ /
+        /// ShadowPerson SP_ copies of player gear) is unlisted like the test prefabs.</summary>
+        public void HideNpcOnlyGear()
+        {
+            foreach (var id in NpcGear)
+                if (Entries.TryGetValue(id, out var e) && e.Type == EntryType.Item && e.Hidden == null && ObtainedFrom(id).Count == 0) e.Hidden = UnlistedReason;
+        }
+
         // First writer wins: the vanilla scan adds its entries before any relation names a pseudo source.
         public Entry Add(Entry e)
         {

@@ -62,6 +62,11 @@ namespace Morgott.UI.ItemBrowser
             _ix.Add(e);
         }
 
+        private static void Gear(GameObject[] items)
+        {
+            if (items != null) foreach (var g in items) if (g) _ix.NpcGear.Add(g.name);
+        }
+
         private static void Sources(GameObject go)
         {
             var id = go.name;
@@ -81,6 +86,14 @@ namespace Morgott.UI.ItemBrowser
                             if (d.m_prefab)
                                 Add(RelationKind.CreatureDrop, id, null, new[] { new Stack(d.m_prefab.name, d.m_amountMin, Math.Max(d.m_amountMin, d.m_amountMax), Mathf.Clamp01(d.m_chance)) }, null, 0, 0,
                                     d.m_onePerPlayer ? "$ib_cond_oneperplayer" : d.m_levelMultiplier && !d.m_dontScale ? "$ib_cond_perstar" : null);
+                        break;
+                    case Humanoid h when !(h is Player):
+                        Gear(h.m_defaultItems);
+                        Gear(h.m_randomWeapon);
+                        Gear(h.m_randomArmor);
+                        Gear(h.m_randomShield);
+                        if (h.m_randomSets != null) foreach (var set in h.m_randomSets) Gear(set?.m_items);
+                        if (h.m_randomItems != null) foreach (var ri in h.m_randomItems) if (ri?.m_prefab) _ix.NpcGear.Add(ri.m_prefab.name);
                         break;
                     case DropOnDestroyed dd: Table(RelationKind.Destroy, id, dd.m_dropWhenDestroyed); break;
                     case MineRock mr: Name(mr.m_name); Table(RelationKind.Mine, id, mr.m_dropItems); break;

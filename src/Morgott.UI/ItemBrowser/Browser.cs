@@ -52,6 +52,7 @@ namespace Morgott.UI.ItemBrowser
             var ix = new BrowserIndex();
             VanillaScan.Run(ix, id => mods.TryGetValue(id, out var g) ? g : null);
             foreach (var r in ItemSources.Collect()) ix.Add(r);
+            ix.HideNpcOnlyGear();
             _mods = mods;
             Index = ix; // whole swap: no half-built snapshot visible
             _fingerprint = fp;
