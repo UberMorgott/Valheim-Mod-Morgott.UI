@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace Morgott.UI.Restyle
 {
@@ -11,7 +12,7 @@ namespace Morgott.UI.Restyle
     // CanvasGroups). A CanvasGroup at alpha 0 only multiplies vertex alpha: the geometry is still batched and drawn
     // (overdraw), which is what this replaces. Keyed by owner, so independent reasons (full window, large map, fade)
     // stack: the gate goes on with the first owner and comes off with the last; a Canvas RuneSkin added is re-enabled and
-    // kept (a plain nested canvas changes nothing), an existing one gets its own enabled state back. Destroying the added
+    // kept with a GraphicRaycaster when its parents had one (a nested canvas without one drops its subtree from raycasts), an existing one gets its own enabled state back. Destroying the added
     // canvas instead left its whole subtree undrawn for good (Unity 6000.0.75: DestroyImmediate of a disabled nested Canvas
     // does not hand the CanvasRenderers back to the parent canvas, SetAllDirty does not help; Vaettir boss bar segments,
     // caps and despawn bar gone after the inventory / map covered them, offline repro D:\tmp\uirepro Repro.cs).
@@ -101,7 +102,22 @@ namespace Morgott.UI.Restyle
             Prune();
             var canvas = go.GetComponent<Canvas>();
             var added = !canvas;
-            if (added) canvas = go.AddComponent<Canvas>();
+            if (added)
+            {
+                // Read the parent's raycaster before the nested canvas exists (GetComponentInParent would find it).
+                var parentRaycaster = go.transform.parent ? go.transform.parent.GetComponentInParent<GraphicRaycaster>() : null;
+                canvas = go.AddComponent<Canvas>();
+                // The kept canvas takes its graphics out of the parent raycaster (GraphicRegistry is per canvas): without
+                // its own raycaster the whole subtree drew but took no pointer (user 2026-11-04: inventory dead to the mouse
+                // after the first park, pause menu fine).
+                if (parentRaycaster && !go.GetComponent<GraphicRaycaster>())
+                {
+                    var r = go.AddComponent<GraphicRaycaster>();
+                    r.ignoreReversedGraphics = parentRaycaster.ignoreReversedGraphics;
+                    r.blockingObjects = parentRaycaster.blockingObjects;
+                    r.blockingMask = parentRaycaster.blockingMask;
+                }
+            }
             Entries[go] = new Entry { Canvas = canvas, Prior = added || canvas.enabled };
             if (!Suspended) canvas.enabled = false;
         }
