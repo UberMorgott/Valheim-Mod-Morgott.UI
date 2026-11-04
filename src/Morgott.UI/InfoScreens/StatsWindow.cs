@@ -139,7 +139,7 @@ namespace Morgott.UI.InfoScreens
             {
                 _shownInventory = false; // a page switch keeps the inventory
                 Close();
-            });
+            }, _close);
             Plugin.Log.LogInfo($"[Morgott.UI] character stats window attached (button={(bool)_button})");
         }
 

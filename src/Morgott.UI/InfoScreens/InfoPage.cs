@@ -34,6 +34,8 @@ namespace Morgott.UI.InfoScreens
         private Image _back;
         private Button _esc;
         private readonly List<Image> _dims = new List<Image>(2);
+        private UIGroupHandler _group;
+        private Selectable _focus;
 
         // Per-frame layout of a page without its own LateUpdate (compendium), with the skin scale.
         public Action<float> OnLayout;
@@ -60,13 +62,15 @@ namespace Morgott.UI.InfoScreens
         public static Rect ScreenRect() => new Rect(0f, 0f, Screen.width, Screen.height);
 
         // frame null (stats: own painted chrome over its own opaque scrim): single-page + FullWindow only.
-        public static InfoPage Ensure(RectTransform root, RectTransform frame, string openMethod, Action close)
+        public static InfoPage Ensure(RectTransform root, RectTransform frame, string openMethod, Action close, Selectable focus = null)
         {
             var p = root.GetComponent<InfoPage>() ?? root.gameObject.AddComponent<InfoPage>();
             p._frame = frame;
             p._close = close;
+            p._focus = focus;
             var canvas = root.GetComponentInParent<Canvas>(true);
             p._canvas = canvas ? (RectTransform)canvas.rootCanvas.transform : null;
+            p.EnsureGroup(root);
             if (!frame || p._back) return p;
             p._back = new GameObject(BackName, typeof(RectTransform)).AddComponent<Image>();
             p._back.transform.SetParent(frame.parent, false);
@@ -81,6 +85,23 @@ namespace Morgott.UI.InfoScreens
             return p;
         }
 
+        // Gamepad focus follows the page: vanilla OnOpen* only activates the inventory's Info group (m_uiGroups[2],
+        // InventoryGui.cs:2349) - the header row, hidden under the page. A page without its own UIGroupHandler gets one
+        // ranked above every inventory group (UIGroupHandler.IsHighestPriority: the active group of the highest priority
+        // takes the focus), so while it shows the inventory groups are inactive and the pad lands on the page (its own
+        // tab, else Esc / the given control); closed (inactive), the inventory's groups take over again.
+        private void EnsureGroup(RectTransform root)
+        {
+            if (_group || root.GetComponentInChildren<UIGroupHandler>(true)) return;
+            var gui = root.GetComponentInParent<InventoryGui>(true);
+            var top = 0;
+            if (gui && gui.m_uiGroups != null)
+                foreach (var g in gui.m_uiGroups)
+                    if (g) top = Mathf.Max(top, g.m_groupPriority);
+            _group = root.gameObject.AddComponent<UIGroupHandler>();
+            _group.m_groupPriority = top + 1;
+        }
+
         private static Button MakeEsc(RectTransform frame, Action close)
         {
             var go = new GameObject(EscName, typeof(RectTransform));
@@ -88,7 +109,7 @@ namespace Morgott.UI.InfoScreens
             var back = go.AddComponent<Image>();
             var b = go.AddComponent<Button>();
             b.targetGraphic = back;
-            b.navigation = new Navigation { mode = Navigation.Mode.None };
+            b.navigation = new Navigation { mode = Navigation.Mode.Automatic }; // gamepad reaches it from the tab row
             b.onClick.AddListener(() => close?.Invoke());
             var mark = DollCell.Mark(back, "info.tab", "page close key cap (mockup 02: Esc top right)");
             mark.Outcome = Restyler.Apply(back, mark, ThemeTokens.Role(mark.Role)) ? Outcome.Styled : Outcome.Degraded;
@@ -118,6 +139,12 @@ namespace Morgott.UI.InfoScreens
         {
             foreach (var d in _dims)
                 if (d && d.enabled) d.enabled = false;
+            if (_group)
+            {
+                var own = _tabs?.OwnButton;
+                var focus = own ? own.gameObject : _esc ? _esc.gameObject : _focus ? _focus.gameObject : null;
+                if (_group.m_defaultElement != focus) _group.m_defaultElement = focus;
+            }
             if (!_back || !_canvas || !_frame) return;
             if (_back.color.a < 1f || _back.sprite) { _back.sprite = null; _back.color = Backing(); } // a restyle pass must not thin it
             var at = _back.transform.GetSiblingIndex();

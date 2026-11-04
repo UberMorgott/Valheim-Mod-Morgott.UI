@@ -44,6 +44,17 @@ namespace Morgott.UI.InfoScreens
             _close = close;
         }
 
+        // The tab of this panel (drawn selected): the gamepad's default element of the page (InfoPage).
+        public Button OwnButton
+        {
+            get
+            {
+                foreach (var t in _tabs)
+                    if (t.Own && t.Button.gameObject.activeSelf) return t.Button;
+                return null;
+            }
+        }
+
         public int Count
         {
             get
@@ -92,7 +103,7 @@ namespace Morgott.UI.InfoScreens
             var t = new Tab { Back = go.AddComponent<Image>() };
             t.Button = go.AddComponent<Button>();
             t.Button.targetGraphic = t.Back;
-            t.Button.navigation = new Navigation { mode = Navigation.Mode.None };
+            t.Button.navigation = new Navigation { mode = Navigation.Mode.Automatic }; // gamepad walks the row (InfoPage focus group)
             var tab = t;
             t.Button.onClick.AddListener(() => Click(tab));
             var mark = DollCell.Mark(t.Back, "info.tab", "info panel tab (mirror of an InventoryGui.m_info button)");
