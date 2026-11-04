@@ -197,6 +197,140 @@ namespace Morgott.UI.Tests
             Assert.NotEqual(BrowserIndex.Mix(BrowserIndex.Mix(BrowserIndex.Seed, "ab"), "c"), BrowserIndex.Mix(BrowserIndex.Mix(BrowserIndex.Seed, "a"), "bc"));
         }
 
+        // ---------------------------------------------------------------- PageModel (item page)
+
+        private static readonly ItemDrop.ItemData.ItemType One = ItemDrop.ItemData.ItemType.OneHandedWeapon;
+
+        [Theory]
+        [InlineData(ItemDrop.ItemData.ItemType.OneHandedWeapon, Skills.SkillType.Swords, false, 0f, false, ItemCategory.Weapons)]
+        [InlineData(ItemDrop.ItemData.ItemType.Shield, Skills.SkillType.Blocking, false, 0f, false, ItemCategory.Weapons)]
+        [InlineData(ItemDrop.ItemData.ItemType.Torch, Skills.SkillType.Clubs, false, 0f, false, ItemCategory.Weapons)]
+        [InlineData(ItemDrop.ItemData.ItemType.TwoHandedWeapon, Skills.SkillType.Pickaxes, false, 0f, false, ItemCategory.Tools)]
+        [InlineData(ItemDrop.ItemData.ItemType.OneHandedWeapon, Skills.SkillType.Fishing, false, 0f, false, ItemCategory.Tools)]
+        [InlineData(ItemDrop.ItemData.ItemType.OneHandedWeapon, Skills.SkillType.Swords, true, 0f, false, ItemCategory.Tools)]   // Hammer: build pieces
+        [InlineData(ItemDrop.ItemData.ItemType.Tool, Skills.SkillType.Swords, false, 0f, false, ItemCategory.Tools)]
+        [InlineData(ItemDrop.ItemData.ItemType.Shoulder, Skills.SkillType.Swords, false, 0f, false, ItemCategory.Armor)]
+        [InlineData(ItemDrop.ItemData.ItemType.Trinket, Skills.SkillType.Swords, false, 0f, false, ItemCategory.Utility)]
+        [InlineData(ItemDrop.ItemData.ItemType.Utility, Skills.SkillType.Swords, false, 0f, false, ItemCategory.Utility)]
+        [InlineData(ItemDrop.ItemData.ItemType.AmmoNonEquipable, Skills.SkillType.Swords, false, 0f, false, ItemCategory.Ammo)]
+        [InlineData(ItemDrop.ItemData.ItemType.Consumable, Skills.SkillType.Swords, false, 20f, false, ItemCategory.Food)]
+        [InlineData(ItemDrop.ItemData.ItemType.Consumable, Skills.SkillType.Swords, false, 0f, true, ItemCategory.Meads)]
+        [InlineData(ItemDrop.ItemData.ItemType.Consumable, Skills.SkillType.Swords, false, 0f, false, ItemCategory.Misc)]
+        [InlineData(ItemDrop.ItemData.ItemType.Material, Skills.SkillType.Swords, false, 0f, false, ItemCategory.Materials)]
+        [InlineData(ItemDrop.ItemData.ItemType.Trophy, Skills.SkillType.Swords, false, 0f, false, ItemCategory.Trophies)]
+        [InlineData(ItemDrop.ItemData.ItemType.Fish, Skills.SkillType.Swords, false, 0f, false, ItemCategory.Fish)]
+        [InlineData(ItemDrop.ItemData.ItemType.Misc, Skills.SkillType.Swords, false, 0f, false, ItemCategory.Misc)]
+        public void Categorize(ItemDrop.ItemData.ItemType type, Skills.SkillType skill, bool pieces, float food, bool effect, ItemCategory want) =>
+            Assert.Equal(want, PageModel.Categorize(type, skill, pieces, food, 0f, 0f, effect));
+
+        [Fact]
+        public void EitrOrStaminaFoodIsFood()
+        {
+            Assert.Equal(ItemCategory.Food, PageModel.Categorize(ItemDrop.ItemData.ItemType.Consumable, Skills.SkillType.Swords, false, 0f, 0f, 30f, true));
+            Assert.Equal(ItemCategory.Food, PageModel.Categorize(ItemDrop.ItemData.ItemType.Consumable, Skills.SkillType.Swords, false, 0f, 10f, 0f, false));
+            Assert.Equal(ItemCategory.Weapons, PageModel.Categorize(One, Skills.SkillType.Swords, false, 0f, 0f, 0f, false));
+        }
+
+        // SwordBronze: craft at forge (q1), a second modded recipe (q1, workbench), upgrades q2..q3, a drop, used in an atgeir.
+        private static BrowserIndex Sword()
+        {
+            var ix = Sample();
+            ix.Add(new Entry { Id = "SwordBronze", Name = "$item_sword_bronze", Type = EntryType.Item, MaxQuality = 3 });
+            ix.Add(new Entry { Id = "Draugr", Name = "$enemy_draugr", Type = EntryType.Creature });
+            ix.Add(Craft("SwordBronze", 1, "Bronze", "Wood"));
+            ix.Add(new Relation { Kind = RelationKind.Craft, Source = "Recipe_SwordBronze_alt", Station = "piece_workbench", StationLevel = 2, Quality = 1, Inputs = new[] { new Stack("Copper", 6, 6), new Stack("Tin", 2, 2) }, Outputs = new[] { new Stack("SwordBronze") } });
+            ix.Add(Craft("SwordBronze", 2, "Bronze"));
+            ix.Add(Craft("SwordBronze", 3, "Bronze", "Tin"));
+            ix.Add(Drop("Draugr", "SwordBronze", 0.05f));
+            ix.Add(new Relation { Kind = RelationKind.Craft, Source = "Recipe_AtgeirBronze", Station = "forge", Quality = 1, Inputs = new[] { new Stack("SwordBronze", 1, 1), new Stack("Bronze", 10, 10) }, Outputs = new[] { new Stack("AtgeirBronze") } });
+            return ix;
+        }
+
+        [Fact]
+        public void ObtainAtQualityOneHasRecipesThenDrops()
+        {
+            var rows = PageModel.Obtain(Sword(), "SwordBronze", 1);
+            Assert.Equal(new[] { RelationKind.Craft, RelationKind.Craft, RelationKind.CreatureDrop }, rows.Select(r => r.R.Kind));
+            Assert.True(rows[0].Recipe);
+            Assert.Equal("forge", rows[0].Right);
+            Assert.Equal(new[] { "Bronze", "Wood" }, rows[0].Inputs.Select(s => s.Prefab));
+            Assert.False(rows[2].Recipe);
+            Assert.Equal("Draugr", rows[2].Icon);
+            Assert.Null(rows[2].Right);
+        }
+
+        [Fact]
+        public void UpgradeRowStartsWithTheItemOneQualityLowerAndDropsAreQualityOneOnly()
+        {
+            var rows = PageModel.Obtain(Sword(), "SwordBronze", 3);
+            var up = Assert.Single(rows);
+            Assert.Equal(RelationKind.Upgrade, up.R.Kind);
+            Assert.Equal(new[] { "SwordBronze", "Bronze", "Tin" }, up.Inputs.Select(s => s.Prefab));
+            Assert.Equal(1, up.Inputs[0].Min);
+            Assert.Equal(2, up.BaseQuality);
+            Assert.Equal(3, up.Quality);
+            Assert.Equal(2, up.Lines);
+            Assert.Equal(PageModel.RowH + PageModel.LineH, PageModel.Height(up, false));
+        }
+
+        [Fact]
+        public void UsedInListsEveryRelationAndOwnUpgradesUnfiltered()
+        {
+            var rows = PageModel.UsedIn(Sword(), "SwordBronze");
+            Assert.Equal(new[] { "SwordBronze", "SwordBronze", "AtgeirBronze" }, rows.Select(r => r.Icon));
+            Assert.Equal(new[] { 2, 3, 0 }, rows.Select(r => r.Quality));
+            Assert.Equal("forge", rows[2].Right);
+            // A creature's page: its drops, no source repeated on the right.
+            var drop = Assert.Single(PageModel.UsedIn(Sword(), "Draugr"));
+            Assert.Equal("SwordBronze", drop.Icon);
+            Assert.Null(drop.Right);
+            Assert.Empty(drop.Inputs);
+            // A relation with several results: a row each.
+            var ix = Sword();
+            ix.Add(new Relation { Kind = RelationKind.LootTable, Source = "EL:loottable:Draugr", Outputs = new[] { new Stack("Tin", 1, 1, float.NaN), new Stack("Copper", 1, 1, float.NaN) } });
+            Assert.Equal(new[] { "Tin", "Copper" }, PageModel.UsedIn(ix, "EL:loottable:Draugr").Select(r => r.Icon));
+        }
+
+        [Fact]
+        public void VariantFeedsTheMaterialsTake()
+        {
+            var ix = Sword();
+            Assert.Equal(2, PageModel.Variants(ix, "SwordBronze", 1).Count);
+            Assert.Equal(new[] { ("Bronze", 2, 1), ("Wood", 2, 1) }, PageModel.Materials(ix, "SwordBronze", 1, 0));
+            Assert.Equal(new[] { ("Copper", 6, 1), ("Tin", 2, 1) }, PageModel.Materials(ix, "SwordBronze", 1, 1));
+            Assert.Equal(new[] { ("Copper", 6, 1), ("Tin", 2, 1) }, PageModel.Materials(ix, "SwordBronze", 1, 9)); // clamped
+            Assert.Null(PageModel.Materials(ix, "Tin", 1, 0));
+        }
+
+        [Fact]
+        public void QualityCarriesIntoTheTake()
+        {
+            var ix = Sword();
+            // Quality 3: the q3 upgrade's inputs plus the base at quality 2 (was ObjectDB.GetRecipe + hardcoded quality 1).
+            Assert.Equal(new[] { ("SwordBronze", 1, 2), ("Bronze", 2, 1), ("Tin", 2, 1) }, PageModel.Materials(ix, "SwordBronze", 3, 0));
+            Assert.Single(PageModel.Variants(ix, "SwordBronze", 2));
+            Assert.Empty(PageModel.Variants(ix, "SwordBronze", 4));
+        }
+
+        [Fact]
+        public void VariantLabelsNameStationAndLevelThenNumberRepeats()
+        {
+            var ix = Sword();
+            ix.Add(new Relation { Kind = RelationKind.Craft, Source = "Recipe_SwordBronze_3", Station = "forge", StationLevel = 1, Quality = 1, Inputs = new[] { new Stack("Tin", 9, 9) }, Outputs = new[] { new Stack("SwordBronze") } });
+            var labels = PageModel.VariantLabels(PageModel.Variants(ix, "SwordBronze", 1), id => id == "forge" ? "Forge" : "Workbench", "By hand", "lvl", "Variant");
+            Assert.Equal(new[] { "Forge lvl1", "Workbench lvl2", "Variant 3" }, labels);
+        }
+
+        [Fact]
+        public void MaxFirstStopsWhenTheTailFits()
+        {
+            var h = new[] { 44f, 61f, 91f, 44f, 83f };
+            Assert.Equal(0, PageModel.MaxFirst(h, 400f));
+            Assert.Equal(2, PageModel.MaxFirst(h, 220f));  // 91 + 44 + 83 = 218 fits, + 61 does not
+            Assert.Equal(4, PageModel.MaxFirst(h, 50f));   // the last block alone is taller: it is the last stop
+            Assert.Equal(0, PageModel.MaxFirst(new float[0], 10f));
+        }
+
         [Theory]
         [InlineData("ashland_pot1_green", "Ashlands pot (green)")]
         [InlineData("CastleKit_brazier", "Castle brazier")]

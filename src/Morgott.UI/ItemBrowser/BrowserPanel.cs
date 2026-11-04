@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using Morgott.Core;
 using Morgott.UI.Classify;
 using Morgott.UI.InfoScreens;
@@ -14,21 +13,21 @@ using UnityEngine.UI;
 
 namespace Morgott.UI.ItemBrowser
 {
-    // The ITEMS tab of the crafting window (docs\item-browser-design.md section 1, mockups docs\mockups\item-browser\
-    // a-crafting-tab-grid.png = grid view, b-crafting-tab-sources.png = item page). Tab = clone of m_tabUpgrade in the
-    // tab row as VNEI does (MainVneiHandler.GetTabButton); up = RecipeList + Decription off, this panel over the crafting
-    // body (CraftingSkin.Apply places it in the box VNEI's browser had). Everything is laid out in mockup units: the
-    // panel is 550 units wide, every box below is scaled by the body width.
+    // The ITEMS tab of the crafting window (docs\item-browser-design.md sections 1 + 11, approved mockups
+    // docs\mockups\2026-11-04\04-items-right-panel.png = list, 05-items-right-panel-item-page.png = item page). Tab = clone
+    // of m_tabUpgrade in the tab row as VNEI does (MainVneiHandler.GetTabButton); up = RecipeList + Decription off, this
+    // panel over the crafting body (CraftingSkin.Apply). Laid out in mockup units: the panel is 550 units wide (mockup px
+    // x 0.905), every box below is scaled by the body width.
     public sealed class BrowserPanel : MonoBehaviour
     {
         public const string TabName = "MorgottItemsTab";
-        private const float UnitW = 550f, Cell = 61f, RowH = 76f;
-        // Mockup A grid (docs\mockups\item-browser\a-crafting-tab-grid.png at 1920x1080): tall sockets 56x78, pitch 60 x 84,
-        // grid well left of a detail well, both from y 90; pager + hint row under the wells.
-        private const float WellTop = 108f, CellX = 60f, CellY = 84f, CellTop = 124f, Footer = 82f, GridRows = 6f;
-        private static readonly string[] TypeTokens = { "$ib_type_all", "$ib_type_items", "$ib_type_pieces", "$ib_type_creatures", "$ib_type_stations", "$ib_type_favorites" };
-        private static readonly float[] TypeW = { 58f, 74f, 72f, 96f, 92f, 118f };
+        private const float UnitW = 550f;
+        // List (mockup 04): search, type row, category row, caption, 6-column grid with a thin scrollbar.
+        private const float TypeY = 50f, TypeH = 34f, CatY = 97f, CatH = 43f, CellPitchX = 89.5f, CellW = 80f, CellH = 70f, CellPitchY = 114f;
+        private static readonly string[] TypeTokens = { "$ib_type_all", "$ib_type_items", "$ib_type_pieces", "$ib_type_creatures", "$ib_type_stations", null };
+        private static readonly float[] TypeW = { 62f, 94f, 94f, 101f, 93f, 36f };
         private static readonly EntryType?[] TypeOf = { null, EntryType.Item, EntryType.Piece, EntryType.Creature, EntryType.Station, null };
+        private static readonly string[] CatKeys = { "weapons", "armor", "utility", "ammo", "tools", "food", "meads", "materials", "trophies", "fish", "misc" };
 
         public static BrowserPanel Instance { get; private set; }
         public static bool Up => Instance && Instance._up;
@@ -44,51 +43,59 @@ namespace Morgott.UI.ItemBrowser
         private float _k, _f;
         private bool _dirty = true;
 
-        // state
+        // state; back to the list keeps search, type, category and scroll
         private string _query = "";
-        private int _type = 1, _gridPage, _rowScroll, _rowScrollMax, _gridPages = 1; // maxima from the last layout
-        private bool _usedTab;
-        private string _selected, _pageId;
+        private int _type = 1, _cat = -1, _gridScroll, _gridScrollMax, _pageScroll, _pageScrollMax, _quality = 1, _variant;
+        private string _pageId;
         private readonly History _history = new History();
         private List<Entry> _results = new List<Entry>();
-        private int _resultsGen = -1;
+        private int _resultsGen = -1, _resultsType = -1, _resultsCat = -2;
         private bool _resultsKnownOnly, _resultsDev;
         private string _resultsQuery;
-        private int _resultsType = -1;
 
-        // grid view
+        // list view
+        private GameObject _gridView;
         private TMP_InputField _search;
-        private Image _searchBack, _searchGlyph, _knownBox, _knownCheck;
-        private TMP_Text _knownLabel, _pagerText, _hint;
-        private Button _knownButton, _prev, _next;
+        private Image _searchBack, _searchGlyph, _track, _thumb, _typeStar;
+        private TMP_Text _caption, _empty;
         private readonly Button[] _types = new Button[6];
         private readonly TMP_Text[] _typeLabels = new TMP_Text[6];
+        private readonly Button[] _cats = new Button[CatKeys.Length];
+        private readonly Image[] _catGlyphs = new Image[CatKeys.Length];
         private readonly List<Slot> _cells = new List<Slot>();
-        private Image _gridWell, _prevPlate, _nextPlate, _detailWell, _detailIcon, _divTop, _divBottom, _stationIcon;
-        private TMP_Text _detailName, _detailType, _stationText, _arrow, _noRecipe;
-        private readonly List<Slot> _reqRows = new List<Slot>();
-        private Slot _outRow;
-        private Button _usedButton, _fromButton;
-        private GameObject _gridView;
 
         // item page
         private GameObject _pageView;
-        private Button _back;
-        private TMP_Text _crumb, _pageName, _pageType, _pageDesc;
-        private Image _pageIcon, _backPlate, _pageDivTop, _pageDivBottom, _pageDivTabs;
-        private Button _fromTab, _usedTabButton;
-        private TMP_Text _fromTabLabel, _usedTabLabel;
-        private readonly List<Slot> _rows = new List<Slot>();
-        private readonly List<Slot> _tiles = new List<Slot>();
+        private Button _back, _fav;
+        private Image _backPlate, _pageSocket, _pageIcon, _favOn, _favOff;
+        private TMP_Text _crumb, _pageName, _pageType, _pageDesc, _pageMod, _qualLabel;
+        private readonly List<Button> _quals = new List<Button>(), _variants = new List<Button>();
+        private Image _fromHeader, _usedHeader;
+        private TMP_Text _fromLabel, _usedLabel, _fromNote, _usedNote;
+        private readonly Pool<Slot> _sockets = new Pool<Slot>(), _inChips = new Pool<Slot>(), _titles = new Pool<Slot>(), _stations = new Pool<Slot>();
+        private readonly Pool<TMP_Text> _chances = new Pool<TMP_Text>();
+        private readonly Pool<Image> _rules = new Pool<Image>();
 
-        // One pooled interactive element: back plate, icon, up to three texts, the entry it shows.
+        // One pooled interactive element: back plate (or clear hit area), icon, texts, the entry it shows.
         private sealed class Slot
         {
             public RectTransform Rt;
             public Image Back, Icon;
-            public TMP_Text A, B, C, D;
+            public TMP_Text A, D;
             public string Id;
             public int Quality = 1;
+        }
+
+        private sealed class Pool<T> where T : class
+        {
+            public readonly List<T> Items = new List<T>();
+            public int Used;
+
+            public T Next(Func<int, T> make)
+            {
+                if (Used == Items.Count) Items.Add(make(Items.Count));
+                return Items[Used++];
+            }
         }
 
         // Pointer relay: click / enter callbacks per slot, the tooltip filled on enter (before UITooltip's own handler).
@@ -239,7 +246,7 @@ namespace Morgott.UI.ItemBrowser
 
         private void Keys()
         {
-            if (ZInput.GetMouseButtonDown(3) || ZInput.GetKeyDown(KeyCode.LeftArrow)) Nav(_history.Back(), false);
+            if (ZInput.GetMouseButtonDown(3) || ZInput.GetKeyDown(KeyCode.LeftArrow)) { if (_pageId != null) Nav(_history.Back(), false); }
             else if (ZInput.GetMouseButtonDown(4) || ZInput.GetKeyDown(KeyCode.RightArrow)) { var f = _history.Forward(); if (f != null) Nav(f, false); }
             var wheel = ZInput.GetMouseScrollWheel();
             if (wheel == 0f || !RectTransformUtility.RectangleContainsScreenPoint(_root, ZInput.pointerPosition, null)) return;
@@ -247,15 +254,15 @@ namespace Morgott.UI.ItemBrowser
             var step = wheel < 0 ? 1 : -1;
             if (_pageId != null)
             {
-                var next = Mathf.Clamp(_rowScroll + step, 0, _rowScrollMax);
-                if (next == _rowScroll) return;
-                _rowScroll = next;
+                var next = Mathf.Clamp(_pageScroll + step, 0, _pageScrollMax);
+                if (next == _pageScroll) return;
+                _pageScroll = next;
             }
             else
             {
-                var next = Mathf.Clamp(_gridPage + step, 0, _gridPages - 1);
-                if (next == _gridPage) return;
-                _gridPage = next;
+                var next = Mathf.Clamp(_gridScroll + step, 0, _gridScrollMax);
+                if (next == _gridScroll) return;
+                _gridScroll = next;
             }
             _dirty = true;
         }
@@ -280,9 +287,10 @@ namespace Morgott.UI.ItemBrowser
         // Pending renders land without a relayout: only the icons of visible slots are re-read.
         private void Icons()
         {
-            foreach (var list in new[] { _cells, _rows, _tiles })
+            foreach (var list in new[] { _cells, _sockets.Items, _inChips.Items, _stations.Items })
                 foreach (var s in list)
-                    if (s.Rt.gameObject.activeSelf && s.Id != null && s.Icon && !s.Icon.sprite) SetIcon(s.Icon, s.Id);
+                    if (s.Rt.gameObject.activeSelf && s.Id != null && s.Icon && s.Icon.gameObject.activeSelf && !s.Icon.sprite) SetIcon(s.Icon, s.Id);
+            if (_pageId != null && !_pageIcon.sprite) SetIcon(_pageIcon, _pageId);
         }
 
         // ---------------------------------------------------------------- build
@@ -294,57 +302,48 @@ namespace Morgott.UI.ItemBrowser
             _searchBack = Img(g, "SearchField", "craft.search", true);
             _searchGlyph = Img(_searchBack.transform, "Glyph", "craft.glyph.search");
             _search = Field(_searchBack);
-            _knownButton = Btn(g, "KnownOnly", null, out _, () => { Browser.KnownOnly.Value = !Browser.KnownOnly.Value; _dirty = true; });
-            _knownBox = Img(_knownButton.transform, "Box", "toggle.box");
-            _knownCheck = Img(_knownBox.transform, "Check", "toggle.check");
-            _knownLabel = Txt(_knownButton.transform, "Label", "text.body", TextAlignmentOptions.Left);
             for (var i = 0; i < _types.Length; i++)
             {
                 var n = i;
-                _types[i] = Btn(g, "Type" + i, "craft.category", out _typeLabels[i], () => { _type = n; _gridPage = 0; _dirty = true; });
+                _types[i] = Btn(g, "Type" + i, "craft.category", out _typeLabels[i], () => { _type = n; _gridScroll = 0; _dirty = true; });
             }
-            _gridWell = Img(g, "GridWell", "craft.well");
-            _detailWell = Img(g, "DetailWell", "craft.well");
-            _detailIcon = Img(g, "DetailIcon", "content", true);
-            Tip(_detailIcon.gameObject, () => _selected, () => 1);
-            _detailName = Txt(g, "DetailName", "text.body", TextAlignmentOptions.Center, FontStyles.Bold);
-            _detailType = Txt(g, "DetailType", "text.muted", TextAlignmentOptions.Center, FontStyles.Italic);
-            _divTop = Img(g, "DividerTop", "divider");
-            _divBottom = Img(g, "DividerBottom", "divider");
-            _stationIcon = Img(g, "StationIcon", "content");
-            _stationText = Txt(g, "Station", "text.body", TextAlignmentOptions.Left);
-            _arrow = Txt(g, "Arrow", "text.body", TextAlignmentOptions.Center);
-            _arrow.text = "↓";
-            _noRecipe = Txt(g, "NoRecipe", "text.muted", TextAlignmentOptions.Center, FontStyles.Italic);
-            for (var i = 0; i < 6; i++) _reqRows.Add(LineSlot(g, "Req" + i));
-            _outRow = LineSlot(g, "Out");
-            _usedButton = Btn(g, "UsedIn", "craft.category", out _, () => OpenPage(_selected, true));
-            Img(_usedButton.transform, "Glyph", "glyph.link");
-            _fromButton = Btn(g, "ObtainedFrom", "craft.category", out _, () => OpenPage(_selected, false));
-            Img(_fromButton.transform, "Glyph", "glyph.panel.chest");
-            _prevPlate = Img(g, "PrevPlate", "craft.category");
-            _nextPlate = Img(g, "NextPlate", "craft.category");
-            _prev = Btn(g, "Prev", "craft.arrow.left", out _, () => { _gridPage--; _dirty = true; });
-            _next = Btn(g, "Next", "craft.arrow.right", out _, () => { _gridPage++; _dirty = true; });
-            _pagerText = Txt(g, "Pager", "text.body", TextAlignmentOptions.Center);
-            _hint = Txt(g, "Hint", "text.muted", TextAlignmentOptions.Center, FontStyles.Italic);
+            _typeStar = Img(_types[5].transform, "Star", "ib.star.type");
+            for (var i = 0; i < _cats.Length; i++)
+            {
+                var n = i;
+                _cats[i] = Btn(g, "Cat" + i, "craft.category", out _, () => { _cat = _cat == n ? -1 : n; _gridScroll = 0; _dirty = true; });
+                _catGlyphs[i] = Img(_cats[i].transform, "Glyph", "ib.cat." + CatKeys[i]);
+            }
+            _caption = Txt(g, "Caption", "text.body", TextAlignmentOptions.Left);
+            _empty = Txt(g, "Empty", "text.muted", TextAlignmentOptions.Top, FontStyles.Italic);
+            _empty.textWrappingMode = TextWrappingModes.Normal;
+            _track = Img(g, "ScrollTrack", "scrollbar.track");
+            _thumb = Img(g, "ScrollThumb", "scrollbar.handle");
 
             _pageView = Child("Page").gameObject;
             var p = _pageView.transform;
             _backPlate = Img(p, "BackPlate", "craft.category");
-            _pageDivTop = Img(p, "DividerTop", "divider");
-            _pageDivBottom = Img(p, "DividerBottom", "divider");
-            _pageDivTabs = Img(p, "DividerTabs", "divider");
             _back = Btn(p, "Back", "craft.arrow.left", out _, () => Nav(_history.Back(), false));
             _crumb = Txt(p, "Crumb", "text.body", TextAlignmentOptions.Left);
+            _pageSocket = Img(p, "IconSocket", "craft.socket");
             _pageIcon = Img(p, "Icon", "content", true);
-            Tip(_pageIcon.gameObject, () => _pageId, () => 1);
-            _pageName = Txt(p, "Name", "text.body", TextAlignmentOptions.Left, FontStyles.Bold);
+            Tip(_pageIcon.gameObject, () => _pageId, () => _quality);
+            _pageIcon.gameObject.GetComponent<Hit>().Click = e => { if (e.button == PointerEventData.InputButton.Right) TakeUI(_pageId, _quality, _variant); };
+            _pageName = Txt(p, "Name", "text.ember", TextAlignmentOptions.Left, FontStyles.Bold);
+            _fav = Btn(p, "Favorite", "craft.category", out _, () => { Browser.ToggleFavorite(_pageId); _resultsGen = -1; _dirty = true; });
+            _favOn = Img(_fav.transform, "StarOn", "ib.star.full");
+            _favOff = Img(_fav.transform, "StarOff", "ib.star.empty");
             _pageType = Txt(p, "Type", "text.body", TextAlignmentOptions.Left);
             _pageDesc = Txt(p, "Desc", "text.muted", TextAlignmentOptions.TopLeft, FontStyles.Italic);
             _pageDesc.textWrappingMode = TextWrappingModes.Normal;
-            _fromTab = Btn(p, "FromTab", "craft.tab", out _fromTabLabel, () => { _usedTab = false; _rowScroll = 0; _dirty = true; });
-            _usedTabButton = Btn(p, "UsedTab", "craft.tab", out _usedTabLabel, () => { _usedTab = true; _rowScroll = 0; _dirty = true; });
+            _pageMod = Txt(p, "Mod", "text.muted", TextAlignmentOptions.Left, FontStyles.Italic);
+            _qualLabel = Txt(p, "QualityLabel", "text.body", TextAlignmentOptions.Right);
+            _fromHeader = Img(p, "FromHeader", "inventory.hotbar.header");
+            _fromLabel = Txt(p, "FromLabel", "text.body", TextAlignmentOptions.Center, FontStyles.Bold);
+            _fromNote = Txt(p, "FromNote", "text.muted", TextAlignmentOptions.Center, FontStyles.Italic);
+            _usedHeader = Img(p, "UsedHeader", "inventory.hotbar.header");
+            _usedLabel = Txt(p, "UsedLabel", "text.body", TextAlignmentOptions.Center, FontStyles.Bold);
+            _usedNote = Txt(p, "UsedNote", "text.muted", TextAlignmentOptions.Center, FontStyles.Italic);
             _pageView.SetActive(false);
         }
 
@@ -377,25 +376,19 @@ namespace Morgott.UI.ItemBrowser
             return t;
         }
 
-        // Button with an optional plate role (null = clear hit area) and a label.
+        // Button with a plate role and a label (arrows: glyph only).
         private static Button Btn(Transform parent, string name, string role, out TMP_Text label, Action click)
         {
-            var image = role != null ? InfoArt.OwnImage(parent, name, role, "item browser button " + name) : new GameObject(name, typeof(RectTransform)).AddComponent<Image>();
-            if (role == null)
-            {
-                image.rectTransform.SetParent(parent, false);
-                image.color = Color.clear;
-                DollCell.Mark(image, "content", "item browser hit area");
-            }
-            image.preserveAspect = role != null && role.StartsWith("craft.arrow", StringComparison.Ordinal);
+            var image = InfoArt.OwnImage(parent, name, role, "item browser button " + name);
+            image.preserveAspect = role.StartsWith("craft.arrow", StringComparison.Ordinal);
             image.raycastTarget = true;
             var b = image.gameObject.AddComponent<Button>();
             b.targetGraphic = image;
             b.navigation = new Navigation { mode = Navigation.Mode.None };
             b.onClick.AddListener(() => click());
             // Styled after the Button exists: the role's sprite states go on its targetGraphic (CraftingSkin.StepButton).
-            if (role != null && image.GetComponent<SkinMark>() is SkinMark m) m.Outcome = Restyler.Apply(image, m, ThemeTokens.Role(role)) ? Outcome.Styled : Outcome.Degraded;
-            label = role == null || role.StartsWith("craft.arrow", StringComparison.Ordinal) ? null : Txt(image.transform, "Label", role == "craft.tab" ? "craft.tab.label" : "text.body", TextAlignmentOptions.Center);
+            if (image.GetComponent<SkinMark>() is SkinMark m) m.Outcome = Restyler.Apply(image, m, ThemeTokens.Role(role)) ? Outcome.Styled : Outcome.Degraded;
+            label = role.StartsWith("craft.arrow", StringComparison.Ordinal) ? null : Txt(image.transform, "Label", "text.body", TextAlignmentOptions.Center);
             return b;
         }
 
@@ -416,13 +409,14 @@ namespace Morgott.UI.ItemBrowser
             f.onValueChanged.AddListener(s =>
             {
                 _query = s;
-                _gridPage = 0;
+                _gridScroll = 0;
                 if (_pageId != null) { _pageId = null; _history.Clear(); }
                 _dirty = true;
             });
             return f;
         }
 
+        // role null = clear hit area (no CellFit cell: its text children stay where the layout puts them).
         private Slot NewSlot(Transform parent, string name, string role)
         {
             var s = new Slot { Back = role != null ? InfoArt.OwnImage(parent, name, role, "item browser " + name) : new GameObject(name, typeof(RectTransform)).AddComponent<Image>() };
@@ -436,25 +430,32 @@ namespace Morgott.UI.ItemBrowser
             s.Back.raycastTarget = true;
             s.Rt = s.Back.rectTransform;
             s.Icon = Img(s.Rt, "Icon", "content");
-            return s;
-        }
-
-        private Slot LineSlot(Transform parent, string name)
-        {
-            var s = NewSlot(parent, name, null);
-            s.A = Txt(s.Rt, "Text", "text.body", TextAlignmentOptions.Left);
-            Hook(s, e => { if (e.button == PointerEventData.InputButton.Left && s.Id != null) OpenPage(s.Id, false); });
+            // Left opens the entry's page, right takes it (at the slot's quality), middle toggles the favorite.
+            Hook(s, e =>
+            {
+                if (s.Id == null) return;
+                if (e.button == PointerEventData.InputButton.Right) TakeUI(s.Id, s.Quality, 0);
+                else if (e.button == PointerEventData.InputButton.Middle) { Browser.ToggleFavorite(s.Id); _resultsGen = -1; _dirty = true; }
+                else OpenPage(s.Id);
+            });
             Tip(s.Back.gameObject, () => s.Id, () => s.Quality);
             return s;
         }
 
-        private void Hook(Slot s, Action<PointerEventData> click) => s.Back.gameObject.AddComponent<Hit>().Click = click;
+        private Slot Chip(string name, string textRole)
+        {
+            var s = NewSlot(_pageView.transform, name, null);
+            s.A = Txt(s.Rt, "Text", textRole, TextAlignmentOptions.Left, textRole == "text.ember" ? FontStyles.Bold : FontStyles.Normal);
+            return s;
+        }
+
+        private static void Hook(Slot s, Action<PointerEventData> click) => s.Back.gameObject.AddComponent<Hit>().Click = click;
 
         // Vanilla tooltip (UITooltip + the player grid's tooltip prefab), text filled on enter from the vanilla path.
         private void Tip(GameObject go, Func<string> id, Func<int> quality)
         {
-            if (!_tooltipPrefab) return;
             var hit = go.GetComponent<Hit>() ?? go.AddComponent<Hit>();
+            if (!_tooltipPrefab) return;
             var tip = go.AddComponent<UITooltip>();
             tip.m_tooltipPrefab = _tooltipPrefab;
             hit.Enter = () =>
@@ -475,7 +476,7 @@ namespace Morgott.UI.ItemBrowser
             Geo.Place(_canvas, rt, new Box(_a.X + x * _k, _a.Y + y * _k, w * _k, h * _k));
         }
 
-        // Text shrunk to fit its box (Russian tab names are longer than the mockup's English ones).
+        // Text shrunk to fit its box (Russian labels are longer than the mockup's).
         private void Fit(TMP_Text t, string s, float size)
         {
             if (t.text != s) t.text = s;
@@ -486,7 +487,7 @@ namespace Morgott.UI.ItemBrowser
             t.fontSizeMin = fs * 0.7f;
         }
 
-        private void Off(Component c)
+        private static void Off(Component c)
         {
             if (c && c.gameObject.activeSelf) c.gameObject.SetActive(false);
         }
@@ -505,22 +506,32 @@ namespace Morgott.UI.ItemBrowser
             if (image.enabled != (bool)s) image.enabled = s;
         }
 
+        // Selected = not interactable (craft.category's disabled sprite is its selected plate).
+        private static void Select(Button b, bool on)
+        {
+            if (b.interactable == on) b.interactable = !on;
+        }
+
         private static string L(string token) => Browser.Localize(token);
         private static string NameOf(string id) => Browser.Index != null && Browser.Index.Entries.TryGetValue(id, out var e) ? L(e.Name) : id;
+        private static string CatName(ItemCategory c) => L("$ib_cat_" + CatKeys[(int)c]);
 
-        // ---------------------------------------------------------------- grid view (mockup A)
+        // ---------------------------------------------------------------- list view (mockup 04)
 
         private List<Entry> Results()
         {
             var known = Browser.KnownOnly.Value;
             var dev = Browser.Devcommands;
-            if (_resultsGen == Browser.Generation && _resultsQuery == _query && _resultsType == _type && _resultsKnownOnly == known && _resultsDev == dev) return _results;
+            var cat = _type == 1 ? _cat : -1;
+            if (_resultsGen == Browser.Generation && _resultsQuery == _query && _resultsType == _type && _resultsCat == cat && _resultsKnownOnly == known && _resultsDev == dev) return _results;
             var fav = _type == 5 ? Browser.Favorites() : null;
-            _results = Browser.Index.Search(_query, TypeOf[_type], e => (!known || Browser.Known(e)) && (fav == null || fav.Contains(e.Id)), L, Browser.ModName, dev);
+            _results = Browser.Index.Search(_query, TypeOf[_type],
+                e => (cat < 0 || (int)e.Category == cat) && (!known || Browser.Known(e)) && (fav == null || fav.Contains(e.Id)), L, Browser.ModName, dev);
             _resultsDev = dev;
             _resultsGen = Browser.Generation;
             _resultsQuery = _query;
             _resultsType = _type;
+            _resultsCat = cat;
             _resultsKnownOnly = known;
             return _results;
         }
@@ -528,229 +539,135 @@ namespace Morgott.UI.ItemBrowser
         private void LayoutGrid()
         {
             Off(_pageView.transform);
-            _searchBack.transform.SetParent(_gridView.transform, false);
             Put(_gridView.transform, 0f, 0f, UnitW, _a.H / _k);
             if (Browser.Index == null) return;
             var h = _a.H / _k;
-            Put(_searchBack, 0f, 0f, 362f, 42f);
-            Put(_searchGlyph, 12f, 8f, 26f, 26f);
-            Put(_search.textViewport, 48f, 4f, 306f, 34f);
-            foreach (var t in _search.textViewport.GetComponentsInChildren<TMP_Text>(true)) { Put(t, 48f, 4f, 306f, 34f); Text(t, t.text, 21f); }
-            Put(_knownButton, 394f, 5f, 156f, 32f);
-            Put(_knownBox, 394f, 8f, 26f, 26f);
-            Put(_knownCheck, 394f, 8f, 26f, 26f);
-            _knownCheck.enabled = Browser.KnownOnly.Value;
-            Put(_knownLabel, 430f, 5f, 120f, 32f);
-            Fit(_knownLabel, L("$ib_known_only"), 20f);
+            Put(_searchBack, 0f, 0f, UnitW, 36f);
+            Put(_searchGlyph, 10f, 7f, 22f, 22f);
+            Put(_search.textViewport, 40f, 2f, 500f, 32f);
+            foreach (var t in _search.textViewport.GetComponentsInChildren<TMP_Text>(true)) { Put(t, 40f, 2f, 500f, 32f); Text(t, t.text, 20f); }
             var x = 0f;
             for (var i = 0; i < _types.Length; i++)
             {
-                Put(_types[i], x, 58f, TypeW[i], 38f);
-                Put(_typeLabels[i], x + 3f, 58f, TypeW[i] - 6f, 38f);
-                Fit(_typeLabels[i], (i == 5 ? "★ " : "") + L(TypeTokens[i]), 19f);
-                if (_types[i].interactable != (i != _type)) _types[i].interactable = i != _type;
-                x += TypeW[i] + 8f;
+                Put(_types[i], x, TypeY, TypeW[i], TypeH);
+                if (i == 5) Put(_typeStar, x + 7f, TypeY + 6f, TypeW[i] - 14f, TypeH - 12f);
+                else
+                {
+                    Put(_typeLabels[i], x + 3f, TypeY, TypeW[i] - 6f, TypeH);
+                    Fit(_typeLabels[i], L(TypeTokens[i]), 19f);
+                }
+                Select(_types[i], i == _type);
+                x += TypeW[i] + 14f;
             }
-
+            var items = _type == 1;
+            for (var i = 0; i < _cats.Length; i++)
+            {
+                if (!items) { Off(_cats[i]); continue; }
+                var cx = i * (UnitW - CatH) / (_cats.Length - 1);
+                Put(_cats[i], cx, CatY, CatH, CatH);
+                Put(_catGlyphs[i], cx + 7f, CatY + 7f, CatH - 14f, CatH - 14f);
+                Select(_cats[i], i == _cat);
+            }
             var list = Results();
-            var wellBottom = h - Footer;
-            Put(_gridWell, 0f, WellTop, 362f, wellBottom - WellTop);
-            var rows = Math.Max(1, (int)Math.Min(GridRows, (wellBottom - CellTop + CellY - CellX) / CellY)); // mockup A: six rows, space below
-            var pitch = Math.Max(CellY, (wellBottom - CellTop - 40f) / rows); // taller body: taller sockets, the mockup's gap under row six kept
+            var capY = items ? 149f : CatY;
+            Put(_caption, 0f, capY, UnitW, 26f);
+            Fit(_caption, $"{(items && _cat >= 0 ? CatName((ItemCategory)_cat) : _type == 5 ? L("$ib_type_favorites") : L(TypeTokens[_type]))} · {list.Count}", 20f);
+
+            var top = capY + 37f;
+            var rows = Math.Max(1, (int)((h - top + 4f) / CellPitchY));
             var per = rows * 6;
-            if (_selected == null && list.Count > 0) _selected = list[0].Id; // mockup A: the page opens on a selected entry
-            var pages = Math.Max(1, (list.Count + per - 1) / per);
-            _gridPages = pages;
-            _gridPage = Mathf.Clamp(_gridPage, 0, pages - 1);
+            var total = (list.Count + 5) / 6;
+            _gridScrollMax = Math.Max(0, total - rows);
+            _gridScroll = Mathf.Clamp(_gridScroll, 0, _gridScrollMax);
             while (_cells.Count < per) _cells.Add(GridCell(_cells.Count));
             var fav = Browser.Favorites();
             for (var i = 0; i < _cells.Count; i++)
             {
                 var c = _cells[i];
-                if (i >= per) { Off(c.Back); continue; }
-                var n = _gridPage * per + i;
-                c.Id = n < list.Count ? list[n].Id : null;
-                float cx = 3f + i % 6 * CellX, cy = CellTop + i / 6 * pitch;
-                Put(c.Back, cx, cy, CellX - 4f, pitch - 6f);
-                Put(c.Icon, cx + 6f, cy + (pitch - 6f - (CellX - 16f)) / 2f, CellX - 16f, CellX - 16f);
+                var n = _gridScroll * 6 + i;
+                if (i >= per || n >= list.Count) { c.Id = null; Off(c.Back); Off(c.A); continue; }
+                c.Id = list[n].Id;
+                float cx = i % 6 * CellPitchX, cy = top + i / 6 * CellPitchY;
+                Put(c.Back, cx, cy, CellW, CellH);
+                Put(c.Icon, cx + 8f, cy + 5f, CellW - 16f, CellH - 10f);
                 SetIcon(c.Icon, c.Id);
-                Put(c.D, cx + CellX - 24f, cy + 2f, 18f, 18f);
+                Put(c.D, cx + CellW - 22f, cy + 2f, 18f, 18f);
                 Text(c.D, "★", 16f);
-                c.D.enabled = c.Id != null && fav.Contains(c.Id);
-                var sel = c.Id != null && c.Id == _selected;
-                if (c.Back.GetComponent<SkinMark>() is SkinMark m && m.Role != (sel ? "craft.row.selected" : "craft.socket"))
-                {
-                    m.Role = sel ? "craft.row.selected" : "craft.socket";
-                    m.Outcome = Restyler.Apply(c.Back, m, ThemeTokens.Role(m.Role)) ? Outcome.Styled : Outcome.Degraded;
-                }
+                c.D.enabled = fav.Contains(c.Id);
+                Put(c.A, cx - 4f, cy + CellH + 2f, CellW + 8f, 38f);
+                Fit(c.A, L(list[n].Name), 15f);
             }
-            Detail(wellBottom);
-            var py = wellBottom + 12f;
-            const float mid = UnitW / 2f;
-            Put(_prevPlate, mid - 90f, py, 38f, 34f);
-            Put(_prev, mid - 82f, py + 6f, 22f, 22f);
-            Put(_pagerText, mid - 40f, py, 80f, 34f);
-            Text(_pagerText, $"{_gridPage + 1} / {pages}", 18f);
-            Put(_nextPlate, mid + 52f, py, 38f, 34f);
-            Put(_next, mid + 60f, py + 6f, 22f, 22f);
-            _prev.interactable = _gridPage > 0;
-            _next.interactable = _gridPage < pages - 1;
-            if (Browser.CanTake)
+            // Thin scrollbar: track over the grid's rows, thumb = visible share.
+            if (_gridScrollMax > 0)
             {
-                Put(_hint, 0f, py + 44f, UnitW, 24f);
-                Text(_hint, L("$ib_hint_take"), 16f);
+                var viewH = rows * CellPitchY - 8f;
+                var thumbH = Mathf.Max(24f, viewH * rows / total);
+                Put(_track, UnitW - 5f, top, 4f, viewH);
+                Put(_thumb, UnitW - 6f, top + (viewH - thumbH) * _gridScroll / _gridScrollMax, 6f, thumbH);
             }
-            else Off(_hint);
+            else { Off(_track); Off(_thumb); }
+            // Known-only is config-only (no checkbox): an empty list names the filter.
+            if (list.Count == 0 && Browser.KnownOnly.Value)
+            {
+                Put(_empty, 20f, top + 20f, UnitW - 40f, 80f);
+                Fit(_empty, L("$ib_empty_known"), 18f);
+            }
+            else Off(_empty);
         }
 
         private Slot GridCell(int i)
         {
             var s = NewSlot(_gridView.transform, "Cell" + i, "craft.socket");
-
-            s.D = Txt(s.Rt, "FavStar", "craft.title", TextAlignmentOptions.Center);
+            s.D = Txt(s.Rt, "FavStar", "text.ember", TextAlignmentOptions.Center);
             s.D.raycastTarget = false;
-            Hook(s, e => CellClick(s, e));
-            Tip(s.Back.gameObject, () => s.Id, () => 1);
+            // Name under the socket, a sibling of it: as a child CellFit.KeepTexts pulls it into the cell (467b038).
+            s.A = Txt(_gridView.transform, "CellName" + i, "text.body", TextAlignmentOptions.Top);
+            s.A.textWrappingMode = TextWrappingModes.Normal;
             return s;
         }
 
-        private void CellClick(Slot s, PointerEventData e)
+        private static void TakeUI(string id, int quality, int variant)
         {
-            if (s.Id == null) return;
-            switch (e.button)
-            {
-                case PointerEventData.InputButton.Right:
-                    Take(s.Id, 1);
-                    return;
-                case PointerEventData.InputButton.Middle:
-                    Browser.ToggleFavorite(s.Id);
-                    _resultsGen = -1;
-                    break;
-                default:
-                    if (e.clickCount > 1 || s.Id == _selected) { OpenPage(s.Id, false); return; }
-                    _selected = s.Id;
-                    break;
-            }
-            _dirty = true;
-        }
-
-        private static void Take(string id, int quality)
-        {
-            if (!Browser.CanTake) return;
+            if (id == null || !Browser.CanTake) return;
             var shift = ZInput.GetKey(KeyCode.LeftShift) || ZInput.GetKey(KeyCode.RightShift);
             var ctrl = ZInput.GetKey(KeyCode.LeftControl) || ZInput.GetKey(KeyCode.RightControl);
-            var why = Browser.Take(id, quality, ctrl ? Browser.TakeMode.Materials : shift ? Browser.TakeMode.Stack : Browser.TakeMode.One);
+            var why = Browser.Take(id, quality, ctrl ? Browser.TakeMode.Materials : shift ? Browser.TakeMode.Stack : Browser.TakeMode.One, variant);
             if (why != null) Player.m_localPlayer?.Message(MessageHud.MessageType.Center, why);
         }
-
-        // Detail pane: the selected entry's craft (else build / conversion) recipe, quality 1 (mockup A).
-        private void Detail(float bottom)
-        {
-            const float X = 368f, W = 182f, Y = WellTop;
-            var h = bottom - Y;
-            Put(_detailWell, X, Y, W, h);
-            var e = _selected != null && Browser.Index.Entries.TryGetValue(_selected, out var x) ? x : null;
-            if (e == null)
-            {
-                foreach (var c in new Component[] { _detailIcon, _detailName, _detailType, _divTop, _divBottom, _stationIcon, _stationText, _arrow, _noRecipe, _usedButton, _fromButton }) Off(c);
-                foreach (var r in _reqRows) Off(r.Back);
-                Off(_outRow.Back);
-                return;
-            }
-            Put(_detailIcon, X + 38f, Y + 10f, 100f, 90f);
-            SetIcon(_detailIcon, e.Id);
-            Put(_detailName, X + 6f, Y + 104f, W - 12f, 30f);
-            Fit(_detailName, L(e.Name), 24f);
-            Put(_detailType, X + 6f, Y + 134f, W - 12f, 22f);
-            Text(_detailType, TypeName(e), 16f);
-            Put(_divTop, X + 8f, Y + 162f, W - 16f, 3f);
-            Relation recipe = null;
-            foreach (var r in Browser.Index.ObtainedFrom(e.Id))
-                if (recipe == null || Rank(r.Kind) < Rank(recipe.Kind)) recipe = r;
-            var y = Y + 172f;
-            if (recipe == null || Rank(recipe.Kind) > 2)
-            {
-                foreach (var c in new Component[] { _stationIcon, _stationText, _arrow }) Off(c);
-                foreach (var r in _reqRows) Off(r.Back);
-                Off(_outRow.Back);
-                Put(_noRecipe, X + 6f, y, W - 12f, 26f);
-                Text(_noRecipe, L(recipe == null ? "$ib_no_source" : "$ib_see_sources"), 15f);
-                y += 34f;
-            }
-            else
-            {
-                Off(_noRecipe);
-                var station = recipe.Station ?? (recipe.Kind == RelationKind.Build ? recipe.Source : null);
-                Put(_stationIcon, X + 8f, y, 26f, 26f);
-                SetIcon(_stationIcon, station);
-                Put(_stationText, X + 40f, y, W - 44f, 26f);
-                Text(_stationText, station == null ? L("$ib_by_hand") : recipe.StationLevel > 0 ? $"{NameOf(station)} ({L("$ib_level")} {recipe.StationLevel})" : NameOf(station), 17f);
-                y += 36f;
-                var shown = Math.Min(recipe.Inputs.Length, _reqRows.Count);
-                for (var i = 0; i < _reqRows.Count; i++)
-                {
-                    var r = _reqRows[i];
-                    if (i >= shown) { Off(r.Back); continue; }
-                    Line(r, recipe.Inputs[i], X, y, W);
-                    y += 34f;
-                }
-                Put(_arrow, X, y, W, 26f);
-                Text(_arrow, "↓", 20f);
-                y += 30f;
-                Line(_outRow, recipe.Outputs[0], X, y, W);
-                y += 34f;
-            }
-            Put(_divBottom, X + 8f, y + 6f, W - 16f, 3f);
-            var by = y + 22f; // mockup A: the two page buttons right under the recipe
-            Put(_usedButton, X + 6f, by, W - 12f, 38f);
-            Put(_usedButton.transform.Find("Glyph"), X + 14f, by + 8f, 22f, 22f);
-            Put(_usedButton.transform.Find("Label"), X + 40f, by, W - 52f, 38f);
-            Text(_usedButton.transform.Find("Label").GetComponent<TMP_Text>(), L("$ib_used_in"), 17f);
-            Put(_fromButton, X + 6f, by + 46f, W - 12f, 38f);
-            Put(_fromButton.transform.Find("Glyph"), X + 14f, by + 54f, 22f, 22f);
-            Put(_fromButton.transform.Find("Label"), X + 40f, by + 46f, W - 52f, 38f);
-            Text(_fromButton.transform.Find("Label").GetComponent<TMP_Text>(), L("$ib_obtained_from"), 17f);
-        }
-
-        private static int Rank(RelationKind k) => k == RelationKind.Craft ? 0 : k == RelationKind.Build ? 1 : k == RelationKind.Conversion ? 2 : 3;
-
-        private void Line(Slot r, Stack s, float x, float y, float w)
-        {
-            r.Id = s.Prefab;
-            Put(r.Back, x + 8f, y, w - 16f, 30f);
-            Put(r.Icon, x + 10f, y, 30f, 30f);
-            SetIcon(r.Icon, s.Prefab);
-            Put(r.A, x + 48f, y, w - 56f, 30f);
-            Text(r.A, $"{Amount(s)} x {NameOf(s.Prefab)}", 17f);
-            if (r == _outRow) r.A.text = $"{Amount(s)} {NameOf(s.Prefab)}";
-        }
-
-        private static string Amount(Stack s) => s.Min == s.Max ? s.Min.ToString() : $"{s.Min}-{s.Max}";
 
         private static string TypeName(Entry e)
         {
             if (e.Type == EntryType.Item && Browser.Prefab(e.Id) is GameObject go && go.TryGetComponent<ItemDrop>(out var d))
-                return L("$ib_itemtype_" + d.m_itemData.m_shared.m_itemType.ToString().ToLowerInvariant());
+                return $"{CatName(e.Category)} · {L("$ib_itemtype_" + d.m_itemData.m_shared.m_itemType.ToString().ToLowerInvariant())}";
             return L("$ib_entry_" + e.Type.ToString().ToLowerInvariant());
         }
 
-        // ---------------------------------------------------------------- item page (mockup B)
+        private static string Crumb(Entry e) => e.Type switch
+        {
+            EntryType.Item => $"{L("$ib_type_items")} > {CatName(e.Category)}",
+            EntryType.Piece => L("$ib_type_pieces"),
+            EntryType.Creature => L("$ib_type_creatures"),
+            EntryType.Station => L("$ib_type_stations"),
+            _ => L("$ib_type_all")
+        };
 
-        private void OpenPage(string id, bool usedIn)
+        // ---------------------------------------------------------------- item page (mockup 05)
+
+        private void OpenPage(string id)
         {
             if (id == null || Browser.Index == null || !Browser.Index.Entries.ContainsKey(id)) return;
-            _usedTab = usedIn;
             Nav(id, true);
         }
 
-        // id null = back to the grid.
+        // id null = back to the list (search, type, category and its scroll kept).
         private void Nav(string id, bool track)
         {
             if (track) _history.Go(id);
             if (id == null) _history.Clear();
             _pageId = id;
-            if (id != null) _selected = id;
-            _rowScroll = 0;
+            _pageScroll = 0;
+            _quality = 1;
+            _variant = 0;
             _dirty = true;
         }
 
@@ -758,149 +675,231 @@ namespace Morgott.UI.ItemBrowser
         {
             Off(_gridView.transform);
             if (Browser.Index == null || !Browser.Index.Entries.TryGetValue(_pageId, out var e)) { _pageId = null; LayoutGrid(); return; }
+            var ix = Browser.Index;
             var h = _a.H / _k;
             Put(_pageView.transform, 0f, 0f, UnitW, h);
-            // The one search field moves to the page's top row (typing there returns to the grid).
-            _searchBack.transform.SetParent(_pageView.transform, false);
-            Put(_backPlate, 0f, 0f, 40f, 40f);
-            Put(_back, 9f, 9f, 22f, 22f);
-            Put(_crumb, 54f, 2f, 292f, 36f);
-            Fit(_crumb, $"{L(TypeTokens[_type])} > {L(e.Name)}", 20f);
-            Put(_pageDivTop, 0f, 48f, UnitW, 3f);
-            Put(_searchBack, 356f, 0f, 194f, 36f);
-            Put(_searchGlyph, 362f, 7f, 22f, 22f);
-            Put(_search.textViewport, 390f, 2f, 154f, 32f);
-            foreach (var t in _search.textViewport.GetComponentsInChildren<TMP_Text>(true)) { Put(t, 390f, 2f, 154f, 32f); Text(t, t.text, 16f); }
-            Put(_pageIcon, 10f, 60f, 110f, 110f);
+            Put(_backPlate, 0f, 0f, 38f, 36f);
+            Put(_back, 8f, 7f, 22f, 22f);
+            Put(_crumb, 56f, 0f, UnitW - 56f, 36f);
+            Fit(_crumb, Crumb(e), 20f);
+
+            // Header: icon, name, favorite, type, description, mod + prefab id, quality selector.
+            Put(_pageSocket, 2f, 52f, 96f, 96f);
+            Put(_pageIcon, 12f, 62f, 76f, 76f);
             SetIcon(_pageIcon, e.Id);
-            Put(_pageName, 136f, 62f, 414f, 38f);
-            Fit(_pageName, L(e.Name), 30f);
-            Put(_pageType, 136f, 102f, 414f, 26f);
-            Text(_pageType, TypeName(e), 19f);
-            Put(_pageDesc, 136f, 130f, 414f, 46f);
-            Text(_pageDesc, L(e.Desc) ?? "", 18f);
-            _pageDesc.textWrappingMode = TextWrappingModes.Normal;
+            Put(_pageName, 113f, 50f, 390f, 34f);
+            Fit(_pageName, L(e.Name), 28f);
+            Put(_fav, UnitW - 38f, 46f, 36f, 36f);
+            var isFav = Browser.Favorites().Contains(e.Id);
+            if (isFav) { Put(_favOn, UnitW - 32f, 52f, 24f, 24f); Off(_favOff); }
+            else { Put(_favOff, UnitW - 32f, 52f, 24f, 24f); Off(_favOn); }
+            Put(_pageType, 113f, 86f, 250f, 22f);
+            Fit(_pageType, TypeName(e), 18f);
+            Put(_pageDesc, 113f, 109f, 250f, 24f);
+            Fit(_pageDesc, L(e.Desc) ?? "", 16f);
+            Put(_pageMod, 113f, 133f, 250f, 20f);
+            Fit(_pageMod, $"{Browser.ModName(e.Mod)} · {e.Id}", 15f);
+            _quality = Mathf.Clamp(_quality, 1, e.MaxQuality);
+            var top = 152f;
+            if (e.MaxQuality > 1)
+            {
+                Put(_qualLabel, 360f, 108f, 48f, 31f);
+                Fit(_qualLabel, L("$ib_quality_short"), 18f);
+                // Four per line; modded qualities above 4 wrap to the next line.
+                while (_quals.Count < e.MaxQuality)
+                {
+                    var n = _quals.Count + 1;
+                    _quals.Add(Btn(_pageView.transform, "Q" + n, "craft.category", out _, () => { _quality = n; _variant = 0; _pageScroll = 0; _dirty = true; }));
+                }
+                for (var i = 0; i < _quals.Count; i++)
+                {
+                    if (i >= e.MaxQuality) { Off(_quals[i]); continue; }
+                    float qx = 412f + i % 4 * 35f, qy = 108f + i / 4 * 35f;
+                    Put(_quals[i], qx, qy, 31f, 31f);
+                    var lab = _quals[i].transform.Find("Label").GetComponent<TMP_Text>();
+                    Put(lab, qx, qy, 31f, 31f);
+                    Fit(lab, (i + 1).ToString(), 18f);
+                    Select(_quals[i], i + 1 == _quality);
+                    top = Mathf.Max(top, qy + 35f);
+                }
+            }
+            else
+            {
+                Off(_qualLabel);
+                foreach (var q in _quals) Off(q);
+            }
+            // Recipe variants at this quality (two or more): pick the one the Ctrl take gives.
+            var variants = PageModel.Variants(ix, e.Id, _quality);
+            _variant = Mathf.Clamp(_variant, 0, Math.Max(0, variants.Count - 1));
+            var vLabels = variants.Count > 1 ? PageModel.VariantLabels(variants, NameOf, L("$ib_by_hand"), L("$ib_level_short"), L("$ib_variant")) : new List<string>();
+            while (_variants.Count < vLabels.Count)
+            {
+                var n = _variants.Count;
+                _variants.Add(Btn(_pageView.transform, "Variant" + n, "craft.category", out _, () => { _variant = n; _dirty = true; }));
+            }
+            var vy = Mathf.Max(top, 158f) + 8f;
+            for (var i = 0; i < _variants.Count; i++)
+            {
+                if (i >= vLabels.Count) { Off(_variants[i]); continue; }
+                float bx = 2f + i % 3 * 177f, by = vy + i / 3 * 42f;
+                Put(_variants[i], bx, by, 163f, 34f);
+                var lab = _variants[i].transform.Find("Label").GetComponent<TMP_Text>();
+                Put(lab, bx + 4f, by, 155f, 34f);
+                Fit(lab, vLabels[i], 18f);
+                Select(_variants[i], i == _variant);
+                top = by + 34f;
+            }
+            top += 18f;
 
-            var from = Browser.Index.ObtainedFrom(e.Id).OrderBy(r => Rank(r.Kind)).ToList(); // recipes first (stable), then drops
-            var used = Browser.Index.UsedInResults(e.Id);
-            Put(_pageDivTabs, 0f, 226f, UnitW, 3f);
-            Put(_fromTab, 26f, 184f, 196f, 38f);
-            Put(_fromTabLabel, 26f, 184f, 196f, 38f);
-            Fit(_fromTabLabel, L("$ib_obtained_from"), 20f);
-            Put(_usedTabButton, 232f, 184f, 164f, 38f);
-            Put(_usedTabLabel, 232f, 184f, 164f, 38f);
-            Fit(_usedTabLabel, $"{L("$ib_used_in")} ({used.Count})", 20f);
-            if (_fromTab.interactable == !_usedTab) _fromTab.interactable = _usedTab;
-            if (_usedTabButton.interactable == _usedTab) _usedTabButton.interactable = !_usedTab;
-
-            var y = 238f;
-            var rowsShown = 0;
-            if (!_usedTab)
+            // Scrolled body: the two sections as blocks of real heights, scrolled block by block.
+            _sockets.Used = _inChips.Used = _titles.Used = _stations.Used = _chances.Used = _rules.Used = 0;
+            var from = PageModel.Obtain(ix, e.Id, _quality);
+            var used = PageModel.UsedIn(ix, e.Id);
+            var blocks = new List<(int Kind, PageRow Row)> { (0, null) };
+            if (from.Count == 0) blocks.Add((2, null));
+            foreach (var r in from) blocks.Add((1, r));
+            blocks.Add((3, null));
+            if (used.Count == 0) blocks.Add((5, null));
+            foreach (var r in used) blocks.Add((4, r));
+            var heights = new List<float>(blocks.Count);
+            foreach (var b in blocks) heights.Add(b.Kind == 0 || b.Kind == 3 ? 44f : b.Kind == 2 || b.Kind == 5 ? 34f : PageModel.Height(b.Row, b.Kind == 4));
+            _pageScrollMax = PageModel.MaxFirst(heights, h - top);
+            _pageScroll = Mathf.Clamp(_pageScroll, 0, _pageScrollMax);
+            var shown = new bool[6];
+            var y = top;
+            for (var i = _pageScroll; i < blocks.Count && (i == _pageScroll || y + heights[i] <= h + 0.5f); i++)
             {
-                var maxRows = Math.Max(1, (int)((h - y - (used.Count > 0 ? 132f : 0f) - 8f) / RowH));
-                _rowScrollMax = Math.Max(0, from.Count - maxRows);
-                _rowScroll = Mathf.Clamp(_rowScroll, 0, _rowScrollMax);
-                rowsShown = Math.Min(maxRows, from.Count - _rowScroll);
-                while (_rows.Count < rowsShown) _rows.Add(SourceRow(_rows.Count));
-                for (var i = 0; i < rowsShown; i++) Row(_rows[i], from[_rowScroll + i], e.Id, y + i * RowH, i == 0);
-                y += rowsShown * RowH + 18f;
+                var (kind, row) = blocks[i];
+                shown[kind] = true;
+                switch (kind)
+                {
+                    case 0: Header(_fromHeader, _fromLabel, L("$ib_obtained_from"), y); break;
+                    case 3: Header(_usedHeader, _usedLabel, L("$ib_used_in"), y); break;
+                    case 2: Put(_fromNote, 0f, y, UnitW, 30f); Fit(_fromNote, L("$ib_no_source"), 17f); break;
+                    case 5: Put(_usedNote, 0f, y, UnitW, 30f); Fit(_usedNote, L("$ib_not_used"), 17f); break;
+                    default: Row(row, y, heights[i], kind == 4); break;
+                }
+                y += heights[i];
             }
-            for (var i = rowsShown; i < _rows.Count; i++) Off(_rows[i].Back);
-            var maxTiles = Math.Max(0, (int)((h - y) / 132f)) * 7;
-            var first = 0;
-            if (_usedTab)
-            {
-                // Whole tile rows: the last page stays column-aligned, scrolling stops at the last row.
-                _rowScrollMax = Math.Max(0, (used.Count + 6) / 7 - maxTiles / 7);
-                _rowScroll = Mathf.Clamp(_rowScroll, 0, _rowScrollMax);
-                first = _rowScroll * 7;
-            }
-            else maxTiles = Math.Min(maxTiles, 7);
-            var tiles = Math.Min(maxTiles, used.Count - first);
-            while (_tiles.Count < tiles) _tiles.Add(Tile(_tiles.Count));
-            for (var i = 0; i < _tiles.Count; i++)
-            {
-                var t = _tiles[i];
-                if (i >= tiles) { Off(t.Back); Off(t.A); continue; }
-                t.Id = used[first + i];
-                var tx = i % 7 * (UnitW / 7f);
-                var ty = y + i / 7 * 132f;
-                Put(t.Back, tx + 2f, ty, UnitW / 7f - 4f, 66f);
-                Put(t.Icon, tx + 8f, ty, UnitW / 7f - 16f, 66f);
-                SetIcon(t.Icon, t.Id);
-                Put(t.A, tx, ty + 68f, UnitW / 7f, 58f);
-                Text(t.A, NameOf(t.Id), 16f);
-            }
-            if (tiles > 0) Put(_pageDivBottom, 0f, y + (tiles + 6) / 7 * 132f + 4f, UnitW, 3f);
-            else Off(_pageDivBottom);
+            if (!shown[0]) { Off(_fromHeader); Off(_fromLabel); }
+            if (!shown[3]) { Off(_usedHeader); Off(_usedLabel); }
+            if (!shown[2]) Off(_fromNote);
+            if (!shown[5]) Off(_usedNote);
+            Rest(_sockets);
+            Rest(_inChips);
+            Rest(_titles);
+            Rest(_stations);
+            for (var i = _chances.Used; i < _chances.Items.Count; i++) Off(_chances.Items[i]);
+            for (var i = _rules.Used; i < _rules.Items.Count; i++) Off(_rules.Items[i]);
         }
 
-        private Slot SourceRow(int i)
+        private static void Rest(Pool<Slot> p)
         {
-            var s = NewSlot(_pageView.transform, "Row" + i, "craft.row");
-            s.A = Txt(s.Rt, "Name", "text.body", TextAlignmentOptions.Left);
-            s.B = Txt(s.Rt, "Kind", "text.muted", TextAlignmentOptions.Left);
-            s.C = Txt(s.Rt, "Amount", "text.body", TextAlignmentOptions.Center);
-            s.D = Txt(s.Rt, "Chance", "text.body", TextAlignmentOptions.Right);
-            s.D.textWrappingMode = TextWrappingModes.Normal; // long conditions ("weighted, draws 2-4") wrap instead of an ellipsis
-            Hook(s, e =>
+            for (var i = p.Used; i < p.Items.Count; i++)
             {
-                if (e.button == PointerEventData.InputButton.Right) { Take(s.Id, 1); return; }
-                OpenPage(s.Id, true);
-            });
-            Tip(s.Back.gameObject, () => s.Id, () => 1);
-            return s;
+                p.Items[i].Id = null;
+                Off(p.Items[i].Back);
+            }
         }
 
-        private Slot Tile(int i)
+        private void Header(Image plate, TMP_Text label, string text, float y)
         {
-            var s = NewSlot(_pageView.transform, "Tile" + i, "craft.socket"); // mockup B: framed tiles
-            // Name under the socket, a sibling of it: as a child CellFit.KeepTexts pulls it back into the cell every
-            // LateUpdate while each relayout puts it back (labels jittered on every wheel tick).
-            s.A = Txt(_pageView.transform, "TileName" + i, "text.body", TextAlignmentOptions.Top);
-            s.A.textWrappingMode = TextWrappingModes.Normal;
-            Hook(s, e =>
-            {
-                if (e.button == PointerEventData.InputButton.Right) { Take(s.Id, 1); return; }
-                OpenPage(s.Id, false);
-            });
-            Tip(s.Back.gameObject, () => s.Id, () => 1);
-            return s;
+            Put(plate, 0f, y, UnitW, 34f);
+            Put(label, 60f, y, UnitW - 120f, 34f);
+            Fit(label, text, 20f);
         }
 
-        // One "Obtained from" row: who (source, or the station for recipes), kind + inputs, amount, chance / conditions.
-        private void Row(Slot s, Relation r, string item, float y, bool first)
+        // One page row (mockup 05): "Obtained from" = socket + inputs (or source name + chance) + station; "Used in" = socket,
+        // ember title (+quality), inputs line(s), station. A divider closes every row.
+        private void Row(PageRow r, float y, float h, bool used)
         {
-            var who = r.Kind == RelationKind.Craft || r.Kind == RelationKind.Upgrade ? r.Station : r.Source;
-            s.Id = who;
-            var role = first ? "craft.row.selected" : "craft.row";
-            if (s.Back.GetComponent<SkinMark>() is SkinMark m && m.Role != role)
+            var sock = _sockets.Next(n => NewSlot(_pageView.transform, "RowIcon" + n, "craft.socket"));
+            sock.Id = r.Icon;
+            sock.Quality = Math.Max(1, r.Quality);
+            float s = used ? 74f : 59f, sh = used ? 72f : 54f;
+            Put(sock.Back, 4f, y + 4f, s, sh);
+            Put(sock.Icon, 10f, y + 9f, s - 12f, sh - 10f);
+            SetIcon(sock.Icon, r.Icon);
+            var x0 = used ? 94f : 81f;
+            var iy = y + (used ? 40f : (h - 30f * r.Lines) / 2f);
+            if (used)
             {
-                m.Role = role;
-                m.Outcome = Restyler.Apply(s.Back, m, ThemeTokens.Role(role)) ? Outcome.Styled : Outcome.Degraded;
+                var title = _titles.Next(n => Chip("RowTitle" + n, "text.ember"));
+                title.Id = r.Icon;
+                title.Quality = sock.Quality;
+                Chip(title, x0, y + 6f, 290f, 30f, 0f, NameOf(r.Icon) + (r.Quality > 1 ? " +" + r.Quality : ""), 22f);
             }
-            Put(s.Back, 0f, y, UnitW, RowH - 2f);
-            Put(s.Icon, 16f, y + 7f, 62f, 62f);
-            SetIcon(s.Icon, who);
-            Put(s.A, 100f, y + 10f, 250f, 28f);
-            Fit(s.A, who == null ? L("$ib_by_hand") : r.StationLevel > 0 ? $"{NameOf(who)} ({L("$ib_level")} {r.StationLevel})" : NameOf(who), 21f);
-            var kind = L("$ib_kind_" + r.Kind.ToString().ToLowerInvariant());
-            if (r.Quality > 1) kind += " → " + L("$ib_quality") + " " + r.Quality;
-            if (r.Inputs.Length > 0)
+            else if (!r.Recipe)
             {
-                var ins = new List<string>();
-                foreach (var x in r.Inputs) ins.Add($"{Amount(x)} {NameOf(x.Prefab)}");
-                kind += ": " + string.Join(", ", ins);
+                var src = _stations.Next(n => Chip("Station" + n, "text.body"));
+                src.Id = r.Icon;
+                src.Quality = 1;
+                Chip(src, x0, y, 290f, h, 0f, NameOf(r.Icon), 19f);
             }
-            Put(s.B, 100f, y + 40f, 270f, 26f);
-            Fit(s.B, kind, 18f);
-            var o = Array.Find(r.Outputs, x => x.Prefab == item);
-            Put(s.C, 360f, y, 70f, RowH);
-            Text(s.C, "x" + Amount(o), 21f);
-            Put(s.D, 420f, y, 120f, RowH);
-            var chance = float.IsNaN(o.Chance) ? L("$ib_weighted") : o.Chance >= 1f && r.Conditions == null ? "" : $"{o.Chance * 100f:0.#}%";
-            if (r.Conditions != null) chance = (chance + " " + L(r.Conditions)).Trim();
-            Fit(s.D, chance, 20f);
+            for (var i = 0; i < r.Inputs.Length; i++)
+            {
+                var c = _inChips.Next(n => Chip("InChip" + n, "text.accent"));
+                var st = r.Inputs[i];
+                c.Id = st.Prefab;
+                c.Quality = i == 0 && r.BaseQuality > 0 ? r.BaseQuality : 1;
+                Chip(c, x0 + i % 2 * 145f, iy + i / 2 * 30f, 140f, 28f, 26f, $"{NameOf(st.Prefab)} x{Amount(st)}", 17f);
+            }
+            if (r.Right != null || r.Recipe && r.Inputs.Length > 0)
+            {
+                Rule(390f, y + 8f, 2f, h - 16f);
+                var st = _stations.Next(n => Chip("Station" + n, "text.body"));
+                st.Id = r.Right;
+                st.Quality = 1;
+                var label = r.Right == null ? L("$ib_by_hand") : r.R.StationLevel > 1 ? $"{NameOf(r.Right)} {L("$ib_level_short")}{r.R.StationLevel}" : NameOf(r.Right);
+                // Output amount / conditions ("any one ingredient", per star) under the station when there are any.
+                var note = Chance(r, used ? r.Icon : _pageId);
+                Chip(st, 398f, note.Length > 0 ? y + 4f : y + (h - 36f) / 2f, UnitW - 398f, note.Length > 0 ? 30f : 36f, r.Right == null ? 0f : 30f, label, 17f);
+                if (note.Length > 0)
+                {
+                    var t = _chances.Next(n => Txt(_pageView.transform, "Chance" + n, "text.accent", TextAlignmentOptions.Right));
+                    Put(t, 398f, y + 34f, UnitW - 400f, 24f);
+                    Fit(t, note, 15f);
+                }
+            }
+            else
+            {
+                var t = _chances.Next(n => Txt(_pageView.transform, "Chance" + n, "text.accent", TextAlignmentOptions.Right));
+                Put(t, 330f, y, UnitW - 340f, h);
+                Fit(t, Chance(r, used ? r.Icon : _pageId), 18f);
+            }
+            Rule(0f, y + h - 2f, UnitW, 2f);
+        }
+
+        // Clear hit area with an optional icon (size 0 = text only) and its text.
+        private void Chip(Slot c, float x, float y, float w, float h, float icon, string text, float size)
+        {
+            Put(c.Back, x, y, w, h);
+            if (icon > 0f)
+            {
+                Put(c.Icon, x, y + (h - icon) / 2f, icon, icon);
+                SetIcon(c.Icon, c.Id);
+            }
+            else Off(c.Icon);
+            var tx = icon > 0f ? icon + 6f : 0f;
+            Put(c.A, x + tx, y, w - tx, h);
+            Fit(c.A, text, size);
+        }
+
+        private void Rule(float x, float y, float w, float h) => Put(_rules.Next(n => Img(_pageView.transform, "Rule" + n, "divider")), x, y, w, h);
+
+        private static string Amount(Stack s) => s.Min == s.Max ? s.Min.ToString() : $"{s.Min}-{s.Max}";
+
+        // Source row / creature drop: amount, base chance (weighted tables: no number), conditions.
+        private static string Chance(PageRow r, string item)
+        {
+            var o = r.R.Outputs.Length > 0 ? r.R.Outputs[0] : default;
+            foreach (var s in r.R.Outputs) if (s.Prefab == item) o = s;
+            var parts = new List<string>();
+            if (o.Prefab != null && !(o.Min == 1 && o.Max == 1)) parts.Add("x" + Amount(o));
+            if (float.IsNaN(o.Chance)) parts.Add(L("$ib_weighted"));
+            else if (o.Chance < 1f) parts.Add($"{L("$ib_chance")} {o.Chance * 100f:0.#}%");
+            if (r.R.Conditions != null) parts.Add(L(r.R.Conditions));
+            return string.Join("  ", parts);
         }
     }
 }

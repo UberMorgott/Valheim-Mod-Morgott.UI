@@ -29,7 +29,7 @@ namespace Morgott.UI.ItemBrowser
         {
             Cheat = cfg.Bind("ItemBrowser", "EnableCheating", true, "Right-click take in the ITEMS tab (only for admins, devcommands or worlds with no build / craft cost).");
             CheatCreatures = cfg.Bind("ItemBrowser", "CheatCreatures", true, "Take on a creature spawns it in front of you (same gate as EnableCheating).");
-            KnownOnly = cfg.Bind("ItemBrowser", "KnownOnly", true, "ITEMS tab shows only what your character knows (the tab's checkbox).");
+            KnownOnly = cfg.Bind("ItemBrowser", "KnownOnly", true, "ITEMS tab lists only what your character knows (config only; an empty list names this setting).");
             Hotkey = cfg.Bind("ItemBrowser", "Hotkey", new KeyboardShortcut(KeyCode.H, KeyCode.LeftAlt), "Opens the inventory on the ITEMS tab.");
         }
 
@@ -229,7 +229,8 @@ namespace Morgott.UI.ItemBrowser
              ZoneSystem.instance && (ZoneSystem.instance.GetGlobalKey(GlobalKeys.NoBuildCost) || ZoneSystem.instance.GetGlobalKey(GlobalKeys.NoCraftCost)));
 
         /// <returns>null when taken, else why not. The gate is checked here, not only in the UI (design 7).</returns>
-        public static string Take(string prefab, int quality, TakeMode mode)
+        // variant = Ctrl take: index into PageModel.Variants at this quality (the item page's recipe button).
+        public static string Take(string prefab, int quality, TakeMode mode, int variant = 0)
         {
             if (!CanTake) return "not allowed (admin / devcommands / no-cost world only)";
             var go = Prefab(prefab);
@@ -238,11 +239,14 @@ namespace Morgott.UI.ItemBrowser
             if (go.TryGetComponent<ItemDrop>(out var item))
             {
                 var q = Mathf.Clamp(quality, 1, Math.Max(1, item.m_itemData.m_shared.m_maxQuality));
-                var recipe = ObjectDB.instance.GetRecipe(item.m_itemData);
                 if (mode != TakeMode.Materials) return Give(item, 1, q, mode == TakeMode.Stack);
-                if (!recipe) return "no recipe for " + prefab;
-                foreach (var r in recipe.m_resources) Give(r.m_resItem, r.GetAmount(q), 1, false);
-                return q > 1 ? Give(item, 1, q - 1, false) : null; // VNEI DisplayItem.CheatItem: the upgrade base comes too
+                EnsureReady();
+                // The chosen recipe variant at this quality; an upgrade gives its base one quality lower too (VNEI DisplayItem.CheatItem).
+                var mats = Index != null ? PageModel.Materials(Index, prefab, q, variant) : null;
+                if (mats == null) return "no recipe for " + prefab;
+                string why = null;
+                foreach (var m in mats) why = Give(Prefab(m.Prefab) is GameObject g ? g.GetComponent<ItemDrop>() : null, m.Amount, m.Quality, false) ?? why;
+                return why;
             }
             if (go.TryGetComponent<Piece>(out var piece))
             {
@@ -274,7 +278,7 @@ namespace Morgott.UI.ItemBrowser
         public sealed class Probe
         {
             public bool Indexed, Active, Known, Favorite;
-            public string Hidden, Type, Name, Desc, Mod, Icon;
+            public string Hidden, Type, Category, Name, Desc, Mod, Icon;
             public int MaxQuality;
             public string[] Sources; // per relation: "Kind|source|station|input,input"
         }
@@ -297,6 +301,7 @@ namespace Morgott.UI.ItemBrowser
                 Active = e.Hidden == null,
                 Hidden = e.Hidden,
                 Type = e.Type.ToString(),
+                Category = e.Category.ToString(),
                 Name = Localize(e.Name),
                 Desc = Localize(e.Desc),
                 Mod = e.Mod,
@@ -308,7 +313,9 @@ namespace Morgott.UI.ItemBrowser
             };
         }
 
-        public static string Take(string prefab, int quality, string mode) =>
-            Enum.TryParse(mode, true, out TakeMode m) ? Take(prefab, quality, m) : "mode One|Stack|Materials";
+        public static string Take(string prefab, int quality, string mode) => Take(prefab, quality, mode, 0);
+
+        public static string Take(string prefab, int quality, string mode, int variant) =>
+            Enum.TryParse(mode, true, out TakeMode m) ? Take(prefab, quality, m, variant) : "mode One|Stack|Materials";
     }
 }

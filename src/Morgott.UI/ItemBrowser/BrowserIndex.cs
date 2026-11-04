@@ -12,6 +12,7 @@ namespace Morgott.UI.ItemBrowser
     {
         public string Id, Name, Desc, Mod, Hidden; // Name / Desc = localization tokens; Mod = plugin GUID, null = Valheim
         public EntryType Type;
+        public ItemCategory Category = ItemCategory.Misc; // items only, set by the vanilla scan (PageModel.Categorize)
         public int MaxQuality = 1;
     }
 
