@@ -661,13 +661,11 @@ namespace Morgott.UI.InventoryScreen
                 if (!s.sharedMesh) return;
                 // A Unity Cloth draws its simulated vertices, not the bone skinning BakeMesh returns: Warfare's cape2
                 // (lossyScale 95, bind poses off the body skeleton) skins to -30..45 m while its cloth hangs on the body.
-                // Cloth.vertices are in the root bone's unscaled space (run 20261104-181346: y -0.80..0.80 around the hips at
-                // 0.83 m = the render bounds 0.00..1.66 m; through the renderer's own transform the figure fill fell 0.90 -> 0.74).
-                if (s.TryGetComponent<Cloth>(out var cloth) && cloth.enabled && cloth.vertices is Vector3[] cv && cv.Length > 0)
+                // Measured by its render bounds, the world AABB Unity computes from the simulation (on the body: probe runs
+                // 20261104-174443-2 / -181346).
+                if (s.TryGetComponent<Cloth>(out var cloth) && cloth.enabled)
                 {
-                    var space = s.rootBone ? s.rootBone : s.transform;
-                    var u = Matrix4x4.TRS(space.position, space.rotation, Vector3.one);
-                    foreach (var v in cv) _points.Add(u.MultiplyPoint3x4(v) - Origin);
+                    AddCorners(s.bounds);
                     return;
                 }
                 s.BakeMesh(_bake, true); // scaled local space: localToWorldMatrix to world
@@ -681,13 +679,14 @@ namespace Morgott.UI.InventoryScreen
                 var m = r.transform.localToWorldMatrix;
                 foreach (var v in _verts) _points.Add(m.MultiplyPoint3x4(v) - Origin);
             }
-            else if (r is MeshRenderer)
-            {
-                var b = r.bounds;
-                if (b.size.sqrMagnitude <= 0f) return;
-                for (var c = 0; c < 8; c++)
-                    _points.Add(b.center - Origin + Vector3.Scale(b.extents, new Vector3((c & 1) == 0 ? -1 : 1, (c & 2) == 0 ? -1 : 1, (c & 4) == 0 ? -1 : 1)));
-            }
+            else if (r is MeshRenderer) AddCorners(r.bounds);
+        }
+
+        private void AddCorners(Bounds b)
+        {
+            if (b.size.sqrMagnitude <= 0f) return;
+            for (var c = 0; c < 8; c++)
+                _points.Add(b.center - Origin + Vector3.Scale(b.extents, new Vector3((c & 1) == 0 ? -1 : 1, (c & 2) == 0 ? -1 : 1, (c & 4) == 0 ? -1 : 1)));
         }
 
         // Time of day / weather independent: world directional lights off, rig lights on, fog off, flat ambient for this render only.
