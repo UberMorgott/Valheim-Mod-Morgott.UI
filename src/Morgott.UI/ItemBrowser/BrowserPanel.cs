@@ -23,7 +23,7 @@ namespace Morgott.UI.ItemBrowser
         public const string TabName = "MorgottItemsTab";
         private const float UnitW = 550f;
         // List (mockup 04): search, type row, category row, caption, 6-column grid with a thin scrollbar.
-        private const float TypeY = 50f, TypeH = 34f, CatY = 97f, CatH = 43f, CellPitchX = 89.5f, CellW = 80f, CellH = 70f, CellPitchY = 114f;
+        private const float TypeY = 50f, TypeH = 34f, CatY = 97f, CatH = 43f, CellPitchX = 89.5f, CellW = 84f, CellH = 74f, CellPitchY = 114f;
         private static readonly string[] TypeTokens = { "$ib_type_all", "$ib_type_items", "$ib_type_pieces", "$ib_type_creatures", "$ib_type_stations", null };
         private static readonly float[] TypeW = { 62f, 94f, 94f, 101f, 93f, 36f };
         private static readonly EntryType?[] TypeOf = { null, EntryType.Item, EntryType.Piece, EntryType.Creature, EntryType.Station, null };
@@ -497,7 +497,8 @@ namespace Morgott.UI.ItemBrowser
         {
             if (t.text != s) t.text = s;
             var fs = size * _k * _f;
-            if (Mathf.Abs(t.fontSize - fs) > 0.05f) { t.enableAutoSizing = false; t.fontSize = fs; }
+            if (t.enableAutoSizing) t.enableAutoSizing = false; // a pooled text Fit sized before keeps no autosize
+            if (Mathf.Abs(t.fontSize - fs) > 0.05f) t.fontSize = fs;
         }
 
         private static void SetIcon(Image image, string id)
@@ -508,9 +509,10 @@ namespace Morgott.UI.ItemBrowser
         }
 
         // Selected = not interactable (craft.category's disabled sprite is its selected plate).
-        private static void Select(Button b, bool on)
+        private void Select(Button b, bool on)
         {
             if (b.interactable == on) b.interactable = !on;
+            PlateFit((Image)b.targetGraphic, 1.6f);
         }
 
         private static string L(string token) => Browser.Localize(token);
@@ -686,17 +688,19 @@ namespace Morgott.UI.ItemBrowser
             var h = _a.H / _k;
             Put(_pageView.transform, 0f, 0f, UnitW, h);
             Put(_backPlate, 0f, 0f, 38f, 36f);
+            PlateFit(_backPlate, 1.6f);
             Put(_back, 8f, 7f, 22f, 22f);
             Put(_crumb, 56f, 0f, UnitW - 56f, 36f);
             Fit(_crumb, Crumb(e), 20f);
 
             // Header: icon, name, favorite, type, description, mod + prefab id, quality selector.
-            Put(_pageSocket, 2f, 52f, 96f, 96f);
-            Put(_pageIcon, 12f, 62f, 76f, 76f);
+            Put(_pageSocket, 0f, 50f, 100f, 100f);
+            Put(_pageIcon, 8f, 58f, 84f, 84f);
             SetIcon(_pageIcon, e.Id);
             Put(_pageName, 113f, 50f, 390f, 34f);
             Fit(_pageName, L(e.Name), 28f);
             Put(_fav, UnitW - 38f, 46f, 36f, 36f);
+            PlateFit((Image)_fav.targetGraphic, 1.6f);
             var isFav = Browser.Favorites().Contains(e.Id);
             if (isFav) { Put(_favOn, UnitW - 32f, 52f, 24f, 24f); Off(_favOff); }
             else { Put(_favOff, UnitW - 32f, 52f, 24f, 24f); Off(_favOn); }
@@ -812,15 +816,7 @@ namespace Morgott.UI.ItemBrowser
         private void Header(Image plate, TMP_Text label, string text, float y)
         {
             Put(plate, 0f, y, UnitW, 36f);
-            // Knotwork plate (header_plaque): its end knots scale with the band's height (CraftingSkin.FrameInset formula).
-            var s = plate.sprite;
-            var h = plate.rectTransform.rect.height;
-            var canvas = _canvas ? _canvas.GetComponent<Canvas>() : null;
-            if (s && h > 0f && canvas)
-            {
-                var mult = s.rect.height * canvas.referencePixelsPerUnit / (s.pixelsPerUnit * h);
-                if (Mathf.Abs(plate.pixelsPerUnitMultiplier - mult) > 0.001f) plate.pixelsPerUnitMultiplier = mult;
-            }
+            PlateFit(plate, 1f); // knotwork ends scale with the band
             Put(label, 100f, y, UnitW - 200f, 36f);
             Fit(label, text, 20f);
         }
@@ -858,7 +854,7 @@ namespace Morgott.UI.ItemBrowser
                 var st = r.Inputs[i];
                 c.Id = st.Prefab;
                 c.Quality = i == 0 && r.BaseQuality > 0 ? r.BaseQuality : 1;
-                Chip(c, x0 + i % 2 * 148f, iy + i / 2 * 30f, 144f, 30f, 30f, $"{NameOf(st.Prefab)} x{Amount(st)}", 18f);
+                Chip(c, x0 + i % 2 * 152f, iy + i / 2 * 30f, 150f, 30f, 30f, $"{NameOf(st.Prefab)} x{Amount(st)}", 18f);
             }
             if (r.Right != null || r.Recipe && r.Inputs.Length > 0)
             {
@@ -901,7 +897,19 @@ namespace Morgott.UI.ItemBrowser
             Fit(c.A, text, size);
         }
 
-        private void Rule(float x, float y, float w, float h) => Put(_rules.Next(n => Img(_pageView.transform, "Rule" + n, "divider")), x, y, w, h);
+        // Sliced plate drawn at its own proportions for this height (CraftingSkin.FrameInset formula); thin > 1 = thinner
+        // borders (small buttons: the tab art's rim at ~1/4 of its height crowded the numerals).
+        private void PlateFit(Image plate, float thin)
+        {
+            var s = plate.sprite;
+            var h = plate.rectTransform.rect.height;
+            var canvas = _canvas ? _canvas.GetComponent<Canvas>() : null;
+            if (!s || h <= 0f || !canvas) return;
+            var mult = thin * s.rect.height * canvas.referencePixelsPerUnit / (s.pixelsPerUnit * h);
+            if (Mathf.Abs(plate.pixelsPerUnitMultiplier - mult) > 0.001f) plate.pixelsPerUnitMultiplier = mult;
+        }
+
+        private void Rule(float x, float y, float w, float h) => Put(_rules.Next(n => Img(_pageView.transform, "Rule" + n, "ib.rule")), x, y, w, h);
 
         private static string Amount(Stack s) => s.Min == s.Max ? s.Min.ToString() : $"{s.Min}-{s.Max}";
 
