@@ -113,7 +113,8 @@ namespace Morgott.UI.ItemBrowser
             return new PageRow { R = r, Icon = item, Quality = up ? r.Quality : 0, Inputs = ins, BaseQuality = up ? r.Quality - 1 : 0, Right = right, Recipe = true };
         }
 
-        public static float Height(PageRow row, bool used) => (used ? UsedRowH : RowH) + LineH * (row.Lines - 1);
+        // lines = input lines as laid out (the panel flows chips at rendered widths); 0 = two per line.
+        public static float Height(PageRow row, bool used, int lines = 0) => (used ? UsedRowH : RowH) + LineH * ((lines > 0 ? lines : row.Lines) - 1);
 
         /// <summary>Materials of a recipe row (Ctrl take): prefab, amount, quality (the upgrade base at quality - 1).</summary>
         public static List<(string Prefab, int Amount, int Quality)> Materials(PageRow row)

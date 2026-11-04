@@ -23,7 +23,7 @@ namespace Morgott.UI.ItemBrowser
         public const string TabName = "MorgottItemsTab";
         private const float UnitW = 550f;
         // List (mockup 04): search, type row, category row, caption, 6-column grid with a thin scrollbar.
-        private const float TypeY = 50f, TypeH = 34f, CatY = 97f, CatH = 43f, CellPitchX = 89.5f, CellW = 84f, CellH = 74f, CellPitchY = 114f;
+        private const float TypeY = 50f, TypeH = 34f, CatY = 97f, CatH = 43f, CellPitchX = 89.5f, CellW = 84f, CellH = 72f, CellPitchY = 114f;
         private static readonly string[] TypeTokens = { "$ib_type_all", "$ib_type_items", "$ib_type_pieces", "$ib_type_creatures", "$ib_type_stations", null };
         private static readonly float[] TypeW = { 62f, 94f, 94f, 101f, 93f, 36f };
         private static readonly EntryType?[] TypeOf = { null, EntryType.Item, EntryType.Piece, EntryType.Creature, EntryType.Station, null };
@@ -71,7 +71,7 @@ namespace Morgott.UI.ItemBrowser
         private TMP_Text _crumb, _pageName, _pageType, _pageDesc, _pageMod, _qualLabel;
         private readonly List<Button> _quals = new List<Button>(), _variants = new List<Button>();
         private Image _fromHeader, _usedHeader;
-        private TMP_Text _fromLabel, _usedLabel, _fromNote, _usedNote;
+        private TMP_Text _fromLabel, _usedLabel, _fromNote, _usedNote, _measure;
         private readonly Pool<Slot> _sockets = new Pool<Slot>(), _inChips = new Pool<Slot>(), _titles = new Pool<Slot>(), _stations = new Pool<Slot>();
         private readonly Pool<TMP_Text> _chances = new Pool<TMP_Text>();
         private readonly Pool<Image> _rules = new Pool<Image>();
@@ -306,7 +306,7 @@ namespace Morgott.UI.ItemBrowser
             for (var i = 0; i < _types.Length; i++)
             {
                 var n = i;
-                _types[i] = Btn(g, "Type" + i, "craft.tab", out _typeLabels[i], () => { _type = n; _gridScroll = 0; _dirty = true; });
+                _types[i] = Btn(g, "Type" + i, "ib.square", out _typeLabels[i], () => { _type = n; _gridScroll = 0; _dirty = true; });
             }
             _typeStar = Img(_types[5].transform, "Star", "ib.star.type");
             for (var i = 0; i < _cats.Length; i++)
@@ -357,6 +357,7 @@ namespace Morgott.UI.ItemBrowser
             _usedHeader = Img(p, "UsedHeader", "decor.plaque");
             _usedLabel = Txt(p, "UsedLabel", "text.body", TextAlignmentOptions.Center, FontStyles.Bold);
             _usedNote = Txt(p, "UsedNote", "text.muted", TextAlignmentOptions.Center, FontStyles.Italic);
+            _measure = Txt(p, "Measure", "text.accent", TextAlignmentOptions.Left); // never shown: chip widths
             _pageView.SetActive(false);
         }
 
@@ -522,10 +523,26 @@ namespace Morgott.UI.ItemBrowser
         }
 
         // Selected = not interactable (craft.category's disabled sprite is its selected plate).
-        private void Select(Button b, bool on)
+        // Square button at a layout box: selected = not interactable (slot_cell_selected cyan rim), drawn at full
+        // brightness with a soft cyan halo 3 units around it (mockup 04/05 selection); slim rim at any size.
+        private readonly Dictionary<Button, Image> _halos = new Dictionary<Button, Image>();
+
+        private void Square(Button b, bool on, float x, float y, float w, float h)
         {
+            Put(b, x, y, w, h);
             if (b.interactable == on) b.interactable = !on;
-            PlateFit((Image)b.targetGraphic, b.targetGraphic.GetComponent<SkinMark>()?.Role == "ib.square" ? 0.8f : 2.2f); // squares: a full cyan rim; tabs: light corners
+            var img = (Image)b.targetGraphic;
+            PlateFit(img, 1.6f);
+            var tint = on ? Color.white : ThemeTokens.GetColor("color.frame", Color.white);
+            if (img.color != tint) img.color = tint;
+            if (!_halos.TryGetValue(b, out var halo))
+            {
+                _halos[b] = halo = Img(b.transform.parent, b.name + "Halo", "ib.halo");
+                halo.transform.SetSiblingIndex(b.transform.GetSiblingIndex()); // behind its button
+            }
+            if (!on) { Off(halo); return; }
+            Put(halo, x - 3f, y - 3f, w + 6f, h + 6f);
+            PlateFit(halo, 1.6f);
         }
 
         private static string L(string token) => Browser.Localize(token);
@@ -571,24 +588,22 @@ namespace Morgott.UI.ItemBrowser
             var x = 0f;
             for (var i = 0; i < _types.Length; i++)
             {
-                Put(_types[i], x, TypeY, TypeW[i], TypeH);
+                Square(_types[i], i == _type, x, TypeY, TypeW[i], TypeH);
                 if (i == 5) Put(_typeStar, x + 7f, TypeY + 6f, TypeW[i] - 14f, TypeH - 12f);
                 else
                 {
                     Put(_typeLabels[i], x + 3f, TypeY, TypeW[i] - 6f, TypeH);
                     Fit(_typeLabels[i], L(TypeTokens[i]), 19f);
                 }
-                Select(_types[i], i == _type);
                 x += TypeW[i] + 14f;
             }
             var items = _type == 1;
             for (var i = 0; i < _cats.Length; i++)
             {
-                if (!items) { Off(_cats[i]); continue; }
+                if (!items) { Off(_cats[i]); if (_halos.TryGetValue(_cats[i], out var hc)) Off(hc); continue; }
                 var cx = i * (UnitW - CatH) / (_cats.Length - 1);
-                Put(_cats[i], cx, CatY, CatH, CatH);
+                Square(_cats[i], i == _cat, cx, CatY, CatH, CatH);
                 Put(i == 0 ? _catGlyphs[i].transform.parent : _catGlyphs[i].transform, cx + 7f, CatY + 7f, CatH - 14f, CatH - 14f);
-                Select(_cats[i], i == _cat);
             }
             var list = Results();
             var capY = items ? 149f : CatY;
@@ -616,8 +631,8 @@ namespace Morgott.UI.ItemBrowser
                 Put(c.D, cx + CellW - 22f, cy + 2f, 18f, 18f);
                 Text(c.D, "★", 16f);
                 c.D.enabled = fav.Contains(c.Id);
-                Put(c.A, cx, cy + CellH + 2f, CellW, 38f); // within the cell width: neighbours never touch
-                Fit(c.A, L(list[n].Name), 16f);
+                Put(c.A, cx + 1f, cy + CellH + 1f, CellW - 2f, 41f); // 7.5 units between neighbours
+                Fit(c.A, L(list[n].Name), 17.5f);
             }
             // Thin scrollbar: track over the grid's rows, thumb = visible share.
             if (_gridScrollMax > 0)
@@ -708,7 +723,7 @@ namespace Morgott.UI.ItemBrowser
 
             // Header: icon, name, favorite, type, description, mod + prefab id, quality selector.
             Put(_pageSocket, 0f, 50f, 100f, 100f);
-            PlateFit(_pageSocket, 0.6f); // a heavier bevel than the list sockets (mockup 05 header)
+            PlateFit(_pageSocket, 1.6f); // slim 3-4 unit rim with small corner cuts (mockup 05 header)
             Put(_pageIcon, 8f, 58f, 84f, 84f);
             SetIcon(_pageIcon, e.Id);
             Put(_pageName, 113f, 50f, 390f, 34f);
@@ -738,20 +753,19 @@ namespace Morgott.UI.ItemBrowser
                 }
                 for (var i = 0; i < _quals.Count; i++)
                 {
-                    if (i >= e.MaxQuality) { Off(_quals[i]); continue; }
+                    if (i >= e.MaxQuality) { Off(_quals[i]); if (_halos.TryGetValue(_quals[i], out var hq)) Off(hq); continue; }
                     float qx = 412f + i % 4 * 35f, qy = 108f + i / 4 * 35f;
-                    Put(_quals[i], qx, qy, 31f, 31f);
+                    Square(_quals[i], i + 1 == _quality, qx, qy, 31f, 31f);
                     var lab = _quals[i].transform.Find("Label").GetComponent<TMP_Text>();
                     Put(lab, qx, qy, 31f, 31f);
                     Fit(lab, (i + 1).ToString(), 18f);
-                    Select(_quals[i], i + 1 == _quality);
                     top = Mathf.Max(top, qy + 35f);
                 }
             }
             else
             {
                 Off(_qualLabel);
-                foreach (var q in _quals) Off(q);
+                foreach (var q in _quals) { Off(q); if (_halos.TryGetValue(q, out var hq)) Off(hq); }
             }
             // Recipe variants at this quality (two or more): pick the one the Ctrl take gives.
             var variants = PageModel.Variants(ix, e.Id, _quality);
@@ -760,18 +774,17 @@ namespace Morgott.UI.ItemBrowser
             while (_variants.Count < vLabels.Count)
             {
                 var n = _variants.Count;
-                _variants.Add(Btn(_pageView.transform, "Variant" + n, "craft.tab", out _, () => { _variant = n; _dirty = true; }));
+                _variants.Add(Btn(_pageView.transform, "Variant" + n, "ib.square", out _, () => { _variant = n; _dirty = true; }));
             }
             var vy = Mathf.Max(top, 158f) + 8f;
             for (var i = 0; i < _variants.Count; i++)
             {
-                if (i >= vLabels.Count) { Off(_variants[i]); continue; }
+                if (i >= vLabels.Count) { Off(_variants[i]); if (_halos.TryGetValue(_variants[i], out var hv)) Off(hv); continue; }
                 float bx = 2f + i % 3 * 177f, by = vy + i / 3 * 42f;
-                Put(_variants[i], bx, by, 163f, 34f);
+                Square(_variants[i], i == _variant, bx, by, 163f, 34f);
                 var lab = _variants[i].transform.Find("Label").GetComponent<TMP_Text>();
                 Put(lab, bx + 4f, by, 155f, 34f);
                 Fit(lab, vLabels[i], 18f);
-                Select(_variants[i], i == _variant);
                 top = by + 34f;
             }
             top += 18f;
@@ -786,8 +799,19 @@ namespace Morgott.UI.ItemBrowser
             blocks.Add((3, null));
             if (used.Count == 0) blocks.Add((5, null));
             foreach (var r in used) blocks.Add((4, r));
+            // Input chips flow at their rendered widths (a name is never cut while it fits the input span): a row's line
+            // count comes from that flow, cached per page / quality / index / scale (wheel ticks relayout).
+            var key = $"{e.Id}|{_quality}|{Browser.Generation}|{_k:0.###}";
+            if (key != _flowKey) { _flowKey = key; _flows.Clear(); }
             var heights = new List<float>(blocks.Count);
-            foreach (var b in blocks) heights.Add(b.Kind == 0 || b.Kind == 3 ? 44f : b.Kind == 2 || b.Kind == 5 ? 34f : PageModel.Height(b.Row, b.Kind == 4));
+            for (var b = 0; b < blocks.Count; b++)
+            {
+                var (kind, row) = blocks[b];
+                if (kind == 0 || kind == 3) { heights.Add(44f); continue; }
+                if (kind == 2 || kind == 5) { heights.Add(34f); continue; }
+                if (!_flows.TryGetValue(b, out var flow)) _flows[b] = flow = Flow(row, kind == 4 ? 94f : 81f);
+                heights.Add(PageModel.Height(row, kind == 4, flow.Count == 0 ? 1 : flow[flow.Count - 1].Line + 1));
+            }
             _pageScrollMax = PageModel.MaxFirst(heights, h - top);
             _pageScroll = Mathf.Clamp(_pageScroll, 0, _pageScrollMax);
             var shown = new bool[6];
@@ -802,7 +826,7 @@ namespace Morgott.UI.ItemBrowser
                     case 3: Header(_usedHeader, _usedLabel, L("$ib_used_in"), y); break;
                     case 2: Put(_fromNote, 0f, y, UnitW, 30f); Fit(_fromNote, L("$ib_no_source"), 17f); break;
                     case 5: Put(_usedNote, 0f, y, UnitW, 30f); Fit(_usedNote, L("$ib_not_used"), 17f); break;
-                    default: Row(row, y, heights[i], kind == 4); break;
+                    default: Row(row, y, heights[i], kind == 4, _flows[i]); break;
                 }
                 y += heights[i];
             }
@@ -817,6 +841,39 @@ namespace Morgott.UI.ItemBrowser
             for (var i = _chances.Used; i < _chances.Items.Count; i++) Off(_chances.Items[i]);
             for (var i = _rules.Used; i < _rules.Items.Count; i++) Off(_rules.Items[i]);
         }
+
+        // Input chip flow: icon, name, amount at rendered widths, wrapped inside [x0, InputEnd] (10 units before the station
+        // rule at 390); a chip wider than the span is cut to it (its name gets the ellipsis).
+        private const float InputEnd = 380f, ChipIcon = 34f, ChipGap = 14f, ChipFont = 18f;
+        private readonly Dictionary<int, List<Chipped>> _flows = new Dictionary<int, List<Chipped>>();
+        private string _flowKey;
+
+        private struct Chipped
+        {
+            public float X, NameW, AmountW;
+            public int Line;
+        }
+
+        private List<Chipped> Flow(PageRow r, float x0)
+        {
+            var list = new List<Chipped>(r.Inputs.Length);
+            float x = x0, room = InputEnd - x0;
+            var line = 0;
+            Text(_measure, "", ChipFont);
+            foreach (var st in r.Inputs)
+            {
+                float nameW = Measure(NameOf(st.Prefab)), amountW = Measure("x" + Amount(st));
+                var w = ChipIcon + 6f + nameW + 4f + amountW;
+                if (w > room) { nameW -= w - room; w = room; }
+                if (x > x0 && x + w > InputEnd) { line++; x = x0; }
+                list.Add(new Chipped { X = x, NameW = nameW, AmountW = amountW, Line = line });
+                x += w + ChipGap;
+            }
+            return list;
+        }
+
+        // Rendered width of a string at the chip font, in layout units (TMP local size = units x _k x _f).
+        private float Measure(string s) => _measure.GetPreferredValues(s).x / Mathf.Max(_k * _f, 1e-6f);
 
         private static void Rest(Pool<Slot> p)
         {
@@ -837,7 +894,7 @@ namespace Morgott.UI.ItemBrowser
 
         // One page row (mockup 05): "Obtained from" = socket + inputs (or source name + chance) + station; "Used in" = socket,
         // ember title (+quality), inputs line(s), station. A divider closes every row.
-        private void Row(PageRow r, float y, float h, bool used)
+        private void Row(PageRow r, float y, float h, bool used, List<Chipped> flow)
         {
             var sock = _sockets.Next(n => NewSlot(_pageView.transform, "RowIcon" + n, "craft.socket"));
             sock.Id = r.Icon;
@@ -847,7 +904,8 @@ namespace Morgott.UI.ItemBrowser
             Put(sock.Icon, 10f, y + 9f, s - 12f, sh - 10f);
             SetIcon(sock.Icon, r.Icon);
             var x0 = used ? 94f : 81f;
-            var iy = y + (used ? 38f : (h - PageModel.LineH * r.Lines) / 2f);
+            var lines = flow.Count == 0 ? 1 : flow[flow.Count - 1].Line + 1;
+            var iy = y + (used ? 38f : (h - PageModel.LineH * lines) / 2f);
             if (used)
             {
                 var title = _titles.Next(n => Chip("RowTitle" + n, "text.ember"));
@@ -862,9 +920,7 @@ namespace Morgott.UI.ItemBrowser
                 src.Quality = 1;
                 Chip(src, x0, y, 290f, h, 0f, NameOf(r.Icon), 19f);
             }
-            // Two chips per line, ending 10 units before the station rule (x 390); the amount has its own label so a
-            // long name loses letters, never its quantity.
-            var chipW = (380f - x0 - 6f) / 2f;
+            // Chips as flowed (Flow); the amount is its own label, so only a name wider than the whole span loses letters.
             for (var i = 0; i < r.Inputs.Length; i++)
             {
                 var c = _inChips.Next(n =>
@@ -876,17 +932,11 @@ namespace Morgott.UI.ItemBrowser
                 var st = r.Inputs[i];
                 c.Id = st.Prefab;
                 c.Quality = i == 0 && r.BaseQuality > 0 ? r.BaseQuality : 1;
-                var cx = x0 + i % 2 * (chipW + 6f);
-                var cy = iy + i / 2 * PageModel.LineH;
-                var amount = "x" + Amount(st);
-                var amountW = 10f * amount.Length + 4f;
-                Chip(c, cx, cy, chipW - amountW, PageModel.LineH, 34f, NameOf(st.Prefab), 18f);
-                // Amount right after the name (rendered width, local -> layout units), at most at the chip's end.
-                var nameW = chipW - amountW - 40f;
-                var local = c.A.rectTransform.rect.width;
-                var shown = local > 0f ? Mathf.Min(nameW, c.A.GetPreferredValues(c.A.text).x * nameW / local) : nameW;
-                Put(c.D, cx + 40f + shown + 5f, cy, amountW, PageModel.LineH);
-                Text(c.D, amount, 18f);
+                var f = flow[i];
+                var cy = iy + f.Line * PageModel.LineH;
+                Chip(c, f.X, cy, ChipIcon + 6f + f.NameW + 1f, PageModel.LineH, ChipIcon, NameOf(st.Prefab), ChipFont);
+                Put(c.D, f.X + ChipIcon + 6f + f.NameW + 4f, cy, f.AmountW + 2f, PageModel.LineH);
+                Text(c.D, "x" + Amount(st), ChipFont);
             }
             if (r.Right != null || r.Recipe && r.Inputs.Length > 0)
             {
