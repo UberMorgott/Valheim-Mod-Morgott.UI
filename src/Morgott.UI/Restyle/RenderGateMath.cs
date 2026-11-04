@@ -25,21 +25,6 @@ namespace Morgott.UI.Restyle
 
         public static bool Overlaps(float outerLeft, float outerBottom, float outerRight, float outerTop, float innerLeft, float innerBottom, float innerRight, float innerTop) =>
             innerLeft < outerRight && innerRight > outerLeft && innerBottom < outerTop && innerTop > outerBottom;
-
-        // Opaque interior of a window drawn over (x0, y0)-(x1, y1) (screen px, y up) whose art is designW x designH design
-        // px with the given transparent margins (design px; top = the high-y edge on screen). Empty (x0 >= x1) when the
-        // margins swallow the window.
-        public static void Interior(float x0, float y0, float x1, float y1, float designW, float designH,
-            float left, float top, float right, float bottom, out float innerLeft, out float innerBottom, out float innerRight, out float innerTop)
-        {
-            var sx = designW > 0f ? (x1 - x0) / designW : 0f;
-            var sy = designH > 0f ? (y1 - y0) / designH : 0f;
-            innerLeft = x0 + left * sx;
-            innerRight = x1 - right * sx;
-            innerBottom = y0 + bottom * sy;
-            innerTop = y1 - top * sy;
-            if (innerLeft >= innerRight || innerBottom >= innerTop) innerLeft = innerRight = innerBottom = innerTop = 0f;
-        }
     }
 
     // Which owners conceal which key. A key is concealed while at least one owner holds it; the first hold and the

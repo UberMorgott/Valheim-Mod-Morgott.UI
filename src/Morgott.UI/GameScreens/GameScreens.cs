@@ -635,12 +635,39 @@ namespace Morgott.UI.GameScreens
                 ctx.Role(d.m_totalSkillText, "text.muted", "compendium footer text");
                 PopupSkin.Backdrops(ctx, r);
             });
-            // One window header (RuneWindowHeader) over its title band (Texts/Texts_frame, topic on top; vanilla places the
-            // frame, the user offset rides on it).
+            // A full-screen info page (InfoPage, mockup 2026-11-04/02): Texts_frame fills the screen, tab row + Esc on top,
+            // the window header as the centred page title ("topic" mirrored), topic list left, reading pane right.
             if (d.transform.Find("Texts_frame") is RectTransform frame)
             {
-                MovableWindow.Ensure(frame, WindowMove.Compendium);
-                RuneWindowHeader.TopBand(frame, WindowMove.Compendium, frame, "$ui_win_texts");
+                var page = InfoScreens.InfoPage.Ensure((RectTransform)d.transform, frame, "OnOpenTexts", d.OnClose);
+                page.OnLayout = k => Layout(d, frame, page, k);
+            }
+        }
+
+        private static void Layout(TextsDialog d, RectTransform frame, InfoScreens.InfoPage page, float k)
+        {
+            var canvas = page.Canvas;
+            var header = RuneWindowHeader.Ensure(frame, WindowMove.Compendium);
+            if (!header || !canvas) return;
+            if (frame.Find("topic") is Transform topic && topic.TryGetComponent<TMP_Text>(out var title)) header.Adopt(title, "$ui_win_texts");
+            if (frame.Find("Closebutton") is RectTransform close) InventoryScreen.Geo.SetScale(close, 0f); // Esc / the own tab close (mockup: no close button)
+            var c = page.Layout(k, header);
+            if (c.W <= 0f || c.H <= 0f) return;
+            if (frame.Find("bkg") is RectTransform bkg) InventoryScreen.Geo.Place(canvas, bkg, InfoScreens.InfoPage.Full(canvas)); // the panel stack host
+            var listW = Mathf.Min(c.W * 0.32f, ThemeTokens.GetFloat("size.info.texts.list.w", 500f) * k);
+            var gap = ThemeTokens.GetFloat("size.info.texts.gap", 40f) * k;
+            if (frame.Find("TextList") is RectTransform list) InventoryScreen.Geo.Place(canvas, list, new InventoryScreen.Box(c.X, c.Y, listW, c.H));
+            if (frame.Find("TextArea") is RectTransform area) InventoryScreen.Geo.Place(canvas, area, new InventoryScreen.Box(c.X + listW + gap, c.Y, c.W - listW - gap, c.H));
+            // The active effects list copied the text scroll's rect once (ActiveEffectsList.Create): keep it on it.
+            var scroll = d.m_textArea ? d.m_textArea.GetComponentInParent<ScrollRect>(true) : null;
+            if (scroll && scroll.transform.parent.Find(ActiveEffectsPage.RootName) is RectTransform fx)
+            {
+                var src = (RectTransform)scroll.transform;
+                if (fx.anchorMin != src.anchorMin) fx.anchorMin = src.anchorMin;
+                if (fx.anchorMax != src.anchorMax) fx.anchorMax = src.anchorMax;
+                if (fx.pivot != src.pivot) fx.pivot = src.pivot;
+                if (fx.anchoredPosition != src.anchoredPosition) fx.anchoredPosition = src.anchoredPosition;
+                if (fx.sizeDelta != src.sizeDelta) fx.sizeDelta = src.sizeDelta;
             }
         }
     }

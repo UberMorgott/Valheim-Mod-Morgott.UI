@@ -90,32 +90,5 @@ namespace Morgott.UI.Tests
             Assert.True(RenderGateMath.Overlaps(0, 0, 100, 100, 99, 99, 120, 120));
             Assert.False(RenderGateMath.Overlaps(0, 0, 100, 100, 100, 0, 120, 100));
         }
-
-        [Fact]
-        public void InteriorScalesDesignMarginsToTheWindow()
-        {
-            // Stats chrome at 2560x1440: design 1920x1080 margins 48/56/48/32 scale by 4/3; top = high-y edge.
-            RenderGateMath.Interior(0, 0, 2560, 1440, 1920, 1080, 48, 56, 48, 32, out var x0, out var y0, out var x1, out var y1);
-            Assert.Equal(64f, x0, 3);
-            Assert.Equal(2496f, x1, 3);
-            Assert.Equal(1440f - 56f * 4f / 3f, y1, 3);
-            Assert.Equal(32f * 4f / 3f, y0, 3);
-        }
-
-        [Fact]
-        public void InteriorOfALetterboxedWindowKeepsItsOffset()
-        {
-            // 21:9 screen: the 16:9 window centred at x 400..2960 (2560 wide), full height 1440.
-            RenderGateMath.Interior(400, 0, 2960, 1440, 1920, 1080, 48, 56, 48, 32, out var x0, out _, out var x1, out _);
-            Assert.Equal(464f, x0, 3);
-            Assert.Equal(2896f, x1, 3);
-        }
-
-        [Fact]
-        public void InteriorSwallowedByMarginsIsEmpty()
-        {
-            RenderGateMath.Interior(0, 0, 50, 50, 1920, 1080, 1000, 0, 1000, 0, out var x0, out var y0, out var x1, out var y1);
-            Assert.True(x0 >= x1 && y0 >= y1);
-        }
     }
 }

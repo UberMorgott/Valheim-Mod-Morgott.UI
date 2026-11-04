@@ -16,7 +16,7 @@ namespace Morgott.UI.InfoScreens
 {
     // Family "CharacterStats" (batch P, stats-full-b.png): the character stats window, opened by a 5th button in the
     // inventory's info row (a clone of the Achievements button, like the vanilla tabs) or the Hud.StatsKey shortcut.
-    // A modal screen (FullWindow: the inventory panels hide while it is open): the mockup's 1920x1080 design frame
+    // A full-screen page (InfoPage -> FullWindow: opaque scrim, the inventory panels and HUD hidden while it is open): the mockup's 1920x1080 design frame
     // mapped onto the canvas (StatsMath.Map), the user-approved painted chrome (frame, plaque, card frames, close
     // button) in four quarters, the title on the rune face, a 4x2 grid of cards (resources, resistances, movement and
     // weight, defense, food, rest, battle enchantments, ward); the active effects stay on the compendium page. Every value comes from the live game objects (StatsReader, cited per row); Epic Loot and
@@ -133,6 +133,13 @@ namespace Morgott.UI.InfoScreens
             _button = CreateButton(gui);
             WindowMove.OnMoved(WindowMove.Stats, () => _layoutDirty = true);
             ScreenRegistry.Register(_root, Context);
+            // Full-screen info page (InfoPage): opening it closes the other info pages and they close it; its own opaque scrim
+            // (color.stats.backdrop, alpha 1) is the backdrop, the painted chrome the frame.
+            InfoPage.Ensure(_root, null, null, () =>
+            {
+                _shownInventory = false; // a page switch keeps the inventory
+                Close();
+            });
             Plugin.Log.LogInfo($"[Morgott.UI] character stats window attached (button={(bool)_button})");
         }
 
@@ -183,10 +190,9 @@ namespace Morgott.UI.InfoScreens
 
         private void Build()
         {
-            _scrim = Img(_root, "Scrim", "scrim", "modal dim behind the stats window (click closes)");
+            // Own role (color.stats.backdrop, opaque): a theme restyle must not turn it back into the translucent scrim.
+            _scrim = Img(_root, "Scrim", "stats.backdrop", "opaque full-screen backdrop of the stats page (click closes)");
             _scrim.raycastTarget = true;
-            _scrim.sprite = null; // a plain full-screen dim (the role has no sprite)
-            _scrim.color = ThemeTokens.GetColor("color.stats.backdrop", new Color(0.016f, 0.027f, 0.04f, 0.86f));
             var scrimButton = _scrim.gameObject.AddComponent<Button>();
             scrimButton.transition = Selectable.Transition.None;
             scrimButton.navigation = new Navigation { mode = Navigation.Mode.None };
@@ -427,7 +433,6 @@ namespace Morgott.UI.InfoScreens
             if (_gui.m_uiGroups != null && _gui.m_uiGroups.Length > 2) _gui.SetActiveGroup(_gui.m_uiGroups[2]);
             _root.SetAsLastSibling();
             _root.gameObject.SetActive(true);
-            FullWindow.Enter(_root, OpaqueRect); // modal: the inventory panels hide (not drawn) until it closes
             _layoutDirty = true;
             _nextRefresh = 0f;
             // Every card opens at its top (the offset of the last visit is no rest position for new content).
@@ -450,31 +455,6 @@ namespace Morgott.UI.InfoScreens
 
         private bool _shownInventory;
 
-        // The chrome's opaque interior on screen (px): the four quarters' union less their transparent rim. Measured on
-        // stats_chrome_*.png (3840x2160 composed, alpha >= 250 everywhere inside 88 / 104 / 88 / 56 px = 44 / 52 / 44 /
-        // 28 design px), plus 4 design px of slack. The UI drawn before the window inside it is gated (CoverCull).
-        private Rect OpaqueRect()
-        {
-            if (_pieces.Count == 0 || !_canvasComp) return default;
-            var cam = _canvasComp.renderMode == RenderMode.ScreenSpaceOverlay ? null : _canvasComp.worldCamera;
-            var corners = new Vector3[4];
-            float x0 = float.MaxValue, y0 = float.MaxValue, x1 = float.MinValue, y1 = float.MinValue;
-            foreach (var p in _pieces)
-            {
-                if (!p.Image || !p.Image.isActiveAndEnabled || !p.Image.sprite) return default; // a missing quarter: no claim
-                p.Image.rectTransform.GetWorldCorners(corners);
-                foreach (var c in corners)
-                {
-                    var s = RectTransformUtility.WorldToScreenPoint(cam, c);
-                    x0 = Mathf.Min(x0, s.x); y0 = Mathf.Min(y0, s.y);
-                    x1 = Mathf.Max(x1, s.x); y1 = Mathf.Max(y1, s.y);
-                }
-            }
-            Morgott.UI.Restyle.RenderGateMath.Interior(x0, y0, x1, y1, 1920f, 1080f,
-                T("size.stats.opaque.left", 48f), T("size.stats.opaque.top", 56f), T("size.stats.opaque.right", 48f), T("size.stats.opaque.bottom", 32f),
-                out var innerLeft, out var innerBottom, out var innerRight, out var innerTop);
-            return Rect.MinMaxRect(innerLeft, innerBottom, innerRight, innerTop);
-        }
         // ---------------------------------------------------------------- update
 
         private void Update()

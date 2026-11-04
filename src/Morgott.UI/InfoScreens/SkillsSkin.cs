@@ -34,7 +34,7 @@ namespace Morgott.UI.InfoScreens
         private RectTransform _root, _frame, _canvas;
         private Image _deathGlyph, _summaryWell, _knotL, _knotR;
         private TMP_Text _death;
-        private InfoTabs _tabs;
+        private InfoPage _page;
         private readonly SortToggle[] _sorts = new SortToggle[2];
         private int _rowsSeen = -1;
 
@@ -70,7 +70,7 @@ namespace Morgott.UI.InfoScreens
             _death = InfoArt.RowText(_frame, "RuneSkinSkillsDeath", "text.body", TextAlignmentOptions.MidlineLeft);
             _knotL = InfoArt.OwnImage(_frame, "RuneSkinSkillsKnotL", "ornament.knot", "title ornament (knot)");
             _knotR = InfoArt.OwnImage(_frame, "RuneSkinSkillsKnotR", "ornament.knot", "title ornament (knot)");
-            _tabs = new InfoTabs(gui, _frame, "OnOpenSkills", () => _dialog.OnClose());
+            _page = InfoPage.Ensure(_root, _frame, "OnOpenSkills", () => _dialog.OnClose());
             for (var i = 0; i < _sorts.Length; i++) _sorts[i] = MakeSort(i + 1);
             ScreenRegistry.Register(_root, Context);
             ScreenRegistry.Restyle(_root);
@@ -223,18 +223,10 @@ namespace Morgott.UI.InfoScreens
             var inv = InventorySkin.Instance;
             if (!inv || !_canvas) return;
             var k = inv.SkinScaleValue;
-            var box = InfoArt.Panel(inv, WindowMove.Skills, ThemeTokens.GetFloat("size.info.skills.w", 780f) * k, _canvas);
-            if (box.IsEmpty) return;
-            Geo.SetScale(_frame, 1f);
-            Geo.Place(_canvas, _frame, box);
-            var pad = Mathf.Max(ThemeTokens.GetFloat("size.info.pad", 22f) * k, PanelDecor.KeepOut(_frame, _canvas)); // window content inset (corner caps)
-            var inner = new Box(box.X + pad, box.Y + pad, box.W - 2f * pad, box.H - 2f * pad);
-            var tabsH = ThemeTokens.GetFloat("size.info.tabs", 70f) * k;
             var summaryH = ThemeTokens.GetFloat("size.info.summary", 48f) * k;
             var gap = 8f * k;
-            // The window's one header (RuneWindowHeader): band at the window top, title "topic" centred in the rune face
-            // (mirrored), same plate / height as every window; the knots of the old title row are not drawn.
-            var headerH = WindowHeaderMath.HeaderHeight(ThemeTokens.GetFloat("size.win.header", 40f), k);
+            // Full-screen page (InfoPage: tab row, Esc, the window's one header as the centred page title, "topic"
+            // mirrored); the knots of the old title row are not drawn.
             var header = RuneWindowHeader.Ensure(_frame, WindowMove.Skills);
             foreach (var c in Children.Of(_frame))
             {
@@ -242,12 +234,11 @@ namespace Morgott.UI.InfoScreens
                 if (c.name == "topic" && c.TryGetComponent<TMP_Text>(out var title)) { if (header) header.Adopt(title, "$ui_win_skills"); }
                 else if (c.name == "Closebutton") Geo.SetScale(rt, 0f); // the selected tab closes (mockup: no close button)
             }
-            if (header) header.Place(_canvas, new Box(box.X, box.Y, box.W, headerH));
+            var inner = _page.Layout(k, header);
+            if (inner.W <= 0f || inner.H <= 0f) return;
             if (_knotL) Geo.SetScale(_knotL.rectTransform, 0f);
             if (_knotR) Geo.SetScale(_knotR.rectTransform, 0f);
-            var y = box.Y + headerH + gap;
-            _tabs.Layout(_canvas, new Box(inner.X, y, inner.W, tabsH), k);
-            y += tabsH + gap;
+            var y = inner.Y;
             // Summary well: death glyph + loss, total skill level, sort toggles on the right.
             var well = new Box(inner.X, y, inner.W, summaryH);
             Geo.Place(_canvas, _summaryWell.rectTransform, well);

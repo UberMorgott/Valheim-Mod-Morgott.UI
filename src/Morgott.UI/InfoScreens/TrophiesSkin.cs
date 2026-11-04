@@ -29,7 +29,7 @@ namespace Morgott.UI.InfoScreens
         private RectTransform _root, _frame, _canvas, _strip;
         private Image _stripWell, _knotL, _knotR;
         private TMP_Text _count;
-        private InfoTabs _tabs;
+        private InfoPage _page;
         private GameObject _tooltipPrefab;
         private readonly List<ItemDrop> _all = new List<ItemDrop>();
         private readonly HashSet<string> _bosses = new HashSet<string>();
@@ -77,7 +77,7 @@ namespace Morgott.UI.InfoScreens
             mark.Outcome = Restyler.Apply(_count, mark, ThemeTokens.Role("text.body")) ? Outcome.Styled : Outcome.Degraded;
             _knotL = InfoArt.OwnImage(_frame, "RuneSkinTrophiesKnotL", "ornament.knot", "title ornament (knot)");
             _knotR = InfoArt.OwnImage(_frame, "RuneSkinTrophiesKnotR", "ornament.knot", "title ornament (knot)");
-            _tabs = new InfoTabs(gui, _frame, "OnOpenTrophies", () => _gui.OnCloseTrophies());
+            _page = InfoPage.Ensure(_root, _frame, "OnOpenTrophies", () => _gui.OnCloseTrophies());
             ScreenRegistry.Register(_root, Context);
             ScreenRegistry.Restyle(_root);
             Plugin.Log.LogInfo("[Morgott.UI] trophies panel attached");
@@ -268,16 +268,9 @@ namespace Morgott.UI.InfoScreens
             var inv = InventorySkin.Instance;
             if (!inv || !_canvas) return;
             var k = inv.SkinScaleValue;
-            var box = InfoArt.Panel(inv, WindowMove.Trophies, ThemeTokens.GetFloat("size.info.trophies.w", 1000f) * k, _canvas);
-            if (box.IsEmpty) return;
-            Geo.SetScale(_frame, 1f);
-            Geo.Place(_canvas, _frame, box);
-            var pad = Mathf.Max(ThemeTokens.GetFloat("size.info.pad", 22f) * k, PanelDecor.KeepOut(_frame, _canvas)); // window content inset (corner caps)
-            var inner = new Box(box.X + pad, box.Y + pad, box.W - 2f * pad, box.H - 2f * pad);
             var gap = ThemeTokens.GetFloat("size.info.trophy.gap", 8f) * k;
-            // The window's one header (RuneWindowHeader): band at the window top, title "topic" centred in the rune face
-            // (mirrored), the unlocked / total count in the aux slot; same plate / height as every window, no knots.
-            var headerH = WindowHeaderMath.HeaderHeight(ThemeTokens.GetFloat("size.win.header", 40f), k);
+            // Full-screen page (InfoPage: tab row, Esc, the window's one header as the centred page title, "topic"
+            // mirrored, the unlocked / total count in its aux slot); no knots.
             var header = RuneWindowHeader.Ensure(_frame, WindowMove.Trophies);
             foreach (var c in Children.Of(_frame))
             {
@@ -286,18 +279,16 @@ namespace Morgott.UI.InfoScreens
                 else if (c.name == "Closebutton") Geo.SetScale(rt, 0f); // the selected tab closes (mockup: no close button)
             }
             var countW = ThemeTokens.GetFloat("size.info.count.w", 150f) * k;
+            var inner = _page.Layout(k, header, countW);
+            if (inner.W <= 0f || inner.H <= 0f) return;
             if (header)
             {
-                header.Place(_canvas, new Box(box.X, box.Y, box.W, headerH), null, countW);
                 Geo.Place(_canvas, _count.rectTransform, header.AuxBox);
                 InfoArt.Label(_count, TextAlignmentOptions.MidlineRight, header.AuxBox.H * 0.5f, 13f);
             }
             if (_knotL) Geo.SetScale(_knotL.rectTransform, 0f);
             if (_knotR) Geo.SetScale(_knotR.rectTransform, 0f);
-            var y = box.Y + headerH + gap;
-            var tabsH = ThemeTokens.GetFloat("size.info.tabs", 70f) * k;
-            _tabs.Layout(_canvas, new Box(inner.X, y, inner.W, tabsH), k);
-            y += tabsH + gap;
+            var y = inner.Y;
 
             // Boss strip: cells + name labels, wrapping rows (any boss count).
             var bc = ThemeTokens.GetFloat("size.info.boss.cell", 112f) * k;

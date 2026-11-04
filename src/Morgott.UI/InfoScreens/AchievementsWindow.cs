@@ -7,16 +7,14 @@ using UnityEngine;
 namespace Morgott.UI.InfoScreens
 {
     // Achievements (InventoryGui.m_achievementsPanel: a full-screen root - blur, darken, the AchFrame window, the AchDetails
-    // popup) as an info window like skills / trophies: AchFrame fills the docked right panel (InfoArt.Panel: right edge =
-    // the crafting column's, size.info.achievements.w wide, never past the centre column), moved by its own header
-    // (WindowMove.Achievements) on top of the inventory block offset. The header is the one RuneWindowHeader: title = the frame's "topic", the completion
-    // count ("completionRate") in its aux slot; the list container fills the body above the close row (close button
-    // centred, the cheated note right of it). Before: the vanilla frame stayed centred on the screen (1310 x 800 at
-    // 1920x1080) over the character column (run 20261024-200455, info-window-overlap-Achievements). Without the inventory
-    // layout (no info box) the vanilla placement stays.
+    // popup) as a full-screen info page like skills / trophies (InfoPage: AchFrame fills the screen, tab row, Esc). The
+    // header is the one RuneWindowHeader as the page title: title = the frame's "topic", the completion count
+    // ("completionRate") in its aux slot; the list container fills the body above the close row (close button centred,
+    // the cheated note right of it). Without the inventory layout (no InventorySkin) the vanilla placement stays.
     public sealed class AchievementsWindow : MonoBehaviour
     {
         private RectTransform _frame, _canvas;
+        private InfoPage _page;
 
         public static void Ensure(InventoryGui gui)
         {
@@ -32,6 +30,7 @@ namespace Morgott.UI.InfoScreens
             var w = root.gameObject.AddComponent<AchievementsWindow>();
             w._frame = frame;
             w._canvas = canvas ? (RectTransform)canvas.rootCanvas.transform : null;
+            w._page = InfoPage.Ensure((RectTransform)root, frame, "OnOpenAchievements", gui.OnCloseAchievements);
         }
 
         private void LateUpdate() => Layout();
@@ -41,13 +40,7 @@ namespace Morgott.UI.InfoScreens
             var inv = InventorySkin.Instance;
             if (!inv || !_canvas || !_frame) return;
             var k = inv.SkinScaleValue;
-            var box = InfoArt.Panel(inv, WindowMove.Achievements, ThemeTokens.GetFloat("size.info.achievements.w", 1000f) * k, _canvas);
-            if (box.IsEmpty) return;
-            Geo.SetScale(_frame, 1f);
-            Geo.Place(_canvas, _frame, box);
-            var pad = Mathf.Max(ThemeTokens.GetFloat("size.info.pad", 22f) * k, PanelDecor.KeepOut(_frame, _canvas)); // window content inset (corner caps)
             var gap = 8f * k;
-            var headerH = WindowHeaderMath.HeaderHeight(ThemeTokens.GetFloat("size.win.header", 40f), k);
             var header = RuneWindowHeader.Ensure(_frame, WindowMove.Achievements);
             TMP_Text count = null;
             RectTransform container = null, close = null, cheated = null;
@@ -68,16 +61,13 @@ namespace Morgott.UI.InfoScreens
                 }
             }
             var countW = count ? ThemeTokens.GetFloat("size.info.count.w", 150f) * k : 0f;
-            if (header)
+            var inner = _page.Layout(k, header, countW);
+            if (inner.W <= 0f || inner.H <= 0f) return;
+            if (header && count)
             {
-                header.Place(_canvas, new Box(box.X, box.Y, box.W, headerH), null, countW);
-                if (count)
-                {
-                    Geo.Place(_canvas, count.rectTransform, header.AuxBox);
-                    InfoArt.Label(count, TextAlignmentOptions.MidlineRight, header.AuxBox.H * 0.5f, 13f);
-                }
+                Geo.Place(_canvas, count.rectTransform, header.AuxBox);
+                InfoArt.Label(count, TextAlignmentOptions.MidlineRight, header.AuxBox.H * 0.5f, 13f);
             }
-            var inner = new Box(box.X + pad, box.Y + headerH + gap, Mathf.Max(0f, box.W - 2f * pad), Mathf.Max(0f, box.H - headerH - gap - pad));
             var rowH = close && close.gameObject.activeSelf ? 46f * k : 0f;
             var bodyH = Mathf.Max(0f, inner.H - (rowH > 0f ? rowH + gap : 0f));
             if (container) Geo.Place(_canvas, container, new Box(inner.X, inner.Y, inner.W, bodyH));
