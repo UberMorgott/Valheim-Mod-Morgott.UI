@@ -640,18 +640,28 @@ namespace Morgott.UI.InventoryScreen
             _posedNearHi = nearHi;
         }
 
+        // UnityEngine.Cloth lives in UnityEngine.ClothModule, not referenced by the build: type and property by name.
+        private static readonly Type ClothType = Type.GetType("UnityEngine.Cloth, UnityEngine.ClothModule");
+        private static readonly System.Reflection.PropertyInfo ClothVertices = ClothType?.GetProperty("vertices");
+
         // The drawn mesh points of one renderer (rig-relative) into _points.
         private void Collect(Renderer r)
         {
             if (r is SkinnedMeshRenderer s)
             {
                 if (!s.sharedMesh) return;
-                // BakeMesh(useScale: true) already holds the renderer's scale: only its position and rotation go to world.
-                // localToWorldMatrix applied the scale twice (run 20261104-174443-2: Warfare cape2 at lossyScale 95 baked to
-                // y -0.86..0.71 m, through localToWorld -30..45 m; the figure shrank to a few pixels).
-                s.BakeMesh(_bake, true);
+                // A Unity Cloth draws its simulated vertices (Cloth.vertices: the renderer's unscaled local space), not the
+                // bone skinning BakeMesh returns: Warfare's cape2 (lossyScale 95, bind poses off the body skeleton) skins
+                // to -30..45 m while its cloth hangs on the body (runs 20261104-174443-2 / -175502; the figure shrank).
+                if (ClothType != null && s.GetComponent(ClothType) is Component cloth && ClothVertices?.GetValue(cloth) is Vector3[] cv && cv.Length > 0)
+                {
+                    var u = Matrix4x4.TRS(s.transform.position, s.transform.rotation, Vector3.one);
+                    foreach (var v in cv) _points.Add(u.MultiplyPoint3x4(v) - Origin);
+                    return;
+                }
+                s.BakeMesh(_bake, true); // unscaled local space: localToWorldMatrix applies the scale once
                 _bake.GetVertices(_verts);
-                var m = Matrix4x4.TRS(s.transform.position, s.transform.rotation, Vector3.one);
+                var m = s.transform.localToWorldMatrix;
                 foreach (var v in _verts) _points.Add(m.MultiplyPoint3x4(v) - Origin);
             }
             else if (r is MeshRenderer && r.TryGetComponent<MeshFilter>(out var mf) && mf.sharedMesh && mf.sharedMesh.isReadable)
