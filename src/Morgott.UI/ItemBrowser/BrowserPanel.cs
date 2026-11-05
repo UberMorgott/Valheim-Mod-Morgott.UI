@@ -524,7 +524,7 @@ namespace Morgott.UI.ItemBrowser
 
         // Selected = not interactable (craft.category's disabled sprite is its selected plate).
         // Square button at a layout box: selected = not interactable (slot_cell_selected cyan rim), drawn at full
-        // brightness with a soft cyan halo 3 units around it (mockup 04/05 selection); slim rim at any size.
+        // brightness with a soft cyan glow fading out around it (strip_glow) (mockup 04/05 selection); slim rim at any size.
         private readonly Dictionary<Button, Image> _halos = new Dictionary<Button, Image>();
 
         private void Square(Button b, bool on, float x, float y, float w, float h)
@@ -541,8 +541,8 @@ namespace Morgott.UI.ItemBrowser
                 halo.transform.SetSiblingIndex(b.transform.GetSiblingIndex()); // behind its button
             }
             if (!on) { Off(halo); return; }
-            Put(halo, x - 3f, y - 3f, w + 6f, h + 6f);
-            PlateFit(halo, 1.6f);
+            // strip_glow: a soft falloff around a centre cell; its bright edge sits under the plate, the fade shows outside.
+            Put(halo, x - 8f, y - 8f, w + 16f, h + 16f);
         }
 
         private static string L(string token) => Browser.Localize(token);
