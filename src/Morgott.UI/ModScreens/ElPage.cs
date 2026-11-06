@@ -46,15 +46,22 @@ namespace Morgott.UI.ModScreens
             p._canvas = canvas ? (RectTransform)canvas.rootCanvas.transform : null;
         }
 
+        private bool _moveWasOn;
+
         private void OnDisable()
         {
-            if (_move) _move.enabled = true;
+            if (_move && _moveWasOn) _move.enabled = true;
+            _moveWasOn = false;
         }
 
         private void LateUpdate()
         {
             if (!_move) _move = transform.parent ? transform.parent.GetComponent<MovableWindow>() : null;
-            if (_move && _move.enabled) _move.enabled = false;
+            if (_move && _move.enabled)
+            {
+                _moveWasOn = true;
+                _move.enabled = false;
+            }
             if (!_header) _header = GetComponentInChildren<RuneWindowHeader>(true);
             if (!_canvas || !_tabs || !_content || !_page) return;
             if (!_measured)

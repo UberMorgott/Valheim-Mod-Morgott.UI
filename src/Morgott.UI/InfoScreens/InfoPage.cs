@@ -184,6 +184,9 @@ namespace Morgott.UI.InfoScreens
 
         private void LateUpdate()
         {
+            // InventoryGui.Hide clears every full window (FullWindowAdapter.Hide_Postfix); a page that stays open (opened
+            // from the world: the enchanting table) registers again.
+            if (_tabs == null && _frame && !FullWindow.Has(transform)) FullWindow.Enter(transform, ScreenRect);
             foreach (var d in _dims)
                 if (d && d.enabled) d.enabled = false;
             if (_group)

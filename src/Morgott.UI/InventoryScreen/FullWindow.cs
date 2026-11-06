@@ -43,6 +43,8 @@ namespace Morgott.UI.InventoryScreen
 
         public static bool Any => Open.Count > 0;
 
+        public static bool Has(Transform window) => Open.Contains(window);
+
         public static void Enter(Transform window, Func<Rect> opaque = null)
         {
             var gui = InventoryGui.instance;
