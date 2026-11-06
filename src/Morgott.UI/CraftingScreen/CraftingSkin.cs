@@ -800,7 +800,7 @@ namespace Morgott.UI.CraftingScreen
                     if (NameCache.Of(c) == "Text" && c is RectTransform tr && c.TryGetComponent<TMP_Text>(out var label))
                     {
                         Geo.Place(_canvas, tr, cell);
-                        Label(label, TextAlignmentOptions.Center, size, 12f, upper: true);
+                        Label(label, TextAlignmentOptions.Center, size, upper: true);
                     }
                     else if (NameCache.Of(c) == "Selected" && c.TryGetComponent<Image>(out var sel) && sel.enabled) sel.enabled = false;
                 }
@@ -852,7 +852,7 @@ namespace Morgott.UI.CraftingScreen
                     {
                         Geo.Place(_canvas, rt, cell);
                         if (label.margin != Vector4.zero) label.margin = Vector4.zero;
-                        Label(label, TextAlignmentOptions.Center, cell.H * 0.36f, 10f);
+                        Label(label, TextAlignmentOptions.Center, cell.H * 0.36f);
                     }
                     else if (NameCache.Of(c) == "Selected" && c.TryGetComponent<Image>(out var sel) && sel.enabled) sel.enabled = false;
                 }
@@ -1093,7 +1093,7 @@ namespace Morgott.UI.CraftingScreen
                             if (name.overflowMode != TextOverflowModes.Ellipsis) name.overflowMode = TextOverflowModes.Ellipsis;
                             name.enableAutoSizing = true;
                             name.fontSizeMax = font;
-                            name.fontSizeMin = Mathf.Min(font, 12f);
+                            name.fontSizeMin = Readable.ShrinkFloor(name, font);
                         }
                         break;
                     case "QualityLevel":
@@ -1124,12 +1124,12 @@ namespace Morgott.UI.CraftingScreen
             if (_gui.m_recipeName)
             {
                 Geo.Place(_canvas, _gui.m_recipeName.rectTransform, o.DetailTitle);
-                Label(_gui.m_recipeName, TextAlignmentOptions.MidlineLeft, ThemeTokens.GetFloat("size.craft.font.title", 22f) * k, 14f, upper: true);
+                Label(_gui.m_recipeName, TextAlignmentOptions.MidlineLeft, ThemeTokens.GetFloat("size.craft.font.title", 22f) * k, upper: true);
             }
             if (_gui.m_itemCraftType && !o.CraftType.IsEmpty)
             {
                 Geo.Place(_canvas, _gui.m_itemCraftType.rectTransform, o.CraftType);
-                Label(_gui.m_itemCraftType, TextAlignmentOptions.MidlineLeft, ThemeTokens.GetFloat("size.craft.font.body", 16f) * k, 11f);
+                Label(_gui.m_itemCraftType, TextAlignmentOptions.MidlineLeft, ThemeTokens.GetFloat("size.craft.font.body", 16f) * k);
             }
             if (_gui.m_recipeIcon)
             {
@@ -1318,7 +1318,7 @@ namespace Morgott.UI.CraftingScreen
                 if (_gui.m_minStationLevelText)
                 {
                     Geo.Place(_canvas, _gui.m_minStationLevelText.rectTransform, new Box(cell.X, cell.Y + cell.H * 0.72f, cell.W, cell.H * 0.26f));
-                    Label(_gui.m_minStationLevelText, TextAlignmentOptions.Center, ThemeTokens.GetFloat("size.craft.font.amount", 16f) * _in.Scale, 10f);
+                    Label(_gui.m_minStationLevelText, TextAlignmentOptions.Center, ThemeTokens.GetFloat("size.craft.font.amount", 16f) * _in.Scale);
                 }
             }
         }
@@ -1351,7 +1351,7 @@ namespace Morgott.UI.CraftingScreen
                         break;
                     case "res_amount":
                         Anchors(rt, new Vector2(0.05f, 0.02f), new Vector2(0.95f, 0.27f), Vector2.zero, Vector2.zero);
-                        if (c.TryGetComponent<TMP_Text>(out var a)) Label(a, TextAlignmentOptions.Center, ThemeTokens.GetFloat("size.craft.font.amount", 16f) * k, 10f);
+                        if (c.TryGetComponent<TMP_Text>(out var a)) Label(a, TextAlignmentOptions.Center, ThemeTokens.GetFloat("size.craft.font.amount", 16f) * k);
                         break;
                 }
             }
@@ -1366,7 +1366,7 @@ namespace Morgott.UI.CraftingScreen
         private readonly Dictionary<TMP_Text, NameFitState> _nameFit = new Dictionary<TMP_Text, NameFitState>();
 
         // Material name above the icon (0.10.2, user screenshot 2026-10-22: "...анина" / "Одуванчи..." clipped): one
-        // line auto-sized from size.craft.font.label down to size.craft.font.label.min, then two lines at the best
+        // line auto-sized from size.craft.font.label down to the readable floor (Readable.ShrinkFloor), then two lines at the best
         // word split (LabelFit.NameSize), always inside the name box of the socket. Measured only when the text or the
         // box changes (vanilla rewrites the same text every frame).
         private void FitName(Transform cell, Box box)
@@ -1382,7 +1382,7 @@ namespace Morgott.UI.CraftingScreen
                 Mathf.Abs(was.W - w) < 0.1f && Mathf.Abs(was.H - h) < 0.1f && Mathf.Abs(was.Max - max) < 0.01f) return;
             _nameFit[n] = new NameFitState { Text = text, W = w, H = h, Max = max };
             if (string.IsNullOrEmpty(text) || w <= 1f || h <= 1f) return;
-            var min = ThemeTokens.GetFloat("size.craft.font.label.min", 10f) * _in.Scale;
+            var min = Readable.ShrinkFloor(n, max);
             if (n.enableAutoSizing) n.enableAutoSizing = false;
             var unit = Mathf.Max(0.01f, n.fontSize);
             var one = n.GetPreferredValues(text, float.PositiveInfinity, float.PositiveInfinity);
@@ -1447,7 +1447,7 @@ namespace Morgott.UI.CraftingScreen
                 if (label)
                 {
                     Geo.Place(_canvas, label.rectTransform, row.Button);
-                    Label(label, TextAlignmentOptions.Center, o.Craft.H * 0.42f, ThemeTokens.GetFloat("size.craft.button.font.min", 11f), upper: true);
+                    Label(label, TextAlignmentOptions.Center, o.Craft.H * 0.42f, upper: true);
                     Condense(label, squeeze: false); // PlateLabelFit sets its margins in the label's local units: no x-scale; fit = font step-down
                     CraftGlyph(label, row.Button);
                 }
@@ -1543,7 +1543,7 @@ namespace Morgott.UI.CraftingScreen
                 if (state.raycastTarget) state.raycastTarget = false;
                 Geo.Place(_canvas, state.rectTransform, new Box(frameBox.X + capW, frameBox.Y, Mathf.Max(0f, frameBox.W - 2f * capW), frameBox.H));
                 state.margin = Vector4.zero;
-                Label(state, TextAlignmentOptions.Center, r.Bar.H * 0.28f, 12f, upper: true);
+                Label(state, TextAlignmentOptions.Center, r.Bar.H * 0.28f, upper: true);
                 Condense(state);
 
                 if (Localization.instance.textMeshStrings.TryGetValue(state, out var token))
@@ -1567,7 +1567,7 @@ namespace Morgott.UI.CraftingScreen
             if (cancelLabel.color != body) cancelLabel.color = body;
             Geo.Place(_canvas, cancelLabel.rectTransform, r.Cancel);
             cancelLabel.margin = Vector4.zero;
-            Label(cancelLabel, TextAlignmentOptions.Center, r.Cancel.H * 0.3f, 11f, upper: true);
+            Label(cancelLabel, TextAlignmentOptions.Center, r.Cancel.H * 0.3f, upper: true);
             Condense(cancelLabel);
         }
 
@@ -1651,7 +1651,7 @@ namespace Morgott.UI.CraftingScreen
             if (_amountText)
             {
                 SameFace(_amountText);
-                Label(_amountText, TextAlignmentOptions.Center, r.Button.H * 0.3f, 10f);
+                Label(_amountText, TextAlignmentOptions.Center, r.Button.H * 0.3f);
             }
             if (!_amountField.isFocused)
             {
@@ -1751,13 +1751,13 @@ namespace Morgott.UI.CraftingScreen
         }
 
         // One label: alignment, single line with ellipsis, auto-size between the floor and `size` (canvas units).
-        private void Label(TMP_Text label, TextAlignmentOptions align, float size, float min, bool upper = false)
+        private void Label(TMP_Text label, TextAlignmentOptions align, float size, bool upper = false)
         {
             if (label.alignment != align) label.alignment = align;
             if (label.textWrappingMode != TextWrappingModes.NoWrap) label.textWrappingMode = TextWrappingModes.NoWrap;
             if (label.overflowMode != TextOverflowModes.Ellipsis) label.overflowMode = TextOverflowModes.Ellipsis;
             if (upper && (label.fontStyle & FontStyles.UpperCase) != FontStyles.UpperCase) label.fontStyle |= FontStyles.UpperCase;
-            var floor = Mathf.Min(size, min);
+            var floor = Readable.ShrinkFloor(label, size);
             if (!label.enableAutoSizing || Mathf.Abs(label.fontSizeMax - size) > 0.1f || Mathf.Abs(label.fontSizeMin - floor) > 0.1f)
             {
                 label.fontSizeMax = size;

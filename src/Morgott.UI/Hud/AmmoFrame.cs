@@ -180,7 +180,7 @@ namespace Morgott.UI.PlayerHud
             MagazinePips.Place(_icon.rectTransform, inset, inset, tile - 2f * inset, tile - 2f * inset);
             var nameSize = F("size.hud.ammo.name", 10f);
             _name.fontSizeMax = nameSize;
-            _name.fontSizeMin = nameSize * F("share.hud.ammo.name.min", 0.7f);
+            _name.fontSizeMin = Morgott.UI.Restyle.Readable.ShrinkFloor(_name, nameSize); // 10 units render ~20 px at 1080 (root scale); shrink stops at 16 px
             MagazinePips.Place(_readout, 0f, 0f, 0f, 0f);
             _pw = -1f;
             SetPlateWidth(F("size.hud.ammo.plate.w", 160f));
