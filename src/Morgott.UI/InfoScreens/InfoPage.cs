@@ -80,7 +80,9 @@ namespace Morgott.UI.InfoScreens
             p._canvas = canvas ? (RectTransform)canvas.rootCanvas.transform : null;
             if (!frame || p._back) return p;
             p._back = new GameObject(BackName, typeof(RectTransform)).AddComponent<Image>();
-            p._back.transform.SetParent(frame.parent, false);
+            // A page whose root IS its frame (Epic Loot's enchanting Panel, ElPage): the backdrop is its first child, so it
+            // shows / hides with the page and is no earlier sibling CoverCull would gate.
+            p._back.transform.SetParent(root == frame ? frame : frame.parent, false);
             p._back.raycastTarget = true; // clicks beside the frame's art stay on the page (vanilla closer under it)
             p._back.color = Backing();
             DollCell.Mark(p._back, "content", "full-screen info page backdrop (opaque)");
@@ -93,7 +95,8 @@ namespace Morgott.UI.InfoScreens
             p._esc = MakeKey(frame, EscName, "page close key cap (mockup 02: Esc top right)", () => close?.Invoke());
             // ITEMS (mockup 02 top bar): the item browser lives only in the inventory's right-hand ITEMS tab (user
             // 2026-11-04) - the page closes (the inventory stays) and that tab opens.
-            p._items = MakeKey(frame, "RuneSkinPageItems", "page top bar: inventory ITEMS tab (mockup 02)", () =>
+            // Inventory pages only (a page opened from the world, e.g. the enchanting table, has no inventory tab to go to).
+            if (p._tabs != null) p._items = MakeKey(frame, "RuneSkinPageItems", "page top bar: inventory ITEMS tab (mockup 02)", () =>
             {
                 close?.Invoke();
                 ItemBrowser.BrowserPanel.Instance?.Open();
@@ -197,9 +200,16 @@ namespace Morgott.UI.InfoScreens
             if (BackingCovers()) want.a = 0f;
             if (!_back.canvasRenderer.cullTransparentMesh) _back.canvasRenderer.cullTransparentMesh = true;
             if (_back.color != want || _back.sprite) { _back.sprite = null; _back.color = want; } // a restyle pass must not change it
-            var at = _back.transform.GetSiblingIndex();
-            var f = _frame.GetSiblingIndex();
-            if (at != f - 1) _back.transform.SetSiblingIndex(at < f ? f - 1 : f); // right under the frame
+            if (_back.transform.parent == _frame)
+            {
+                if (_back.transform.GetSiblingIndex() != 0) _back.transform.SetAsFirstSibling();
+            }
+            else
+            {
+                var at = _back.transform.GetSiblingIndex();
+                var f = _frame.GetSiblingIndex();
+                if (at != f - 1) _back.transform.SetSiblingIndex(at < f ? f - 1 : f); // right under the frame
+            }
             Geo.Place(_canvas, _back.rectTransform, Full(_canvas));
             var inv = InventorySkin.Instance;
             if (OnLayout != null && inv) OnLayout(inv.SkinScaleValue);

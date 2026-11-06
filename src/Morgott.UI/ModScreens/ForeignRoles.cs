@@ -279,6 +279,7 @@ namespace Morgott.UI.ModScreens
                     foreach (var tab in tabs.m_tabs)
                         if (tab != null && tab.m_button) ElTabCell.Ensure(tab.m_button);
                 }
+                ElPage.Ensure(unit); // full-screen page (user 2026-11-07)
                 return;
             }
             if (family != OwnershipRegistry.EpicLootBoard) return;

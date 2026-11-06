@@ -55,6 +55,7 @@
     <Compile Include="..\..\src\Morgott.UI\GameScreens\GameScreenMath.cs" Link="Linked\GameScreenMath.cs" />
     <Compile Include="..\..\src\Morgott.UI\ModScreens\ForeignMath.cs" Link="Linked\ForeignMath.cs" />
     <Compile Include="..\..\src\Morgott.UI\ModScreens\ElDialogMath.cs" Link="Linked\ElDialogMath.cs" />
+    <Compile Include="..\..\src\Morgott.UI\ModScreens\ElPageMath.cs" Link="Linked\ElPageMath.cs" />
     <Compile Include="..\..\src\Morgott.UI\Screens\PreWorld\PreWorldMath.cs" Link="Linked\PreWorldMath.cs" />
     <Compile Include="..\..\src\Morgott.UI\Hud\EffectTaxonomy.cs" Link="Linked\EffectTaxonomy.cs" />
     <Compile Include="..\..\src\Morgott.UI\Hud\ResourceCheck.cs" Link="Linked\ResourceCheck.cs" />
