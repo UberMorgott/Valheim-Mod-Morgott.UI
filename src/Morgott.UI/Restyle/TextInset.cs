@@ -14,7 +14,8 @@ namespace Morgott.UI.Restyle
     // - row: a left-aligned label in a Button with a visible plate (list rows) -> starts size.row.pad after the row
     //   edge or the icon beside it;
     // - toggle: the label beside a checkbox -> size.row.pad from the box on its side;
-    // - any: a text that still truncates (Ellipsis / Truncate) auto-sizes down to size.text.fit.min - never an input
+    // - any: a text that still truncates (Ellipsis / Truncate) auto-sizes down to the readable floor
+    //   (LayoutMath.ShrinkFloor), then ends in its ellipsis - never an input
     //   field's text: its overflow is Overflow and its viewport grows to hold one line (0.20.3 track F, the blinking
     //   new-world inputs; see LayoutMath.MayShrinkToFit).
     // Writes are journaled (margin, alignment, viewport offsets, auto-size) and reverted while they still hold
@@ -246,13 +247,14 @@ namespace Morgott.UI.Restyle
             if (_toggleLabel && _text.enableAutoSizing && _text.fontSizeMin < ThemeTokens.GetFloat("size.text.readable", 16f)) return;
             var column = _columns == 1 && _text.overflowMode == TextOverflowModes.Overflow;
             if (!column && _text.overflowMode != TextOverflowModes.Ellipsis && _text.overflowMode != TextOverflowModes.Truncate) return;
-            // Column texts of a list row keep the readable size (16) and end in their ellipsis below it (m5-text-min,
-            // run 20261022-210451: server names shrank to 12-14 px).
+            // Every text keeps the readable size (16) and ends in its ellipsis below it (m5-text-min, run 20261022-210451:
+            // server names shrank to 12-14 px; 0.28.1: own item-browser chips shrank to 12). An owner's own smaller
+            // auto-size minimum is its call (left alone); a text already under the floor is not shrunk further.
             // The readable floor is a rendered size (Readable.Units, the measure of the pre-world sweep): a canvas-unit 16
             // under a GUI scale < 1 fought the sweep's raise every few frames.
-            var readable = ThemeTokens.GetFloat("size.text.readable", 16f);
-            var floor = _columns == 1 ? Mathf.Max(readable, Readable.Units(_text, readable)) : ThemeTokens.GetFloat("size.text.fit.min", 12f);
+            var floor = Readable.Floor(_text);
             if (_text.enableAutoSizing && _text.fontSizeMin <= floor + 0.01f) return;
+            if ((_text.enableAutoSizing ? _text.fontSizeMax : _text.fontSize) <= floor + 0.01f) return;
             if (column ? !ColumnOverflows() : !_text.isTextTruncated) return;
             if (!_hasAuto)
             {
@@ -263,7 +265,7 @@ namespace Morgott.UI.Restyle
             }
             var max = _text.enableAutoSizing ? _text.fontSizeMax : _text.fontSize;
             _text.fontSizeMax = max;
-            _text.fontSizeMin = Mathf.Min(max, floor);
+            _text.fontSizeMin = floor; // max > floor (checked above)
             _text.enableAutoSizing = true;
         }
 

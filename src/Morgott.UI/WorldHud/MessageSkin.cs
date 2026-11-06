@@ -479,6 +479,7 @@ namespace Morgott.UI.WorldHud
                         t.rectTransform.offsetMax -= new Vector2(ThemeTokens.GetFloat("size.message.unlock.inset", 14f), 0f);
                         if (t.name == "UnlockDescription") descText = t;
                     }
+                    Morgott.UI.Restyle.OwnFit.Claim(t); // sized here; TextInset kept off (one fitter)
                     t.fontSize = HudReadable(t.fontSize);
                     // Long texts shrink (down to the HUD floor) and end in an ellipsis instead of crossing the frame.
                     t.enableAutoSizing = true; t.fontSizeMax = t.fontSize; t.fontSizeMin = HudReadable(0f); t.overflowMode = TextOverflowModes.Ellipsis;

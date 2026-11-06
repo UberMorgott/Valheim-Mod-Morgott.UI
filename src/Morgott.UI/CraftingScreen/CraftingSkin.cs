@@ -1337,6 +1337,7 @@ namespace Morgott.UI.CraftingScreen
                         if (c.TryGetComponent<TMP_Text>(out var n))
                         {
                             // Size and lines from FitName (one line shrinking to the min token, then two lines).
+                            OwnFit.Claim(n);
                             if (n.alignment != TextAlignmentOptions.Center) n.alignment = TextAlignmentOptions.Center;
                             if (n.overflowMode != TextOverflowModes.Ellipsis) n.overflowMode = TextOverflowModes.Ellipsis;
                             if (n.enableAutoSizing) n.enableAutoSizing = false;

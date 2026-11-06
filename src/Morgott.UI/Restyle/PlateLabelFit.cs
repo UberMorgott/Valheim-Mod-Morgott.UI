@@ -113,7 +113,7 @@ namespace Morgott.UI.Restyle
             if (!_text.enableAutoSizing)
             {
                 _text.fontSizeMax = _text.fontSize;
-                _text.fontSizeMin = Mathf.Min(_text.fontSize, ThemeTokens.GetFloat("size.text.fit.min", 13f));
+                _text.fontSizeMin = Readable.ShrinkFloor(_text, _text.fontSize);
                 _text.enableAutoSizing = true;
             }
             var full = TextSizeGroup.FullOf(_text);

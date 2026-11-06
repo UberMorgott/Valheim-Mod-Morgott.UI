@@ -1326,6 +1326,7 @@ namespace Morgott.UI.InventoryScreen
                 else if (part.EndsWith("_icon", StringComparison.Ordinal)) Geo.Place(_canvas, rt, Inset(new Box(box.X, box.Y, socket, box.H), socket * 0.2f, socket * 0.2f));
                 else if (child.TryGetComponent<TMP_Text>(out var text))
                 {
+                    OwnFit.Claim(text); // fixed size every pass; TextInset's auto-size flipped it back on (two fitters)
                     Geo.Place(_canvas, rt, new Box(box.X + socket + 4f, box.Y, InventoryMath.StatValueBoxW(box.W, socket), box.H));
                     if (text.alignment != TextAlignmentOptions.MidlineLeft) text.alignment = TextAlignmentOptions.MidlineLeft;
                     if (text.textWrappingMode != TextWrappingModes.NoWrap) text.textWrappingMode = TextWrappingModes.NoWrap;

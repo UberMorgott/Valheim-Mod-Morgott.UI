@@ -1,3 +1,4 @@
+using Morgott.UI.Theme;
 using TMPro;
 using UnityEngine;
 
@@ -22,6 +23,20 @@ namespace Morgott.UI.Restyle
             var p0 = RectTransformUtility.WorldToScreenPoint(cam, t.transform.TransformPoint(Vector3.zero));
             var p1 = RectTransformUtility.WorldToScreenPoint(cam, t.transform.TransformPoint(Vector3.up));
             return LayoutMath.ReadableUnits(floorPx, Vector2.Distance(p0, p1), Screen.height);
+        }
+
+        // Unclamped readable floor of t in its font units (size.text.readable or its rendered units, the larger).
+        public static float Floor(TMP_Text t)
+        {
+            var readable = ThemeTokens.GetFloat("size.text.readable", 16f);
+            return Mathf.Max(readable, Units(t, readable));
+        }
+
+        // Auto-size minimum for a fitter shrinking t from max (LayoutMath.ShrinkFloor).
+        public static float ShrinkFloor(TMP_Text t, float max)
+        {
+            var readable = ThemeTokens.GetFloat("size.text.readable", 16f);
+            return LayoutMath.ShrinkFloor(max, readable, Units(t, readable));
         }
     }
 }

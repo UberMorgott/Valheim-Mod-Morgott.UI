@@ -69,7 +69,7 @@ namespace Morgott.UI.Theme
         public string font;
         public string textColor;
         // TMP label inside a Selectable (button plates): > 0 = the label shrinks (auto-size, max = its own size, min =
-        // float size.text.fit.min) to fit the button minus this inset per side (ref px; plate caps / knots).
+        // the readable floor, LayoutMath.ShrinkFloor) to fit the button minus this inset per side (ref px; plate caps / knots).
         public float fitInset;
         public string stateNormal;
         public string stateHover;
