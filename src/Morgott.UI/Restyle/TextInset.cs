@@ -253,6 +253,9 @@ namespace Morgott.UI.Restyle
             // The readable floor is a rendered size (Readable.Units, the measure of the pre-world sweep): a canvas-unit 16
             // under a GUI scale < 1 fought the sweep's raise every few frames.
             var floor = Readable.Floor(_text);
+            // Our own minimum follows the floor when the GUI scale moves it (Codex review: an old min went under 16 px).
+            if (_hasAuto && _text.enableAutoSizing && Mathf.Abs(_text.fontSizeMin - Mathf.Min(_text.fontSizeMax, floor)) > 0.01f)
+                _text.fontSizeMin = Mathf.Min(_text.fontSizeMax, floor);
             if (_text.enableAutoSizing && _text.fontSizeMin <= floor + 0.01f) return;
             if ((_text.enableAutoSizing ? _text.fontSizeMax : _text.fontSize) <= floor + 0.01f) return;
             if (column ? !ColumnOverflows() : !_text.isTextTruncated) return;

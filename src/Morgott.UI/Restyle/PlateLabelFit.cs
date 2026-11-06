@@ -116,6 +116,9 @@ namespace Morgott.UI.Restyle
                 _text.fontSizeMin = Readable.ShrinkFloor(_text, _text.fontSize);
                 _text.enableAutoSizing = true;
             }
+            // The rendered floor follows the GUI scale (Codex review: a min set at another scale went under 16 px).
+            var lo = Readable.ShrinkFloor(_text, _text.fontSizeMax);
+            if (Mathf.Abs(_text.fontSizeMin - lo) > 0.01f) _text.fontSizeMin = lo;
             var full = TextSizeGroup.FullOf(_text);
             // Measured at the full size with auto-size off (the auto-sized current size depends on the last wrap mode).
             var auto = _text.enableAutoSizing;
