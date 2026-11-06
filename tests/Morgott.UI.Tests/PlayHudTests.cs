@@ -131,23 +131,24 @@ namespace Morgott.UI.Tests
             Assert.Equal(h - pad - cell, PlayHudMath.LadderCellTop(PlayHudMath.LadderCells - 1, cell, gap, pad), 3);
         }
 
+        // Rudder arc = vanilla m_shipRudderIndicator (Hud.cs:751-767): hidden under 0.02, |v| * 0.25, clockwise for v > 0.
         [Theory]
-        [InlineData(0f, 0f)]
-        [InlineData(1f, -60f)]
-        [InlineData(-1f, 60f)]
-        [InlineData(3f, -60f)]
-        [InlineData(float.NaN, 0f)]
-        public void RudderAngleClamps(float value, float deg) => Assert.Equal(deg, PlayHudMath.RudderAngle(value, 60f), 3);
-
-        [Fact]
-        public void LadderTokensFollowLadderIndex()
+        [InlineData(0f, false, 0f, true)]
+        [InlineData(0.019f, false, 0f, true)]
+        [InlineData(-0.019f, false, 0f, true)]
+        [InlineData(0.02f, true, 0.005f, true)]
+        [InlineData(0.5f, true, 0.125f, true)]
+        [InlineData(-0.5f, true, 0.125f, false)]
+        [InlineData(1f, true, 0.25f, true)]
+        [InlineData(-1f, true, 0.25f, false)]
+        [InlineData(3f, true, 0.25f, true)]
+        [InlineData(float.NaN, false, 0f, true)]
+        public void RudderArcMirrorsVanilla(float value, bool shown, float amount, bool clockwise)
         {
-            Assert.Equal(PlayHudMath.LadderCells, PlayHudMath.LadderTokens.Length);
-            Assert.Equal("$radial_speed_fast", PlayHudMath.LadderTokens[PlayHudMath.LadderIndex(4)]);   // Full
-            Assert.Equal("$radial_speed_medium", PlayHudMath.LadderTokens[PlayHudMath.LadderIndex(3)]); // Half
-            Assert.Equal("$radial_speed_slow", PlayHudMath.LadderTokens[PlayHudMath.LadderIndex(2)]);   // Slow
-            Assert.Equal("$radial_speed_off", PlayHudMath.LadderTokens[PlayHudMath.LadderIndex(0)]);    // Stop
-            Assert.Equal("$settings_backward", PlayHudMath.LadderTokens[PlayHudMath.LadderIndex(1)]);   // Back
+            var arc = PlayHudMath.RudderArc(value);
+            Assert.Equal(shown, arc.shown);
+            Assert.Equal(amount, arc.amount, 4);
+            Assert.Equal(clockwise, arc.clockwise);
         }
 
         // Rudder side arrows: right (+1) lights for a positive rudder value, left (-1) for a negative one; dead zone 0.02.
@@ -175,11 +176,11 @@ namespace Morgott.UI.Tests
         [Fact]
         public void ShipBlockFitsLadderAndRudderRow()
         {
-            var (w, h) = PlayHudMath.ShipBlock(46f, 6f, 12f, 90f, 8f, 64f, 28f);
-            Assert.Equal(12f + 90f + 8f + 46f + 12f, w, 3);
-            Assert.Equal(PlayHudMath.LadderHeight(46f, 6f, 12f) + 6f + 64f, h, 3);
-            var (w2, _) = PlayHudMath.ShipBlock(46f, 6f, 12f, 0f, 8f, 120f, 40f);
-            Assert.Equal(120f + 2f * 46f, w2, 3); // rudder row wider than a label-less ladder
+            var (w, h) = PlayHudMath.ShipBlock(46f, 6f, 12f, 76f, 28f);
+            Assert.Equal(76f + 2f * (28f + 6f), w, 3); // rudder row wider than the ladder column
+            Assert.Equal(PlayHudMath.LadderHeight(46f, 6f, 12f) + 6f + 76f, h, 3);
+            var (w2, _) = PlayHudMath.ShipBlock(90f, 6f, 12f, 20f, 10f);
+            Assert.Equal(12f + 90f + 12f, w2, 3); // ladder column wider than a small rudder row
         }
 
         // The ship HUD never overlaps the RuneSkin minimap footprint (MinimapSkin.Layout: ring = min(320, 0.26 * safe
@@ -212,7 +213,7 @@ namespace Morgott.UI.Tests
                     var fpBottom = plaqueTop - (32f * box / 220f + 2f + 24f) * scale;
                     var fpLeft = fpRight - box * scale;
                     var floor = sh * stripShare + 12f * scale;
-                    var (bw, bh) = PlayHudMath.ShipBlock(46f, 6f, 12f, 110f, 8f, 64f, 28f);
+                    var (bw, bh) = PlayHudMath.ShipBlock(46f, 6f, 12f, 76f, 28f);
                     bw *= scale;
                     bh *= scale;
                     var (right, top, beside) = PlayHudMath.ShipPlacement(fpLeft, fpRight, fpBottom, fpTop, 0f, floor, bw, bh, 12f * scale);

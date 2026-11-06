@@ -1533,7 +1533,7 @@
     { "family": "BuildHud", "requires": [ "sprite.frame.panel", "sprite.fill.glass", "sprite.tab.normal", "sprite.slot.recess", "sprite.field.search", "sprite.frame.inset", "font.display", "font.body" ] },
     { "family": "Crosshair", "requires": [ "sprite.glyph.crosshair", "sprite.glyph.stealth.eye", "sprite.bar.skill.trough", "sprite.bar.skill.fill", "font.body" ] },
     { "family": "ActionHud", "requires": [ "sprite.bar.frame.action", "sprite.hud.bar.trough", "sprite.hud.bar.fill", "sprite.band.message", "font.display", "font.body" ] },
-    { "family": "ShipHud", "requires": [ "sprite.glyph.ship.oar", "sprite.glyph.ship.sail.half", "sprite.glyph.ship.sail.full", "sprite.glyph.stop", "sprite.glyph.rudder", "sprite.slot.cell.selected", "sprite.button.round" ] },
+    { "family": "ShipHud", "requires": [ "sprite.glyph.ship.oar", "sprite.glyph.ship.sail.half", "sprite.glyph.ship.sail.full", "sprite.glyph.stop", "sprite.glyph.rudder", "sprite.slot.cell.selected", "sprite.button.round", "sprite.hud.gp.ring" ] },
     { "family": "KeyHints", "requires": [ "sprite.hud.plate.key", "font.body" ] },
     { "family": "LoadScreen", "requires": [ "sprite.frame.panel", "sprite.fill.glass", "sprite.divider", "sprite.spinner.runes", "sprite.button.round", "sprite.glyph.time.moon", "sprite.minimap.ring", "sprite.glyph.teleport.swirl", "font.display", "font.body" ] },
     { "family": "Chat", "requires": [ "sprite.frame.tooltip", "sprite.field.search", "font.display", "font.body" ] },

@@ -61,6 +61,7 @@ type Cut struct {
 	Fade        [2]int       `json:"fade,omitempty"`        // alpha ramp at the left/right ends (px)
 	FadeV       [2]int       `json:"fadeV,omitempty"`       // alpha ramp at the top/bottom ends (px)
 	Flip        string       `json:"flip,omitempty"`        // mirror the crop: h | v | hv
+	FlipOut     bool         `json:"flipOut,omitempty"`     // mirror the finished sprite horizontally: an exact twin of a cut (glyph_arrow_left = glyph_arrow_right)
 	FlatEnds    [2]int       `json:"flatEnds,omitempty"`    // left/right output columns whose RGB is replaced by the centre column (same row), alpha kept
 	Despill     bool         `json:"despill,omitempty"`     // neutralise violet magenta spill (r and b both above g) to the glass hue
 	Hole        bool         `json:"hole,omitempty"`        // output = white opaque mask of the transparent region connected to the centre (ring hole -> circular map mask)
@@ -233,6 +234,9 @@ func renderCut(c Cut) *image.NRGBA {
 		} else {
 			img = resize(img, c.Size[0], c.Size[1])
 		}
+	}
+	if c.FlipOut {
+		img = flip(img, true, false)
 	}
 	if c.ClearInterior != nil {
 		clearInterior(img, image.Rect(c.ClearInterior[0], c.ClearInterior[1], c.ClearInterior[0]+c.ClearInterior[2], c.ClearInterior[1]+c.ClearInterior[3]))

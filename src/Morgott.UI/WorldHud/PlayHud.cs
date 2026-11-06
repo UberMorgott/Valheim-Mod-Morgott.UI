@@ -396,10 +396,10 @@ namespace Morgott.UI.WorldHud
     // ---- Ship HUD ------------------------------------------------------------------------------------------------
 
     // Ship HUD (mockup m6-ship-b): a vertical popup column, top-down sail full / sail half / oar / stop / reverse,
-    // the active speed in slot_cell_selected with its glyph in the rune glow and its label lit; each row carries a
-    // vanilla-token label (PlayHudMath.LadderTokens) left of its cell. Under it the rudder row: arrow_left | rudder in a
-    // button_round socket (glyph turned by Ship.GetRudderValue) | arrow_right, the turned side lit
-    // (PlayHudMath.RudderSideAlpha). Wind stays on the minimap ring (M4). Vanilla's icons (PowerIcon, Controls
+    // the active speed in slot_cell_selected with its glyph in the rune glow (no text labels, mockup 2026-11-06). Under it,
+    // centred on the column's axis, the rudder row: arrow_left | rudder in a button_round socket inside a gp_ring angle
+    // arc (vanilla m_shipRudderIndicator, PlayHudMath.RudderArc: faint top-half track, gold zero tick at 12 o'clock) |
+    // arrow_right, the turned side lit (PlayHudMath.RudderSideAlpha). Wind stays on the minimap ring (M4). Vanilla's icons (PowerIcon, Controls
     // following the tiller, WindIndicator) stay alive for Hud.UpdateShipHud but are drawn at alpha 0.
     // Placement (tester 2026-10-26: the ladder sat on the vanilla PowerIcon spot, under the RuneSkin minimap ring):
     // screen px from the minimap footprint (Minimap.m_smallRoot + its plaque / key tip children, reserved whether the
@@ -414,9 +414,7 @@ namespace Morgott.UI.WorldHud
         private CanvasGroup _group;
         private readonly Image[] _cells = new Image[PlayHudMath.LadderCells];
         private readonly Image[] _glyphs = new Image[PlayHudMath.LadderCells];
-        private readonly TMP_Text[] _labels = new TMP_Text[PlayHudMath.LadderCells];
-        private Image _left, _right;
-        private RectTransform _rudder;
+        private Image _left, _right, _arc;
         private int _shown = -1;
         private float _rudderShown = float.NaN;
         private bool _hiddenForMap;
@@ -451,8 +449,8 @@ namespace Morgott.UI.WorldHud
             var cell = ThemeTokens.GetFloat("size.ship.cell", 46f);
             var gap = ThemeTokens.GetFloat("size.ship.gap", 6f);
             var pad = ThemeTokens.GetFloat("size.ship.pad", 12f);
-            var labelGap = ThemeTokens.GetFloat("size.ship.label.gap", 8f);
             var rs = ThemeTokens.GetFloat("size.ship.rudder", 64f);
+            var ring = rs * ThemeTokens.GetFloat("share.ship.arc", 1.18f); // angle arc just outside the socket rim
             var arrow = ThemeTokens.GetFloat("size.ship.arrow", 28f);
             var ladderH = PlayHudMath.LadderHeight(cell, gap, pad);
             _column = HudArt.Rect("RuneSkin_ShipLadder", root);
@@ -461,82 +459,73 @@ namespace Morgott.UI.WorldHud
             _group = _column.gameObject.AddComponent<CanvasGroup>();
             _group.blocksRaycasts = false;
             var popup = _art.Image("Popup", _column, "sprite.frame.tooltip", "color.frame", Image.Type.Sliced);
-
-            // Row labels first (their widest one sizes the column).
-            var labelSize = MessageSkin.HudReadable(ThemeTokens.GetFloat("size.ship.label", 18f));
-            var labelW = 0f;
-            for (var i = 0; i < PlayHudMath.LadderCells; i++)
-            {
-                var token = PlayHudMath.LadderTokens[i];
-                var text = Localization.instance != null ? Localization.instance.Localize(token) : token;
-                var label = _art.Text("Label" + i, _column, "font.body", "color.text.body", labelSize, TextAlignmentOptions.MidlineRight);
-                label.textWrappingMode = TextWrappingModes.NoWrap;
-                label.text = text;
-                labelW = Mathf.Max(labelW, label.GetPreferredValues(text).x);
-                _labels[i] = label;
-            }
-            labelW = Mathf.Ceil(labelW);
-            var block = PlayHudMath.ShipBlock(cell, gap, pad, labelW, labelGap, rs, arrow);
+            var block = PlayHudMath.ShipBlock(cell, gap, pad, ring, arrow);
             _blockUnits = new Vector2(block.width, block.height);
             _column.sizeDelta = _blockUnits;
-            var ladderW = 2f * pad + labelW + (labelW > 0f ? labelGap : 0f) + cell;
-            var pr = popup.rectTransform;
-            pr.anchorMin = pr.anchorMax = pr.pivot = new Vector2(1f, 1f);
-            pr.anchoredPosition = Vector2.zero;
-            pr.sizeDelta = new Vector2(ladderW, ladderH);
+            // Column, cells and rudder row share the block's vertical centre line (anchor / pivot x 0.5).
+            Pin(popup, 0f, 0f, 2f * pad + cell, ladderH);
 
+            var inset = cell * ThemeTokens.GetFloat("share.ship.glyph.inset", 0.18f);
             for (var i = 0; i < PlayHudMath.LadderCells; i++)
             {
                 var top = PlayHudMath.LadderCellTop(i, cell, gap, pad);
-                var c = _art.Image("Cell" + i, _column, "sprite.slot.cell.selected", "color.frame", Image.Type.Sliced);
-                var cr = c.rectTransform;
-                cr.anchorMin = cr.anchorMax = cr.pivot = new Vector2(1f, 1f);
-                cr.anchoredPosition = new Vector2(-pad, -top);
-                cr.sizeDelta = new Vector2(cell, cell);
+                var c = Pin(_art.Image("Cell" + i, _column, "sprite.slot.cell.selected", "color.frame", Image.Type.Sliced), 0f, -top, cell, cell);
                 c.gameObject.SetActive(false);
                 _cells[i] = c;
-                var g = _art.Image("Glyph" + i, _column, Glyphs[i], "color.text.body", Image.Type.Simple);
+                var g = Pin(_art.Image("Glyph" + i, _column, Glyphs[i], "color.text.body", Image.Type.Simple), 0f, -top - inset, cell - 2f * inset, cell - 2f * inset);
                 g.preserveAspect = true;
-                var gr = g.rectTransform;
-                gr.anchorMin = gr.anchorMax = gr.pivot = new Vector2(1f, 1f);
-                var inset = cell * ThemeTokens.GetFloat("share.ship.glyph.inset", 0.18f);
-                gr.anchoredPosition = new Vector2(-pad - inset, -top - inset);
-                gr.sizeDelta = new Vector2(cell - 2f * inset, cell - 2f * inset);
                 _glyphs[i] = g;
-                var lr = _labels[i].rectTransform;
-                lr.anchorMin = lr.anchorMax = lr.pivot = new Vector2(1f, 1f);
-                lr.anchoredPosition = new Vector2(-pad - cell - labelGap, -top);
-                lr.sizeDelta = new Vector2(labelW, cell);
             }
 
-            // Rudder row, centred under the block: arrow_left | socket + rudder glyph | arrow_right.
+            // Rudder row: arrow_left | socket + rudder glyph inside the angle ring | arrow_right.
             var rowY = -ladderH - gap;
-            var socket = _art.Image("RudderSocket", _column, "sprite.button.round", "color.frame", Image.Type.Simple);
+            var socket = Pin(_art.Image("RudderSocket", _column, "sprite.button.round", "color.frame", Image.Type.Simple), 0f, rowY - (ring - rs) * 0.5f, rs, rs);
             socket.preserveAspect = true;
-            var sr = socket.rectTransform;
-            sr.anchorMin = sr.anchorMax = sr.pivot = new Vector2(0.5f, 1f);
-            sr.anchoredPosition = new Vector2(0f, rowY);
-            sr.sizeDelta = new Vector2(rs, rs);
             var rudder = _art.Image("Rudder", socket.rectTransform, "sprite.glyph.rudder", "color.text.active", Image.Type.Simple);
             rudder.preserveAspect = true;
-            _rudder = rudder.rectTransform;
-            _rudder.anchorMin = _rudder.anchorMax = _rudder.pivot = new Vector2(0.5f, 0.5f);
-            _rudder.anchoredPosition = Vector2.zero;
-            _rudder.sizeDelta = new Vector2(rs, rs) * ThemeTokens.GetFloat("share.ship.rudder.glyph", 0.72f);
-            _left = Arrow("RudderLeft", "sprite.glyph.arrow.left", -(rs * 0.5f + gap + arrow * 0.5f), rowY - (rs - arrow) * 0.5f, arrow);
-            _right = Arrow("RudderRight", "sprite.glyph.arrow.right", rs * 0.5f + gap + arrow * 0.5f, rowY - (rs - arrow) * 0.5f, arrow);
-            Plugin.Log.LogInfo($"[Morgott.UI] ship HUD attached (block {block.width:0}x{block.height:0} units, labels {labelW:0} units)");
+            var rr = rudder.rectTransform;
+            rr.anchorMin = rr.anchorMax = rr.pivot = new Vector2(0.5f, 0.5f);
+            rr.anchoredPosition = Vector2.zero;
+            rr.sizeDelta = new Vector2(rs, rs) * ThemeTokens.GetFloat("share.ship.rudder.glyph", 0.72f);
+            // Track over the top half (9 -> 3 o'clock): the arc's full range, |v| * 0.25 either way from 12 o'clock.
+            Radial(Pin(_art.Image("RudderTrack", _column, "sprite.hud.gp.ring", "color.hud.trough", Image.Type.Simple), 0f, rowY, ring, ring), Image.Origin360.Left, true, 0.5f);
+            _arc = Radial(Pin(_art.Image("RudderArc", _column, "sprite.hud.gp.ring", "color.hud.glyph", Image.Type.Simple), 0f, rowY, ring, ring), Image.Origin360.Top, true, 0f);
+            _arc.gameObject.SetActive(false);
+            var tickH = ThemeTokens.GetFloat("size.ship.tick.h", 10f);
+            Pin(_art.Image("RudderTick", _column, null, "color.text.active", Image.Type.Simple), 0f, rowY + tickH * 0.3f, ThemeTokens.GetFloat("size.ship.tick.w", 3f), tickH);
+            var arrowX = ring * 0.5f + gap + arrow * 0.5f;
+            _left = Arrow("RudderLeft", "sprite.glyph.arrow.left", -arrowX, rowY - (ring - arrow) * 0.5f, arrow);
+            _right = Arrow("RudderRight", "sprite.glyph.arrow.right", arrowX, rowY - (ring - arrow) * 0.5f, arrow);
+            Plugin.Log.LogInfo($"[Morgott.UI] ship HUD attached (block {block.width:0}x{block.height:0} units)");
             PlayHud.Reports.Add(() => Instance && root ? _art.Report(root) : null);
+        }
+
+        // Top-centre anchored rect in the block (x from the centre line, y down from the top).
+        private static T Pin<T>(T g, float x, float y, float w, float h) where T : Graphic
+        {
+            var r = g.rectTransform;
+            r.anchorMin = r.anchorMax = r.pivot = new Vector2(0.5f, 1f);
+            r.anchoredPosition = new Vector2(x, y);
+            r.sizeDelta = new Vector2(w, h);
+            return g;
+        }
+
+        // Radial360 fill as HoldPromptSkin's ring (no sprite = a plain rect: left unfilled).
+        private static Image Radial(Image img, Image.Origin360 origin, bool clockwise, float amount)
+        {
+            if (!img.sprite) return img;
+            img.type = Image.Type.Filled;
+            img.fillMethod = Image.FillMethod.Radial360;
+            img.fillOrigin = (int)origin;
+            img.fillClockwise = clockwise;
+            img.fillAmount = amount;
+            return img;
         }
 
         private Image Arrow(string name, string sprite, float x, float y, float size)
         {
-            var a = _art.Image(name, _column, sprite, "color.text.body", Image.Type.Simple);
+            var a = Pin(_art.Image(name, _column, sprite, "color.text.body", Image.Type.Simple), x, y, size, size);
             a.preserveAspect = true;
-            var r = a.rectTransform;
-            r.anchorMin = r.anchorMax = r.pivot = new Vector2(0.5f, 1f);
-            r.anchoredPosition = new Vector2(x, y);
-            r.sizeDelta = new Vector2(size, size);
             return a;
         }
 
@@ -559,21 +548,20 @@ namespace Morgott.UI.WorldHud
                 var on = ThemeTokens.GetColor("color.hud.glyph", Color.cyan);
                 var off = ThemeTokens.GetColor("color.text.body", Color.white);
                 off.a = ThemeTokens.GetFloat("share.ship.idle.alpha", 0.55f);
-                var labelOff = ThemeTokens.GetColor("color.text.body", Color.white);
-                labelOff.a = ThemeTokens.GetFloat("share.ship.label.idle.alpha", 0.75f);
                 for (var i = 0; i < PlayHudMath.LadderCells; i++)
                 {
                     if (_cells[i].gameObject.activeSelf != (i == index)) _cells[i].gameObject.SetActive(i == index);
                     _glyphs[i].color = i == index ? on : off;
-                    if (_labels[i]) _labels[i].color = i == index ? on : labelOff;
                 }
             }
             var value = ship.GetRudderValue();
-            var angle = PlayHudMath.RudderAngle(value, ThemeTokens.GetFloat("size.ship.rudder.deg", 60f));
-            if (Mathf.Abs(_rudder.localEulerAngles.z - Mathf.Repeat(angle, 360f)) > 0.1f) _rudder.localRotation = Quaternion.Euler(0f, 0f, angle);
             if (!(Mathf.Abs(value - _rudderShown) < 0.005f))
             {
                 _rudderShown = value;
+                var arc = PlayHudMath.RudderArc(value);
+                if (_arc.gameObject.activeSelf != arc.shown) _arc.gameObject.SetActive(arc.shown);
+                _arc.fillClockwise = arc.clockwise;
+                _arc.fillAmount = arc.amount;
                 var idle = ThemeTokens.GetFloat("share.ship.idle.alpha", 0.55f) * 0.6f;
                 var minLit = ThemeTokens.GetFloat("share.ship.rudder.lit.min", 0.65f);
                 Side(_left, PlayHudMath.RudderSideAlpha(value, -1, idle, minLit), idle);

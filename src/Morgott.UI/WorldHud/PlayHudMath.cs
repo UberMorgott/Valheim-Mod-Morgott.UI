@@ -26,17 +26,13 @@ namespace Morgott.UI.WorldHud
 
         public static float LadderHeight(float cell, float gap, float pad) => 2f * pad + LadderCells * cell + (LadderCells - 1) * gap;
 
-        // Rudder glyph rotation (degrees, counter-clockwise positive) from Ship.GetRudderValue (-1 .. 1): full lock =
-        // maxDeg, the glyph turns the way the tiller does (right rudder = clockwise).
-        public static float RudderAngle(float rudderValue, float maxDeg)
+        // Rudder angle arc = vanilla Hud.UpdateShipHud m_shipRudderIndicator (Hud.cs:751-767): hidden inside the 0.02 dead
+        // zone, else a radial fill from 12 o'clock of |v| * 0.25 (full lock = a quarter turn), clockwise for a right turn.
+        public static (bool shown, float amount, bool clockwise) RudderArc(float rudderValue)
         {
-            if (float.IsNaN(rudderValue)) return 0f;
-            return -Math.Max(-1f, Math.Min(1f, rudderValue)) * maxDeg;
+            if (float.IsNaN(rudderValue) || Math.Abs(rudderValue) < 0.02f) return (false, 0f, true);
+            return (true, Math.Min(1f, Math.Abs(rudderValue)) * 0.25f, rudderValue > 0f);
         }
-
-        // Vanilla has no ship speed strings (Hud.UpdateShipHud shows icons only); the ladder rows reuse the closest vanilla
-        // tokens, top-down like LadderIndex: Full, Half, Slow, Stop, Back.
-        public static readonly string[] LadderTokens = { "$radial_speed_fast", "$radial_speed_medium", "$radial_speed_slow", "$radial_speed_off", "$settings_backward" };
 
         // Rudder side arrow alpha (side -1 = left, +1 = right) from Ship.GetRudderValue (-1 .. 1, > 0 = turning right:
         // Ship.cs:426 pushes the stern along -right * value). Inside vanilla's 0.02 dead zone (Hud.cs:751) both sides are
@@ -75,13 +71,14 @@ namespace Morgott.UI.WorldHud
             return (right, top, beside);
         }
 
-        // Ship HUD block size (canvas units): ladder column = pad | label | labelGap | cell | pad; rudder row under it =
-        // arrow | gap | socket | gap | arrow. Width = the wider of both, height = ladder + gap + socket.
-        public static (float width, float height) ShipBlock(float cell, float gap, float pad, float labelW, float labelGap, float socket, float arrow)
+        // Ship HUD block size (canvas units): ladder column = pad | cell | pad; rudder row under it = arrow | gap | ring |
+        // gap | arrow (ring = the angle arc around the socket), both centred on one axis. Width = the wider of both,
+        // height = ladder + gap + ring.
+        public static (float width, float height) ShipBlock(float cell, float gap, float pad, float ring, float arrow)
         {
-            var ladderW = 2f * pad + Math.Max(0f, labelW) + (labelW > 0f ? labelGap : 0f) + cell;
-            var rudderW = socket + 2f * (arrow + gap);
-            return (Math.Max(ladderW, rudderW), LadderHeight(cell, gap, pad) + gap + socket);
+            var ladderW = 2f * pad + cell;
+            var rudderW = ring + 2f * (arrow + gap);
+            return (Math.Max(ladderW, rudderW), LadderHeight(cell, gap, pad) + gap + ring);
         }
 
         // A frame drawn around a target rect, inset per side (frame window inside its border): new anchoredPosition

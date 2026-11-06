@@ -4074,7 +4074,7 @@
       "imageType": "Simple",
       "fillCenter": true,
       "token": "glyph.arrow.left",
-      "notes": "M3 scroll/page arrow left (tab row scroll, pagers); white mask, tint text_body (selected text_active, hover rune_glow)"
+      "notes": "M3 scroll/page arrow left = exact mirror of glyph_arrow_right (tab row scroll, pagers); white mask, tint text_body (selected text_active, hover rune_glow)"
     },
     {
       "name": "glyph_arrow_right",
