@@ -27,6 +27,11 @@ Finished work: History below (one line per milestone); details in `git log` / ta
       hudroot 5, 10.9; root 5, 7.2; EnchantingUI(Clone) 4, 10, m7; Player 3, 8; ListView 2, 14, info; Panel 2, 14.1, m7;
       Players 2, 8, m6c; one each: AchContainer 9.8, AvailableBountiesPanel 14, BuildHud res_name 15.8, Cost 14.1,
       Description 14, EnemyHud 14, HotKeyBar 12, Inventory_screen 15.3, LoadingGUI 15, RecipeList 14.2, TreasureMap 13.
+- [ ] Shrink-to-fit floor (0.28.4, `<prefix>-shrink-min` gated everywhere): TextInset / crafting Label + FitName /
+      item browser / ammo name stop at the rendered 16 px and ellipsize. Exceptions with a shrink below it, by layout:
+      plate labels (PlateLabelFit / Restyler.Fit, size.text.fit.min 13: at 16 the pre-world buttons truncated) and crafting
+      recipe rows (`CraftingSkin` row name min 12: mockup column width, 20 names per list ellipsized at 16; run
+      20261107-021204). Both need container sizing (wider column / two-line plates) before they can take the floor.
 - [ ] Faces outside the two-font theme (`<prefix>-two-fonts`): `HUD/hudroot/HotKeyBar/HotKeyElement(Clone)/binding`
       Valheim-AveriaSansLibre (m1, m4-m7); `IngameGui/EnemyHud/HudRoot/HudBase(Clone)/Alerted` Valheim-AveriaSerifLibre
       (m6; EnemyHudSkin.AlertFace applied, awaits a ui-runeskin-m4 run).
