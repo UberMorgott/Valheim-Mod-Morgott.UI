@@ -1093,7 +1093,7 @@ namespace Morgott.UI.CraftingScreen
                             if (name.overflowMode != TextOverflowModes.Ellipsis) name.overflowMode = TextOverflowModes.Ellipsis;
                             name.enableAutoSizing = true;
                             name.fontSizeMax = font;
-                            name.fontSizeMin = Readable.ShrinkFloor(name, font);
+                            name.fontSizeMin = Mathf.Min(font, 12f); // mockup column width: at the floor 20 names per list ellipsized (m3-layout, run 20261107-021204)
                         }
                         break;
                     case "QualityLevel":

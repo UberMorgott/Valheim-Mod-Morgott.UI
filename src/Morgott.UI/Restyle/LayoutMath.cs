@@ -55,10 +55,10 @@ namespace Morgott.UI.Restyle
             return k > 0.01f ? floorPx / k + 0.05f : 0f;
         }
 
-        // Auto-size minimum of a shrink-to-fit text (TextInset, PlateLabelFit, button labels): the readable floor
-        // (size.text.readable, or its rendered units when larger), never above the text's own size - past it the text
-        // ends in its ellipsis. The old size.text.fit.min 12/13 took own and vanilla labels below 16 px.
-        public static float ShrinkFloor(float max, float readable, float readableUnits) => Math.Min(max, Math.Max(readable, readableUnits));
+        // Auto-size minimum of a shrink-to-fit text (TextInset, own layouts): the readable floor in the text's units where
+        // it renders (readableUnits, 0 = not measurable -> the canvas-unit readable), never above the text's own size - past
+        // it the text ends in its ellipsis. A scaled subtree (HUD root x2) reaches 16 px at fewer units than 16.
+        public static float ShrinkFloor(float max, float readable, float readableUnits) => Math.Min(max, readableUnits > 0f ? readableUnits : readable);
 
         // Start of a row text: pad after the icon / edge before it (span start), and never on the row plate's 9-slice
         // cap: at least capPad after the plate start + its drawn left border.

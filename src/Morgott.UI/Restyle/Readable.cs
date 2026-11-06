@@ -25,12 +25,8 @@ namespace Morgott.UI.Restyle
             return LayoutMath.ReadableUnits(floorPx, Vector2.Distance(p0, p1), Screen.height);
         }
 
-        // Unclamped readable floor of t in its font units (size.text.readable or its rendered units, the larger).
-        public static float Floor(TMP_Text t)
-        {
-            var readable = ThemeTokens.GetFloat("size.text.readable", 16f);
-            return Mathf.Max(readable, Units(t, readable));
-        }
+        // Unclamped readable floor of t in its font units (its rendered units, or size.text.readable when not measurable).
+        public static float Floor(TMP_Text t) => ShrinkFloor(t, float.MaxValue);
 
         // Auto-size minimum for a fitter shrinking t from max (LayoutMath.ShrinkFloor).
         public static float ShrinkFloor(TMP_Text t, float max)

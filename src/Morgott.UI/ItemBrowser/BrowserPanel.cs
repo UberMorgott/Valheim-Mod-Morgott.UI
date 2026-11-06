@@ -491,15 +491,17 @@ namespace Morgott.UI.ItemBrowser
             Geo.Place(_canvas, rt, new Box(_a.X + x * _k, _a.Y + y * _k, w * _k, h * _k));
         }
 
-        // Text shrunk to fit its box (Russian labels are longer than the mockup's).
-        private void Fit(TMP_Text t, string s, float size, float min = 0.85f)
+        // Text shrunk to fit its box (Russian labels are longer than the mockup's), never under the rendered readable
+        // floor (16 px; the old 0.85 x size drew grid names at 14.3 px, run 20261107-021204): past it, the ellipsis.
+        private void Fit(TMP_Text t, string s, float size)
         {
             if (t.text != s) t.text = s;
-            var fs = size * _k * _f;
-            if (t.enableAutoSizing && Mathf.Abs(t.fontSizeMax - fs) < 0.05f && Mathf.Abs(t.fontSizeMin - fs * min) < 0.05f) return;
+            var floor = Readable.Floor(t);
+            var fs = Mathf.Max(size * _k * _f, floor);
+            if (t.enableAutoSizing && Mathf.Abs(t.fontSizeMax - fs) < 0.05f && Mathf.Abs(t.fontSizeMin - floor) < 0.05f) return;
             t.enableAutoSizing = true;
             t.fontSizeMax = fs;
-            t.fontSizeMin = fs * min;
+            t.fontSizeMin = floor;
         }
 
         private static void Off(Component c)
@@ -510,7 +512,7 @@ namespace Morgott.UI.ItemBrowser
         private void Text(TMP_Text t, string s, float size)
         {
             if (t.text != s) t.text = s;
-            var fs = size * _k * _f;
+            var fs = Mathf.Max(size * _k * _f, Readable.Floor(t)); // mockup size, at least the readable floor
             if (t.enableAutoSizing) t.enableAutoSizing = false; // a pooled text Fit sized before keeps no autosize
             if (Mathf.Abs(t.fontSize - fs) > 0.05f) t.fontSize = fs;
         }

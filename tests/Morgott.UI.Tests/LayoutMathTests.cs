@@ -39,8 +39,8 @@ namespace Morgott.UI.Tests
             Assert.Equal(0f, LayoutMath.ReadableUnits(16f, 1f, 0f), 3);
         }
 
-        // Shrink-to-fit never goes under the readable floor (the old 12 / 13 fit.min did), uses the rendered floor when a
-        // GUI scale < 1 makes it larger, and never raises a text that is already smaller than the floor.
+        // Shrink-to-fit stops at the rendered readable floor (larger under a GUI scale < 1, smaller in a scaled-up subtree),
+        // the canvas-unit 16 when not measurable, and never raises a text that is already smaller than the floor.
         [Fact]
         public void ShrinkFloorIsTheReadableFloorCappedByTheOwnSize()
         {
@@ -48,7 +48,7 @@ namespace Morgott.UI.Tests
             Assert.Equal(17.83f, LayoutMath.ShrinkFloor(24f, 16f, 17.83f), 3);
             Assert.Equal(16f, LayoutMath.ShrinkFloor(24f, 16f, 0f), 3);
             Assert.Equal(14f, LayoutMath.ShrinkFloor(14f, 16f, 16.05f), 3);
-            Assert.True(LayoutMath.ShrinkFloor(40f, 16f, 0f) >= 16f);
+            Assert.Equal(8.05f, LayoutMath.ShrinkFloor(10f, 16f, 8.05f), 3); // HUD root x2: 16 px at 8 units
         }
 
         [Fact]

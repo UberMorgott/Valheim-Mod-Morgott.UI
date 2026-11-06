@@ -300,7 +300,7 @@ namespace Morgott.UI.Restyle
             image.rectTransform.sizeDelta = s.rect.size * (100f / s.pixelsPerUnit);
         }
 
-        // A button label shrinks to fit its button: auto-size from its own size down to the readable floor, side margins
+        // A button label shrinks to fit its button: auto-size from its own size down to size.text.fit.min, side margins
         // keep it clear of the plate caps (inset per side measured from the button edge, minus what the label rect
         // already leaves). Theme fonts are wider than the vanilla faces the layouts were made for.
         private static void Fit(TMP_Text text, SkinMark mark, float inset)
@@ -315,7 +315,7 @@ namespace Morgott.UI.Restyle
             var max = text.enableAutoSizing ? Mathf.Max(text.fontSizeMax, text.fontSize) : text.fontSize;
             text.enableAutoSizing = true;
             text.fontSizeMax = max;
-            text.fontSizeMin = Readable.ShrinkFloor(text, max);
+            text.fontSizeMin = Mathf.Min(max, ThemeTokens.GetFloat("size.text.fit.min", 13f)); // plate labels shrink by design: at the readable floor they truncated (m5-text-fit, runs 20261022-210451 / 20261107-021204)
             // Long labels may take a second line before they shrink (wrapping on, the plate is tall enough).
             mark.OrigWrap = text.textWrappingMode;
             text.textWrappingMode = TextWrappingModes.Normal;
