@@ -398,7 +398,7 @@ namespace Morgott.UI.WorldHud
     // Ship HUD (mockup m6-ship-b): a vertical popup column, top-down sail full / sail half / oar / stop / reverse,
     // the active speed in slot_cell_selected with its glyph in the rune glow (no text labels, mockup 2026-11-06). Under it,
     // centred on the column's axis, the rudder row: arrow_left | rudder in a button_round socket inside a gp_ring angle
-    // arc (vanilla m_shipRudderIndicator, PlayHudMath.RudderArc: faint top-half track, gold zero tick at 12 o'clock) |
+    // arc (vanilla m_shipRudderIndicator, PlayHudMath.RudderArc: slate top-half track, gold zero tick at 12 o'clock) |
     // arrow_right, the turned side lit (PlayHudMath.RudderSideAlpha). Wind stays on the minimap ring (M4). Vanilla's icons (PowerIcon, Controls
     // following the tiller, WindIndicator) stay alive for Hud.UpdateShipHud but are drawn at alpha 0.
     // Placement (tester 2026-10-26: the ladder sat on the vanilla PowerIcon spot, under the RuneSkin minimap ring):
@@ -450,7 +450,9 @@ namespace Morgott.UI.WorldHud
             var gap = ThemeTokens.GetFloat("size.ship.gap", 6f);
             var pad = ThemeTokens.GetFloat("size.ship.pad", 12f);
             var rs = ThemeTokens.GetFloat("size.ship.rudder", 64f);
-            var ring = rs * ThemeTokens.GetFloat("share.ship.arc", 1.18f); // angle arc just outside the socket rim
+            // Angle ring diameter: gp_ring's stroke (alpha > 100) spans 3..7.5 px of its 112, so at 1.34 x the 64-unit
+            // socket it is ~4 units thick with its inner edge ~5 units outside the socket rim (1080p = 1 unit per px).
+            var ring = rs * ThemeTokens.GetFloat("share.ship.arc", 1.34f);
             var arrow = ThemeTokens.GetFloat("size.ship.arrow", 28f);
             var ladderH = PlayHudMath.LadderHeight(cell, gap, pad);
             _column = HudArt.Rect("RuneSkin_ShipLadder", root);
@@ -488,7 +490,7 @@ namespace Morgott.UI.WorldHud
             rr.anchoredPosition = Vector2.zero;
             rr.sizeDelta = new Vector2(rs, rs) * ThemeTokens.GetFloat("share.ship.rudder.glyph", 0.72f);
             // Track over the top half (9 -> 3 o'clock): the arc's full range, |v| * 0.25 either way from 12 o'clock.
-            Radial(Pin(_art.Image("RudderTrack", _column, "sprite.hud.gp.ring", "color.hud.trough", Image.Type.Simple), 0f, rowY, ring, ring), Image.Origin360.Left, true, 0.5f);
+            Radial(Pin(_art.Image("RudderTrack", _column, "sprite.hud.gp.ring", "color.hud.ship.track", Image.Type.Simple), 0f, rowY, ring, ring), Image.Origin360.Left, true, 0.5f);
             _arc = Radial(Pin(_art.Image("RudderArc", _column, "sprite.hud.gp.ring", "color.hud.glyph", Image.Type.Simple), 0f, rowY, ring, ring), Image.Origin360.Top, true, 0f);
             _arc.gameObject.SetActive(false);
             var tickH = ThemeTokens.GetFloat("size.ship.tick.h", 10f);

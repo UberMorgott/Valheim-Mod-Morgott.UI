@@ -39,6 +39,7 @@
     { "token": "color.state.disabled", "value": "#6F767AFF" },
     { "token": "color.glow", "value": "#4FE0E6CC" },
     { "token": "color.hud.trough", "value": "#323B42FF" },
+    { "token": "color.hud.ship.track", "value": "#5E7884B3" },
     { "token": "color.hud.health", "value": "#C3262EFF" },
     { "token": "color.hud.stamina", "value": "#E3B23CFF" },
     { "token": "color.hud.eitr", "value": "#7A5CF5FF" },

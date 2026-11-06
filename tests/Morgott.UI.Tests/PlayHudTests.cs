@@ -176,9 +176,9 @@ namespace Morgott.UI.Tests
         [Fact]
         public void ShipBlockFitsLadderAndRudderRow()
         {
-            var (w, h) = PlayHudMath.ShipBlock(46f, 6f, 12f, 76f, 28f);
-            Assert.Equal(76f + 2f * (28f + 6f), w, 3); // rudder row wider than the ladder column
-            Assert.Equal(PlayHudMath.LadderHeight(46f, 6f, 12f) + 6f + 76f, h, 3);
+            var (w, h) = PlayHudMath.ShipBlock(46f, 6f, 12f, 86f, 28f);
+            Assert.Equal(86f + 2f * (28f + 6f), w, 3); // rudder row wider than the ladder column
+            Assert.Equal(PlayHudMath.LadderHeight(46f, 6f, 12f) + 6f + 86f, h, 3);
             var (w2, _) = PlayHudMath.ShipBlock(90f, 6f, 12f, 20f, 10f);
             Assert.Equal(12f + 90f + 12f, w2, 3); // ladder column wider than a small rudder row
         }
@@ -213,7 +213,7 @@ namespace Morgott.UI.Tests
                     var fpBottom = plaqueTop - (32f * box / 220f + 2f + 24f) * scale;
                     var fpLeft = fpRight - box * scale;
                     var floor = sh * stripShare + 12f * scale;
-                    var (bw, bh) = PlayHudMath.ShipBlock(46f, 6f, 12f, 76f, 28f);
+                    var (bw, bh) = PlayHudMath.ShipBlock(46f, 6f, 12f, 86f, 28f);
                     bw *= scale;
                     bh *= scale;
                     var (right, top, beside) = PlayHudMath.ShipPlacement(fpLeft, fpRight, fpBottom, fpTop, 0f, floor, bw, bh, 12f * scale);
