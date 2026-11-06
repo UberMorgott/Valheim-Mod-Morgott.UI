@@ -74,6 +74,15 @@ namespace Morgott.UI.ModScreens
                 _tabsSize0 = _tabs.rect.size;
                 _contentSize0 = _content.rect.size;
             }
+            // Page title = the shown feature (its tab's Epic Loot label): the band title the header adopted was the first
+            // tab's label on every tab (run 20261107-023023: "Распылить" on Enchant).
+            if (_header && _tabs.TryGetComponent<TabHandler>(out var th))
+            {
+                var i = th.GetActiveTab();
+                var label = i >= 0 && i < th.m_tabs.Count && th.m_tabs[i].m_button && th.m_tabs[i].m_button.transform.Find("Text") is Transform tt
+                    && tt.TryGetComponent<TMPro.TMP_Text>(out var tmp) ? tmp.text : null;
+                if (!string.IsNullOrEmpty(label)) _header.Text(label);
+            }
             var inv = InventorySkin.Instance;
             var inner = _page.Layout(inv ? inv.SkinScaleValue : 1f, _header);
             if (inner.W <= 0f || inner.H <= 0f) return;
