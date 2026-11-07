@@ -85,7 +85,7 @@ namespace Morgott.UI.ModScreens
         {
             if (!_cell) return;
             var r = _cell.rect;
-            var iconSide = IconOnly ? Mathf.Min(r.width, r.height) * 0.6f : F("size.el.tab.icon", 28f);
+            var iconSide = IconOnly ? Mathf.Min(r.width, r.height) * 0.52f : F("size.el.tab.icon", 28f);
             ForeignMath.ElTabLayout(r.width, r.height, iconSide, IconOnly ? 0f : F("size.el.tab.gap", 3f), IconOnly ? 0f : F("size.el.tab.caption.h", 40f),
                 F("size.el.tab.pad", 4f), F("size.el.tab.badge", 18f), out var icon, out var caption, out var badge);
             if (_icon)

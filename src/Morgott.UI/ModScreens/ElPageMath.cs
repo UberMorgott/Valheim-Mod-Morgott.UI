@@ -9,9 +9,9 @@ namespace Morgott.UI.ModScreens
     public static class ElPageMath
     {
         // Mockup 02 at 1920x1080 (u = canvas height / 1080): tab caps 85 x 66 from x 109, pitch 104; list column 61..543 of
-        // the 1799-wide content box, pane from 612.
+        // the 1799-wide content box (its scrollbar at 574), pane from 612.
         public const float TabW = 85f, TabH = 66f, TabGap = 19f, TabX = 109f, TabY = 27f;
-        public const float ListShare = 482f / 1799f, PaneGap = 69f / 1799f;
+        public const float ListShare = 513f / 1799f, PaneGap = 38f / 1799f;
 
         // Tab cap i of the top-bar row.
         public static Box Tab(int i, float u) => new Box((TabX + i * (TabW + TabGap)) * u, TabY * u, TabW * u, TabH * u);
@@ -45,9 +45,9 @@ namespace Morgott.UI.ModScreens
             return k;
         }
 
-        // Trader body: store column ~30 % (mockup 04 x 40..617 of 1840) left, the mod board right; without a board the
+        // Trader body: store column ~32 % (mockup 04 x 40..617 of 1840) left, the mod board right; without a board the
         // store column is centred.
-        public const float StoreShare = 0.3f, BoardGap = 0.012f;
+        public const float StoreShare = 0.32f, BoardGap = 0.012f;
 
         public static void Trader(Box body, bool board, out Box store, out Box right)
         {

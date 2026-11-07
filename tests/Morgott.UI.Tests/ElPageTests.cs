@@ -10,13 +10,13 @@ namespace Morgott.UI.Tests
     {
         private static readonly Box Body = new Box(61f, 232f, 1799f, 766f);
 
-        // Mockup 02: list column 61..543, pane from 612 to the box's right edge.
+        // Mockup 02: list column 61..574 (scrollbar included), pane from 612 to the box's right edge.
         [Fact]
         public void SplitMatchesMockup02()
         {
             ElPageMath.Split(Body, true, out var col, out var pane);
             Assert.Equal(61f, col.X, 2);
-            Assert.Equal(543f, col.Right, 1);
+            Assert.Equal(574f, col.Right, 1);
             Assert.Equal(612f, pane.X, 1);
             Assert.Equal(Body.Right, pane.Right, 2);
             Assert.Equal(Body.H, pane.H, 2);

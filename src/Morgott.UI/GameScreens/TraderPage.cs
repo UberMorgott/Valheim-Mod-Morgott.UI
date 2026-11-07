@@ -90,6 +90,10 @@ namespace Morgott.UI.GameScreens
             // Sell panel (run 20261107-143240 overdraw-tradepage covered=11).
             foreach (var n in new[] { "border (1)", "bkg" })
                 if (Child(n) is RectTransform bg && bg.GetSiblingIndex() != 1) bg.SetSiblingIndex(1);
+            // The window header face right after them (it was created earlier in the hierarchy: under the backing, run
+            // 20261107-144822 overdraw covered RuneSkinWindowFace).
+            if (Child(RuneWindowHeader.FaceName) is RectTransform face && Child("border (1)") is RectTransform border && face.GetSiblingIndex() < border.GetSiblingIndex())
+                face.SetSiblingIndex(border.GetSiblingIndex());
             var mod = ModPanel();
             var board = mod && mod.name == "MerchantPanel";
             var currencies = mod ? mod.Find("Currencies") as RectTransform : null;
@@ -101,6 +105,8 @@ namespace Morgott.UI.GameScreens
             var inv = InventorySkin.Instance;
             var body = _page.Layout(inv ? inv.SkinScaleValue : 1f, _header);
             if (body.IsEmpty) return;
+            // Mockup 04 body from y 207 (the title plaque ends at 192).
+            body = new Box(body.X, body.Y - 25f * u, body.W, body.H + 25f * u);
             ElPageMath.Trader(body, mod, out var col, out var right);
             StoreColumn(col, u);
             if (_coins != null)
@@ -139,20 +145,24 @@ namespace Morgott.UI.GameScreens
                 }
             }
             else if (m.Whole != null)
-                m.Whole.Put(_canvas, ElPageMath.Fit(m.Whole.Box0.W, m.Whole.Box0.H, right, out var x0, out var y0), x0, y0);
-            // Both panels' currencies (and the board's sundial) in the top bar (mockup 04).
-            if (m.Currencies != null)
             {
-                var room = bar.W - (m.Sundial != null ? bar.H + 8f * u : 0f);
-                var kc = room / m.Currencies.Box0.W;
-                m.Currencies.Put(_canvas, kc, bar.X, bar.Y + (bar.H - m.Currencies.Box0.H * kc) / 2f);
+                // Inset by the panel stack's reach (its frame art runs past the panel box: run 20261107-144822 x 585 vs 632).
+                var reach = 48f * u;
+                var zone = new Box(right.X + reach, right.Y + reach * 0.5f, right.W - 2f * reach, right.H - reach);
+                m.Whole.Put(_canvas, ElPageMath.Fit(m.Whole.Box0.W, m.Whole.Box0.H, zone, out var x0, out var y0), x0, y0);
             }
+            // Both panels' currencies (and the board's sundial) in the top bar (mockup 04).
+            // The currency icons / counts themselves (the container is far larger than its content: run 20261107-144822
+            // drew them ~200 px wide) fitted into the bar.
+            if (m.CurrencyParts.Count > 0)
+                PagePart.Fit(_canvas, m.CurrencyParts, new Box(bar.X, bar.Y, bar.W - (m.Sundial != null ? bar.H + 8f * u : 0f), bar.H));
             m.Sundial?.Put(_canvas, bar.H / m.Sundial.Box0.H, bar.Right - bar.H, bar.Y);
         }
 
         private sealed class Mod
         {
-            public PagePart Whole, Currencies, Sundial;
+            public PagePart Whole, Sundial;
+            public List<PagePart> CurrencyParts = new List<PagePart>();
             public readonly List<PagePart> Sections = new List<PagePart>();
         }
 
@@ -180,7 +190,7 @@ namespace Morgott.UI.GameScreens
             var m = new Mod { Whole = PagePart.Of(_canvas, (RectTransform)mod) };
             foreach (var n in Sections)
                 if (mod.Find(n) is RectTransform s && PagePart.Of(_canvas, s) is PagePart p) m.Sections.Add(p);
-            m.Currencies = PagePart.Of(_canvas, mod.Find("Currencies") as RectTransform);
+            m.CurrencyParts = PagePart.Children(_canvas, mod.Find("Currencies"));
             m.Sundial = PagePart.Of(_canvas, mod.Find("Sundial") as RectTransform);
             return m;
         }

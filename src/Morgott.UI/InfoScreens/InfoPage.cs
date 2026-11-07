@@ -225,10 +225,10 @@ namespace Morgott.UI.InfoScreens
         // The page frame's own panel stack (on the frame, or on its vanilla "bkg" child: compendium).
         private PanelDecor Decor()
         {
-            var d = PanelDecor.Of(_frame) ?? (_frame.Find("bkg") is Transform b ? PanelDecor.Of(b) : null);
+            var d = PanelDecor.Of(_frame);
             if (d) return d;
-            // Else the largest stack on a direct child (the store: vanilla "border (1)"; run 20261107-143240 found none and
-            // left its rails 49 px off screen).
+            // Else the largest stack on a direct child (compendium: "bkg"; the store: vanilla "border (1)" over its smaller
+            // "bkg" - runs 20261107-143240 / -144822 took none / bkg and left the store rails 49 px off screen).
             var area = 0f;
             foreach (Transform c in _frame)
                 if (PanelDecor.Of(c) is PanelDecor pd && c is RectTransform rt && rt.rect.width * rt.rect.height > area)
