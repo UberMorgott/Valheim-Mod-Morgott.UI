@@ -6,6 +6,15 @@ Finished work: History below (one line per milestone); details in `git log` / ta
 
 ## Open
 
+### Item icons
+
+- [ ] Needs regen without yellow cast: 217 restyled icons reverted to their original sprite (2026-11-08,
+      fix/revert-yellow-icons) because the restyle tinted them yellow: wood / plank family, honey, bee, berries,
+      mushrooms + every override with Lab `b*` up >= 12 into the yellow hue band vs its original. List:
+      `docs/icons-yellow-reverted.txt` (also `pack_exclude.txt` in Morgott.Patcher `tools\iconstyle`). Fix the warm
+      shift in iconstyle (median `b*` +4.5 over all 1566 compared icons), re-stylize these, drop them from the exclude
+      list, pack.
+
 ### Perf / leaks
 
 - [ ] Remaining allocations: CharacterPreview.LateUpdate (camera render window), InventorySkin / CraftingSkin LateUpdate

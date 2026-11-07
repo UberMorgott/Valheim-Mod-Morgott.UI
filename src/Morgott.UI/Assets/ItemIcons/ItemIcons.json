@@ -352,14 +352,6 @@
    0,
    13
   ],
-  "Amber": [
-   0,
-   14
-  ],
-  "AmberPearl": [
-   0,
-   15
-  ],
   "Amethyst_TW": [
    12,
    0
@@ -367,10 +359,6 @@
   "AncientArtifact_TW": [
    12,
    1
-  ],
-  "AncientCoin": [
-   0,
-   16
   ],
   "AncientGemstoneBlack": [
    0,
@@ -388,10 +376,6 @@
    0,
    20
   ],
-  "AncientScroll_TW": [
-   12,
-   2
-  ],
   "AncientSeed": [
    0,
    21
@@ -403,10 +387,6 @@
   "ArcaneScroll_DamageBuff_TW": [
    9,
    6
-  ],
-  "ArcaneScroll_JumpBuff_TW": [
-   9,
-   7
   ],
   "ArcaneScroll_Mistlands_TW": [
    9,
@@ -423,10 +403,6 @@
   "ArcaneScroll_SlowfallBuff_TW": [
    9,
    11
-  ],
-  "ArcaneScroll_SpeedBuff_TW": [
-   9,
-   12
   ],
   "ArcaneScroll_Swamp_TW": [
    9,
@@ -524,10 +500,6 @@
    5,
    108
   ],
-  "ArmorDress10": [
-   5,
-   109
-  ],
   "ArmorDress2": [
    5,
    110
@@ -551,14 +523,6 @@
   "ArmorDress7": [
    5,
    115
-  ],
-  "ArmorDress8": [
-   5,
-   116
-  ],
-  "ArmorDress9": [
-   5,
-   117
   ],
   "ArmorFenringChest": [
    5,
@@ -776,10 +740,6 @@
    11,
    30
   ],
-  "ArmorRogueBMLegs_TW": [
-   11,
-   31
-  ],
   "ArmorRogueCarapaceChest_TW": [
    11,
    32
@@ -792,14 +752,6 @@
    11,
    34
   ],
-  "ArmorRogueIronChest_TW": [
-   11,
-   35
-  ],
-  "ArmorRogueIronLegs_TW": [
-   11,
-   36
-  ],
   "ArmorRogueLegs_TW": [
    11,
    37
@@ -811,10 +763,6 @@
   "ArmorRogueSilverLegs_TW": [
    11,
    39
-  ],
-  "ArmorRootChest": [
-   5,
-   138
   ],
   "ArmorRootLegs": [
    5,
@@ -896,18 +844,6 @@
    5,
    148
   ],
-  "ArmorTunic7": [
-   5,
-   149
-  ],
-  "ArmorTunic8": [
-   5,
-   150
-  ],
-  "ArmorTunic9": [
-   5,
-   151
-  ],
   "ArmorVidarBMChest_TW": [
    11,
    40
@@ -940,10 +876,6 @@
    11,
    47
   ],
-  "ArmorVigorousBMChest_TW": [
-   11,
-   48
-  ],
   "ArmorVigorousBMLegs_TW": [
    11,
    49
@@ -967,10 +899,6 @@
   "ArmorVigorousIronLegs_TW": [
    11,
    54
-  ],
-  "ArmorVigorousLegs_TW": [
-   11,
-   55
   ],
   "ArmorVigorousSilverChest_TW": [
    11,
@@ -996,10 +924,6 @@
    11,
    61
   ],
-  "ArmorWarriorChest_TW": [
-   11,
-   62
-  ],
   "ArmorWarriorFlametalChest_TW": [
    11,
    63
@@ -1007,10 +931,6 @@
   "ArmorWarriorFlametalLegs_TW": [
    11,
    64
-  ],
-  "ArmorWarriorLegs_TW": [
-   11,
-   65
   ],
   "ArmorWarriorSilverChest_TW": [
    11,
@@ -1103,10 +1023,6 @@
   "AskHide": [
    0,
    32
-  ],
-  "AsksvinCarrionNeck": [
-   0,
-   33
   ],
   "AsksvinCarrionPelvic": [
    0,
@@ -1228,10 +1144,6 @@
    5,
    185
   ],
-  "AxeHead1": [
-   0,
-   39
-  ],
   "AxeHead2": [
    0,
    40
@@ -1288,10 +1200,6 @@
    13,
    9
   ],
-  "BackpackPlains": [
-   13,
-   6
-  ],
   "BackpackSwamp": [
    13,
    7
@@ -1339,10 +1247,6 @@
   "BastardBone_TW": [
    12,
    13
-  ],
-  "BastardChitin_TW": [
-   12,
-   14
   ],
   "BastardDvergr_TW": [
    12,
@@ -1456,10 +1360,6 @@
    12,
    33
   ],
-  "BattlehammerTrollbone_TW": [
-   12,
-   34
-  ],
   "BeechSeeds": [
    0,
    50
@@ -1492,10 +1392,6 @@
    0,
    53
   ],
-  "BirchSeeds": [
-   0,
-   54
-  ],
   "BjornHide": [
    0,
    55
@@ -1503,10 +1399,6 @@
   "BjornMeat": [
    0,
    56
-  ],
-  "BjornPaw": [
-   0,
-   57
   ],
   "BlackCore": [
    0,
@@ -1528,10 +1420,6 @@
    0,
    62
   ],
-  "Blackwood": [
-   0,
-   63
-  ],
   "BladeYagluth_TW": [
    12,
    35
@@ -1551,14 +1439,6 @@
   "Bloodbag": [
    0,
    67
-  ],
-  "Blueberries": [
-   0,
-   68
-  ],
-  "BoarJerky": [
-   0,
-   69
   ],
   "BoltAntler_TW": [
    12,
@@ -1580,10 +1460,6 @@
    6,
    5
   ],
-  "BoltBronze_TW": [
-   12,
-   38
-  ],
   "BoltCarapace": [
    6,
    6
@@ -1600,10 +1476,6 @@
    12,
    40
   ],
-  "BoltFire_TW": [
-   12,
-   41
-  ],
   "BoltFrost_TW": [
    12,
    42
@@ -1619,14 +1491,6 @@
   "BoltPoison_TW": [
    12,
    44
-  ],
-  "BoltSilver_TW": [
-   12,
-   45
-  ],
-  "BoltWood_TW": [
-   12,
-   46
   ],
   "BombBile": [
    6,
@@ -1679,10 +1543,6 @@
   "BombSpirit_TW": [
    12,
    47
-  ],
-  "BoneFragments": [
-   0,
-   71
   ],
   "BoneMawSerpentMeat": [
    0,
@@ -1764,14 +1624,6 @@
    0,
    75
   ],
-  "Bronze": [
-   0,
-   76
-  ],
-  "BronzeNails": [
-   0,
-   77
-  ],
   "BronzeScrap": [
    0,
    78
@@ -1799,10 +1651,6 @@
   "CapeDeepNorthMage": [
    6,
    35
-  ],
-  "CapeDeerHide": [
-   6,
-   36
   ],
   "CapeFeather": [
    6,
@@ -1872,14 +1720,6 @@
    0,
    81
   ],
-  "Carrot": [
-   0,
-   82
-  ],
-  "CarrotSeeds": [
-   0,
-   83
-  ],
   "CarrotSoup": [
    0,
    2
@@ -1944,10 +1784,6 @@
    0,
    92
   ],
-  "ChickenEgg": [
-   0,
-   93
-  ],
   "ChickenMeat": [
    0,
    94
@@ -1968,10 +1804,6 @@
    12,
    53
   ],
-  "ClaymoreChitin_TW": [
-   12,
-   54
-  ],
   "ClaymoreDvergr_TW": [
    12,
    55
@@ -1983,10 +1815,6 @@
   "ClaymoreSilver_TW": [
    12,
    57
-  ],
-  "Cloudberry": [
-   0,
-   96
   ],
   "Club": [
    6,
@@ -2012,25 +1840,9 @@
    0,
    101
   ],
-  "CookedBugMeat": [
-   0,
-   102
-  ],
-  "CookedChickenMeat": [
-   0,
-   103
-  ],
-  "CookedDeerMeat": [
-   0,
-   104
-  ],
   "CookedEgg": [
    0,
    105
-  ],
-  "CookedHareMeat": [
-   0,
-   106
   ],
   "CookedLoxMeat": [
    0,
@@ -2040,29 +1852,13 @@
    0,
    3
   ],
-  "CookedMooseMeat": [
-   0,
-   108
-  ],
   "CookedSealBlubber": [
    0,
    109
   ],
-  "CookedVoltureMeat": [
-   0,
-   110
-  ],
   "CookedWolfMeat": [
    0,
    111
-  ],
-  "Copper": [
-   0,
-   112
-  ],
-  "CopperOre": [
-   0,
-   113
   ],
   "CopperScrap": [
    0,
@@ -2075,18 +1871,6 @@
   "CrossbowBlackmetal_TW": [
    12,
    58
-  ],
-  "CrossbowBronze_TW": [
-   12,
-   59
-  ],
-  "CrossbowChitin_TW": [
-   12,
-   60
-  ],
-  "CrossbowEikthyr_TW": [
-   12,
-   61
   ],
   "CrossbowGold": [
    6,
@@ -2144,14 +1928,6 @@
    0,
    117
   ],
-  "CudgelBronze_TW": [
-   12,
-   65
-  ],
-  "CudgelIron_TW": [
-   12,
-   66
-  ],
   "Cultivator": [
    6,
    53
@@ -2175,10 +1951,6 @@
   "DeerMeat": [
    0,
    121
-  ],
-  "DeerStew": [
-   0,
-   122
   ],
   "Demister": [
    6,
@@ -2207,10 +1979,6 @@
   "DualKnifeBone_TW": [
    12,
    71
-  ],
-  "DualKnifeChitin_TW": [
-   12,
-   72
   ],
   "DualKnifeFlametal_TW": [
    12,
@@ -2272,29 +2040,9 @@
    0,
    132
   ],
-  "EitrPlateBlackForest_TW": [
-   9,
-   26
-  ],
-  "EitrPlateMountain_TW": [
-   9,
-   27
-  ],
-  "EitrPlatePlains_TW": [
-   9,
-   28
-  ],
-  "EitrPlateSwamp_TW": [
-   9,
-   29
-  ],
   "ElakingHairBundle": [
    0,
    133
-  ],
-  "ElderBark": [
-   0,
-   134
   ],
   "EliteChaosPlateArmor": [
    10,
@@ -2340,26 +2088,6 @@
    12,
    79
   ],
-  "EnchantedWoodBlackForest_TW": [
-   9,
-   30
-  ],
-  "EnchantedWoodMistlands_TW": [
-   9,
-   31
-  ],
-  "EnchantedWoodMountain_TW": [
-   9,
-   32
-  ],
-  "EnchantedWoodPlains_TW": [
-   9,
-   33
-  ],
-  "EnchantedWoodSwamp_TW": [
-   9,
-   34
-  ],
   "Entrails": [
    0,
    135
@@ -2379,10 +2107,6 @@
   "FW_ArmorTrollLeatherLegs": [
    7,
    150
-  ],
-  "FabricBundle_Blackforest_TW": [
-   9,
-   35
   ],
   "FabricBundle_Mistlands_TW": [
    9,
@@ -2415,10 +2139,6 @@
   "FeastAshlands_Material": [
    0,
    140
-  ],
-  "FeastBlackforest": [
-   0,
-   141
   ],
   "FeastBlackforest_Material": [
    0,
@@ -2456,26 +2176,6 @@
    0,
    150
   ],
-  "FeastOceans_Material": [
-   0,
-   151
-  ],
-  "FeastPlains": [
-   0,
-   152
-  ],
-  "FeastPlains_Material": [
-   0,
-   153
-  ],
-  "FeastSwamps_Material": [
-   0,
-   154
-  ],
-  "Feaster": [
-   6,
-   56
-  ],
   "Feathers": [
    0,
    155
@@ -2483,14 +2183,6 @@
   "Fiddleheadfern": [
    0,
    156
-  ],
-  "FierySvinstew": [
-   0,
-   157
-  ],
-  "FineWood": [
-   0,
-   158
   ],
   "FirCone": [
    0,
@@ -2528,10 +2220,6 @@
    0,
    167
   ],
-  "Fish1": [
-   0,
-   168
-  ],
   "Fish10": [
    0,
    169
@@ -2539,14 +2227,6 @@
   "Fish11": [
    0,
    170
-  ],
-  "Fish12": [
-   0,
-   171
-  ],
-  "Fish2": [
-   0,
-   172
   ],
   "Fish3": [
    0,
@@ -2600,10 +2280,6 @@
    0,
    185
   ],
-  "FishWraps": [
-   0,
-   4
-  ],
   "FishingBait": [
    6,
    57
@@ -2632,10 +2308,6 @@
    6,
    63
   ],
-  "FishingBaitPlains": [
-   6,
-   64
-  ],
   "FishingBaitSwamp": [
    6,
    65
@@ -2656,14 +2328,6 @@
    12,
    80
   ],
-  "FistBronze_TW": [
-   12,
-   81
-  ],
-  "FistChitin_TW": [
-   12,
-   82
-  ],
   "FistDvergr_TW": [
    12,
    83
@@ -2675,10 +2339,6 @@
   "FistFlametal_TW": [
    12,
    84
-  ],
-  "FistFlint_TW": [
-   12,
-   85
   ],
   "FistGold": [
    6,
@@ -2707,10 +2367,6 @@
   "FistSilver_TW": [
    12,
    88
-  ],
-  "Flametal": [
-   0,
-   186
   ],
   "FlametalNew": [
    0,
@@ -2751,10 +2407,6 @@
   "FrostCore": [
    0,
    195
-  ],
-  "Frostwood": [
-   4,
-   0
   ],
   "FrozenFuel": [
    4,
@@ -2831,10 +2483,6 @@
   "GreatbowModer_TW": [
    12,
    94
-  ],
-  "GreydwarfEye": [
-   4,
-   13
   ],
   "GrizzlyBearPelt_TW": [
    12,
@@ -2964,10 +2612,6 @@
    1,
    40
   ],
-  "CS_DrakeMochi": [
-   1,
-   41
-  ],
   "CS_DraughtEitr4": [
    1,
    9
@@ -3011,10 +2655,6 @@
   "CS_DraughtStamina5": [
    1,
    49
-  ],
-  "CS_DraughtStamina7": [
-   1,
-   50
   ],
   "CS_DvergrRation": [
    1,
@@ -3195,10 +2835,6 @@
   "CS_FriedLoxRaw": [
    1,
    94
-  ],
-  "CS_FrostBerryCream": [
-   1,
-   95
   ],
   "CS_FrostCream": [
    1,
@@ -3660,10 +3296,6 @@
    8,
    6
   ],
-  "Hammer": [
-   6,
-   74
-  ],
   "HardAntler": [
    4,
    15
@@ -3676,10 +3308,6 @@
    4,
    17
   ],
-  "HealthUpgrade_Bonemass": [
-   4,
-   18
-  ],
   "HealthUpgrade_GDKing": [
    4,
    19
@@ -3687,10 +3315,6 @@
   "HelmetAshlandsMediumHood": [
    6,
    75
-  ],
-  "HelmetBerserkerHood": [
-   6,
-   76
   ],
   "HelmetBerserkerUndead": [
    6,
@@ -3707,10 +3331,6 @@
   "HelmetBold_TW": [
    11,
    72
-  ],
-  "HelmetBronze": [
-   0,
-   5
   ],
   "HelmetCarapace": [
    6,
@@ -3739,26 +3359,6 @@
   "HelmetCircletBM_TW": [
    9,
    45
-  ],
-  "HelmetCircletBronze_Elemental_TW": [
-   9,
-   46
-  ],
-  "HelmetCircletBronze_Hunter_TW": [
-   9,
-   47
-  ],
-  "HelmetCircletBronze_Sneak_TW": [
-   9,
-   48
-  ],
-  "HelmetCircletBronze_Stamina_TW": [
-   9,
-   49
-  ],
-  "HelmetCircletBronze_TW": [
-   9,
-   50
   ],
   "HelmetCircletCarapace_Elemental_TW": [
    9,
@@ -3820,14 +3420,6 @@
    9,
    65
   ],
-  "HelmetCrownofValheim": [
-   6,
-   80
-  ],
-  "HelmetDNHeavy": [
-   6,
-   81
-  ],
   "HelmetDNMage": [
    6,
    82
@@ -3847,10 +3439,6 @@
   "HelmetFenring": [
    6,
    85
-  ],
-  "HelmetFenrirBM_TW": [
-   11,
-   73
   ],
   "HelmetFenrirCarapace_TW": [
    11,
@@ -3892,10 +3480,6 @@
    6,
    93
   ],
-  "HelmetHat6": [
-   6,
-   94
-  ],
   "HelmetHat7": [
    6,
    95
@@ -3916,10 +3500,6 @@
    11,
    77
   ],
-  "HelmetHunterIron_TW": [
-   11,
-   78
-  ],
   "HelmetHunterSilver_TW": [
    11,
    79
@@ -3931,14 +3511,6 @@
   "HelmetIron": [
    6,
    98
-  ],
-  "HelmetLeather": [
-   6,
-   99
-  ],
-  "HelmetLeather_TW": [
-   11,
-   81
   ],
   "HelmetLegionFlametal_TW": [
    11,
@@ -4004,10 +3576,6 @@
    6,
    107
   ],
-  "HelmetRootCrown": [
-   6,
-   108
-  ],
   "HelmetSpellslinger_BlackForest_TW": [
    9,
    124
@@ -4028,10 +3596,6 @@
    9,
    128
   ],
-  "HelmetStrawHat": [
-   6,
-   109
-  ],
   "HelmetSweatBand": [
    6,
    110
@@ -4040,10 +3604,6 @@
    6,
    111
   ],
-  "HelmetVidarBM_TW": [
-   11,
-   90
-  ],
   "HelmetVidarCarapace_TW": [
    11,
    91
@@ -4051,10 +3611,6 @@
   "HelmetVidarFlametal_TW": [
    11,
    92
-  ],
-  "HelmetVidar_TW": [
-   11,
-   93
   ],
   "HelmetVigorousBM_TW": [
    11,
@@ -4100,10 +3656,6 @@
    6,
    112
   ],
-  "HildirKey_forestcrypt": [
-   4,
-   20
-  ],
   "HildirKey_mountaincave": [
    4,
    21
@@ -4116,17 +3668,9 @@
    6,
    113
   ],
-  "Honey": [
-   4,
-   23
-  ],
   "HoneyGlazedChicken": [
    4,
    24
-  ],
-  "HoneyGlazedChickenUncooked": [
-   4,
-   25
   ],
   "Hook": [
    4,
@@ -4196,10 +3740,6 @@
    4,
    36
   ],
-  "KaleSeeds": [
-   4,
-   37
-  ],
   "KeysGoldUncooked": [
    7,
    72
@@ -4208,10 +3748,6 @@
    6,
    116
   ],
-  "KnifeBronze_TW": [
-   12,
-   97
-  ],
   "KnifeButcher": [
    6,
    117
@@ -4219,10 +3755,6 @@
   "KnifeChitin": [
    6,
    118
-  ],
-  "KnifeCopper": [
-   6,
-   119
   ],
   "KnifeFlint": [
    6,
@@ -4251,10 +3783,6 @@
   "KnifeSilver": [
    6,
    124
-  ],
-  "KnifeSkollAndHati": [
-   6,
-   125
   ],
   "KnifeViper_TW": [
    12,
@@ -4308,10 +3836,6 @@
    4,
    41
   ],
-  "LinenThread": [
-   4,
-   42
-  ],
   "Lingondricka": [
    4,
    43
@@ -4336,14 +3860,6 @@
    4,
    47
   ],
-  "MaceBronze": [
-   6,
-   131
-  ],
-  "MaceChitin_TW": [
-   12,
-   104
-  ],
   "MaceDvergr_TW": [
    12,
    105
@@ -4363,10 +3879,6 @@
   "MaceEldnerNature": [
    6,
    135
-  ],
-  "MaceFlint_TW": [
-   12,
-   106
   ],
   "MaceGold": [
    6,
@@ -4424,10 +3936,6 @@
    7,
    75
   ],
-  "MeadBaseBzerker": [
-   7,
-   76
-  ],
   "MeadBaseEitrBlackForest_TW": [
    9,
    0
@@ -4436,37 +3944,9 @@
    7,
    77
   ],
-  "MeadBaseEitrMinor": [
-   7,
-   78
-  ],
   "MeadBaseEitrMountain_TW": [
    9,
    1
-  ],
-  "MeadBaseFrostResist": [
-   7,
-   79
-  ],
-  "MeadBaseHasty": [
-   7,
-   80
-  ],
-  "MeadBaseHealthLingering": [
-   7,
-   81
-  ],
-  "MeadBaseHealthMajor": [
-   7,
-   82
-  ],
-  "MeadBaseHealthMedium": [
-   7,
-   83
-  ],
-  "MeadBaseHealthMinor": [
-   0,
-   7
   ],
   "MeadBaseLightFoot": [
    7,
@@ -4484,10 +3964,6 @@
    9,
    4
   ],
-  "MeadBasePoisonResist": [
-   7,
-   85
-  ],
   "MeadBaseStaminaLingering": [
    7,
    86
@@ -4503,14 +3979,6 @@
   "MeadBaseStrength": [
    7,
    89
-  ],
-  "MeadBaseSwimmer": [
-   7,
-   90
-  ],
-  "MeadBaseTamer": [
-   7,
-   91
   ],
   "MeadBaseTasty": [
    7,
@@ -4564,10 +4032,6 @@
    0,
    8
   ],
-  "MeadLightfoot": [
-   4,
-   62
-  ],
   "MeadLightningResist_TW": [
    12,
    107
@@ -4615,14 +4079,6 @@
   "MeatPlatter": [
    4,
    69
-  ],
-  "MeatPlatterUncooked": [
-   4,
-   70
-  ],
-  "MeatballsMashedPoteitr": [
-   4,
-   71
   ],
   "MechanicalSpring": [
    4,
@@ -4772,18 +4228,6 @@
    4,
    78
   ],
-  "MooseHide": [
-   4,
-   79
-  ],
-  "MooseKebab": [
-   4,
-   80
-  ],
-  "MooseMeat": [
-   4,
-   81
-  ],
   "MooseSinew": [
    4,
    82
@@ -4795,54 +4239,6 @@
   "MorgenSinew": [
    4,
    84
-  ],
-  "Mushroom": [
-   4,
-   85
-  ],
-  "MushroomBlue": [
-   4,
-   86
-  ],
-  "MushroomBzerker": [
-   4,
-   87
-  ],
-  "MushroomDeathcap_TW": [
-   9,
-   68
-  ],
-  "MushroomDevilstongue_TW": [
-   9,
-   69
-  ],
-  "MushroomJotunPuffs": [
-   4,
-   88
-  ],
-  "MushroomMagecap": [
-   4,
-   89
-  ],
-  "MushroomOmelette": [
-   4,
-   90
-  ],
-  "MushroomSmokePuff": [
-   4,
-   91
-  ],
-  "MushroomWitcheye_TW": [
-   9,
-   70
-  ],
-  "MushroomWizardbutter_TW": [
-   9,
-   71
-  ],
-  "MushroomYellow": [
-   4,
-   92
   ],
   "NeckTail": [
    4,
@@ -4856,10 +4252,6 @@
    4,
    95
   ],
-  "Oat": [
-   4,
-   96
-  ],
   "OatFlour": [
    4,
    97
@@ -4867,10 +4259,6 @@
   "OatMilk": [
    4,
    98
-  ],
-  "OatSeeds": [
-   4,
-   99
   ],
   "OatmealLingonberryJam": [
    4,
@@ -4916,14 +4304,6 @@
    4,
    109
   ],
-  "OvenPancakeUncooked": [
-   4,
-   110
-  ],
-  "Pancakes": [
-   4,
-   111
-  ],
   "PickaxeAntler": [
    6,
    143
@@ -4959,10 +4339,6 @@
   "PiquantPie": [
    4,
    113
-  ],
-  "PiquantPieUncooked": [
-   4,
-   114
   ],
   "PlayerUnarmed": [
    6,
@@ -5032,25 +4408,9 @@
    4,
    120
   ],
-  "ProwlerFang_TW": [
-   12,
-   113
-  ],
-  "Pukeberries": [
-   4,
-   121
-  ],
   "PulledBear": [
    4,
    122
-  ],
-  "PungentPebbles": [
-   4,
-   123
-  ],
-  "QueenBee": [
-   4,
-   124
   ],
   "QueenDrop": [
    4,
@@ -5059,10 +4419,6 @@
   "QueensJam": [
    4,
    126
-  ],
-  "Raspberry": [
-   4,
-   127
   ],
   "RawMeat": [
    4,
@@ -5079,10 +4435,6 @@
   "Resin": [
    4,
    129
-  ],
-  "RingBlackForest_TW": [
-   9,
-   82
   ],
   "RingMistlands_TW": [
    9,
@@ -5104,14 +4456,6 @@
    4,
    130
   ],
-  "RoastedCrustPieUncooked": [
-   4,
-   131
-  ],
-  "Root": [
-   4,
-   132
-  ],
   "RottenMeat": [
    4,
    133
@@ -5119,14 +4463,6 @@
   "RottenPelt_TW": [
    12,
    116
-  ],
-  "RoundLog": [
-   4,
-   134
-  ],
-  "RoyalJelly": [
-   4,
-   135
   ],
   "Ruby": [
    4,
@@ -5200,10 +4536,6 @@
    12,
    117
   ],
-  "Sausages": [
-   4,
-   142
-  ],
   "ScaleHide": [
    4,
    143
@@ -5215,10 +4547,6 @@
   "Scythe": [
    6,
    149
-  ],
-  "ScytheHandle": [
-   4,
-   145
   ],
   "ScytheVampiric_TW": [
    12,
@@ -5235,10 +4563,6 @@
   "SealSoup": [
    4,
    148
-  ],
-  "SeekerAspic": [
-   4,
-   149
   ],
   "SerpentMeat": [
    4,
@@ -5327,18 +4651,6 @@
   "ShieldCarapaceTower_TW": [
    12,
    122
-  ],
-  "ShieldChitinBuckler_TW": [
-   12,
-   123
-  ],
-  "ShieldChitinTower_TW": [
-   12,
-   124
-  ],
-  "ShieldChitin_TW": [
-   12,
-   125
   ],
   "ShieldCore": [
    4,
@@ -5432,10 +4744,6 @@
    9,
    94
   ],
-  "ShroomSoupSwamp_TW": [
-   9,
-   95
-  ],
   "Silver": [
    4,
    157
@@ -5455,14 +4763,6 @@
   "SledgeBlackmetal_TW": [
    12,
    127
-  ],
-  "SledgeBonemass_TW": [
-   12,
-   128
-  ],
-  "SledgeBronze_TW": [
-   12,
-   129
   ],
   "SledgeCheat": [
    6,
@@ -5616,41 +4916,17 @@
    7,
    0
   ],
-  "SpiceAshlands": [
-   4,
-   165
-  ],
-  "SpiceDeepNorth": [
-   4,
-   166
-  ],
   "SpiceForests": [
    4,
    167
-  ],
-  "SpiceMistlands": [
-   4,
-   168
   ],
   "SpiceMountains": [
    4,
    169
   ],
-  "SpiceOceans": [
-   4,
-   170
-  ],
-  "SpicePlains": [
-   4,
-   171
-  ],
   "SpicyMarmalade": [
    4,
    172
-  ],
-  "StaffBlackforest_TW": [
-   9,
-   96
   ],
   "StaffClusterbomb": [
    7,
@@ -5752,18 +5028,6 @@
    9,
    105
   ],
-  "Staffbase_Plains_TW": [
-   9,
-   106
-  ],
-  "Staffbase_Swamp_TW": [
-   9,
-   107
-  ],
-  "Staffcore_BlackForest_TW": [
-   9,
-   108
-  ],
   "Staffcore_Mistlands_TW": [
    9,
    109
@@ -5775,10 +5039,6 @@
   "Staffcore_Plains_TW": [
    9,
    111
-  ],
-  "Staffcore_Swamp_TW": [
-   9,
-   112
   ],
   "StaminaUpgrade_Greydwarf": [
    4,
@@ -5800,10 +5060,6 @@
    4,
    181
   ],
-  "SulfurStone": [
-   4,
-   182
-  ],
   "SurtlingCore": [
    4,
    183
@@ -5811,10 +5067,6 @@
   "SwordBlackmetal": [
    7,
    12
-  ],
-  "SwordBone_TW": [
-   12,
-   136
   ],
   "SwordBronze": [
    7,
@@ -5888,10 +5140,6 @@
    7,
    25
   ],
-  "SwordWood": [
-   7,
-   26
-  ],
   "T0ChaosPlateArmor": [
    10,
    16
@@ -5911,10 +5159,6 @@
   "T1ChaosPlateHelm": [
    10,
    20
-  ],
-  "T1ChaosPlateLegs": [
-   10,
-   21
   ],
   "T2ChaosPlateArmor": [
    10,
@@ -5996,10 +5240,6 @@
    12,
    140
   ],
-  "ThrowAxeBronze_TW": [
-   12,
-   141
-  ],
   "ThrowAxeDvergr_TW": [
    12,
    142
@@ -6036,17 +5276,9 @@
    7,
    40
   ],
-  "TorchMist": [
-   7,
-   41
-  ],
   "TridentBlackmetal_TW": [
    12,
    147
-  ],
-  "TrinketBlackDamageHealth": [
-   7,
-   42
   ],
   "TrinketBlackStamina": [
    7,
@@ -6059,10 +5291,6 @@
   "TrinketBloodGoldStamina": [
    7,
    45
-  ],
-  "TrinketBronzeHealth": [
-   7,
-   46
   ],
   "TrinketBronzeStamina": [
    7,
@@ -6112,10 +5340,6 @@
    4,
    189
   ],
-  "TrophyAbomination": [
-   4,
-   190
-  ],
   "TrophyAsksvin": [
    4,
    191
@@ -6127,10 +5351,6 @@
   "TrophyBjorn": [
    4,
    193
-  ],
-  "TrophyBjornUndead": [
-   4,
-   194
   ],
   "TrophyBlob": [
    4,
@@ -6151,10 +5371,6 @@
   "TrophyBoar": [
    5,
    3
-  ],
-  "TrophyBonemass": [
-   5,
-   4
   ],
   "TrophyBonemawSerpent": [
    5,
@@ -6216,10 +5432,6 @@
    5,
    19
   ],
-  "TrophyElaking": [
-   5,
-   20
-  ],
   "TrophyFader": [
    5,
    21
@@ -6256,10 +5468,6 @@
    5,
    29
   ],
-  "TrophyGoblinBruteBrosShaman": [
-   5,
-   30
-  ],
   "TrophyGoblinKing": [
    5,
    31
@@ -6267,10 +5475,6 @@
   "TrophyGoblinShaman": [
    5,
    32
-  ],
-  "TrophyGreydwarf": [
-   5,
-   33
   ],
   "TrophyGreydwarfBrute": [
    5,
@@ -6300,10 +5504,6 @@
    5,
    40
   ],
-  "TrophyKvastur": [
-   5,
-   41
-  ],
   "TrophyLeech": [
    5,
    42
@@ -6311,10 +5511,6 @@
   "TrophyLox": [
    5,
    43
-  ],
-  "TrophyMole": [
-   5,
-   44
   ],
   "TrophyMoose": [
    5,
@@ -6335,14 +5531,6 @@
   "TrophySeal": [
    5,
    49
-  ],
-  "TrophySeeker": [
-   5,
-   50
-  ],
-  "TrophySeekerBrute": [
-   5,
-   51
   ],
   "TrophySeekerQueen": [
    5,
@@ -6371,10 +5559,6 @@
   "TrophySurtling": [
    5,
    57
-  ],
-  "TrophyTheElder": [
-   5,
-   58
   ],
   "TrophyTick": [
    5,
@@ -6428,17 +5612,9 @@
    7,
    60
   ],
-  "TurretBoltWood": [
-   7,
-   61
-  ],
   "UncookedBerryCakePlains_TW": [
    9,
    114
-  ],
-  "UndeadBjornRibcage": [
-   5,
-   68
   ],
   "Upgrader0Armor": [
    7,
@@ -6516,18 +5692,6 @@
    5,
    70
   ],
-  "VikingCupcakeUncooked": [
-   5,
-   71
-  ],
-  "VineGreenSeeds": [
-   5,
-   72
-  ],
-  "Vineberry": [
-   5,
-   73
-  ],
   "VineberrySeeds": [
    5,
    74
@@ -6539,10 +5703,6 @@
   "VoltureEgg": [
    5,
    76
-  ],
-  "VoltureMeat": [
-   5,
-   77
   ],
   "WarpikeBlackmetal_TW": [
    12,
@@ -6580,10 +5740,6 @@
    5,
    78
   ],
-  "WitheredBone": [
-   5,
-   79
-  ],
   "WolfClaw": [
    5,
    80
@@ -6604,21 +5760,9 @@
    5,
    84
   ],
-  "WolfMeatSkewer": [
-   5,
-   85
-  ],
   "WolfPelt": [
    5,
    86
-  ],
-  "Wood": [
-   0,
-   12
-  ],
-  "WoolScraps_TW": [
-   9,
-   115
   ],
   "WoolYarn_Black_TW": [
    9,
@@ -6648,14 +5792,6 @@
    9,
    122
   ],
-  "WoolYarn_Yellow_TW": [
-   9,
-   123
-  ],
-  "WrithanRoots": [
-   5,
-   87
-  ],
   "YagluthDrop": [
    5,
    88
@@ -6663,10 +5799,6 @@
   "YggdrasilPorridge": [
    5,
    89
-  ],
-  "YggdrasilWood": [
-   5,
-   90
   ],
   "YmirRemains": [
    5,
