@@ -247,7 +247,9 @@ namespace Morgott.UI.WorldHud
         // The equip / action progress bar is shown while the inventory is open (you equip from it), but the RuneSkin
         // inventory panels span the bottom centre where it sits and draw after the HUD on the same root canvas (and
         // CoverCull then gated it as covered): its own canvas sorts one above the GUI, under modals (+5) and tooltips (+10).
-        // Added at Init, so a RenderGate never finds a canvas of its own there.
+        // Added at Init, so a RenderGate never finds a canvas of its own there. Lifted only while the inventory is
+        // shown: vanilla draws the bar inside hudroot, under LoadingBlack (Hud.m_loadingScreen, hudroot's later sibling),
+        // so with the inventory closed the canvas sorts nested again and the loading / teleport screen covers it.
         private const int ActionBand = 1;
         private readonly HudArt _art = new HudArt(OwnershipRegistry.ActionHud);
         private Hud _hud;
@@ -267,7 +269,7 @@ namespace Morgott.UI.WorldHud
             _hud = hud;
             PlayHud.SyncPpu(_art, hud.m_rootObject.transform);
             if (hud.m_actionBarRoot) Bar(hud.m_actionBarRoot.transform, hud.m_actionProgress, "color.hud.glyph", hud.m_actionName, "action progress");
-            if (hud.m_actionBarRoot) Restyle.TopOverlay.Lift(hud.m_actionBarRoot, ActionBand);
+            if (hud.m_actionBarRoot && !hud.m_actionBarRoot.GetComponent<Canvas>()) hud.m_actionBarRoot.AddComponent<Canvas>();
             if (hud.m_staggerProgress) Bar(hud.m_staggerProgress.transform, hud.m_staggerProgress, null, null, "stagger");
             if (hud.m_staggerProgress && PlayHud.Child(hud.m_staggerProgress.transform, "StaggerIcon") is Image icon) _art.Content(icon, "stagger icon (vanilla)");
             Event(hud);
@@ -369,10 +371,21 @@ namespace Morgott.UI.WorldHud
             if (Instance == this) Instance = null;
         }
 
+        // The hidden first open (InventorySkin.GhostCursor: alpha 0, behind the spawn's loading screen) draws no panels.
+        private static void SortBar(GameObject bar)
+        {
+            var skin = InventoryScreen.InventorySkin.Instance;
+            if (InventoryGui.IsVisible() && !(skin && skin.GhostCursor))
+            {
+                if (bar.activeInHierarchy) Restyle.TopOverlay.Lift(bar, ActionBand); // base order changes as the inventory opens
+            }
+            else if (bar.TryGetComponent<Canvas>(out var c) && c.overrideSorting) c.overrideSorting = false;
+        }
+
         private void LateUpdate()
         {
             var bar = _hud ? _hud.m_actionBarRoot : null;
-            if (bar && bar.activeInHierarchy) Restyle.TopOverlay.Lift(bar, ActionBand); // base order changes as the inventory opens
+            if (bar) SortBar(bar);
             var t = _hud ? _hud.m_eventName : null;
             if (!t || !_ruleL || !_ruleR || t.text == _eventText || !t.gameObject.activeInHierarchy) return;
             _eventText = t.text;
