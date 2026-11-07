@@ -55,5 +55,9 @@ namespace Morgott.UI.Compat
         public const string CurrencyPocketGuid = "Azumatt.CurrencyPocket";
         // Compat\BuildCameraText (ValheimBuildCamera [BepInPlugin] GUID)
         public const string BuildCameraGuid = "valheim.buildcamera";
+        // Compat\ModText ([BepInPlugin] GUIDs)
+        public const string ItemDrawersGuid = "com.rossdwest.itemdrawers";
+        public const string PlantEasilyGuid = "advize.PlantEasily";
+        public const string PlantEverythingGuid = "advize.PlantEverything";
     }
 }

@@ -98,7 +98,7 @@ namespace Morgott.UI.Compat
             english != null && BuildCameraWords.Reasons.TryGetValue(english, out var key) ? Localized(key, english) : english;
 
         // Words.Get answers "$key" without a Localization instance and "[key]" for a missing token: keep the English then.
-        private static string Localized(string key, string english)
+        internal static string Localized(string key, string english)
         {
             var text = Words.Get("$" + key);
             return text.Length == 0 || text[0] == '$' || text[0] == '[' ? english : text;

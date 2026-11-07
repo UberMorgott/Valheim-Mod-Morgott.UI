@@ -5,7 +5,7 @@ using Xunit;
 
 namespace Morgott.UI.Tests
 {
-    // Russian for third-party texts that ship English only (Jotunn's version-compat dialog).
+    // Russian for third-party texts that ship English only (Jotunn's version-compat dialog, PlantEverything).
     public class ThirdPartyRuTests
     {
         private static Dictionary<string, string> Load(string language)
@@ -54,6 +54,35 @@ namespace Morgott.UI.Tests
                 Assert.False(en.ContainsKey(key), $"English.json must not override Jotunn's own {key}");
             }
             Assert.Equal(21, ru.Keys.Count(k => k.StartsWith("mod_compat_")));
+        }
+
+        // PlantEverything 1.21.4 StaticContent.DefaultLocalizedStrings keys with a non-empty English value ("pe" + key);
+        // the three empty descriptions (Ancient, Ygga, Ashwood sapling) stay empty.
+        private static readonly string[] PlantEverything =
+        {
+            "AncientSaplingName", "YggaSaplingName", "AutumnBirchSaplingName", "AutumnBirchSaplingDescription", "AshwoodSaplingName",
+            "VineAshSaplingName", "VineAshSaplingDescription", "RaspberryBushName", "RaspberryBushDescription", "BlueberryBushName",
+            "BlueberryBushDescription", "CloudberryBushName", "CloudberryBushDescription", "LingonberryBushName", "LingonberryBushDescription",
+            "PickableMushroomName", "PickableMushroomDescription", "PickableYellowMushroomName", "PickableYellowMushroomDescription",
+            "PickableBlueMushroomName", "PickableBlueMushroomDescription", "PickableThistleName", "PickableThistleDescription",
+            "PickableDandelionName", "PickableDandelionDescription", "BeechSmallName", "BeechSmallDescription", "FirSmallName",
+            "FirSmallDescription", "FirSmallDeadName", "FirSmallDeadDescription", "Bush01Name", "Bush01Description", "Bush02Name",
+            "Bush02Description", "PlainsBushName", "PlainsBushDescription", "Shrub01Name", "Shrub01Description", "Shrub02Name",
+            "Shrub02Description", "YggaShootName", "YggaShootDescription", "VinesName", "VinesDescription", "AshlandsFernName",
+            "AshlandsFernDescription", "PickableBranchName", "PickableBranchDescription", "PickableStoneName", "PickableStoneDescription",
+            "PickableFlintName", "PickableFlintDescription", "PickableSmokePuffName", "PickableSmokePuffDescription",
+            "PickableFiddleheadName", "PickableFiddleheadDescription", "GrowthTimeHoverPrefix"
+        };
+
+        // ModText re-adds every Russian "pe*" word after PlantEverything's English ones: exactly its keys, none in English.json.
+        [Fact]
+        public void PlantEverythingHasRussianForEveryWord()
+        {
+            var ru = Load("Russian");
+            foreach (var key in PlantEverything)
+                Assert.True(ru.TryGetValue("pe" + key, out var value) && value.Trim().Length > 0, $"Russian.json misses pe{key}");
+            Assert.Equal(PlantEverything.Select(k => "pe" + k).OrderBy(k => k), ru.Keys.Where(k => k.StartsWith("pe")).OrderBy(k => k));
+            Assert.DoesNotContain(Load("English").Keys, k => k.StartsWith("pe"));
         }
     }
 }

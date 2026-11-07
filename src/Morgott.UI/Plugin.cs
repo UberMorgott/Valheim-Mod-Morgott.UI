@@ -26,6 +26,8 @@ namespace Morgott.UI
         public const string Version = "0.29.10";
 
         public static ManualLogSource Log { get; private set; }
+        // Our Jotunn localization (Translations\*.json): Compat\ModText re-adds words a mod overwrites in English.
+        internal static Jotunn.Entities.CustomLocalization Texts { get; private set; }
         public static ConfigEntry<float> SkinScale { get; private set; }
         public static ConfigEntry<float> PanelFade { get; private set; }
         public static ConfigEntry<float> NumberOutline { get; private set; }
@@ -131,7 +133,7 @@ namespace Morgott.UI
                 Log.LogError($"[Morgott.UI] inactive: Morgott.Core API {CoreApi.ApiMajor}, needs 1");
                 return;
             }
-            Translations.Load(typeof(Plugin).Assembly, "Morgott.UI.Translations.");
+            Texts = Translations.Load(typeof(Plugin).Assembly, "Morgott.UI.Translations.");
             // Shared VFX (Core IVfx) do not depend on the theme: registered even when the skin stays inactive.
             if (!CoreApi.Headless) Services.Register<IVfx>(VfxProvider.Instance = new VfxProvider(System.IO.Path.GetDirectoryName(Info.Location)));
             // Icons and compat text do not depend on the theme either (MorgottTweaks moved them here, TASKS 4.5).
@@ -263,6 +265,7 @@ namespace Morgott.UI
             Icons.ModStatusIcons.Register(Config, _harmony);
             Compat.CurrencyPocketTooltip.Register(Config, _harmony);
             Compat.BuildCameraText.Register(Config, _harmony);
+            Compat.ModText.Register(Config, _harmony);
         }
 
         private void OnDestroy()
