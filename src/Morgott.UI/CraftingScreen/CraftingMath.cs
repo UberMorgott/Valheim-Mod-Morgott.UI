@@ -71,6 +71,36 @@ namespace Morgott.UI.CraftingScreen
         public Box Minus, Field, Plus, Button, Bar, Cancel;
     }
 
+    // Multi-craft (stepper N / Shift x5) as a queue of N single vanilla crafts, each with its own timer, resources,
+    // effects and skill raise. Stops on the first craft that made nothing (resources gone, inventory full) or on cancel.
+    public sealed class CraftQueue
+    {
+        public int Total { get; private set; }
+        public int Done { get; private set; }
+        public bool Running { get; private set; }
+
+        public void Start(int total)
+        {
+            Total = total;
+            Done = 0;
+            Running = total > 1;
+        }
+
+        // One craft of the queue ended; true = start the next one.
+        public bool Finished(bool crafted)
+        {
+            if (!Running) return false;
+            if (crafted) Done++;
+            Running = crafted && Done < Total;
+            return Running;
+        }
+
+        public void Stop() => Running = false;
+
+        // "2/5" while the second of five crafts runs.
+        public string Step => Math.Min(Done + 1, Total) + "/" + Total;
+    }
+
     public static class CraftingMath
     {
         // Recipe row roles (rows = clones of InventoryGui.m_recipeElementPrefab): the strip "bkg" follows canCraft, the

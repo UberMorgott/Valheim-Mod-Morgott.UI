@@ -67,7 +67,36 @@ namespace Morgott.UI.CraftingScreen
 
         [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.OnCraftPressed))]
         [HarmonyPrefix]
-        private static void OnCraftPressed_Prefix() => Arm();
+        private static void OnCraftPressed_Prefix()
+        {
+            Arm();
+            Queue(s => s.PressPrefix());
+        }
+
+        // Craft queue (CraftingSkin.PressPrefix): N single vanilla crafts instead of one batch.
+        [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.OnCraftPressed))]
+        [HarmonyPostfix]
+        private static void OnCraftPressed_Postfix() => Queue(s => s.PressPostfix());
+
+        [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.DoCrafting))]
+        [HarmonyPrefix]
+        private static void DoCrafting_Prefix(Player player) => Queue(s => s.CraftPrefix(player));
+
+        [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.DoCrafting))]
+        [HarmonyPostfix]
+        private static void DoCrafting_Postfix(Player player) => Queue(s => s.CraftPostfix(player));
+
+        [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.UpdateRecipe))]
+        [HarmonyPostfix]
+        private static void UpdateRecipe_Postfix() => Queue(s => s.QueueTick());
+
+        private static void Queue(System.Action<CraftingSkin> step)
+        {
+            var skin = CraftingSkin.Instance;
+            if (!skin) return;
+            try { step(skin); }
+            catch (System.Exception e) { Fault(e); }
+        }
 
         private static void Arm()
         {

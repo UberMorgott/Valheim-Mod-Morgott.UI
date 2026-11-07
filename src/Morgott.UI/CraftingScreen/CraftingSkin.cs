@@ -1484,8 +1484,8 @@ namespace Morgott.UI.CraftingScreen
         // m_craftButton for m_craftProgressPanel while m_craftTimer >= 0. Bar = the vanilla GuiBar m_craftProgressBar in the
         // craft row kit (bkg -> craft_bar_trough, bar -> teal craft_bar_fill) inside craft_bar_frame, its width given back to GuiBar
         // through its own SetWidth (GuiBar.cs, m_width cached in Awake). State text centred on the bar: the panel's own text
-        // (vanilla token from Localization.textMeshStrings, Localization.cs:303-311) + " x N" while m_multiCrafting (the
-        // craft button's pattern, :1572-1575; DoCrafting makes all m_multiCraftAmount at once, :1787 / :1897), bold body face
+        // (vanilla token from Localization.textMeshStrings, Localization.cs:303-311) + " k/N" while the craft queue runs
+        // (" x N" for a vanilla multi-craft started elsewhere, e.g. a recipe chain batch), bold body face
         // with the theme outline. Cancel: the vanilla m_craftCancelButton itself, moved beside the bar and plated like the
         // craft button (role craft.button); its onClick stays vanilla's OnCraftCancelPressed (:2008).
         private int _stateRevision = -1;
@@ -1543,7 +1543,7 @@ namespace Morgott.UI.CraftingScreen
 
                 if (Localization.instance.textMeshStrings.TryGetValue(state, out var token))
                 {
-                    var want = Localization.instance.Localize(token) + (_gui.m_multiCrafting ? " x " + _gui.m_multiCraftAmount : "");
+                    var want = Localization.instance.Localize(token) + (_queue.Running ? " " + _queue.Step : _gui.m_multiCrafting ? " x " + _gui.m_multiCraftAmount : "");
                     if (state.text != want) state.text = want;
                 }
             }
@@ -1701,6 +1701,108 @@ namespace Morgott.UI.CraftingScreen
                 if (_vanillaMulti > 0) _gui.m_multiCraftAmount = _vanillaMulti;
                 _gui.m_touchMultiCrafting = false;
             }
+        }
+
+        // Craft queue (2026-11-08 user bug: vanilla multi-craft = one m_multiCraftDuration timer, then DoCrafting makes all
+        // N at once, InventoryGui.cs:1632, :1803-1926). A press vanilla would multi-craft (stepper N, Shift, touch; :2075)
+        // runs as N single crafts through vanilla's own path: OnCraftPressed with m_multiCraftAmount 1 (CanAddItem :2080,
+        // timer, start effects), the timer in UpdateRecipe (:1619-1647, m_craftDuration), DoCrafting (requirements, consume,
+        // skill, done effects). The next craft starts in the UpdateRecipe postfix right after DoCrafting reset the timer;
+        // a timer back at -1 without our DoCrafting (cancel :2024, Hide :1067) ends the queue, nothing left is consumed.
+        private readonly CraftQueue _queue = new CraftQueue();
+        private Recipe _queueRecipe;
+        private int _pressMulti, _before;
+        private bool _restarting, _judged, _crafted;
+
+        public CraftQueue Queue => _queue;
+
+        // OnCraftPressed prefix (after Arm): a multi-armed press crafts one item; PressPostfix queues the rest.
+        public void PressPrefix()
+        {
+            _pressMulti = 0;
+            if (_gui.m_selectedRecipe.ItemData != null || !_gui.m_selectedRecipe.Recipe) return;
+            if (!_restarting && !ZInput.GetButton("AltPlace") && !ZInput.GetButton("JoyLStick") && !_gui.m_touchMultiCrafting) return;
+            _pressMulti = _gui.m_multiCraftAmount;
+            _gui.m_multiCraftAmount = 1;
+        }
+
+        public void PressPostfix()
+        {
+            var n = _pressMulti;
+            _pressMulti = 0;
+            if (n > 0)
+            {
+                _gui.m_multiCraftAmount = n;
+                _gui.m_multiCrafting = false;
+            }
+            if (_restarting)
+            {
+                if (_gui.m_craftTimer < 0f) StopQueue("next craft refused");
+                return;
+            }
+            _queue.Stop();
+            if (n <= 1 || _gui.m_craftTimer != 0f) return;
+            _queue.Start(n);
+            _queueRecipe = _gui.m_craftRecipe;
+            Plugin.Log.LogInfo($"[Morgott.UI] craft queue: {_queueRecipe.name} x{n}");
+        }
+
+        // DoCrafting prefix / postfix: did this craft of the queue add the item.
+        public void CraftPrefix(Player player)
+        {
+            if (!_queue.Running || _gui.m_craftRecipe != _queueRecipe || !player) return;
+            _before = player.GetInventory().CountItems(_queueRecipe.m_item.m_itemData.m_shared.m_name, -1, matchWorldLevel: false);
+            _judged = true;
+            _crafted = false;
+        }
+
+        public void CraftPostfix(Player player)
+        {
+            if (_judged && player)
+                _crafted = player.GetInventory().CountItems(_queueRecipe.m_item.m_itemData.m_shared.m_name, -1, matchWorldLevel: false) > _before;
+        }
+
+        // UpdateRecipe postfix.
+        public void QueueTick()
+        {
+            if (!_queue.Running) return;
+            if (_judged)
+            {
+                _judged = false;
+                if (_queue.Finished(_crafted)) NextCraft();
+                else Plugin.Log.LogInfo($"[Morgott.UI] craft queue ended: {_queue.Done}/{_queue.Total} crafted");
+                return;
+            }
+            if (_gui.m_craftTimer < 0f) StopQueue("cancelled");
+        }
+
+        private void NextCraft()
+        {
+            var player = Player.m_localPlayer;
+            var recipe = _queueRecipe;
+            var station = player ? player.GetCurrentCraftingStation() : null;
+            var free = player && (player.NoCostCheat() || ZoneSystem.instance && ZoneSystem.instance.GetGlobalKey(GlobalKeys.NoCraftCost));
+            var why = !player ? "no player"
+                : _gui.m_selectedRecipe.Recipe != recipe || _gui.m_selectedRecipe.ItemData != null ? "selection changed"
+                : !free && !player.HaveRequirements(recipe, false, 1) ? "out of resources"
+                : recipe.GetRequiredStation(1) && !(station && station.CheckUsable(player, showMessage: true)) ? "station unusable"
+                : null;
+            if (why == "out of resources") player.Message(MessageHud.MessageType.Center, "$msg_missingrequirement");
+            if (why != null)
+            {
+                StopQueue(why);
+                return;
+            }
+            _restarting = true;
+            try { _gui.OnCraftPressed(); }
+            finally { _restarting = false; }
+        }
+
+        private void StopQueue(string why)
+        {
+            if (!_queue.Running) return;
+            _queue.Stop();
+            Plugin.Log.LogInfo($"[Morgott.UI] craft queue stopped at {_queue.Done}/{_queue.Total}: {why}");
         }
 
         // Glyph at the button's left (craft in the craft tab, upgrade otherwise) and the label in the span right of it
