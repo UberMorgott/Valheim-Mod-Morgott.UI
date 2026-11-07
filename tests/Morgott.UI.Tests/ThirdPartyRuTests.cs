@@ -1,11 +1,14 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
+using System.Text.RegularExpressions;
+using Morgott.UI.Compat;
 using Xunit;
 
 namespace Morgott.UI.Tests
 {
-    // Russian for third-party texts that ship English only (Jotunn's version-compat dialog, PlantEverything).
+    // Russian for third-party texts that ship English only (Jotunn's version-compat dialog, PlantEverything) or are
+    // hardcoded (ModWords: RossItemDrawers, PlantEasily).
     public class ThirdPartyRuTests
     {
         private static Dictionary<string, string> Load(string language)
@@ -84,5 +87,36 @@ namespace Morgott.UI.Tests
             Assert.Equal(PlantEverything.Select(k => "pe" + k).OrderBy(k => k), ru.Keys.Where(k => k.StartsWith("pe")).OrderBy(k => k));
             Assert.DoesNotContain(Load("English").Keys, k => k.StartsWith("pe"));
         }
+
+        [Fact]
+        public void ModWordsEnglishValueIsTheModLiteral()
+        {
+            var en = Load("English");
+            foreach (var (literal, key) in ModWords.Texts)
+            {
+                Assert.True(en.TryGetValue(key, out var value), $"English.json misses {key}");
+                Assert.Equal(literal, value);
+            }
+        }
+
+        // Fragments are concatenated with key labels, counts and markup: the Russian keeps edge spaces, line breaks, every
+        // rich-text tag in order and every format placeholder.
+        [Fact]
+        public void ModWordsRussianKeepsFragmentShape()
+        {
+            var ru = Load("Russian");
+            foreach (var (literal, key) in ModWords.Texts)
+            {
+                Assert.True(ru.TryGetValue(key, out var value) && value.Trim().Length > 0, $"Russian.json misses {key}");
+                Assert.Equal(literal.Length - literal.TrimStart(' ').Length, value.Length - value.TrimStart(' ').Length);
+                Assert.Equal(literal.Length - literal.TrimEnd(' ').Length, value.Length - value.TrimEnd(' ').Length);
+                Assert.Equal(literal.Count(c => c == '\n'), value.Count(c => c == '\n'));
+                Assert.Equal(literal.StartsWith('\n'), value.StartsWith('\n'));
+                Assert.Equal(Markup(literal), Markup(value));
+            }
+        }
+
+        private static string Markup(string s) =>
+            string.Join("", Regex.Matches(s, @"<[^>]+>|\{\d\}|\[|\]|1-8|\+E|^E\b").Select(m => m.Value));
     }
 }
