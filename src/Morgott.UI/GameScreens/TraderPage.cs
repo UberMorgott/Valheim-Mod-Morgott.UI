@@ -115,22 +115,21 @@ namespace Morgott.UI.GameScreens
             var body = _page.Layout(inv ? inv.SkinScaleValue : 1f, _header);
             if (body.IsEmpty) return;
             // Mockup 04 body ~15 px under the title plaque (run 20261107-151323: the store well touched it at y 207).
-            body = new Box(body.X, body.Y - 10f * u, body.W, body.H + 10f * u);
+            body = new Box(body.X, body.Y - 18f * u, body.W, body.H + 18f * u);
             ElPageMath.Trader(body, mod, out var col, out var right);
             // Right after the page backing ("border (1)") and the header face that follows it, under the store widgets.
             if (_storeWell != null && _storeWell.Fill && (Child(RuneWindowHeader.FaceName) ?? Child("border (1)")) is RectTransform pb)
                 _storeWell.First(_storeWell.Fill.transform.GetSiblingIndex() > pb.GetSiblingIndex() ? pb.GetSiblingIndex() + 1 : pb.GetSiblingIndex());
             _storeWell?.Place(_canvas, new Box(col.X - 12f * u, col.Y, col.W + 24f * u, col.H + 12f * u), true);
             // One key-cap frame behind the top-bar currencies (mockup 04 currency caps).
-            _barCap?.Place(_canvas, new Box(bar.X - 8f * u, bar.Y - 4f * u, bar.W + 16f * u, bar.H + 8f * u), mod || _coins != null, fill: false); // frame only: drawn over the vanilla coin purse
+            _barCap?.Place(_canvas, new Box(bar.X - 8f * u, bar.Y, bar.W + 16f * u, bar.H), mod || _coins != null, fill: false); // frame only: drawn over the vanilla coin purse
             StoreColumn(col, u);
             if (_coins != null)
             {
                 Hide(_coins.Rt.gameObject, currencies);
                 _coins.Put(_canvas, bar.H / _coins.Box0.H, bar.X, bar.Y);
             }
-            if (!board)
-                foreach (var w in _wells) w?.Place(_canvas, default, false);
+            for (var i = board ? _wells.Length : mod ? 1 : 0; i < _wells.Length; i++) _wells[i]?.Place(_canvas, default, false);
             if (!mod) return;
             // Drawn after the page (EL's TemperPanel moves itself to the first sibling, TemperPanel.cs:190/887/1010: under
             // the opaque store and gated by CoverCull there).
@@ -166,6 +165,7 @@ namespace Morgott.UI.GameScreens
                 var reach = 48f * u;
                 var zone = new Box(right.X + reach, right.Y + 1.5f * reach, right.W - 2f * reach, right.H - 2f * reach); // its column heads sit above its box
                 m.Whole.Put(_canvas, ElPageMath.Fit(m.Whole.Box0.W, m.Whole.Box0.H, zone, out var x0, out var y0), x0, y0);
+                _wells[0]?.Place(_canvas, right, true);
             }
             // Both panels' currencies (and the board's sundial) in the top bar (mockup 04).
             // The currency icons / counts themselves (the container is far larger than its content: run 20261107-144822
@@ -190,7 +190,15 @@ namespace Morgott.UI.GameScreens
             var gap = 12f * u;
             var listBox = new Box(col.X, col.Y, col.W, Mathf.Max(0f, col.H - row - gap));
             // Vanilla rows at ~1.25x (mockup 04 row height), the list stretched to the column.
-            _list?.Put(_canvas, Mathf.Min(1.25f, col.W / _list.Box0.W), listBox);
+            var kl = Mathf.Min(1.25f, col.W / _list?.Box0.W ?? 1f);
+            _list?.Put(_canvas, kl, listBox);
+            // Rows from the column top: vanilla's list viewport sits ~150 px into the ItemList part (run 20261107-152301);
+            // the part moves up by that, its bottom stays.
+            if (_list != null && _gui.m_listRoot && _gui.m_listRoot.parent is RectTransform view)
+            {
+                var dy = Geo.BoxOf(_canvas, view).Y - listBox.Y;
+                if (dy > 0.5f) _list.Put(_canvas, kl, new Box(listBox.X, listBox.Y - dy, listBox.W, listBox.H + dy));
+            }
             var y = listBox.Bottom + gap;
             var half = (col.W - gap) / 2f;
             if (_buy != null) _buy.Put(_canvas, row / _buy.Box0.H, new Box(col.X, y, half, row));
@@ -221,13 +229,16 @@ namespace Morgott.UI.GameScreens
         // 20261107-143240). The page title names the trader.
         private void Chrome(Transform mod)
         {
-            var prefix = mod.name == "MerchantPanel" ? "RuneSkin" : "RuneSkinWindow";
-            foreach (Transform c in mod)
-                if (c.name.StartsWith(prefix, System.StringComparison.Ordinal) && !_gated.Contains(c.gameObject))
-                {
-                    RenderGate.Set(c.gameObject, Gate, true);
-                    _gated.Add(c.gameObject);
-                }
+            // Both panels' own stacks (also the temper panel's on its "Frame" child: a second page frame inside the page,
+            // run 20261107-152301); a page well frames the temper panel instead.
+            foreach (var host in new[] { mod, mod.Find("Frame") })
+                if (host)
+                    foreach (Transform c in host)
+                        if (c.name.StartsWith("RuneSkin", System.StringComparison.Ordinal) && !_gated.Contains(c.gameObject))
+                        {
+                            RenderGate.Set(c.gameObject, Gate, true);
+                            _gated.Add(c.gameObject);
+                        }
         }
         // The vanilla coin purse duplicates the mod panel's own coin count: hidden while that panel shows one.
         private void Hide(GameObject coins, Transform currencies)

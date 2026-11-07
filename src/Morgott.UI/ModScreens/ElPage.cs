@@ -163,7 +163,7 @@ namespace Morgott.UI.ModScreens
                 // by that overhang, its bottom stays.
                 if (f.List.Rt.Find("ItemList") is RectTransform rows)
                 {
-                    var dy = Geo.BoxOf(_canvas, rows).Y - (column.Y + 8f * u);
+                    var dy = Geo.BoxOf(_canvas, rows).Y - (column.Y + 18f * u); // rows ~250 (mockup 240 +-15): the field keeps a gap under the plaque
                     if (dy > 0.5f) f.List.Put(_canvas, k, new Box(column.X, column.Y - dy, column.W, column.H + dy));
                 }
             }

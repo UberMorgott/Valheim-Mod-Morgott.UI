@@ -46,9 +46,9 @@ namespace Morgott.UI.ModScreens
             return k;
         }
 
-        // Trader body: store column ~32 % (mockup 04 x 40..617 of 1840) left, the mod board right; without a board the
+        // Trader body: store column ~30 % (mockup 04 x 40..617 of 1840) left, the mod board right; without a board the
         // store column is centred.
-        public const float StoreShare = 0.32f, BoardGap = 0.012f;
+        public const float StoreShare = 0.3f, BoardGap = 0.016f;
 
         public static void Trader(Box body, bool board, out Box store, out Box right)
         {
