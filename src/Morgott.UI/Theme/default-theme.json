@@ -882,7 +882,7 @@
     { "token": "size.inv.colbar", "value": 6 },
     { "token": "size.inv.doll.header", "value": 104 },
     { "token": "size.inv.preview.max", "value": 300 },
-    { "token": "share.inv.doll.min", "value": 0.8 },
+    { "token": "share.inv.doll.min", "value": 0.7 },
     { "token": "share.inv.side.icon", "value": 0.9 },
     { "token": "share.inv.side.value", "value": 0.32 },
     { "token": "size.inv.inner.gap", "value": 8 },

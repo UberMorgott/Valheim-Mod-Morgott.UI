@@ -245,7 +245,7 @@ namespace Morgott.UI.Tests
             Assert.Equal(few.Doll.ToString(), many.Doll.ToString());
             Assert.Equal(few.Inventory.ToString(), many.Inventory.ToString());
             Assert.True(many.DollCellsY + many.DollGrid.ViewH <= many.DollContent.Bottom + 0.01f);
-            Assert.True(many.DollGrid.Cell >= 0.8f * many.Player.Cell - 0.01f);
+            Assert.True(many.DollGrid.Cell >= F("share.inv.doll.min") * many.Player.Cell - 0.01f);
             // sides by slot kind, stable whatever else is registered: body left, jewellery / light / mods right
             foreach (var g in new[] { "head", "chest", "legs", "back", "belt" }) Assert.Equal(0, InventoryWindowsMath.DollSide(g));
             foreach (var g in new[] { "neck", "ring", "light", "generic", null }) Assert.Equal(1, InventoryWindowsMath.DollSide(g));
@@ -272,6 +272,40 @@ namespace Morgott.UI.Tests
             var four = Run(sc, gridH: 4);
             Assert.Equal(4, four.Player.VisibleRows);
             Assert.False(four.Player.ScrollV);
+        }
+
+        // EAQS Extra Inventory Rows = 1 (user 2026-11-07: 5 rows, shrink the doll): the strip hotbar + 4 grid rows. The
+        // grid shows them all, the doll window alone gives up the height (inventory / containers / crafting bottoms fixed),
+        // every equipment cell still shown, the preview inside its alcove, windows apart.
+        [Theory]
+        [MemberData(nameof(Screens))]
+        public void FiveRowsFitByShrinkingOnlyTheDoll(float w, float h, float gui)
+        {
+            var sc = At(w, h, gui);
+            foreach (var doll in new[] { 9, 11 }) // EAQS default (5 left, 4 right) / with a mod slot
+                foreach (var (cw, ch, pw, ph) in new[] { (0, 0, 0, 0), (5, 2, 0, 0), (8, 4, 6, 3), (6, 4, 8, 2) })
+                {
+                    var four = Run(sc, cw, ch, pw, ph, gridH: 3, doll: doll);
+                    var five = Run(sc, cw, ch, pw, ph, gridH: 4, doll: doll);
+                    var at = $"{w}x{h}@{gui} doll {doll} chest {cw}x{ch} pack {pw}x{ph}";
+                    Assert.Equal(4, five.Player.VisibleRows);
+                    Assert.False(five.Player.ScrollV, at);
+                    Assert.Equal(four.Inventory.Bottom, five.Inventory.Bottom, 2);
+                    Assert.Equal(four.Inventory.Y - five.Player.Pitch, five.Inventory.Y, 2);
+                    Assert.Equal(four.Doll.Y, five.Doll.Y, 2);
+                    Assert.Equal(four.Doll.H - five.Player.Pitch, five.Doll.H, 2);
+                    Assert.Equal(four.Chest.ToString(), five.Chest.ToString());
+                    Assert.Equal(four.Backpack.ToString(), five.Backpack.ToString());
+                    Assert.Equal(four.Crafting.ToString(), five.Crafting.ToString());
+                    Assert.False(five.DollGrid.ScrollV, $"{at}: {five.DollGrid}");
+                    Assert.True(five.DollGrid.Cell >= F("share.inv.doll.min") * five.Player.Cell - 0.01f, $"{at}: {five.DollGrid}");
+                    Assert.True(five.DollCellsY + five.DollGrid.ViewH <= five.DollContent.Bottom + 0.01f, at);
+                    Assert.True(five.DollPreview.Inside(five.DollFigure) && five.DollPreview.H > 0f, $"{at}: {five.DollPreview}");
+                    var wins = five.Windows;
+                    for (var a = 0; a < wins.Length; a++)
+                        for (var b = a + 1; b < wins.Length; b++)
+                            Assert.False(!wins[a].IsEmpty && wins[a].Overlaps(wins[b]), $"{at}: {a} {wins[a]} overlaps {b} {wins[b]}");
+                }
         }
 
         [Fact]

@@ -52,7 +52,7 @@ namespace Morgott.UI.InventoryScreen
         public float GridCell = 64f, GridGap = 8f;
         public float DollFigureGap = 24f, DollMinRows = 2f;
         // Smallest equipment cell as a share of the slot before the doll rows scroll.
-        public float DollMinShare = 0.8f;
+        public float DollMinShare = 0.7f;
         public float ScrollbarW = 14f;
         public float MinCellPhysPx = 44f;
     }
