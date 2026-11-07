@@ -39,6 +39,7 @@ namespace Morgott.UI.ModScreens
         private MovableWindow _move;
         private bool _moveWasOn, _measured;
         private PagePart.Pane _pane;
+        private Image _divider;
         private readonly List<Feature> _features = new List<Feature>();
 
         public static bool Shows(Transform t) => t && t.TryGetComponent<ElPage>(out var p) && p.isActiveAndEnabled;
@@ -89,6 +90,12 @@ namespace Morgott.UI.ModScreens
             }
             // The pane well under every feature panel (frame_inset, mockup 02 pane frame).
             _pane = PagePart.Pane.Make(_content, "RuneSkinElPane", "enchanting page pane (mockup 02 framed pane)");
+            // Mockup 02's vertical rule between the list column and the pane (x ~574, the list scroll track there).
+            _divider = new GameObject("RuneSkinElDivider", typeof(RectTransform)).AddComponent<Image>();
+            _divider.transform.SetParent(_content, false);
+            _divider.raycastTarget = false;
+            _divider.color = Theme.ThemeTokens.GetColor("color.info.page.rule", new Color(0.36f, 0.5f, 0.53f, 1f));
+            InventoryScreen.DollCell.Mark(_divider, "content", "enchanting page list / pane rule (mockup 02)");
         }
 
         private void LateUpdate()
@@ -154,6 +161,12 @@ namespace Morgott.UI.ModScreens
             ElPageMath.Split(body, f.List != null, out var column, out var pane);
             _pane?.First(0);
             _pane?.Place(_canvas, pane, true);
+            if (_divider)
+            {
+                var on = f.List != null;
+                if (_divider.enabled != on) _divider.enabled = on;
+                if (on) Geo.Place(_canvas, _divider.rectTransform, new Box((column.Right + pane.X) / 2f - 2f * u, column.Y + 8f * u, 4f * u, column.H - 16f * u));
+            }
             if (f.List != null)
             {
                 var k = column.W / f.List.Box0.W;
