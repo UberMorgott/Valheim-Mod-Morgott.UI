@@ -53,5 +53,7 @@ namespace Morgott.UI.Compat
         // ---- Icons\ModStatusIcons, Compat\CurrencyPocketTooltip (read from the installed plugins' [BepInPlugin])
         public const string WarfareGuid = "Therzie.Warfare";
         public const string CurrencyPocketGuid = "Azumatt.CurrencyPocket";
+        // Compat\BuildCameraText (ValheimBuildCamera [BepInPlugin] GUID)
+        public const string BuildCameraGuid = "valheim.buildcamera";
     }
 }

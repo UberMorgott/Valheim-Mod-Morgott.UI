@@ -255,6 +255,7 @@ namespace Morgott.UI
             if (_harmony == null) return; // inactive (Core API mismatch)
             Icons.ModStatusIcons.Register(Config, _harmony);
             Compat.CurrencyPocketTooltip.Register(Config, _harmony);
+            Compat.BuildCameraText.Register(Config, _harmony);
         }
 
         private void OnDestroy()
