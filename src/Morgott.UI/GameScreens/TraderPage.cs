@@ -157,6 +157,14 @@ namespace Morgott.UI.GameScreens
                             var b = Geo.BoxOf(_canvas, list);
                             Geo.Place(_canvas, list, new Box(cell.X + pad, b.Y, cell.W - 2f * pad, b.H));
                         }
+                        // Its action buttons at half the cell (Epic Loot's ~150 px plates: run 20261107-152301 vs mockup 04 ~330),
+                        // centred where they were; the small icon button (abandon) keeps its size.
+                        else if (c is RectTransform btn && c.gameObject.activeSelf && c.TryGetComponent<Button>(out _) && btn.rect.width > btn.rect.height * 2f)
+                        {
+                            var b = Geo.BoxOf(_canvas, btn);
+                            var w = Mathf.Max(b.W, cell.W * 0.5f);
+                            Geo.Place(_canvas, btn, new Box(b.X + (b.W - w) / 2f, b.Y, w, b.H));
+                        }
                 }
             }
             else if (m.Whole != null)
@@ -231,6 +239,13 @@ namespace Morgott.UI.GameScreens
         {
             // Both panels' own stacks (also the temper panel's on its "Frame" child: a second page frame inside the page,
             // run 20261107-152301); a page well frames the temper panel instead.
+            // Epic Loot's move handle: the page is not movable.
+            foreach (var t in mod.GetComponentsInChildren<RectTransform>(true))
+                if (t.name == Compat.ModCompat.EpicLootDragHandle && !_gated.Contains(t.gameObject))
+                {
+                    RenderGate.Set(t.gameObject, Gate, true);
+                    _gated.Add(t.gameObject);
+                }
             foreach (var host in new[] { mod, mod.Find("Frame") })
                 if (host)
                     foreach (Transform c in host)

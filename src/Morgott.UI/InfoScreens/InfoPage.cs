@@ -36,7 +36,7 @@ namespace Morgott.UI.InfoScreens
         private Image _back;
         private Button _esc, _items;
         private string _itemsLabel = "";
-        private Image _name, _rule;
+        private Image _name, _rule, _haze;
         private TMP_Text _nameText;
         private readonly List<Image> _dims = new List<Image>(2);
         private UIGroupHandler _group;
@@ -333,6 +333,23 @@ namespace Morgott.UI.InfoScreens
                     if (Mathf.Abs(c.localScale.x - s) > 0.001f) c.localScale = new Vector3(s, s, 1f);
                 }
             Tint(decor.Backing, "color.info.page.bg");
+            // Mockup 02 teal fog over the page background (the backing alone read flat: Codex runs 20261107-1513 / -1523):
+            // the shared smoky backdrop art at a faint teal tint, right above the backing, under the glass and the content.
+            if (decor.Backing)
+            {
+                if (!_haze)
+                {
+                    _haze = InfoArt.OwnImage(decor.Backing.parent, "RuneSkinPageHaze", "info.page.haze", "full-screen page haze (mockup 02 fog)");
+                    _haze.preserveAspect = false;
+                    var h = _haze.rectTransform;
+                    h.anchorMin = Vector2.zero;
+                    h.anchorMax = Vector2.one;
+                    h.offsetMin = h.offsetMax = Vector2.zero;
+                }
+                var at = decor.Backing.GetSiblingIndex() + 1;
+                if (_haze.transform.parent == decor.Backing.parent && _haze.transform.GetSiblingIndex() != at)
+                    _haze.transform.SetSiblingIndex(_haze.transform.GetSiblingIndex() < at ? at - 1 : at);
+            }
             Tint(decor.transform.Find("Glass"), "color.info.page.glass");
         }
 

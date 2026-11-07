@@ -163,6 +163,12 @@ namespace Morgott.UI.ModScreens
                 // by that overhang, its bottom stays.
                 if (f.List.Rt.Find("ItemList") is RectTransform rows)
                 {
+                    // Epic Loot's near-black list backdrop takes the page pane fill (mockup 02 list on the page surface).
+                    if (rows.TryGetComponent<Image>(out var bg))
+                    {
+                        var fill = Theme.ThemeTokens.GetColor("color.info.page.pane", bg.color);
+                        if (bg.color != fill) bg.color = fill;
+                    }
                     var dy = Geo.BoxOf(_canvas, rows).Y - (column.Y + 18f * u); // rows ~250 (mockup 240 +-15): the field keeps a gap under the plaque
                     if (dy > 0.5f) f.List.Put(_canvas, k, new Box(column.X, column.Y - dy, column.W, column.H + dy));
                 }
