@@ -118,6 +118,24 @@ namespace Morgott.UI.Tests
             Assert.True(reach * 0.5f < rowH * 0.5f);
         }
 
+        // Issue #2: name 20 + modifiers 15 in PT Sans (1.294 em): split 3.25 below the midline leaves 3.35 headroom over
+        // the name, which holds the fallback ascent of 'VANDALİZM' (+1.2 over the row on the midline split); the
+        // shortened reach keeps both box centres inside the row and the 0.5 GUI-scale floor line inside its box.
+        [Fact]
+        public void ServerLinesCentredWithHeadroomForFallbackAscent()
+        {
+            const float rowH = 52f, em = 1.294f, lineFactor = 1.362f;
+            var split = LayoutMath.TwoLineSplit(rowH, 20f * em, 15f * em);
+            Assert.Equal(-3.235f, split, 3);
+            Assert.True(split + 20f * em + 1.2f < rowH * 0.5f);
+            Assert.True(split - 15f * em > -rowH * 0.5f);
+            var reach = LayoutMath.MidlineLineReach(rowH - 2f * System.Math.Abs(split), 1f);
+            Assert.True(split + reach * 0.5f < rowH * 0.5f && split - reach * 0.5f > -rowH * 0.5f);
+            Assert.True(LayoutMath.ReadableUnits(16f, 0.5f * 720f / 1080f, 720f) * lineFactor <= reach);
+            Assert.Equal(0f, LayoutMath.TwoLineSplit(rowH, 0f, 0f), 3);
+            Assert.Equal(-26f, LayoutMath.TwoLineSplit(rowH, 80f, 0f), 3);
+        }
+
         [Fact]
         public void MidlineLineReachNeverNegative()
         {

@@ -533,9 +533,13 @@ namespace Morgott.UI.PreWorld
             // shorter than one name line once the readable floor raised it (16 px at GUI scale 0.77 = 20.8 units, line
             // ~28), and TMP's Ellipsis drops a first line that overflows vertically - server names gone, blinking while
             // TextInset.FitTruncated and ReadableSweep alternated (user report 2026-10-27, Сообщество tab).
-            var reach = LayoutMath.MidlineLineReach(h, 2f);
-            Place(row, "name", new Vector2(0f, 0.5f), new Vector2(1f, 0.5f), new Vector2(16f, 0f), new Vector2(right, reach), font, TextAlignmentOptions.BottomLeft);
-            Place(row, "modifiers", new Vector2(0f, 0.5f), new Vector2(1f, 0.5f), new Vector2(16f, -reach), new Vector2(right, 0f), sub, TextAlignmentOptions.TopLeft);
+            // The split sits where the two lines (body face extents) are centred in the row, not on the midline: the
+            // headroom it leaves holds fallback-font glyphs with taller ascent lines (issue #2: 'VANDALİZM').
+            var face = ThemeTokens.GetFont(LegacyFaces.Body);
+            var split = LayoutMath.TwoLineSplit(h, LineExtent(face, font), LineExtent(face, sub));
+            var reach = LayoutMath.MidlineLineReach(h - 2f * Mathf.Abs(split), 1f);
+            Place(row, "name", new Vector2(0f, 0.5f), new Vector2(1f, 0.5f), new Vector2(16f, split), new Vector2(right, split + reach), font, TextAlignmentOptions.BottomLeft);
+            Place(row, "modifiers", new Vector2(0f, 0.5f), new Vector2(1f, 0.5f), new Vector2(16f, split - reach), new Vector2(right, split), sub, TextAlignmentOptions.TopLeft);
             // Long names / modifier summaries end in an ellipsis inside their column (run 20261022-205726: a long name
             // ran over the version column); vertically their boxes hold a whole line, so TMP keeps it.
             // The boxes reach into the neighbour rows: not raycast targets, or a later row's name box would take the
@@ -559,6 +563,14 @@ namespace Morgott.UI.PreWorld
                 else selImg.color = new Color(1f, 1f, 1f, 0.15f);
                 selImg.raycastTarget = false;
             }
+        }
+
+        // One line's ascent - descent at size (TMP_Text.GenerateTextMesh element scale: size / pointSize * faceInfo.scale).
+        private static float LineExtent(TMP_FontAsset f, float size)
+        {
+            if (!f || !(f.faceInfo.pointSize > 0f)) return 0f;
+            var fi = f.faceInfo;
+            return (fi.ascentLine - fi.descentLine) * size / fi.pointSize * fi.scale;
         }
 
         private static void Place(Transform row, string child, Vector2 min, Vector2 max, Vector2 offMin, Vector2 offMax, float size, TextAlignmentOptions align)

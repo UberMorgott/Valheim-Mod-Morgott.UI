@@ -127,6 +127,13 @@ namespace Morgott.UI.Restyle
         // box centre (midline +- reach / 2) stays inside the row (TextInset.Row measures only texts centred on their row).
         public static float MidlineLineReach(float rowH, float pad) => Math.Max(0f, rowH - Math.Max(0.5f, pad));
 
+        // Split line of a two-line row (y up from the row midline) that centres the block of both lines in the row: each
+        // line's extent = its font's ascent - descent at its size (TMP textBounds). On the midline itself the upper
+        // 20-unit name (PT Sans 1.294 em = 25.9) filled the 26-unit half row exactly, so a fallback-font glyph with a
+        // taller ascent line (Turkish İ, not in the RU+EN charset) rose above the row (issue #2, run 20261107-045922).
+        public static float TwoLineSplit(float rowH, float topExtent, float bottomExtent) =>
+            Math.Max(-rowH * 0.5f, Math.Min(rowH * 0.5f, (bottomExtent - topExtent) * 0.5f));
+
         // Padding side raised to the frame keep-out (ContentInset): never lowered.
         public static int RaiseSide(int side, int inset) => Math.Max(side, inset);
 
