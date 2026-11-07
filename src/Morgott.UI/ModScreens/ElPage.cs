@@ -154,7 +154,19 @@ namespace Morgott.UI.ModScreens
             ElPageMath.Split(body, f.List != null, out var column, out var pane);
             _pane?.First(0);
             _pane?.Place(_canvas, pane, true);
-            f.List?.Put(_canvas, column.W / f.List.Box0.W, column);
+            if (f.List != null)
+            {
+                var k = column.W / f.List.Box0.W;
+                f.List.Put(_canvas, k, column);
+                // Its filter field above the column (left of the title plaque, x 61..574 is clear there) so the rows start at
+                // mockup 02's list top (y 240; the field pushed them to ~275, run 20261107-145553): the whole list part moves up
+                // by that overhang, its bottom stays.
+                if (f.List.Rt.Find("ItemList") is RectTransform rows)
+                {
+                    var dy = Geo.BoxOf(_canvas, rows).Y - (column.Y + 8f * u);
+                    if (dy > 0.5f) f.List.Put(_canvas, k, new Box(column.X, column.Y - dy, column.W, column.H + dy));
+                }
+            }
             var pad = 24f * u;
             var y = pane.Y + pad;
             if (f.Title != null)
