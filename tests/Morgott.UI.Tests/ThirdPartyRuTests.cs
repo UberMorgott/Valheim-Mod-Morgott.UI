@@ -8,7 +8,7 @@ using Xunit;
 namespace Morgott.UI.Tests
 {
     // Russian for third-party texts that ship English only (Jotunn's version-compat dialog, PlantEverything) or are
-    // hardcoded (ModWords: RossItemDrawers, PlantEasily).
+    // hardcoded (ModWords: RossItemDrawers, PlantEasily, ValheimPlus).
     public class ThirdPartyRuTests
     {
         private static Dictionary<string, string> Load(string language)
@@ -92,7 +92,7 @@ namespace Morgott.UI.Tests
         public void ModWordsEnglishValueIsTheModLiteral()
         {
             var en = Load("English");
-            foreach (var (literal, key) in ModWords.Texts)
+            foreach (var (literal, key) in AllModWords())
             {
                 Assert.True(en.TryGetValue(key, out var value), $"English.json misses {key}");
                 Assert.Equal(literal, value);
@@ -105,7 +105,7 @@ namespace Morgott.UI.Tests
         public void ModWordsRussianKeepsFragmentShape()
         {
             var ru = Load("Russian");
-            foreach (var (literal, key) in ModWords.Texts)
+            foreach (var (literal, key) in AllModWords())
             {
                 Assert.True(ru.TryGetValue(key, out var value) && value.Trim().Length > 0, $"Russian.json misses {key}");
                 Assert.Equal(literal.Length - literal.TrimStart(' ').Length, value.Length - value.TrimStart(' ').Length);
@@ -114,6 +114,17 @@ namespace Morgott.UI.Tests
                 Assert.Equal(literal.StartsWith('\n'), value.StartsWith('\n'));
                 Assert.Equal(Markup(literal), Markup(value));
             }
+        }
+
+        private static IEnumerable<KeyValuePair<string, string>> AllModWords() =>
+            ModWords.Texts.Concat(ModWords.Scoped.Select(s => new KeyValuePair<string, string>(s.Key, s.Value.Token)));
+
+        // A scoped literal is translated only next to its anchor, which must itself be a listed text.
+        [Fact]
+        public void ModWordsScopedAnchorsAreListed()
+        {
+            foreach (var s in ModWords.Scoped.Values) Assert.True(ModWords.Texts.ContainsKey(s.Anchor), s.Anchor);
+            foreach (var literal in ModWords.Scoped.Keys) Assert.False(ModWords.Texts.ContainsKey(literal), literal);
         }
 
         private static string Markup(string s) =>
