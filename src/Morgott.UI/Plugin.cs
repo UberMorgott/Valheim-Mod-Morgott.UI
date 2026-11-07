@@ -154,8 +154,9 @@ namespace Morgott.UI
                 "Width of the bottom HUD strip (key Span: the old Width was only a cap) as a share of the screen (or of the centred 16:9 box on ultrawide); only the straight wing rails stretch. Its height follows the slot size: hotbar cells = inventory grid cells (theme size.slot x Layout.SkinScale x the game's UI scale).", new AcceptableValueRange<float>(0.5f, 1f)));
             StatusPerRow = Config.Bind("HudStrip", "StatusPerRow", 10, new ConfigDescription(
                 "Status effect icons per row above the HUD strip (buffs on one side, debuffs on the other); a full row wraps upward.", new AcceptableValueRange<int>(1, 30)));
-            StatusSize = Config.Bind("HudStrip", "StatusSize", 0.6f, new ConfigDescription(
-                "Status effect tile side as a share of the hotbar slot (frameless icon tiles, timer over the icon bottom).", new AcceptableValueRange<float>(0.3f, 1f)));
+            // new key (was StatusSize 0.6 = the whole tile): the icon alone now, the name + time lines come on top of it
+            StatusSize = Config.Bind("HudStrip", "StatusIconSize", 0.75f, new ConfigDescription(
+                "Status effect icon side as a share of the hotbar slot; the effect name and remaining time are written under each icon.", new AcceptableValueRange<float>(0.4f, 1f)));
             StatusRows = Config.Bind("HudStrip", "StatusRows", 2, new ConfigDescription(
                 "Rows of status icons per side before the rest folds into \"+N\" (F7 lists all).", new AcceptableValueRange<int>(1, 6)));
             BuffSide = Config.Bind("HudStrip", "BuffSide", "Left", new ConfigDescription(

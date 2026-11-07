@@ -25,7 +25,7 @@ namespace Morgott.UI.PlayerHud
         {
             public RectTransform Root;
             public Image Back, Icon;
-            public TMP_Text Timer;
+            public TMP_Text Timer, Name;
             public StatusEffect Effect;
             public int ShownSeconds = int.MinValue;
             public string ShownText;
@@ -75,13 +75,15 @@ namespace Morgott.UI.PlayerHud
         public static float CellSize => _cellSize > 0f && _cellRevision == ThemeTokens.Revision ? _cellSize : ThemeTokens.GetFloat("size.hud.status.cell", 42f);
         public const float IconShare = 0.6f;
 
-        // Strip groups (user call 2026-10-23: many effects, save room): frameless tiles, the icon fills the tile, side =
-        // HudStrip.StatusSize x the slot cell (strip units), timer outlined over the icon bottom, debuffs a thin red
-        // underline; tight gap size.hud.status.strip.gap.
-        public static float StripCell => Mathf.Clamp(Plugin.StatusSize?.Value ?? 0.6f, 0.3f, 1f) * ThemeTokens.GetFloat("size.hud.strip.cell", 85f);
-        public static float StripGap => ThemeTokens.GetFloat("size.hud.status.strip.gap", 5f);
-        private float TileSize => Upward ? StripCell : CellSize;
+        // Strip groups: frameless labelled tiles (user 2026-11-07: icons too small, timers ran into each other - label them
+        // like vanilla): icon side = HudStrip.StatusIconSize x the slot cell (strip units), name + time lines under it
+        // (HudMath.StatusTile), debuffs a thin red underline under the icon; gap size.hud.status.strip.gap.
+        public static float StripIcon => Mathf.Clamp(Plugin.StatusSize?.Value ?? 0.75f, 0.4f, 1f) * ThemeTokens.GetFloat("size.hud.strip.cell", 85f);
+        public static float StripGap => ThemeTokens.GetFloat("size.hud.status.strip.gap", 8f);
+        public static HudMath.Tile StripTile => HudMath.StatusTile(StripIcon,
+            StripMath.FontFloor(ThemeTokens.GetFloat("size.hud.font.status", 15f), ThemeTokens.GetFloat("floor.text.timer.px", 12f), TextFloor.RootPx));
         private float TileGap => Upward ? StripGap : ThemeTokens.GetFloat("size.hud.status.gap", 4f);
+        private HudMath.Tile _shaped;
 
         private void Measure()
         {
@@ -142,11 +144,17 @@ namespace Morgott.UI.PlayerHud
         // Lays out within width x budget (ref px, top edge at y = 0 going down). Returns the used height.
         public float Arrange(float width, float budget)
         {
-            var cell = TileSize;
+            var cell = CellSize;
             var gap = TileGap;
-            var flow = HudMath.Wrap(_entries.Count, cell, gap, width, HudMath.MaxRows(budget, cell, gap));
+            var tile = Upward ? StripTile : new HudMath.Tile { W = cell, H = cell, Icon = cell };
+            var flow = HudMath.Wrap(_entries.Count, tile.W, gap, width, HudMath.MaxRows(budget, tile.H, gap));
             Layout = flow;
-            Root.sizeDelta = new Vector2(width, flow.Rows * (cell + gap));
+            Root.sizeDelta = new Vector2(width, flow.Rows * (tile.H + gap));
+            if (Upward && (_shaped.W != tile.W || _shaped.H != tile.H)) // W follows the icon, H its lines
+            {
+                _shaped = tile; // floors / config changed: re-shape the pooled tiles
+                foreach (var c in _cells) Shape(c, tile);
+            }
             var panelOn = flow.Rows > 0 && !Upward; // strip groups (mockup hud-3): bare socket cells, no plate
             if (_panel.gameObject.activeSelf != panelOn) _panel.gameObject.SetActive(panelOn);
             if (panelOn)
@@ -162,20 +170,26 @@ namespace Morgott.UI.PlayerHud
             }
             Separators(flow, cell, gap);
             var shown = flow.Visible;
-            while (_cells.Count < shown) _cells.Add(MakeCell("Effect" + _cells.Count, Root, cell));
+            while (_cells.Count < shown)
+            {
+                var c = MakeCell("Effect" + _cells.Count, Root, cell, labelled: Upward);
+                if (Upward) Shape(c, tile);
+                _cells.Add(c);
+            }
             for (var i = 0; i < _cells.Count; i++)
             {
                 var on = i < shown;
                 var c = _cells[i];
                 if (c.Root.gameObject.activeSelf != on) c.Root.gameObject.SetActive(on);
                 if (!on) { c.Effect = null; continue; }
-                Place(c.Root, CellPos(i, flow, cell, gap));
+                Place(c.Root, CellPos(i, flow, tile, gap));
                 Bind(c, _entries[i]);
             }
             var more = flow.MoreCell;
             if (more && _more == null)
             {
-                _more = MakeCell("More", Root, cell, more: true);
+                // "+N": an icon-sized socket on the next tile's icon spot
+                _more = MakeCell("More", Root, tile.Icon, more: true);
                 _moreText = _more.Timer;
                 var button = _more.Root.gameObject.AddComponent<Button>();
                 button.targetGraphic = _more.Back;
@@ -187,7 +201,8 @@ namespace Morgott.UI.PlayerHud
                 if (_more.Root.gameObject.activeSelf != more) _more.Root.gameObject.SetActive(more);
                 if (more)
                 {
-                    Place(_more.Root, CellPos(shown, flow, cell, gap));
+                    _more.Root.sizeDelta = new Vector2(tile.Icon, tile.Icon);
+                    Place(_more.Root, CellPos(shown, flow, tile, gap) + new Vector2((tile.W - tile.Icon) / 2f, tile.H - tile.Icon));
                     if (_moreShown != flow.Overflow)
                     {
                         _moreShown = flow.Overflow;
@@ -197,7 +212,7 @@ namespace Morgott.UI.PlayerHud
             }
             if (_popupOpen && _entries.Count == 0) _popupOpen = false;
             if (_popup && _popup.gameObject.activeSelf != _popupOpen) _popup.gameObject.SetActive(_popupOpen);
-            return flow.Rows * (cell + gap);
+            return flow.Rows * (tile.H + gap);
         }
 
         private readonly List<Image> _separators = new List<Image>(16);
@@ -223,7 +238,7 @@ namespace Morgott.UI.PlayerHud
                 var sep = _separators[n++];
                 if (!sep.gameObject.activeSelf) sep.gameObject.SetActive(true);
                 var size = sep.rectTransform.sizeDelta;
-                var at = CellPos(i, flow, cell, gap);
+                var at = CellPos(i, flow, new HudMath.Tile { W = cell, H = cell }, gap);
                 var pos = new Vector2(AlignRight ? at.x - gap / 2f - size.x / 2f : at.x + cell + gap / 2f - size.x / 2f, at.y + (cell - size.y) / 2f);
                 if (sep.rectTransform.anchoredPosition != pos) sep.rectTransform.anchoredPosition = pos;
             }
@@ -297,8 +312,9 @@ namespace Morgott.UI.PlayerHud
                     if (_popupRows[i].Effect && _popupRows[i].Root.gameObject.activeSelf) TickCell(_popupRows[i], dt);
         }
 
-        private Cell MakeCell(string name, Transform parent, float size, bool more = false)
+        private Cell MakeCell(string name, Transform parent, float size, bool more = false, bool labelled = false)
         {
+            if (labelled) return MakeTile(name, parent);
             var c = new Cell { Root = HudArt.Rect(name, parent) };
             c.Root.sizeDelta = new Vector2(size, size);
             // Effect cells are bare icons on the strip (mockup); only the "+N" cell has its socket art.
@@ -354,6 +370,48 @@ namespace Morgott.UI.PlayerHud
             return c;
         }
 
+        // Labelled strip tile (HudMath.StatusTile; geometry set by Shape): icon, debuff underline, name line, time line.
+        private Cell MakeTile(string name, Transform parent)
+        {
+            var c = new Cell { Root = HudArt.Rect(name, parent) };
+            c.Back = _art.Image("Socket", c.Root, null, _harmful ? "color.hud.status.debuff.line" : "color.hud.clear", Image.Type.Simple);
+            c.Back.enabled = _harmful;
+            c.Icon = _art.Image("Icon", c.Root, null, "color.frame", Image.Type.Simple);
+            c.Icon.preserveAspect = true;
+            var font = ThemeTokens.GetFloat("size.hud.font.status", 15f);
+            c.Name = _art.Text("Name", c.Root, "font.body", "color.text.body", font, TextAlignmentOptions.Center);
+            c.Timer = _art.Text("Timer", c.Root, "font.body", "color.hud.timer", font, TextAlignmentOptions.Center);
+            foreach (var t in new[] { c.Name, c.Timer })
+            {
+                WorldHud.TextLook.ApplyHudNumber(t); // over the world: the shared outlined HUD text style
+                t.overflowMode = TextOverflowModes.Ellipsis; // long mod / EpicLoot names end in "...", never overlap
+            }
+            return c;
+        }
+
+        private static void Shape(Cell c, HudMath.Tile t)
+        {
+            c.Root.sizeDelta = new Vector2(t.W, t.H);
+            Top(c.Icon.rectTransform, t.Icon, t.Icon, 0f);
+            Top(c.Back.rectTransform, t.Icon * 0.8f, Mathf.Max(1.5f, t.Icon * 0.04f), -t.Icon - 0.5f);
+            Line(c.Name.rectTransform, t, t.Line);
+            Line(c.Timer.rectTransform, t, 0f);
+        }
+
+        private static void Top(RectTransform rt, float w, float h, float y)
+        {
+            rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0.5f, 1f);
+            rt.sizeDelta = new Vector2(w, h);
+            rt.anchoredPosition = new Vector2(0f, y);
+        }
+
+        private static void Line(RectTransform rt, HudMath.Tile t, float y)
+        {
+            rt.anchorMin = rt.anchorMax = rt.pivot = Vector2.zero;
+            rt.sizeDelta = new Vector2(t.W, t.Line);
+            rt.anchoredPosition = new Vector2(0f, y);
+        }
+
         private void Bind(Cell c, Entry e)
         {
             if (c.Effect == e.Effect) return;
@@ -361,6 +419,7 @@ namespace Morgott.UI.PlayerHud
             c.ShownSeconds = int.MinValue;
             c.ShownText = null;
             c.Harmful = e.Class.Harmful;
+            if (c.Name) c.Name.text = Localization.instance != null ? Localization.instance.Localize(e.Effect.m_name) : e.Effect.m_name; // Hud.cs:1673
             if (c.Icon)
             {
                 c.Icon.sprite = e.Effect.m_icon;
@@ -420,13 +479,9 @@ namespace Morgott.UI.PlayerHud
 
         // Bottom-left of cell `index`: rows top-down from the root (classic) or bottom-up (Upward); columns from the
         // left, or from the right edge of the full row width (AlignRight; the row width = flow.Columns cells).
-        private Vector2 CellPos(int index, HudMath.Flow flow, float cell, float gap)
+        private Vector2 CellPos(int index, HudMath.Flow flow, HudMath.Tile tile, float gap)
         {
-            var columns = Mathf.Max(1, flow.Columns);
-            var col = index % columns;
-            var row = index / columns;
-            var x = AlignRight ? (columns - 1 - col) * (cell + gap) : col * (cell + gap);
-            var y = Upward ? row * (cell + gap) : -(row + 1) * (cell + gap) + gap;
+            HudMath.FlowCell(index, flow.Columns, tile.W, tile.H, gap, Upward, AlignRight, out var x, out var y);
             return new Vector2(x, y);
         }
 

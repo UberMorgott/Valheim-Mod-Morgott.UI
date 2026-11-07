@@ -277,6 +277,35 @@ namespace Morgott.UI.PlayerHud
             return f;
         }
 
+        // Labelled status tile of the HUD strip groups (vanilla Hud.UpdateStatusEffects, Hud.cs:1673-1683: every effect
+        // shows its icon, Localize(m_name) and GetIconText): icon square centred at the top, a name line and a time line
+        // under it, both the full tile width (longer text ends in an ellipsis, never reaches the neighbour). Line height
+        // from the floored font (TextFloor raises small screens' fonts) so the two lines never overlap each other.
+        public struct Tile
+        {
+            public float W, H, Icon, Line;
+        }
+
+        public const float TileWidthShare = 2f, TileLineShare = 1.35f, TileTextGap = 4f;
+
+        public static Tile StatusTile(float icon, float font)
+        {
+            icon = Math.Max(0f, icon);
+            var line = (float)Math.Ceiling(Math.Max(0f, font) * TileLineShare);
+            return new Tile { Icon = icon, Line = line, W = (float)Math.Ceiling(icon * TileWidthShare), H = icon + TileTextGap + 2f * line };
+        }
+
+        // Bottom-left of tile `index` (w x h, gap between): rows top-down from the root (classic) or bottom-up (upward);
+        // columns from the left, or from the right edge of the full row (alignRight; the row = `columns` tiles).
+        public static void FlowCell(int index, int columns, float w, float h, float gap, bool upward, bool alignRight, out float x, out float y)
+        {
+            columns = Math.Max(1, columns);
+            var col = index % columns;
+            var row = index / columns;
+            x = alignRight ? (columns - 1 - col) * (w + gap) : col * (w + gap);
+            y = upward ? row * (h + gap) : -(row + 1) * (h + gap) + gap;
+        }
+
         // ---- scale and safe box (hud-resource-states §4) ---------------------------------------------------------
 
         // Hud.Scale config range (user multiplier on top of the game's UI scale).

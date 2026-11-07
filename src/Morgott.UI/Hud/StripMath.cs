@@ -263,6 +263,11 @@ namespace Morgott.UI.PlayerHud
         // upward. Width of a full row (the group's Arrange width).
         public static float RowWidth(int perRow, float cell, float gap) => Zone(Math.Max(1, perRow), cell, gap);
 
+        // Top a bottom-anchored box beside the strip must clear (strip units): the strip top, or the status group's rows
+        // when they reach higher (group bottom at `statusBase`, `groupH` tall incl. its trailing gap; 0 = empty group).
+        public static float StatusClearTop(float stripTop, float statusBase, float groupH) =>
+            groupH > 0f ? Math.Max(stripTop, statusBase + groupH) : stripTop;
+
         // Cells per status row that fit into avail (the row must end before the medallion), at least 1, at most want.
         public static int StatusPerRow(int want, float cell, float gap, float avail)
         {

@@ -725,7 +725,7 @@ namespace Morgott.UI.PlayerHud
             // InventoryMath's standard gap (size.inv.gap) from the strip top.
             _reservedTop = bottom + l.Height * _pxPerUnit + ThemeTokens.GetFloat("size.panel.glass.inset", 0f) * s;
             StripRevision++;
-            _chatTopUnits = l.Height;
+            _chatTopUnits = _stripTopUnits = l.Height;
             _chatGapPx = ThemeTokens.GetFloat("size.hud.strip.chat.gap", 12f) * s;
             // Bottom-anchored HUD elements (build piece info, action bar, ship ladder, key hints ...) clear the drawn
             // strip top by size.hud.strip.clear.gap (StripClear).
@@ -777,7 +777,7 @@ namespace Morgott.UI.PlayerHud
         // units, both converted through their own canvases at that frame (no screen px cached across frames).
         private static RectTransform _chatWindow;
         private static Vector2 _chatHome;
-        private float _chatBottomW = float.NaN, _chatTopUnits = -1f, _chatGapPx;
+        private float _chatBottomW = float.NaN, _chatTopUnits = -1f, _stripTopUnits = -1f, _chatGapPx;
         private bool _chatWasActive;
         private Vector2 _chatWritten = new Vector2(float.NaN, float.NaN);
         private int _chatMeasureKey = int.MinValue;
@@ -873,17 +873,17 @@ namespace Morgott.UI.PlayerHud
         // (it docks on the strip top).
         private void Status()
         {
-            var cell = StatusStrip.StripCell;
+            var tile = StatusStrip.StripTile;
             var gap = StatusStrip.StripGap;
             var pad = ThemeTokens.GetFloat("size.hud.status.pad", 6f);
             var show = !InventoryGui.IsVisible();
             if (_buffs.Root.gameObject.activeSelf != show) _buffs.Root.gameObject.SetActive(show);
             if (_strip.Root.gameObject.activeSelf != show) _strip.Root.gameObject.SetActive(show);
-            if (!show) return;
-            // A row fits between the strip edge and the centre's side: fewer cells a row, more rows.
-            var perRow = StripMath.StatusPerRow(Mathf.Clamp(Plugin.StatusPerRow?.Value ?? 10, 1, 30), cell, gap, SideLeft - pad);
+            if (!show) { _chatTopUnits = _stripTopUnits; return; }
+            // A row fits between the strip edge and the centre's side: fewer tiles a row, more rows.
+            var perRow = StripMath.StatusPerRow(Mathf.Clamp(Plugin.StatusPerRow?.Value ?? 10, 1, 30), tile.W, gap, SideLeft - pad);
             var rows = Mathf.Clamp(Plugin.StatusRows?.Value ?? 2, 1, 6);
-            var rowW = StripMath.RowWidth(perRow, cell, gap);
+            var rowW = StripMath.RowWidth(perRow, tile.W, gap);
             var buffsLeft = (Plugin.BuffSide?.Value ?? "Left") != "Right";
             var leftGroup = buffsLeft ? _buffs : _strip;
             var rightGroup = buffsLeft ? _strip : _buffs;
@@ -891,9 +891,11 @@ namespace Morgott.UI.PlayerHud
             // the groups hug the centre's sides, growing outward like the wings
             leftGroup.AlignRight = true;
             rightGroup.AlignRight = false;
-            var budget = rows * (cell + gap);
+            var budget = rows * (tile.H + gap);
             leftGroup.Arrange(rowW, budget);
-            rightGroup.Arrange(rowW, budget);
+            var rightH = rightGroup.Arrange(rowW, budget);
+            // the vanilla chat (bottom right) clears the right group's labelled rows too, not only the strip top
+            _chatTopUnits = StripMath.StatusClearTop(_stripTopUnits, _statusBase, rightH);
             var lp = new Vector2(SideLeft - leftGroup.Root.sizeDelta.x, _statusBase);
             if (leftGroup.Root.anchoredPosition != lp) leftGroup.Root.anchoredPosition = lp;
             var rp = new Vector2(SideRight, _statusBase);

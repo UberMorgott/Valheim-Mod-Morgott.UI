@@ -975,7 +975,7 @@
     { "token": "share.hud.bar.fx.rim", "value": 1 },
     { "token": "share.hud.bar.fx.glow", "value": 0.16 },
     { "token": "share.hud.strip.timer.band", "value": 0 },
-    { "token": "size.hud.status.strip.gap", "value": 5 },
+    { "token": "size.hud.status.strip.gap", "value": 8 },
     { "token": "count.hud.strip.wing.max", "value": 4 },
     { "token": "size.hud.panel.unit", "value": 1.2142857 },
     { "token": "size.hud.panel.h", "value": 162 },
