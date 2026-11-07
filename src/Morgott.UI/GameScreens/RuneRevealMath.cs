@@ -90,6 +90,15 @@ namespace Morgott.UI.GameScreens
 
         public static bool Done(float t, float hold, float decode) => t >= hold + decode;
 
+        // Viewer text alpha (its Animator fade) from which the reveal clock runs. The vanilla rune text fades in over
+        // ~2 s (run 20261108-011325: alpha 8/255 at 1.2 s): a clock started at ShowText decoded while still unseen.
+        public const float StartAlpha = 0.6f;
+
+        // Fade never reaching StartAlpha (another skin, a changed clip): the clock starts after MaxWait s anyway.
+        public const float MaxWait = 3f;
+
+        public static float Advance(float t, float dt, float alpha, float waited) => alpha >= StartAlpha || waited >= MaxWait ? t + dt : t;
+
         // The vanilla English rune line (TextViewer.m_runeText): hidden while the reveal is on, vanilla when it is off.
         public static string VanillaRuneLine(bool revealOn, string vanilla) => revealOn ? "" : vanilla;
     }

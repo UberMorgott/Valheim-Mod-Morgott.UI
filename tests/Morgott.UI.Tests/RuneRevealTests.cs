@@ -57,6 +57,15 @@ namespace Morgott.UI.Tests
         }
 
         [Fact]
+        public void ClockWaitsForTheViewerFadeIn()
+        {
+            Assert.Equal(0f, RuneRevealMath.Advance(0f, 0.1f, 0.03f, 1f));
+            Assert.Equal(0.1f, RuneRevealMath.Advance(0f, 0.1f, 0.03f, RuneRevealMath.MaxWait), 5);
+            Assert.Equal(0.1f, RuneRevealMath.Advance(0f, 0.1f, RuneRevealMath.StartAlpha, 0f), 5);
+            Assert.Equal(0.6f, RuneRevealMath.Advance(0.5f, 0.1f, 1f, 0f), 5);
+        }
+
+        [Fact]
         public void ProgressIsMonotoneInTime()
         {
             var prev = 0f;

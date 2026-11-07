@@ -34,7 +34,7 @@ namespace Morgott.UI.GameScreens
         private TMP_Text _vanillaRunes;
         private Color32 _red;
         private float _t = float.MaxValue;
-        private float _hold, _decode;
+        private float _hold, _decode, _waited;
 
         public TMP_Text RuneLayer => _runes;
         public bool Running => _runes && !RuneRevealMath.Done(_t, _hold, _decode);
@@ -87,6 +87,7 @@ namespace Morgott.UI.GameScreens
             _runes.text = RuneRevealMath.Remap(_text.text, HasGlyph);
             _runes.enabled = true;
             _t = 0f;
+            _waited = 0f;
         }
 
         public void Skip() => _t = float.MaxValue;
@@ -105,10 +106,11 @@ namespace Morgott.UI.GameScreens
         private void LateUpdate()
         {
             if (!_runes || !_runes.enabled) return;
-            _t += Time.unscaledDeltaTime;
+            var a = _text.color.a; // the viewer Animator's fade
+            _waited += Time.unscaledDeltaTime;
+            _t = RuneRevealMath.Advance(_t, Time.unscaledDeltaTime, a * _text.canvasRenderer.GetAlpha(), _waited);
             if (_t > 0.05f && (ZInput.GetMouseButtonDown(0) || ZInput.GetButtonDown("JoyButtonA"))) Skip(); // Hud.cs:643 skip keys
             if (RuneRevealMath.Done(_t, _hold, _decode)) { Finish(); return; }
-            var a = _text.color.a; // the viewer Animator's fade
             if (!Mathf.Approximately(_runes.color.a, a)) _runes.color = new Color(1f, 1f, 1f, a);
             _text.havePropertiesChanged = true; // regenerate both meshes: Tint runs in OnPreRenderText
             _runes.havePropertiesChanged = true;
