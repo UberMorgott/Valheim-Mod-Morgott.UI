@@ -81,7 +81,7 @@ namespace Morgott.UI.PlayerHud
         public static float StripIcon => Mathf.Clamp(Plugin.StatusSize?.Value ?? 0.75f, 0.4f, 1f) * ThemeTokens.GetFloat("size.hud.strip.cell", 85f);
         public static float StripGap => ThemeTokens.GetFloat("size.hud.status.strip.gap", 8f);
         public static HudMath.Tile StripTile => HudMath.StatusTile(StripIcon,
-            StripMath.FontFloor(ThemeTokens.GetFloat("size.hud.font.status", 15f), ThemeTokens.GetFloat("floor.text.timer.px", 12f), TextFloor.RootPx));
+            StripMath.FontFloor(ThemeTokens.GetFloat("size.hud.font.status", 15f), HudArt.FloorPx(ThemeTokens.GetFloat("size.hud.font.status", 15f)), TextFloor.RootPx));
         private float TileGap => Upward ? StripGap : ThemeTokens.GetFloat("size.hud.status.gap", 4f);
         private HudMath.Tile _shaped;
 

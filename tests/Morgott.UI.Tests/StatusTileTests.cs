@@ -62,7 +62,12 @@ namespace Morgott.UI.Tests
             var l = StripMath.Compute(input);
             var gap = F("size.hud.status.strip.gap");
             var pad = F("size.hud.status.pad");
-            var tile = HudMath.StatusTile(0.75f * F("size.hud.strip.cell"), StripMath.FontFloor(F("size.hud.font.status"), F("floor.text.timer.px"), ppu));
+            // the floor HudArt.FloorPx gives the text (run 20261107-235706: tile sized with the timer floor 12 px, the text got
+            // the number floor 14 px -> at 720p TMP Ellipsis dropped every name line)
+            var font = F("size.hud.font.status");
+            var textFont = StripMath.FontFloor(font, font >= F("size.hud.font.number") ? F("floor.text.number.px") : F("floor.text.timer.px"), ppu);
+            var tile = HudMath.StatusTile(0.75f * F("size.hud.strip.cell"), textFont);
+            Assert.True(tile.Line >= textFont * 1.3f, $"{w}x{h}@{gui}: line {tile.Line} too short for font {textFont}");
             var sideL = l.StatusL - gap;
             var sideR = l.StatusR + gap;
             var perRow = StripMath.StatusPerRow(10, tile.W, gap, sideL - pad);

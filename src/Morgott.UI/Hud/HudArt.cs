@@ -105,14 +105,18 @@ namespace Morgott.UI.PlayerHud
             t.color = ThemeTokens.GetColor(colorToken, Color.white);
             var floor = rt.gameObject.AddComponent<TextFloor>();
             floor.Base = size;
-            floor.Px = size >= ThemeTokens.GetFloat("size.hud.font.number", 16f)
-                ? ThemeTokens.GetFloat("floor.text.number.px", 14f)
-                : ThemeTokens.GetFloat("floor.text.timer.px", 12f);
+            floor.Px = FloorPx(size);
             Set(t, font
                 ? new Classification { Role = "hud:" + fontToken, Outcome = Outcome.Styled, Reason = "RuneSkin HUD text" }
                 : new Classification { Role = "hud:" + fontToken, Outcome = Outcome.Degraded, Reason = $"font token '{fontToken}' missing (TMP default)" });
             return t;
         }
+
+        // Readable screen-px floor of a HUD text of this theme size (numbers / values vs small timers); layouts that size
+        // a box for a text (StatusStrip.StripTile) use the same floor the text gets.
+        public static float FloorPx(float size) => size >= ThemeTokens.GetFloat("size.hud.font.number", 16f)
+            ? ThemeTokens.GetFloat("floor.text.number.px", 14f)
+            : ThemeTokens.GetFloat("floor.text.timer.px", 12f);
 
         // Sliced / tiled borders and tile periods in reference px. Unity draws a sprite px as
         // canvas.referencePixelsPerUnit / (sprite PPU x pixelsPerUnitMultiplier) units (Image.pixelsPerUnit), and the
