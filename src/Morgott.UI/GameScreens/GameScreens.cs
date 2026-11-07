@@ -535,13 +535,14 @@ namespace Morgott.UI.GameScreens
         public static void Viewer(TextViewer v)
         {
             Bands(v.m_topic, v.m_text);
-            TintKeep.Ensure(v.m_text, "color.text.body");
+            TintKeep.Ensure(v.m_text, "color.text.header");
             TintKeep.Ensure(v.m_topic, "color.text.header");
+            RuneReveal.Attach(v);
             if (v.m_ravenTopic) v.m_ravenTopic.fontStyle |= FontStyles.UpperCase;
             GameScreenKit.Form(v.transform, "TextDialogs.Viewer", OwnershipRegistry.TextDialogs, (ctx, r) =>
             {
                 ctx.Role(v.m_topic, "text.header", "rune topic (serif)");
-                ctx.Role(v.m_text, "text.body", "rune text (body)");
+                ctx.Role(v.m_text, "text.display", "rune text (readable runic display face; RuneReveal decodes it from the carved runes)");
                 ctx.Role(v.m_runeText, "content", "runic transliteration (vanilla rune font: the runes are the content)");
                 ctx.Role(v.m_introTopic, "text.header", "intro saga topic");
                 ctx.Role(v.m_introText, "text.body", "intro saga text");
@@ -914,6 +915,15 @@ namespace Morgott.UI.GameScreens
         [HarmonyPatch(typeof(TextViewer), nameof(TextViewer.Awake))]
         [HarmonyPostfix]
         private static void TextViewer_Postfix(TextViewer __instance) => Try("text viewer", OwnershipRegistry.TextDialogs, () => TextDialogSkin.Viewer(__instance));
+
+        // Rune stones only (RuneStone.cs:74/82); intro and raven keep their own texts.
+        [HarmonyPatch(typeof(TextViewer), nameof(TextViewer.ShowText))]
+        [HarmonyPostfix]
+        private static void TextViewerShow_Postfix(TextViewer __instance, TextViewer.Style style)
+        {
+            if (style == TextViewer.Style.Rune && __instance.m_text && __instance.m_text.TryGetComponent<RuneReveal>(out var r))
+                Try("rune reveal", OwnershipRegistry.TextDialogs, r.Play);
+        }
 
         [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.Awake))]
         [HarmonyPostfix]

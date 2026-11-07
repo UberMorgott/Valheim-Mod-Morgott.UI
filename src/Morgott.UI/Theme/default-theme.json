@@ -17,6 +17,7 @@
     { "token": "color.text.missing", "value": "#E0413AFF" },
     { "token": "color.text.ok", "value": "#9FD66BFF" },
     { "token": "color.text.ember", "value": "#F08A3AFF" },
+    { "token": "color.rune.carved", "value": "#FF2A1EFF" },
     { "token": "color.text.stat", "value": "#8AB4F0FF" },    { "token": "color.glass", "value": "#FFFFFFFF" },
     { "token": "color.scrim", "value": "#04070ACC" },
     { "token": "color.panel.backing", "value": "#101C22FF" },
