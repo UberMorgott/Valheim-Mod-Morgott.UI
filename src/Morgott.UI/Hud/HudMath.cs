@@ -288,11 +288,26 @@ namespace Morgott.UI.PlayerHud
 
         public const float TileWidthShare = 2f, TileLineShare = 1.35f, TileTextGap = 4f;
 
-        public static Tile StatusTile(float icon, float font)
+        // Food time left as vanilla Hud.UpdateFood writes it (Hud.cs:1037-1046): from 60 s ceil minutes "Nm", below floor
+        // seconds "Ns". False = nothing to show (no time left / no food).
+        public static bool FoodTime(float seconds, out int n, out bool minutes)
+        {
+            minutes = seconds >= 60f;
+            n = minutes ? (int)Math.Ceiling(seconds / 60f) : (int)Math.Floor(Math.Max(0f, seconds));
+            return seconds > 0f;
+        }
+
+        // label: widest shown name / time line (measured, text units; < 0 = unknown -> the widest tile). The tile is as wide
+        // as that label (+ TileLabelPad), never under the icon nor over TileWidthShare icons (longer names: ellipsis).
+        public const float TileLabelPad = 6f;
+
+        public static Tile StatusTile(float icon, float font, float label = -1f)
         {
             icon = Math.Max(0f, icon);
             var line = (float)Math.Ceiling(Math.Max(0f, font) * TileLineShare);
-            return new Tile { Icon = icon, Line = line, W = (float)Math.Ceiling(icon * TileWidthShare), H = icon + TileTextGap + 2f * line };
+            var max = icon * TileWidthShare;
+            var w = label < 0f ? max : Clamp(label + TileLabelPad, icon, max);
+            return new Tile { Icon = icon, Line = line, W = (float)Math.Ceiling(w), H = icon + TileTextGap + 2f * line };
         }
 
         // Bottom-left of tile `index` (w x h, gap between): rows top-down from the root (classic) or bottom-up (upward);

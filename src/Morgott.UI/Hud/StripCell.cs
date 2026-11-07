@@ -21,7 +21,7 @@ namespace Morgott.UI.PlayerHud
         // Belt cells only (MorgottTweaks belt, approved mockup docs\mockups\belt\a-wings-extended.png): auto-use "A" pip
         // top-right, gear-granted gem at 12 o'clock on the rim. Made on first use.
         private TMP_Text _pip;
-        private Image _gem;
+        private Image _gem, _ringTrack;
         private HudArt _art;
         private bool _shownPip, _shownGem, _countTimes, _timerSuffix;
         private readonly bool _round;
@@ -90,6 +90,12 @@ namespace Morgott.UI.PlayerHud
                 _sweep.fillClockwise = false;
             }
             _sweep.gameObject.SetActive(false);
+            // food: a dark full track under the time ring, so the run-out part reads apart from the gold part left
+            if (round)
+            {
+                _ringTrack = art.Image("RingTrack", Root, "sprite.hud.gp.ring", "color.hud.strip.food.ring.track", Image.Type.Simple);
+                _ringTrack.gameObject.SetActive(false);
+            }
             _ring = art.Image("Ring", Root, "sprite.hud.gp.ring", "color.hud.strip.food.ring", Image.Type.Simple);
             if (_ring.sprite)
             {
@@ -109,17 +115,11 @@ namespace Morgott.UI.PlayerHud
             _timer = Text(art, "Timer", "size.hud.strip.timer.font", "color.hud.timer", TextAlignmentOptions.Center);
             // a timer: the timer floor (12 px), not the number floor its 24-unit size picked (run 20261023-194139: at 720
             // the 14 px number floor pushed "20m" out of the food band)
-            if (_timer.TryGetComponent<TextFloor>(out var tf)) tf.Px = ThemeTokens.GetFloat("floor.text.timer.px", 12f);
-            if (round)
-            {
-                // food timer fits its band under the disc (auto-size down to the readable floor, TextFloor.Apply)
-                _timer.enableAutoSizing = true;
-                _timer.fontSizeMax = _timer.fontSize;
-                _timer.fontSizeMin = _timer.fontSize * 0.5f;
-                // bottom-aligned in its band: at the readable floor (720: 12 px = 21.9 units) the glyph box is taller than
-                // the band, centred it ran below the cell (run 20261023-200109 slots-720); it grows up, never out
-                _timer.alignment = TextAlignmentOptions.Bottom;
-            }
+            // food (user 2026-11-08: "9s" under the ring unreadable): the body floor (16 px), fixed size, top-aligned in a
+            // line under the disc so a floored font grows away from the ring, never onto it
+            if (_timer.TryGetComponent<TextFloor>(out var tf))
+                tf.Px = ThemeTokens.GetFloat(round ? "floor.text.body.px" : "floor.text.timer.px", round ? 16f : 12f);
+            if (round) _timer.alignment = TextAlignmentOptions.Top;
             _key.gameObject.SetActive(false);
             _count.gameObject.SetActive(false);
             _timer.gameObject.SetActive(false);
@@ -172,6 +172,7 @@ namespace Morgott.UI.PlayerHud
             Center(_sweep.rectTransform, bw - side * 0.12f, bh - side * 0.12f, oy);
             var ringIn = 2f * (_round ? side * 0.06f : side * 0.04f);
             Center(_ring.rectTransform, bw - ringIn, bh - ringIn, oy);
+            if (_ringTrack) Center(_ringTrack.rectTransform, bw - ringIn, bh - ringIn, oy);
             var m = side * ThemeTokens.GetFloat("share.hud.strip.mark", 0.24f);
             var mr = _mark.rectTransform;
             mr.anchorMin = mr.anchorMax = mr.pivot = new Vector2(1f, 1f);
@@ -184,8 +185,12 @@ namespace Morgott.UI.PlayerHud
             // round cell with its timer band: the count sits above the band (bottom-right of the disc), never on the timer
             var countY = _round && timerBelow ? band : inset * 0.8f;
             Box(_count.rectTransform, inset, countY, w - 2f * inset, h * 0.5f);
-            if (timerBelow) // food: in the band under the disc (never over the ring)
-                Box(_timer.rectTransform, 0f, 0f, w, band > 0f ? band : ThemeTokens.GetFloat("size.hud.strip.timer", 18f));
+            if (timerBelow) // food: in the band under the disc, or (no band) a line just under the cell; never over the ring
+            {
+                var timerLine = ThemeTokens.GetFloat("size.hud.strip.timer", 18f);
+                if (band > 0f) Box(_timer.rectTransform, 0f, 0f, w, band);
+                else Box(_timer.rectTransform, 0f, -timerLine, w, timerLine);
+            }
             else // cooldowns: the lower 70 % of the cell, clear of the key label (top-left)
                 Box(_timer.rectTransform, 0f, 0f, w, h * 0.7f);
             var line = ThemeTokens.GetFloat("size.hud.strip.dur.line", 5f);
@@ -320,17 +325,14 @@ namespace Morgott.UI.PlayerHud
             if (!_timerSuffix || _side <= 0f) return;
             foreach (var txt in new[] { _key, _timer, _count })
             {
-                if (txt.enableAutoSizing) continue;
+                if (txt.enableAutoSizing || (_round && txt == _timer)) continue; // food timer: fixed readable size (Size)
                 txt.enableAutoSizing = true;
                 txt.fontSizeMax = txt.fontSize;
                 txt.fontSizeMin = txt.fontSize * 0.35f;
             }
             if (_round)
             {
-                // food: the timer stays inside its band under the disc (Codex re-score 6/10: "20m" ran onto the item)
                 var band = Mathf.Clamp(ThemeTokens.GetFloat("share.hud.strip.timer.band", 0.27f), 0f, 0.5f) * _h;
-                _timer.fontSizeMax = Mathf.Min(_timer.fontSizeMax, band * 1.05f);
-                _timer.fontSizeMin = Mathf.Min(_timer.fontSizeMin, _timer.fontSizeMax);
                 // the item sits in the upper disc so the timer keeps a clean strip (Codex re-score 7/10)
                 var disc = Mathf.Min(_side, _h - band);
                 var fr = _icon.rectTransform;
@@ -423,6 +425,7 @@ namespace Morgott.UI.PlayerHud
         {
             var on = fraction >= 0f && _ring.sprite;
             if (_ring.gameObject.activeSelf != on) _ring.gameObject.SetActive(on);
+            if (_ringTrack && _ringTrack.gameObject.activeSelf != (on && _ringTrack.sprite)) _ringTrack.gameObject.SetActive(on && _ringTrack.sprite);
             if (!on) return;
             if (_ring.color != c) _ring.color = c;
             if (Mathf.Abs(_ring.fillAmount - fraction) > 0.002f) _ring.fillAmount = fraction;
@@ -431,6 +434,18 @@ namespace Morgott.UI.PlayerHud
         // Timer text: seconds (< 0 hides); minutes ("12m") from 60 s, "1:05" style below an hour for cooldowns.
         public void Timer(float seconds, bool minutesOnly)
         {
+            if (_round)
+            {
+                // food = vanilla Hud.UpdateFood (Hud.cs:1037-1046): "Nm" (ceil) from a minute, "Ns" (floor) below; no
+                // blink (vanilla's alpha 0.4 + 0.6 sin dips under zero: the text vanished half the time)
+                var show = HudMath.FoodTime(seconds, out var n, out var minutes);
+                var key = !show ? -1 : minutes ? 1000000 + n : n;
+                if (key == _shownSeconds) return;
+                _shownSeconds = key;
+                if (_timer.gameObject.activeSelf != show) _timer.gameObject.SetActive(show);
+                if (show) _timer.SetText(minutes ? "{0}m" : "{0}s", n);
+                return;
+            }
             var s = seconds > 0f ? Mathf.CeilToInt(seconds) : -1;
             if (s == _shownSeconds) return;
             _shownSeconds = s;

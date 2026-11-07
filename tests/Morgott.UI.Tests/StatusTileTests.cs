@@ -38,6 +38,34 @@ namespace Morgott.UI.Tests
             Assert.True(small.H > t.H && small.Line > t.Line);
         }
 
+        // user 2026-11-08: tiles closer together - width follows the widest label, never under the icon / over 2 icons
+        [Fact]
+        public void TileWidthFollowsTheLabel()
+        {
+            Assert.Equal(64f, HudMath.StatusTile(64f, 15f, 10f).W); // short label: the icon
+            Assert.Equal(90f + HudMath.TileLabelPad, HudMath.StatusTile(64f, 15f, 90f).W);
+            Assert.Equal(128f, HudMath.StatusTile(64f, 15f, 500f).W); // long name: capped, ellipsis
+            Assert.Equal(128f, HudMath.StatusTile(64f, 15f).W); // unmeasured: the widest tile
+            Assert.True(F("size.hud.status.strip.gap") < 8f);
+        }
+
+        // vanilla Hud.UpdateFood (Hud.cs:1037-1046): ceil minutes from 60 s, floor seconds below
+        [Theory]
+        [InlineData(9.7f, true, 9, false)]
+        [InlineData(59.9f, true, 59, false)]
+        [InlineData(60f, true, 1, true)]
+        [InlineData(61f, true, 2, true)]
+        [InlineData(1500f, true, 25, true)]
+        [InlineData(0.4f, true, 0, false)]
+        [InlineData(0f, false, 0, false)]
+        public void FoodTimeIsVanillaForm(float s, bool shown, int n, bool minutes)
+        {
+            Assert.Equal(shown, HudMath.FoodTime(s, out var gotN, out var gotMin));
+            if (!shown) return;
+            Assert.Equal(n, gotN);
+            Assert.Equal(minutes, gotMin);
+        }
+
         [Fact]
         public void IconsBiggerThanTheOldTiles() =>
             Assert.True(0.75f * F("size.hud.strip.cell") > 0.6f * F("size.hud.strip.cell") * 1.2f);
@@ -60,14 +88,20 @@ namespace Morgott.UI.Tests
             HudMath.HudBox(0f, w, h, true, F("ratio.hud.ultrawide"), out _, out var boxW);
             var input = StripLayoutTests.In(1, 3, 4, StripMath.WidthPx(boxW, 1f) / ppu);
             var l = StripMath.Compute(input);
-            var gap = F("size.hud.status.strip.gap");
-            var pad = F("size.hud.status.pad");
             // the floor HudArt.FloorPx gives the text (run 20261107-235706: tile sized with the timer floor 12 px, the text got
             // the number floor 14 px -> at 720p TMP Ellipsis dropped every name line)
             var font = F("size.hud.font.status");
             var textFont = StripMath.FontFloor(font, font >= F("size.hud.font.number") ? F("floor.text.number.px") : F("floor.text.timer.px"), ppu);
-            var tile = HudMath.StatusTile(0.75f * F("size.hud.strip.cell"), textFont);
+            // every measured width: icon-only, a mid label, unmeasured (widest)
+            foreach (var label in new[] { 0f, 90f, -1f })
+                TilesNeverOverlap(w, h, gui, l, input, textFont, HudMath.StatusTile(0.75f * F("size.hud.strip.cell"), textFont, label));
+        }
+
+        private static void TilesNeverOverlap(float w, float h, float gui, StripMath.Layout l, StripMath.Input input, float textFont, HudMath.Tile tile)
+        {
             Assert.True(tile.Line >= textFont * 1.3f, $"{w}x{h}@{gui}: line {tile.Line} too short for font {textFont}");
+            var gap = F("size.hud.status.strip.gap");
+            var pad = F("size.hud.status.pad");
             var sideL = l.StatusL - gap;
             var sideR = l.StatusR + gap;
             var perRow = StripMath.StatusPerRow(10, tile.W, gap, sideL - pad);

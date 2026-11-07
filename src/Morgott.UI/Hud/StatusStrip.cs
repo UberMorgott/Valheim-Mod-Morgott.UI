@@ -80,8 +80,35 @@ namespace Morgott.UI.PlayerHud
         // (HudMath.StatusTile), debuffs a thin red underline under the icon; gap size.hud.status.strip.gap.
         public static float StripIcon => Mathf.Clamp(Plugin.StatusSize?.Value ?? 0.75f, 0.4f, 1f) * ThemeTokens.GetFloat("size.hud.strip.cell", 85f);
         public static float StripGap => ThemeTokens.GetFloat("size.hud.status.strip.gap", 8f);
-        public static HudMath.Tile StripTile => HudMath.StatusTile(StripIcon,
-            StripMath.FontFloor(ThemeTokens.GetFloat("size.hud.font.status", 15f), HudArt.FloorPx(ThemeTokens.GetFloat("size.hud.font.status", 15f)), TextFloor.RootPx));
+        private static float StripFont => StripMath.FontFloor(ThemeTokens.GetFloat("size.hud.font.status", 15f), HudArt.FloorPx(ThemeTokens.GetFloat("size.hud.font.status", 15f)), TextFloor.RootPx);
+        // Tile width follows the widest label of both groups (user 2026-11-08: tiles closer together), one width for both
+        // so the rows stay a grid (HudCluster.Status sizes the rows from it).
+        private static readonly float[] LabelW = { -1f, -1f };
+        public static HudMath.Tile StripTile => HudMath.StatusTile(StripIcon, StripFont, Mathf.Max(LabelW[0], LabelW[1]));
+        private TMP_Text _probe;
+
+        // Widest name / time line of the shown effects at the tile font (text units); measured only when the set changes.
+        private void MeasureLabels()
+        {
+            if (!Upward) return;
+            if (!_probe)
+            {
+                _probe = _art.Text("LabelProbe", Root, "font.body", "color.text.body", StripFont, TextAlignmentOptions.Center);
+                WorldHud.TextLook.ApplyHudNumber(_probe);
+                _probe.gameObject.SetActive(false);
+            }
+            _probe.fontSize = StripFont;
+            var w = 0f;
+            foreach (var e in _entries)
+            {
+                var name = Localization.instance != null ? Localization.instance.Localize(e.Effect.m_name) : e.Effect.m_name;
+                w = Mathf.Max(w, _probe.GetPreferredValues(name ?? "", 0f, 0f).x);
+                // own icon text (e.g. "2:28:09") as it reads now, else the widest built-in timer form ("8:88", TickCell)
+                var time = StatusSource.HasOwnIconText(e.Effect) ? e.Effect.GetIconText() : "8:88";
+                w = Mathf.Max(w, _probe.GetPreferredValues(time ?? "", 0f, 0f).x);
+            }
+            LabelW[_harmful ? 1 : 0] = w;
+        }
         private float TileGap => Upward ? StripGap : ThemeTokens.GetFloat("size.hud.status.gap", 4f);
         private HudMath.Tile _shaped;
 
@@ -131,6 +158,7 @@ namespace Morgott.UI.PlayerHud
                 _entries.Add(new Entry { Effect = se, Hash = se.NameHash(), Class = c, Priority = prio });
             }
             _entries.Sort(Order);
+            if (changed) MeasureLabels();
             if (_popupOpen && changed) BuildPopup(); // keep the open list in step with the effects
         }
 
