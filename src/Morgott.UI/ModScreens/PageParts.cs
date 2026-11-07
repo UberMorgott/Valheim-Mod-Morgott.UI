@@ -1,6 +1,9 @@
 using System.Collections.Generic;
+using Morgott.UI.InfoScreens;
 using Morgott.UI.InventoryScreen;
+using Morgott.UI.Theme;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace Morgott.UI.ModScreens
 {
@@ -44,16 +47,56 @@ namespace Morgott.UI.ModScreens
             Geo.Place(canvas, Rt, box);
         }
 
-        // A group mapped into area at one fitting scale (ElPageMath.Fit over the group's bounding box).
+        // A framed pane like the compendium's reading pane (mockup 02: #02171B fill + the info.tab thin teal frame), the
+        // fill first; Place puts both on a box.
+        public sealed class Pane
+        {
+            public Image Fill, Frame;
+
+            public static Pane Make(Transform parent, string name, string reason)
+            {
+                var p = new Pane { Fill = new GameObject(name + "Fill", typeof(RectTransform)).AddComponent<Image>() };
+                p.Fill.transform.SetParent(parent, false);
+                p.Fill.raycastTarget = false;
+                p.Fill.color = ThemeTokens.GetColor("color.info.page.pane", new Color(0.008f, 0.09f, 0.106f, 1f));
+                DollCell.Mark(p.Fill, "content", reason + " fill");
+                p.Frame = InfoArt.OwnImage(parent, name, "info.tab", reason + " frame");
+                p.Frame.preserveAspect = false;
+                return p;
+            }
+
+            public void Place(RectTransform canvas, Box box, bool on)
+            {
+                foreach (var g in new[] { Fill, Frame })
+                {
+                    if (!g) continue;
+                    var want = on && (g == Fill || g.sprite);
+                    if (g.enabled != want) g.enabled = want;
+                    if (want) Geo.Place(canvas, g.rectTransform, box);
+                }
+            }
+
+            // Both drawn first under parent (index 0 / 1 after `after` children).
+            public void First(int at)
+            {
+                if (Fill && Fill.transform.GetSiblingIndex() != at) Fill.transform.SetSiblingIndex(at);
+                if (Frame && Frame.transform.GetSiblingIndex() != at + 1) Frame.transform.SetSiblingIndex(at + 1);
+            }
+        }
+
+        // A group mapped into area at one fitting scale (ElPageMath.Fit over the bounding box of its active parts; inactive parts
+        // go along with it).
         public static void Fit(RectTransform canvas, List<PagePart> parts, Box area)
         {
             if (parts == null || parts.Count == 0 || area.IsEmpty) return;
             float x0 = float.MaxValue, y0 = float.MaxValue, x1 = float.MinValue, y1 = float.MinValue;
             foreach (var p in parts)
             {
+                if (!p.Rt.gameObject.activeSelf) continue; // an inactive part (Progress, a mode's widgets) leaves no hole
                 x0 = Mathf.Min(x0, p.Box0.X); y0 = Mathf.Min(y0, p.Box0.Y);
                 x1 = Mathf.Max(x1, p.Box0.Right); y1 = Mathf.Max(y1, p.Box0.Bottom);
             }
+            if (x1 <= x0) return;
             var k = ElPageMath.Fit(x1 - x0, y1 - y0, area, out var ax, out var ay);
             foreach (var p in parts) p.Put(canvas, k, ax + (p.Box0.X - x0) * k, ay + (p.Box0.Y - y0) * k);
         }

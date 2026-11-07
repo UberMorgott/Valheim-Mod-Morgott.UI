@@ -20,7 +20,7 @@ namespace Morgott.UI.ModScreens
     //   column layout ElTabColumn stands down), its TabScrim over the row, the LT / RT gamepad hints at the row's ends.
     // - Body, per feature panel (TabContent/<X>Content): its main item list (MultiSelectItemList / SacrificeItemList /
     //   ItemList) = the list column (stretched to the body height), every other widget of the panel = one group fitted
-    //   into the framed pane (RuneSkinElPane, frame_inset well) at one scale, Epic Loot's own arrangement kept; the panel's
+    //   into the framed pane (RuneSkinElPane: the compendium pane's fill + thin frame) at one scale, Epic Loot's own arrangement kept; the panel's
     //   Title = the pane heading. Boxes come from the prefab layout captured on the first open.
     // The page is not movable (the unit's MovableWindow stays off while it shows).
     public sealed class ElPage : MonoBehaviour
@@ -38,7 +38,7 @@ namespace Morgott.UI.ModScreens
         private RuneWindowHeader _header;
         private MovableWindow _move;
         private bool _moveWasOn, _measured;
-        private Image _pane;
+        private PagePart.Pane _pane;
         private readonly List<Feature> _features = new List<Feature>();
 
         public static bool Shows(Transform t) => t && t.TryGetComponent<ElPage>(out var p) && p.isActiveAndEnabled;
@@ -88,9 +88,7 @@ namespace Morgott.UI.ModScreens
                 _features.Add(f);
             }
             // The pane well under every feature panel (frame_inset, mockup 02 pane frame).
-            _pane = InfoArt.OwnImage(_content, "RuneSkinElPane", "craft.well", "enchanting page pane (mockup 02 framed pane)");
-            _pane.preserveAspect = false;
-            _pane.transform.SetAsFirstSibling();
+            _pane = PagePart.Pane.Make(_content, "RuneSkinElPane", "enchanting page pane (mockup 02 framed pane)");
         }
 
         private void LateUpdate()
@@ -154,11 +152,8 @@ namespace Morgott.UI.ModScreens
         private void LayFeature(Feature f, Box body, float u)
         {
             ElPageMath.Split(body, f.List != null, out var column, out var pane);
-            if (_pane)
-            {
-                Geo.Place(_canvas, _pane.rectTransform, pane);
-                if (!_pane.enabled && _pane.sprite) _pane.enabled = true;
-            }
+            _pane?.First(0);
+            _pane?.Place(_canvas, pane, true);
             f.List?.Put(_canvas, column.W / f.List.Box0.W, column);
             var pad = 24f * u;
             var y = pane.Y + pad;

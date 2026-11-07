@@ -30,7 +30,7 @@ namespace Morgott.UI.GameScreens
         private PagePart _list, _buy, _sell, _coins;
         private RectTransform _topic;
         private readonly List<GameObject> _gated = new List<GameObject>();
-        private readonly Image[] _wells = new Image[4];
+        private readonly PagePart.Pane[] _wells = new PagePart.Pane[4];
 
         public static void Ensure(StoreGui s)
         {
@@ -60,8 +60,7 @@ namespace Morgott.UI.GameScreens
             _topic = Child("topic");
             for (var i = 0; i < _wells.Length; i++)
             {
-                _wells[i] = InfoArt.OwnImage(_store, "RuneSkinTradeWell" + i, "craft.well", "trader page board section well (mockup 04)");
-                _wells[i].preserveAspect = false;
+                _wells[i] = PagePart.Pane.Make(_store, "RuneSkinTradeWell" + i, "trader page board section well (mockup 04)");
             }
         }
 
@@ -86,6 +85,11 @@ namespace Morgott.UI.GameScreens
                 RenderGate.Set(_topic.gameObject, Gate, true);
                 _gated.Add(_topic.gameObject);
             }
+            // The vanilla backgrounds (their Morgott.UI panel stack = the page's opaque backing) draw first: vanilla's
+            // "border (1)" is a frame drawn over the window, and as the page backing it covered the window header and the
+            // Sell panel (run 20261107-143240 overdraw-tradepage covered=11).
+            foreach (var n in new[] { "border (1)", "bkg" })
+                if (Child(n) is RectTransform bg && bg.GetSiblingIndex() != 1) bg.SetSiblingIndex(1);
             var mod = ModPanel();
             var board = mod && mod.name == "MerchantPanel";
             var currencies = mod ? mod.Find("Currencies") as RectTransform : null;
@@ -104,8 +108,8 @@ namespace Morgott.UI.GameScreens
                 Hide(_coins.Rt.gameObject, currencies);
                 _coins.Put(_canvas, bar.H / _coins.Box0.H, bar.X, bar.Y);
             }
-            for (var i = 0; i < _wells.Length; i++)
-                if (_wells[i] && _wells[i].enabled != (board && _wells[i].sprite)) _wells[i].enabled = board && _wells[i].sprite;
+            if (!board)
+                foreach (var w in _wells) w?.Place(_canvas, default, false);
             if (!mod) return;
             // Drawn after the page (EL's TemperPanel moves itself to the first sibling, TemperPanel.cs:190/887/1010: under
             // the opaque store and gated by CoverCull there).
@@ -121,20 +125,29 @@ namespace Morgott.UI.GameScreens
                 for (var i = 0; i < Sections.Length; i++)
                 {
                     var cell = ElPageMath.Cell(right, i % 2, i / 2, g);
-                    if (_wells[i]) Geo.Place(_canvas, _wells[i].rectTransform, cell);
+                    _wells[i]?.Place(_canvas, cell, true);
                     var part = m.Sections[i];
                     var k = ElPageMath.Fit(part.Box0.W, part.Box0.H, new Box(cell.X + pad, cell.Y + pad, cell.W - 2f * pad, cell.H - 2f * pad), out var x0, out var y0);
                     part.Put(_canvas, k, x0, y0);
+                    // Its lists across the cell (Epic Loot's fixed-width scroll panels: SecretStash/Panel, Bounties/*Panel).
+                    foreach (Transform c in part.Rt)
+                        if (c is RectTransform list && c.name.EndsWith("Panel", System.StringComparison.Ordinal) && c.gameObject.activeSelf)
+                        {
+                            var b = Geo.BoxOf(_canvas, list);
+                            Geo.Place(_canvas, list, new Box(cell.X + pad, b.Y, cell.W - 2f * pad, b.H));
+                        }
                 }
-                if (m.Currencies != null)
-                {
-                    var room = bar.W - (m.Sundial != null ? bar.H + 8f * u : 0f);
-                    m.Currencies.Put(_canvas, Mathf.Min(bar.H / m.Currencies.Box0.H, room / m.Currencies.Box0.W), bar.X, bar.Y);
-                }
-                m.Sundial?.Put(_canvas, bar.H / m.Sundial.Box0.H, bar.Right - bar.H, bar.Y);
             }
             else if (m.Whole != null)
                 m.Whole.Put(_canvas, ElPageMath.Fit(m.Whole.Box0.W, m.Whole.Box0.H, right, out var x0, out var y0), x0, y0);
+            // Both panels' currencies (and the board's sundial) in the top bar (mockup 04).
+            if (m.Currencies != null)
+            {
+                var room = bar.W - (m.Sundial != null ? bar.H + 8f * u : 0f);
+                var kc = room / m.Currencies.Box0.W;
+                m.Currencies.Put(_canvas, kc, bar.X, bar.Y + (bar.H - m.Currencies.Box0.H * kc) / 2f);
+            }
+            m.Sundial?.Put(_canvas, bar.H / m.Sundial.Box0.H, bar.Right - bar.H, bar.Y);
         }
 
         private sealed class Mod
@@ -149,7 +162,8 @@ namespace Morgott.UI.GameScreens
             var row = 56f * u;
             var gap = 12f * u;
             var listBox = new Box(col.X, col.Y, col.W, Mathf.Max(0f, col.H - row - gap));
-            _list?.Put(_canvas, col.W / _list.Box0.W, listBox);
+            // Vanilla rows at ~1.25x (mockup 04 row height), the list stretched to the column.
+            _list?.Put(_canvas, Mathf.Min(1.25f, col.W / _list.Box0.W), listBox);
             var y = listBox.Bottom + gap;
             var half = (col.W - gap) / 2f;
             if (_buy != null) _buy.Put(_canvas, row / _buy.Box0.H, new Box(col.X, y, half, row));
@@ -170,19 +184,19 @@ namespace Morgott.UI.GameScreens
             m.Sundial = PagePart.Of(_canvas, mod.Find("Sundial") as RectTransform);
             return m;
         }
-        // The board's own window chrome (Morgott.UI panel stack + window header of the EpicLootBoard unit) is not drawn on
-        // the page: the wells frame its sections. The temper panel keeps its frame (fitted whole).
+        // The mod panel's own window chrome on the page: the board's whole Morgott.UI stack (the wells frame its sections),
+        // the temper panel's window header only (its frame stays; the header plate overlapped its column heads, run
+        // 20261107-143240). The page title names the trader.
         private void Chrome(Transform mod)
         {
-            if (mod.name != "MerchantPanel") return;
+            var prefix = mod.name == "MerchantPanel" ? "RuneSkin" : "RuneSkinWindow";
             foreach (Transform c in mod)
-                if (c.name.StartsWith("RuneSkin", System.StringComparison.Ordinal) && !_gated.Contains(c.gameObject))
+                if (c.name.StartsWith(prefix, System.StringComparison.Ordinal) && !_gated.Contains(c.gameObject))
                 {
                     RenderGate.Set(c.gameObject, Gate, true);
                     _gated.Add(c.gameObject);
                 }
         }
-
         // The vanilla coin purse duplicates the mod panel's own coin count: hidden while that panel shows one.
         private void Hide(GameObject coins, Transform currencies)
         {
