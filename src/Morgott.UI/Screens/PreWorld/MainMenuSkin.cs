@@ -801,6 +801,11 @@ namespace Morgott.UI.PreWorld
                     if (b.GetComponent<ButtonPlate>())
                         foreach (var t in b.GetComponentsInChildren<TMP_Text>(true))
                             if (!PreWorldKit.IsKeyHint(t.transform, b.transform)) ctx.Role(t, "button.label.menu", "main menu entry label (plated, rune face)");
+            // The world-start loading screen (LoadMainScene :2966 shows it, then the sync main scene load blocks the frame)
+            // is opaque black in vanilla (Loading/Bkg 0,0,0,1): as scrim (80 %) the world select showed through and the
+            // whole scene load looked like a frozen menu (player report 2026-11-08).
+            if (fejd.m_loading && fejd.m_loading.transform.Find("Bkg") is Transform loadingBkgT && loadingBkgT.TryGetComponent<Image>(out var loadingBkg))
+                ctx.Role(loadingBkg, "skip", "world-start loading screen backdrop (vanilla opaque black, covers the menu)");
             ctx.Role(fejd.m_versionLabel, "text.version", "FejdStartup.m_versionLabel");
             // Merch store button (m_merchStoreButtonParent): its target graphic is the merch picture (sprite
             // merch_overlay_final_*); as a "button" it became an empty plate (run 20261022-105515). Picture kept.
