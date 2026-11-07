@@ -26,6 +26,7 @@ namespace Morgott.UI.Compat
         public const string EpicLootGuid = "randyknapp.mods.epicloot";
         public const string EpicLootAssembly = "EpicLoot";
         public const string EpicLootEnchantingUi = "EpicLoot_UnityLib.EnchantingTableUI";
+        public const string EpicLootSetRarityColor = "EpicLoot_UnityLib.SetRarityColor";
         public const string EpicLootMerchantPanel = "EpicLoot.Adventure.MerchantPanel";
         public const string EpicLootTemperPanel = "EpicLoot.TemperPanel";
         public const string EpicLootAbilityBar = "EpicLoot.Abilities.AbilityBar";

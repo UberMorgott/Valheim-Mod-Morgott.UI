@@ -110,6 +110,7 @@ namespace Morgott.UI.ModScreens
             {
                 // Epic Loot's augment / craft result dialogs (clones of the vanilla variant dialog) inside the window.
                 ElDialogs.Roles(ctx, root);
+                RarityColoured(ctx, root);
                 foreach (var tabs in root.GetComponentsInChildren<TabHandler>(true))
                     foreach (var tab in tabs.m_tabs)
                         if (tab != null && tab.m_button && tab.m_button.targetGraphic is Image tg && !ctx.AdapterRoles.ContainsKey(tg))
@@ -147,6 +148,24 @@ namespace Morgott.UI.ModScreens
                     ctx.Role(img, "content", "mod HUD art (kept)");
                 }
             }
+        }
+
+        // Graphics Epic Loot colours by rarity (SetRarityColor.Graphics: the Enchant tab's rarity selectors, SetRarityColor.cs
+        // Refresh) keep Epic Loot's art and colour. As a wide toggle the selector's selection graphic took craft.row.selected:
+        // the theme colour replaced the rarity colour (user 2026-11-07: Mythic selected drew green) and its filled plate drew
+        // over the label, so the selected button showed blank.
+        private static Type _rarityColor;
+
+        private static void RarityColoured(ScreenContext ctx, Transform root)
+        {
+            _rarityColor = _rarityColor ?? Morgott.Core.TypeLookup.ByFullName(ModCompat.EpicLootSetRarityColor);
+            if (_rarityColor == null) return;
+            var field = HarmonyLib.AccessTools.Field(_rarityColor, "Graphics");
+            foreach (var c in root.GetComponentsInChildren(_rarityColor, true))
+                if (field?.GetValue(c) is Graphic[] graphics)
+                    foreach (var g in graphics)
+                        // Texts keep the theme face; their rarity colour comes back after the pass (After: RefreshAll).
+                        if (g is Image && !ctx.AdapterRoles.ContainsKey(g)) ctx.Role(g, "content", "Epic Loot rarity-coloured graphic (SetRarityColor keeps its art + colour)");
         }
 
         // One Epic Loot enchanting tab (ForeignMath.ElTabPartOf): icon -> the M7 kit glyph of the tab (Epic Loot's art
@@ -216,7 +235,7 @@ namespace Morgott.UI.ModScreens
                 if (r.height <= 0f || r.width < r.height * 1.6f) continue;
                 if (!t.GetComponentInChildren<Text>(true) && !t.GetComponentInChildren<TMP_Text>(true)) continue;
                 ctx.Role(box, "craft.row", "wide labelled toggle plate");
-                if (t.graphic is Image check && check != box)
+                if (t.graphic is Image check && check != box && !ctx.AdapterRoles.ContainsKey(check))
                 {
                     var c = check.rectTransform.rect;
                     ctx.Role(check, c.width >= r.width * 0.8f ? "craft.row.selected" : "toggle.check", "wide toggle state");
@@ -280,6 +299,8 @@ namespace Morgott.UI.ModScreens
                         if (tab != null && tab.m_button) ElTabCell.Ensure(tab.m_button);
                 }
                 ElPage.Ensure(unit); // full-screen page (user 2026-11-07)
+                // The pass recoloured the rarity-coloured texts: Epic Loot puts its rarity colours back (SetRarityColor.RefreshAll).
+                if (_rarityColor != null) HarmonyLib.AccessTools.Method(_rarityColor, "RefreshAll")?.Invoke(null, null);
                 return;
             }
             if (family != OwnershipRegistry.EpicLootBoard) return;
