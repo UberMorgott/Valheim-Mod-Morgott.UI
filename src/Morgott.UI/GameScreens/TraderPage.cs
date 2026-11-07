@@ -31,7 +31,7 @@ namespace Morgott.UI.GameScreens
         private RectTransform _topic;
         private readonly List<GameObject> _gated = new List<GameObject>();
         private readonly PagePart.Pane[] _wells = new PagePart.Pane[4];
-        private PagePart.Pane _storeWell;
+        private PagePart.Pane _storeWell, _barCap;
 
         public static void Ensure(StoreGui s)
         {
@@ -62,6 +62,7 @@ namespace Morgott.UI.GameScreens
             for (var i = 0; i < _wells.Length; i++)
                 _wells[i] = PagePart.Pane.Make(_store, "RuneSkinTradeWell" + i, "trader page board section well (mockup 04)");
             _storeWell = PagePart.Pane.Make(_store, "RuneSkinTradeStoreWell", "trader page store column well (mockup 04)");
+            _barCap = PagePart.Pane.Make(_store, "RuneSkinTradeBarCap", "trader page top-bar currency cap (mockup 04)");
             // The stock list's content from the top of its (now taller) viewport: vanilla centred it in a fixed-height one
             // (run 20261107-145553: rows began ~240 px down).
             if (_gui.m_listRoot is RectTransform lr)
@@ -113,13 +114,15 @@ namespace Morgott.UI.GameScreens
             var inv = InventorySkin.Instance;
             var body = _page.Layout(inv ? inv.SkinScaleValue : 1f, _header);
             if (body.IsEmpty) return;
-            // Mockup 04 body from y 207 (the title plaque ends at 192).
-            body = new Box(body.X, body.Y - 25f * u, body.W, body.H + 25f * u);
+            // Mockup 04 body ~15 px under the title plaque (run 20261107-151323: the store well touched it at y 207).
+            body = new Box(body.X, body.Y - 10f * u, body.W, body.H + 10f * u);
             ElPageMath.Trader(body, mod, out var col, out var right);
             // Right after the page backing ("border (1)") and the header face that follows it, under the store widgets.
             if (_storeWell != null && _storeWell.Fill && (Child(RuneWindowHeader.FaceName) ?? Child("border (1)")) is RectTransform pb)
                 _storeWell.First(_storeWell.Fill.transform.GetSiblingIndex() > pb.GetSiblingIndex() ? pb.GetSiblingIndex() + 1 : pb.GetSiblingIndex());
-            _storeWell?.Place(_canvas, new Box(col.X - 12f * u, col.Y - 12f * u, col.W + 24f * u, col.H + 24f * u), true);
+            _storeWell?.Place(_canvas, new Box(col.X - 12f * u, col.Y, col.W + 24f * u, col.H + 12f * u), true);
+            // One key-cap frame behind the top-bar currencies (mockup 04 currency caps).
+            _barCap?.Place(_canvas, new Box(bar.X - 8f * u, bar.Y - 4f * u, bar.W + 16f * u, bar.H + 8f * u), mod || _coins != null, fill: false); // frame only: drawn over the vanilla coin purse
             StoreColumn(col, u);
             if (_coins != null)
             {
@@ -161,7 +164,7 @@ namespace Morgott.UI.GameScreens
             {
                 // Inset by the panel stack's reach (its frame art runs past the panel box: run 20261107-144822 x 585 vs 632).
                 var reach = 48f * u;
-                var zone = new Box(right.X + reach, right.Y + reach, right.W - 2f * reach, right.H - 1.5f * reach); // its column heads sit above its box
+                var zone = new Box(right.X + reach, right.Y + 1.5f * reach, right.W - 2f * reach, right.H - 2f * reach); // its column heads sit above its box
                 m.Whole.Put(_canvas, ElPageMath.Fit(m.Whole.Box0.W, m.Whole.Box0.H, zone, out var x0, out var y0), x0, y0);
             }
             // Both panels' currencies (and the board's sundial) in the top bar (mockup 04).
@@ -193,7 +196,8 @@ namespace Morgott.UI.GameScreens
             if (_buy != null) _buy.Put(_canvas, row / _buy.Box0.H, new Box(col.X, y, half, row));
             if (_sell != null)
             {
-                var k = Mathf.Min(row / _sell.Box0.H, half / _sell.Box0.W);
+                // Inside the Buy row (its own panel stack reaches past it: run 20261107-151323 stuck out 17 px below).
+                var k = Mathf.Min(row * 0.7f / _sell.Box0.H, half / _sell.Box0.W);
                 _sell.Put(_canvas, k, col.X + half + gap + (half - _sell.Box0.W * k) / 2f, y + (row - _sell.Box0.H * k) / 2f);
             }
         }

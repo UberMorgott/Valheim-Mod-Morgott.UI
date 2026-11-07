@@ -65,12 +65,12 @@ namespace Morgott.UI.ModScreens
                 return p;
             }
 
-            public void Place(RectTransform canvas, Box box, bool on)
+            public void Place(RectTransform canvas, Box box, bool on, bool fill = true)
             {
                 foreach (var g in new[] { Fill, Frame })
                 {
                     if (!g) continue;
-                    var want = on && (g == Fill || g.sprite);
+                    var want = on && (g == Fill ? fill : (bool)g.sprite);
                     if (g.enabled != want) g.enabled = want;
                     if (want) Geo.Place(canvas, g.rectTransform, box);
                 }
