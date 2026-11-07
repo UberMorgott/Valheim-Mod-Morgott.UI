@@ -127,7 +127,7 @@ namespace Morgott.UI.PlayerHud
             if (!(up > 0f)) return;
             e.Set = e.Home + new Vector2(0f, StripClearMath.Units(want, up));
             rt.anchoredPosition = e.Set;
-            Plugin.Log.LogInfo($"[Morgott.UI] strip clear: {e.Name} lift {e.LiftPx:0} -> {want:0} px (bottom at home {bottom - e.LiftPx:0} px, strip top {_stripTop:0} px + gap {gap:0})");
+            if (Plugin.Verbose) Plugin.Log.LogInfo($"[Morgott.UI] strip clear: {e.Name} lift {e.LiftPx:0} -> {want:0} px (bottom at home {bottom - e.LiftPx:0} px, strip top {_stripTop:0} px + gap {gap:0})");
             e.LiftPx = want;
         }
 
@@ -171,7 +171,7 @@ namespace Morgott.UI.PlayerHud
             var to = StripClearMath.SiblingBelow(strip.GetSiblingIndex(), _indices);
             if (to < 0) return;
             strip.SetSiblingIndex(to);
-            Plugin.Log.LogInfo($"[Morgott.UI] strip clear: strip sibling -> {to} (below {_indices.Count} bottom HUD element(s))");
+            if (Plugin.Verbose) Plugin.Log.LogInfo($"[Morgott.UI] strip clear: strip sibling -> {to} (below {_indices.Count} bottom HUD element(s))");
         }
 
         // Harness read side: name -> applied lift (screen px).

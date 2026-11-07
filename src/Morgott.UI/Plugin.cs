@@ -54,6 +54,9 @@ namespace Morgott.UI
         private static ConfigEntry<bool> _requireAssets;
         private static ConfigEntry<string> _modUiOptOut;
         public static ConfigEntry<bool> WatchTheme { get; private set; }
+        private static ConfigEntry<bool> _verboseLog;
+        // Development diagnostics (skin counts per screen, mod units, HUD keep-out moves): off in play.
+        public static bool Verbose => _verboseLog != null && _verboseLog.Value;
         private int _ownOrder;
 
         // Ownership switches (family, what Morgott.UI does): restart-only by design (families freeze at startup), advanced
@@ -186,6 +189,9 @@ namespace Morgott.UI
             _requireAssets = Config.Bind("Diagnostics", "RequireAssets", true, new ConfigDescription(
                 "Take a family only when its theme assets loaded (otherwise the other skin keeps it). Off = take it anyway (development before the art bundle exists). Read once at startup.",
                 null, new ConfigurationManagerAttributes { IsAdvanced = true, Order = 2 }));
+            _verboseLog = Config.Bind("Diagnostics", "VerboseLog", false, new ConfigDescription(
+                "Write development diagnostics to the log: skin counts per screen (diag), mod panel units, HUD strip keep-out moves. Warnings (unknown graphics, theme issues) are always written.",
+                null, new ConfigurationManagerAttributes { IsAdvanced = true, Order = 0 }));
             WatchTheme = Config.Bind("Diagnostics", "WatchTheme", true, new ConfigDescription(
                 "Reload the theme when the override BepInEx\\config\\Morgott.UI\\theme.json is written (0.5 s after the last change; same as the ui_reload console command). The override lists only the entries it changes (layered over the shipped theme; // comments allowed). Read once at startup.",
                 null, new ConfigurationManagerAttributes { IsAdvanced = true, Order = 1 }));

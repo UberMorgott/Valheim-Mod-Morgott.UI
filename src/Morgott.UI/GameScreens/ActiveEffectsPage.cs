@@ -397,11 +397,11 @@ namespace Morgott.UI.GameScreens
 
         private TMP_Text Text(RectTransform parent, string name, float size, TextAlignmentOptions align)
         {
-            var t = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI)).GetComponent<TextMeshProUGUI>();
+            // the body face until the role pass runs
+            var t = UiText.Add(new GameObject(name, typeof(RectTransform)), Dialog && Dialog.m_textArea ? Dialog.m_textArea.font : null);
             var rt = t.rectTransform;
             rt.SetParent(parent, false);
             rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0f, 1f);
-            if (Dialog && Dialog.m_textArea) t.font = Dialog.m_textArea.font; // the body face until the role pass runs
             t.enableAutoSizing = false;
             t.fontSize = size;
             t.alignment = align;

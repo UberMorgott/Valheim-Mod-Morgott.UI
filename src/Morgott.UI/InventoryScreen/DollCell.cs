@@ -43,13 +43,11 @@ namespace Morgott.UI.InventoryScreen
             icon.enabled = false;
             Mark(icon, "content", "doll cell item icon");
             cell.Icon = icon;
-            var amount = new GameObject("Amount", typeof(RectTransform)).AddComponent<TextMeshProUGUI>();
+            var amount = UiText.Add(new GameObject("Amount", typeof(RectTransform)));
             Stretch(amount.rectTransform, rt, 4f);
             amount.alignment = TextAlignmentOptions.BottomRight;
             amount.fontSize = 16f;
             amount.raycastTarget = false;
-            var font = ThemeTokens.GetFont("font.body");
-            if (font) amount.font = font;
             amount.text = "";
             Mark(amount, "content", "doll cell amount (live value)");
             cell.Amount = amount;

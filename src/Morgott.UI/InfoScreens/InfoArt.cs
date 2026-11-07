@@ -44,18 +44,13 @@ namespace Morgott.UI.InfoScreens
             return text;
         }
 
-        // TMP created inactive with the theme font set before its Awake (no "LiberationSans not found" warning).
+        // TMP with the role's face set before its Awake (UiText).
         public static TextMeshProUGUI NewText(string name, Transform parent, string fontRole)
         {
             var go = new GameObject(name, typeof(RectTransform));
-            go.SetActive(false);
             go.transform.SetParent(parent, false);
-            var text = go.AddComponent<TextMeshProUGUI>();
             var role = ThemeTokens.Role(fontRole);
-            var font = role != null && role.Font ? role.Font : ThemeTokens.GetFont("font.body");
-            if (font) text.font = font;
-            go.SetActive(true);
-            return text;
+            return UiText.Add(go, role != null && role.Font ? role.Font : null);
         }
 
         // Rect in the parent's space from its top-left corner (x right, y down), size w x h; parentH unused (pivot top-left).

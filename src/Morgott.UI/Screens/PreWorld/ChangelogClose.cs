@@ -57,7 +57,7 @@ namespace Morgott.UI.PreWorld
             lr.anchorMin = Vector2.zero;
             lr.anchorMax = Vector2.one;
             lr.offsetMin = lr.offsetMax = Vector2.zero;
-            var text = label.AddComponent<TextMeshProUGUI>();
+            var text = UiText.Add(label);
             text.text = "×";
             text.alignment = TextAlignmentOptions.Center;
             text.fontSize = ThemeTokens.GetFloat("size.changelog.close.font", 30f);

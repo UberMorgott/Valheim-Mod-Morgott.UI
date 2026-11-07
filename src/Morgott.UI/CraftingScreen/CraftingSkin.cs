@@ -210,16 +210,11 @@ namespace Morgott.UI.CraftingScreen
 
         private TMP_Text NewText(string name, RectTransform parent, string value)
         {
-            var t = new GameObject(name, typeof(RectTransform)).AddComponent<TextMeshProUGUI>();
+            var src = CraftLabel();
+            var t = UiText.Add(new GameObject(name, typeof(RectTransform)), src ? src.font : null, src ? src.fontSharedMaterial : null);
             t.rectTransform.SetParent(parent, false);
             Stretch(t.rectTransform);
-            var src = CraftLabel();
-            if (src)
-            {
-                t.font = src.font;
-                t.fontSharedMaterial = src.fontSharedMaterial;
-                t.fontStyle = src.fontStyle;
-            }
+            if (src) t.fontStyle = src.fontStyle;
             t.alignment = TextAlignmentOptions.Center;
             t.textWrappingMode = TextWrappingModes.NoWrap;
             t.raycastTarget = false;

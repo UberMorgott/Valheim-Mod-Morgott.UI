@@ -118,7 +118,7 @@ namespace Morgott.UI.Diagnostics
             if (!LastSummary.TryGetValue(report.ScreenId, out var prev) || prev != summary)
             {
                 LastSummary[report.ScreenId] = summary;
-                Plugin.Log?.LogInfo($"[Morgott.UI] diag {summary}");
+                if (Plugin.Verbose) Plugin.Log?.LogInfo($"[Morgott.UI] diag {summary}");
             }
             foreach (var row in report.Rows)
                 if (row.Result.Outcome == Outcome.Unknown && Bounded.AddCapped(WarnedUnknown, report.ScreenId + "|" + row.Path, MaxWarnedUnknown))

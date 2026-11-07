@@ -214,14 +214,12 @@ namespace Morgott.UI.PreWorld
         private static TMP_Text Text(string name, Transform parent, string font, string color, float size, TextAlignmentOptions align)
         {
             var rt = Rect(name, parent);
-            var t = rt.gameObject.AddComponent<TextMeshProUGUI>();
+            var t = UiText.Add(rt.gameObject, ThemeTokens.GetFont(font));
             t.raycastTarget = false;
             t.textWrappingMode = TextWrappingModes.NoWrap;
             t.overflowMode = TextOverflowModes.Ellipsis;
             t.alignment = align;
             t.fontSize = size;
-            var f = ThemeTokens.GetFont(font);
-            if (f) t.font = f;
             t.color = ThemeTokens.GetColor(color, Color.white);
             return t;
         }

@@ -92,16 +92,14 @@ namespace Morgott.UI.PlayerHud
         public TMP_Text Text(string name, Transform parent, string fontToken, string colorToken, float size, TextAlignmentOptions align, bool glow = false)
         {
             var rt = Rect(name, parent);
-            var t = rt.gameObject.AddComponent<TextMeshProUGUI>();
+            var font = ThemeTokens.GetFont(fontToken);
+            var t = UiText.Add(rt.gameObject, font, glow && font ? GlowMaterial(font) : null);
             t.raycastTarget = false;
             t.richText = false;
             t.textWrappingMode = TextWrappingModes.NoWrap;
             t.overflowMode = TextOverflowModes.Overflow;
             t.alignment = align;
             t.fontSize = size;
-            var font = ThemeTokens.GetFont(fontToken);
-            if (font) t.font = font;
-            if (glow && font && GlowMaterial(font) is Material gm) t.fontSharedMaterial = gm;
             t.color = ThemeTokens.GetColor(colorToken, Color.white);
             var floor = rt.gameObject.AddComponent<TextFloor>();
             floor.Base = size;

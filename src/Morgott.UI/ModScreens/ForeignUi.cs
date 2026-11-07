@@ -338,8 +338,11 @@ namespace Morgott.UI.ModScreens
             SkinDiagnostics_Note(id, unit);
         }
 
-        private static void SkinDiagnostics_Note(string id, Transform unit) =>
-            Plugin.Log.LogInfo($"[Morgott.UI] fallback unit {id} ({Diagnostics.SkinDiagnostics.PathOf(unit, null)})");
+        // A unit of this restyler (precise adapter or generic rules), not an unstyled panel: its counts are the "diag" line.
+        private static void SkinDiagnostics_Note(string id, Transform unit)
+        {
+            if (Plugin.Verbose) Plugin.Log.LogInfo($"[Morgott.UI] mod unit {id} ({Diagnostics.SkinDiagnostics.PathOf(unit, null)})");
+        }
 
         private static string Clean(string n) => n.Replace("(Clone)", "").Trim();
 

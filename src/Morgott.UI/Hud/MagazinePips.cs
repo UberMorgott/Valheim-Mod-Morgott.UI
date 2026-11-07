@@ -163,7 +163,7 @@ namespace Morgott.UI.PlayerHud
             _root.sizeDelta = Vector2.zero;
             var go = new GameObject("Count", typeof(RectTransform));
             go.transform.SetParent(_root, false);
-            _text = go.AddComponent<TextMeshProUGUI>();
+            _text = UiText.Add(go);
             _text.raycastTarget = false;
             _text.richText = false;
             _text.textWrappingMode = TextWrappingModes.NoWrap;
