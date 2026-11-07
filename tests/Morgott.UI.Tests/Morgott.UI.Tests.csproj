@@ -73,7 +73,11 @@
     <Compile Include="..\..\src\Morgott.UI\ItemBrowser\SourceNames.cs" Link="Linked\SourceNames.cs" />
     <Compile Include="..\..\src\Morgott.UI\ItemBrowser\PageModel.cs" Link="Linked\PageModel.cs" />
     <Compile Include="..\..\src\Morgott.UI\Icons\ModStatusIconMap.cs" Link="Linked\ModStatusIconMap.cs" />
+    <Compile Include="..\..\src\Morgott.UI\Compat\BuildCameraWords.cs" Link="Linked\BuildCameraWords.cs" />
+    <Compile Include="..\..\src\Morgott.UI\WorldHud\ComfortBadgeMath.cs" Link="Linked\ComfortBadgeMath.cs" />
     <EmbeddedResource Include="..\..\src\Morgott.UI\Theme\default-theme.json" LogicalName="Morgott.UI.default-theme.json" />
+    <EmbeddedResource Include="..\..\src\Morgott.UI\Translations\English.json" LogicalName="Morgott.UI.Translations.English.json" />
+    <EmbeddedResource Include="..\..\src\Morgott.UI\Translations\Russian.json" LogicalName="Morgott.UI.Translations.Russian.json" />
     <None Include="..\..\src\Morgott.UI\Assets\status_icons.json" Link="icons\status_icons.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
