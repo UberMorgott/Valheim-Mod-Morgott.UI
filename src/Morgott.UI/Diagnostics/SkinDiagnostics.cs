@@ -93,6 +93,7 @@ namespace Morgott.UI.Diagnostics
         private static readonly Dictionary<string, ScreenReport> Last = new Dictionary<string, ScreenReport>();
         private static readonly List<string> ThemeIssues = new List<string>();
         private static readonly HashSet<string> WarnedUnknown = new HashSet<string>();
+        private static readonly HashSet<string> NotedDegraded = new HashSet<string>();
         private static readonly Dictionary<string, string> LastSummary = new Dictionary<string, string>();
 
         public static string DumpDir => Path.Combine(BepInEx.Paths.BepInExRootPath, "Morgott.UI", "diag");
@@ -121,7 +122,10 @@ namespace Morgott.UI.Diagnostics
                 if (Plugin.Verbose) Plugin.Log?.LogInfo($"[Morgott.UI] diag {summary}");
             }
             foreach (var row in report.Rows)
-                if (row.Result.Outcome == Outcome.Unknown && Bounded.AddCapped(WarnedUnknown, report.ScreenId + "|" + row.Path, MaxWarnedUnknown))
+                // A degraded row of an early pass is gone from the dump once a later pass styles it (UnifiedPopup Awake).
+                if (row.Result.Outcome == Outcome.Degraded && Plugin.Verbose && Bounded.AddCapped(NotedDegraded, report.ScreenId + "|" + row.Path, MaxWarnedUnknown))
+                    Plugin.Log?.LogInfo($"[Morgott.UI] degraded {report.ScreenId}: {row.Path} [{row.Component} {row.Detail}] {row.Result.Reason}");
+                else if (row.Result.Outcome == Outcome.Unknown && Bounded.AddCapped(WarnedUnknown, report.ScreenId + "|" + row.Path, MaxWarnedUnknown))
                     Plugin.Log?.LogWarning($"[Morgott.UI] unknown {report.ScreenId}: {row.Path} [{row.Component} {row.Detail}] {row.Result.Reason}");
         }
 
