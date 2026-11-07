@@ -159,6 +159,9 @@ namespace Morgott.UI.ItemBrowser
         public static PageSection HoverKey(bool recipe, bool usedIn, bool typing) =>
             typing ? PageSection.None : recipe ? PageSection.Recipe : usedIn ? PageSection.UsedIn : PageSection.None;
 
+        /// <summary>Core IItemBrowser section -> page section ("Obtained from" = recipe / sources at the top).</summary>
+        public static PageSection SectionOf(ItemPageSection s) => s == ItemPageSection.UsedIn ? PageSection.UsedIn : PageSection.Recipe;
+
         /// <summary>Page scroll (block index) a hover key opens at: the "Used in" header block, else the top.</summary>
         public static int SectionScroll(PageSection s, int usedHeaderBlock, int maxScroll) =>
             s == PageSection.UsedIn ? Math.Max(0, Math.Min(usedHeaderBlock, maxScroll)) : 0;

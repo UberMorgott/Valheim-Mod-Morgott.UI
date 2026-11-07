@@ -18,7 +18,7 @@ namespace Morgott.UI
     // Morgott.UI (was RuneSkin): clean-room UI skin that restyles live vanilla uGUI from theme tokens (no prefab swaps, no
     // transpilers). Awake: config -> theme + asset bundle -> ownership frozen -> ITheme registered -> Harmony patches of owned families.
     [BepInPlugin(Contracts.UiGuid, "Morgott.UI", Version)]
-    [BepInDependency(Contracts.CoreGuid)]
+    [BepInDependency(Contracts.CoreGuid, "0.5.1")] // IItemBrowser
     [BepInDependency(Jotunn.Main.ModGuid)]
     [BepInProcess("valheim.exe")]
     public sealed class Plugin : BaseUnityPlugin
@@ -136,6 +136,7 @@ namespace Morgott.UI
             Texts = Translations.Load(typeof(Plugin).Assembly, "Morgott.UI.Translations.");
             // Shared VFX (Core IVfx) do not depend on the theme: registered even when the skin stays inactive.
             if (!CoreApi.Headless) Services.Register<IVfx>(VfxProvider.Instance = new VfxProvider(System.IO.Path.GetDirectoryName(Info.Location)));
+            if (!CoreApi.Headless) Services.Register<IItemBrowser>(ItemBrowser.BrowserService.Instance); // inactive (false) until the ITEMS tab exists
             // Icons and compat text do not depend on the theme either (MorgottTweaks moved them here, TASKS 4.5).
             _harmony = new Harmony(Contracts.UiGuid);
             Icons.IconRestyle.Register(Config, _harmony);
@@ -272,6 +273,7 @@ namespace Morgott.UI
         {
             if (_theme != null) Services.Unregister<ITheme>(_theme);
             if (VfxProvider.Instance != null) Services.Unregister<IVfx>(VfxProvider.Instance);
+            Services.Unregister<IItemBrowser>(ItemBrowser.BrowserService.Instance);
             _harmony?.UnpatchSelf();
         }
 

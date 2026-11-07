@@ -350,6 +350,13 @@ namespace Morgott.UI.Tests
             Assert.Equal(want, PageModel.HoverKey(recipe, used, typing));
 
         [Fact]
+        public void Core_item_browser_sections_map_to_page_sections()
+        {
+            Assert.Equal(PageSection.Recipe, PageModel.SectionOf(ItemPageSection.Sources));
+            Assert.Equal(PageSection.UsedIn, PageModel.SectionOf(ItemPageSection.UsedIn));
+        }
+
+        [Fact]
         public void Used_in_key_scrolls_to_the_used_in_header()
         {
             Assert.Equal(0, PageModel.SectionScroll(PageSection.Recipe, 4, 6));
