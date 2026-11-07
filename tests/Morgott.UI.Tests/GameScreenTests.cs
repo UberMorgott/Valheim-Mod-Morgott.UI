@@ -15,6 +15,30 @@ namespace Morgott.UI.Tests
         public void BannerWidthClamps(float tip, float pad, float min, float max, float want) =>
             Assert.Equal(want, GameScreenMath.BannerWidth(tip, pad, min, max), 3);
 
+        // Player screenshot 2026-11-08: the split panel stayed at vanilla's top-left spot while our layout moved the player
+        // window. Vanilla prefab: player (40, 40, 570x287), panel 368x260 centred at (334, 350) -> offset (9, 166.5).
+        [Fact]
+        public void SplitPanelFollowsThePlayerWindowAtTheVanillaOffset()
+        {
+            var at = GameScreenMath.SplitPanelAt(new InventoryScreen.Box(40f, 40f, 570f, 287f), 9f, 166.5f, 368f, 260f, 1920f, 1080f);
+            Assert.Equal(150f, at.X, 3); // vanilla spot when the window is where vanilla has it
+            Assert.Equal(220f, at.Y, 3);
+            at = GameScreenMath.SplitPanelAt(new InventoryScreen.Box(700f, 500f, 600f, 400f), 9f, 166.5f, 368f, 260f, 1920f, 1080f);
+            Assert.Equal(1000f + 9f - 184f, at.X, 3); // moved with the window
+            Assert.Equal(700f + 166.5f - 130f, at.Y, 3);
+        }
+
+        [Fact]
+        public void SplitPanelIsClampedToTheCanvas()
+        {
+            var at = GameScreenMath.SplitPanelAt(new InventoryScreen.Box(1500f, 900f, 600f, 400f), 9f, 166.5f, 368f, 260f, 1920f, 1080f);
+            Assert.Equal(1920f - 368f, at.X, 3);
+            Assert.Equal(1080f - 260f, at.Y, 3);
+            at = GameScreenMath.SplitPanelAt(new InventoryScreen.Box(-500f, -500f, 100f, 100f), 0f, 0f, 368f, 260f, 1920f, 1080f);
+            Assert.Equal(0f, at.X, 3);
+            Assert.Equal(0f, at.Y, 3);
+        }
+
         [Fact]
         public void BannerHeightStacksTitleAndPads() => Assert.Equal(160f, GameScreenMath.BannerHeight(100f, 24f, 18f), 3);
 

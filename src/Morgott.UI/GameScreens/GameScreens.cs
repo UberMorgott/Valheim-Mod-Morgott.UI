@@ -832,6 +832,48 @@ namespace Morgott.UI.GameScreens
                 GameScreenKit.Primary(ctx, GameScreenKit.Field<Button>(s, "m_splitOkButton"), "split OK (button_selected)");
                 PopupSkin.Backdrops(ctx, r);
             });
+            SplitAnchor.Ensure(s);
+        }
+    }
+
+    // Vanilla opens the split panel at a fixed spot of the inventory root (SplitDialog.OnEnable: m_panel.anchoredPosition =
+    // m_panelNormalPosition.anchoredPosition, SplitDialog.cs:57) chosen over vanilla's player panel (root/Player, top-left).
+    // Our windowed layout moves the player window, so the panel stayed alone in the top-left corner (player screenshot
+    // 2026-11-08). The panel keeps vanilla's offset from the player panel (measured on the prefab at Awake, before any
+    // layout), clamped to the screen. Touch keeps vanilla (m_panelTouchPosition already rides on the player panel).
+    public sealed class SplitAnchor : MonoBehaviour
+    {
+        private RectTransform _panel, _player, _canvas;
+        private float _offX, _offY;
+
+        public static void Ensure(SplitDialog s)
+        {
+            var gui = s ? s.GetComponentInParent<InventoryGui>(true) : null;
+            var panel = GameScreenKit.Field<RectTransform>(s, "m_panel");
+            var normal = GameScreenKit.Field<RectTransform>(s, "m_panelNormalPosition");
+            var canvas = s ? s.GetComponentInParent<Canvas>(true) : null;
+            if (!gui || !gui.m_player || !panel || !normal || !canvas || s.GetComponent<SplitAnchor>()) return;
+            var a = s.gameObject.AddComponent<SplitAnchor>();
+            a._panel = panel;
+            a._player = gui.m_player;
+            a._canvas = (RectTransform)canvas.rootCanvas.transform;
+            // Vanilla geometry: the panel where OnEnable puts it, the player panel as the prefab has it.
+            var keep = panel.anchoredPosition;
+            panel.anchoredPosition = normal.anchoredPosition;
+            var d = InventoryScreen.Geo.BoxOf(a._canvas, panel);
+            panel.anchoredPosition = keep;
+            var p = InventoryScreen.Geo.BoxOf(a._canvas, a._player);
+            a._offX = d.X + d.W / 2f - (p.X + p.W / 2f);
+            a._offY = d.Y + d.H / 2f - (p.Y + p.H / 2f);
+        }
+
+        private void LateUpdate()
+        {
+            if (!_panel || !_player || !_canvas || ZInput.IsTouchActive()) return;
+            var d = InventoryScreen.Geo.BoxOf(_canvas, _panel);
+            var at = GameScreenMath.SplitPanelAt(InventoryScreen.Geo.BoxOf(_canvas, _player), _offX, _offY, d.W, d.H, _canvas.rect.width, _canvas.rect.height);
+            if (Mathf.Abs(at.X - d.X) > 0.25f || Mathf.Abs(at.Y - d.Y) > 0.25f)
+                InventoryScreen.Geo.SetTopLeft(_panel, InventoryScreen.Geo.World(_canvas, at.X, at.Y));
         }
     }
 

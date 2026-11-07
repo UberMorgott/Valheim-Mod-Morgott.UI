@@ -6,6 +6,15 @@ namespace Morgott.UI.GameScreens
     // text-a), unit tested.
     public static class GameScreenMath
     {
+        // Split stack panel top-left (canvas units, y down): centred at vanilla's offset (offX, offY) from the player
+        // window's centre, kept on the canvas (a panel larger than the canvas sticks to its top-left).
+        public static Morgott.UI.InventoryScreen.Box SplitPanelAt(Morgott.UI.InventoryScreen.Box player, float offX, float offY, float w, float h, float canvasW, float canvasH)
+        {
+            var x = player.X + player.W / 2f + offX - w / 2f;
+            var y = player.Y + player.H / 2f + offY - h / 2f;
+            return new Morgott.UI.InventoryScreen.Box(Math.Max(0f, Math.Min(x, canvasW - w)), Math.Max(0f, Math.Min(y, canvasH - h)), w, h);
+        }
+
         // Respawn tip banner (mockup m6-load-b: panel banner bottom-centre): the tip's own box grown by the pads, its
         // width clamped to [minWidth, maxWidth] (long tips wrap inside the vanilla box, short ones keep a banner shape).
         public static float BannerWidth(float tipWidth, float pad, float minWidth, float maxWidth)
