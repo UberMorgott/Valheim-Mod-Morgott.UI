@@ -294,7 +294,7 @@ namespace Morgott.UI.ItemBrowser
         private void HoverKeys()
         {
             if (Browser.RecipeKey == null) return;
-            bool r = Browser.RecipeKey.Value.IsDown(), u = Browser.UsedInKey.Value.IsDown();
+            bool r = Browser.Down(Browser.RecipeKey.Value), u = Browser.Down(Browser.UsedInKey.Value);
             if (!r && !u) return;
             var section = PageModel.HoverKey(r, u, TextFocused());
             if (section != PageSection.None) Show(Hovered(), section);
@@ -324,7 +324,7 @@ namespace Morgott.UI.ItemBrowser
                 var hit = go.GetComponentInParent<Hit>();
                 if (hit && hit.Id != null) return hit.Id();
                 var grid = go.GetComponentInParent<InventoryGrid>();
-                if (grid && grid.GetInventory() != null) return ItemId(grid.GetItem(new Vector2i((int)pos.x, (int)pos.y)));
+                if (grid && grid.GetInventory() != null && ItemId(grid.GetItem(new Vector2i((int)pos.x, (int)pos.y))) is string item) return item;
                 foreach (var p in _gui.m_availableRecipes)
                     if (p.InterfaceElement && go.transform.IsChildOf(p.InterfaceElement.transform))
                         return p.Recipe && p.Recipe.m_item ? p.Recipe.m_item.gameObject.name : null;

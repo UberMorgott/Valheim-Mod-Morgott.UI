@@ -37,23 +37,18 @@ namespace Morgott.UI.ItemBrowser
             if (BrowserPanel.Up) BrowserPanel.Instance.Enforce();
         }
 
-        // Hover key hint under inventory grid tooltips only: InventoryGrid.CreateItemTooltip (InventoryGrid.cs:409-412) sets
-        // the tooltip from item.GetTooltip(); appending inside GetTooltip keeps UITooltip.Set's equal-text early-out.
-        private static bool _gridTip;
-
-        [HarmonyPatch(typeof(InventoryGrid), nameof(InventoryGrid.CreateItemTooltip))]
-        [HarmonyPrefix]
-        private static void GridTip_Prefix() => _gridTip = true;
-
-        [HarmonyPatch(typeof(InventoryGrid), nameof(InventoryGrid.CreateItemTooltip))]
-        [HarmonyFinalizer]
-        private static void GridTip_Finalizer() => _gridTip = false;
-
-        [HarmonyPatch(typeof(ItemDrop.ItemData), nameof(ItemDrop.ItemData.GetTooltip), typeof(int))]
+        // Hover key hint under inventory grid tooltips, added to the shown text: UITooltip.UpdateTextElements (on hover
+        // start and on a changed Set) writes Localize(m_text) into the tooltip's "Text". Not in m_text: Epic Loot's
+        // CreateItemTooltip prefix replaces the vanilla text builder (TooltipPatches.InventoryGrid_CreateItemTooltip_Patch,
+        // ItemTooltip.GetInventoryText), and changing m_text after Set would re-set the tooltip every frame.
+        [HarmonyPatch(typeof(UITooltip), nameof(UITooltip.UpdateTextElements))]
         [HarmonyPostfix]
-        private static void GetTooltip_Postfix(ref string __result)
+        private static void TooltipText_Postfix(UITooltip __instance)
         {
-            if (_gridTip && Browser.RecipeKey != null) __result += KeyHint(Browser.RecipeKey.Value, Browser.UsedInKey.Value);
+            if (Browser.RecipeKey == null || !UITooltip.m_tooltip || !__instance.GetComponentInParent<InventoryElement>()) return;
+            var t = Utils.FindChild(UITooltip.m_tooltip.transform, "Text");
+            if (t && t.TryGetComponent<TMPro.TMP_Text>(out var text) && text.text.Length > 0)
+                text.text += KeyHint(Browser.RecipeKey.Value, Browser.UsedInKey.Value);
         }
 
         // Latin key names from the live config (memory key-hints-english), words through the browser's own tokens.

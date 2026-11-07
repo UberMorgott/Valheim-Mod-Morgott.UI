@@ -37,6 +37,16 @@ namespace Morgott.UI.ItemBrowser
             UsedInKey = cfg.Bind("ItemBrowser", "UsedInKey", new KeyboardShortcut(KeyCode.U), "Over an item in the inventory (any grid, crafting list, ITEMS tab): opens its ITEMS page at \"Used in\".");
         }
 
+        // Through ZInput (the game's Input System layer, as the vanilla keys and Keys() read them), not
+        // KeyboardShortcut.IsDown: BepInEx UnityInput takes the legacy Input manager whenever it exists, and the game
+        // ships both (legacy reads in InputDefinition.cs), so IsDown misses Input System key events.
+        public static bool Down(KeyboardShortcut k)
+        {
+            if (k.MainKey == KeyCode.None || !ZInput.GetKeyDown(k.MainKey, false)) return false;
+            foreach (var m in k.Modifiers) if (!ZInput.GetKey(m, false)) return false;
+            return true;
+        }
+
         // devcommands lists every entry, known or not (user, 2026-11-07).
         public static bool KnownFilter => PageModel.KnownFilter(KnownOnly.Value, Devcommands);
 
