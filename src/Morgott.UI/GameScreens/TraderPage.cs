@@ -31,6 +31,7 @@ namespace Morgott.UI.GameScreens
         private RectTransform _topic;
         private readonly List<GameObject> _gated = new List<GameObject>();
         private readonly PagePart.Pane[] _wells = new PagePart.Pane[4];
+        private PagePart.Pane _storeWell;
 
         public static void Ensure(StoreGui s)
         {
@@ -59,8 +60,16 @@ namespace Morgott.UI.GameScreens
             // The vanilla "topic" plate text: the page title shows the trader's name instead.
             _topic = Child("topic");
             for (var i = 0; i < _wells.Length; i++)
-            {
                 _wells[i] = PagePart.Pane.Make(_store, "RuneSkinTradeWell" + i, "trader page board section well (mockup 04)");
+            _storeWell = PagePart.Pane.Make(_store, "RuneSkinTradeStoreWell", "trader page store column well (mockup 04)");
+            // The stock list's content from the top of its (now taller) viewport: vanilla centred it in a fixed-height one
+            // (run 20261107-145553: rows began ~240 px down).
+            if (_gui.m_listRoot is RectTransform lr)
+            {
+                lr.anchorMin = new Vector2(lr.anchorMin.x, 1f);
+                lr.anchorMax = new Vector2(lr.anchorMax.x, 1f);
+                lr.pivot = new Vector2(lr.pivot.x, 1f);
+                lr.anchoredPosition = new Vector2(lr.anchoredPosition.x, 0f);
             }
         }
 
@@ -90,10 +99,9 @@ namespace Morgott.UI.GameScreens
             // Sell panel (run 20261107-143240 overdraw-tradepage covered=11).
             foreach (var n in new[] { "border (1)", "bkg" })
                 if (Child(n) is RectTransform bg && bg.GetSiblingIndex() != 1) bg.SetSiblingIndex(1);
-            // The window header face right after them (it was created earlier in the hierarchy: under the backing, run
-            // 20261107-144822 overdraw covered RuneSkinWindowFace).
-            if (Child(RuneWindowHeader.FaceName) is RectTransform face && Child("border (1)") is RectTransform border && face.GetSiblingIndex() < border.GetSiblingIndex())
-                face.SetSiblingIndex(border.GetSiblingIndex());
+            // The window header face right after the page backing ("border (1)"; it followed "bkg" and stayed under the
+            // backing, runs 20261107-144822 / -145553 overdraw covered RuneSkinWindowFace).
+            if (_header) _header.DrawAfter = Child("border (1)");
             var mod = ModPanel();
             var board = mod && mod.name == "MerchantPanel";
             var currencies = mod ? mod.Find("Currencies") as RectTransform : null;
@@ -108,6 +116,10 @@ namespace Morgott.UI.GameScreens
             // Mockup 04 body from y 207 (the title plaque ends at 192).
             body = new Box(body.X, body.Y - 25f * u, body.W, body.H + 25f * u);
             ElPageMath.Trader(body, mod, out var col, out var right);
+            // Right after the page backing ("border (1)") and the header face that follows it, under the store widgets.
+            if (_storeWell != null && _storeWell.Fill && (Child(RuneWindowHeader.FaceName) ?? Child("border (1)")) is RectTransform pb)
+                _storeWell.First(_storeWell.Fill.transform.GetSiblingIndex() > pb.GetSiblingIndex() ? pb.GetSiblingIndex() + 1 : pb.GetSiblingIndex());
+            _storeWell?.Place(_canvas, new Box(col.X - 12f * u, col.Y - 12f * u, col.W + 24f * u, col.H + 24f * u), true);
             StoreColumn(col, u);
             if (_coins != null)
             {
@@ -133,8 +145,9 @@ namespace Morgott.UI.GameScreens
                     var cell = ElPageMath.Cell(right, i % 2, i / 2, g);
                     _wells[i]?.Place(_canvas, cell, true);
                     var part = m.Sections[i];
-                    var k = ElPageMath.Fit(part.Box0.W, part.Box0.H, new Box(cell.X + pad, cell.Y + pad, cell.W - 2f * pad, cell.H - 2f * pad), out var x0, out var y0);
-                    part.Put(_canvas, k, x0, y0);
+                    // The section's children as one group (its title / timer sit above its own rect: run 20261107-145553
+                    // drew the lower titles in the gap between the rows).
+                    PagePart.Fit(_canvas, m.SectionKids[i], new Box(cell.X + pad, cell.Y + pad, cell.W - 2f * pad, cell.H - 2f * pad));
                     // Its lists across the cell (Epic Loot's fixed-width scroll panels: SecretStash/Panel, Bounties/*Panel).
                     foreach (Transform c in part.Rt)
                         if (c is RectTransform list && c.name.EndsWith("Panel", System.StringComparison.Ordinal) && c.gameObject.activeSelf)
@@ -148,7 +161,7 @@ namespace Morgott.UI.GameScreens
             {
                 // Inset by the panel stack's reach (its frame art runs past the panel box: run 20261107-144822 x 585 vs 632).
                 var reach = 48f * u;
-                var zone = new Box(right.X + reach, right.Y + reach * 0.5f, right.W - 2f * reach, right.H - reach);
+                var zone = new Box(right.X + reach, right.Y + reach, right.W - 2f * reach, right.H - 1.5f * reach); // its column heads sit above its box
                 m.Whole.Put(_canvas, ElPageMath.Fit(m.Whole.Box0.W, m.Whole.Box0.H, zone, out var x0, out var y0), x0, y0);
             }
             // Both panels' currencies (and the board's sundial) in the top bar (mockup 04).
@@ -164,6 +177,7 @@ namespace Morgott.UI.GameScreens
             public PagePart Whole, Sundial;
             public List<PagePart> CurrencyParts = new List<PagePart>();
             public readonly List<PagePart> Sections = new List<PagePart>();
+            public readonly List<List<PagePart>> SectionKids = new List<List<PagePart>>();
         }
 
         private readonly Dictionary<Transform, Mod> _mods = new Dictionary<Transform, Mod>();
@@ -189,7 +203,11 @@ namespace Morgott.UI.GameScreens
         {
             var m = new Mod { Whole = PagePart.Of(_canvas, (RectTransform)mod) };
             foreach (var n in Sections)
-                if (mod.Find(n) is RectTransform s && PagePart.Of(_canvas, s) is PagePart p) m.Sections.Add(p);
+                if (mod.Find(n) is RectTransform s && PagePart.Of(_canvas, s) is PagePart p)
+                {
+                    m.Sections.Add(p);
+                    m.SectionKids.Add(PagePart.Children(_canvas, s));
+                }
             m.CurrencyParts = PagePart.Children(_canvas, mod.Find("Currencies"));
             m.Sundial = PagePart.Of(_canvas, mod.Find("Sundial") as RectTransform);
             return m;

@@ -86,7 +86,7 @@ namespace Morgott.UI.ModScreens
 
         // A group mapped into area at one fitting scale (ElPageMath.Fit over the bounding box of its active parts; inactive parts
         // go along with it).
-        public static void Fit(RectTransform canvas, List<PagePart> parts, Box area)
+        public static void Fit(RectTransform canvas, List<PagePart> parts, Box area, bool left = false)
         {
             if (parts == null || parts.Count == 0 || area.IsEmpty) return;
             float x0 = float.MaxValue, y0 = float.MaxValue, x1 = float.MinValue, y1 = float.MinValue;
@@ -97,7 +97,7 @@ namespace Morgott.UI.ModScreens
                 x1 = Mathf.Max(x1, p.Box0.Right); y1 = Mathf.Max(y1, p.Box0.Bottom);
             }
             if (x1 <= x0) return;
-            var k = ElPageMath.Fit(x1 - x0, y1 - y0, area, out var ax, out var ay);
+            var k = ElPageMath.Fit(x1 - x0, y1 - y0, area, out var ax, out var ay, left);
             foreach (var p in parts) p.Put(canvas, k, ax + (p.Box0.X - x0) * k, ay + (p.Box0.Y - y0) * k);
         }
     }

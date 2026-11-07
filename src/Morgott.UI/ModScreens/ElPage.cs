@@ -164,7 +164,8 @@ namespace Morgott.UI.ModScreens
                 if (f.Title.Rt.TryGetComponent<TMP_Text>(out var t) && t.alignment != TextAlignmentOptions.MidlineLeft) t.alignment = TextAlignmentOptions.MidlineLeft;
                 y += h + 8f * u;
             }
-            PagePart.Fit(_canvas, f.Rest, new Box(pane.X + pad, y, pane.W - 2f * pad, Mathf.Max(0f, pane.Bottom - pad - y)));
+            // Left-aligned (mockup 02 pane content; centred left ~320 px empty, run 20261107-145553).
+            PagePart.Fit(_canvas, f.Rest, new Box(pane.X + pad, y, pane.W - 2f * pad, Mathf.Max(0f, pane.Bottom - pad - y)), true);
         }
     }
 }

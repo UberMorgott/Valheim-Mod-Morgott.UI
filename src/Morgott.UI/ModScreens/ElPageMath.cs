@@ -34,13 +34,14 @@ namespace Morgott.UI.ModScreens
             pane = new Box(x, body.Y, Math.Max(0f, body.Right - x), body.H);
         }
 
-        // One scale k that fits a group's bounding box (bw x bh) into area, top-aligned, centred horizontally; (x0, y0) =
+        // One scale k that fits a group's bounding box (bw x bh) into area, top-aligned, centred horizontally (or left-aligned:
+        // mockup 02 pane content starts at the pane's left edge); (x0, y0) =
         // where the bbox's top-left lands. A part at (px, py) relative to the bbox goes to (x0 + px * k, y0 + py * k).
-        public static float Fit(float bw, float bh, Box area, out float x0, out float y0)
+        public static float Fit(float bw, float bh, Box area, out float x0, out float y0, bool left = false)
         {
             var k = bw > 0f && bh > 0f ? Math.Min(area.W / bw, area.H / bh) : 1f;
             if (k <= 0f) k = 1f;
-            x0 = area.X + (area.W - bw * k) / 2f;
+            x0 = left ? area.X : area.X + (area.W - bw * k) / 2f;
             y0 = area.Y;
             return k;
         }
