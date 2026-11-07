@@ -537,13 +537,15 @@ namespace Morgott.UI.GameScreens
             Bands(v.m_topic, v.m_text);
             TintKeep.Ensure(v.m_text, "color.text.header");
             TintKeep.Ensure(v.m_topic, "color.text.header");
-            RuneReveal.Attach(v);
+            var reveal = RuneReveal.Attach(v);
             if (v.m_ravenTopic) v.m_ravenTopic.fontStyle |= FontStyles.UpperCase;
             GameScreenKit.Form(v.transform, "TextDialogs.Viewer", OwnershipRegistry.TextDialogs, (ctx, r) =>
             {
                 ctx.Role(v.m_topic, "text.header", "rune topic (serif)");
                 ctx.Role(v.m_text, "text.display", "rune text (readable runic display face; RuneReveal decodes it from the carved runes)");
                 ctx.Role(v.m_runeText, "content", "runic transliteration (vanilla rune font: the runes are the content)");
+                // Run 20261108-003433: unclassified, the role pass gave the reveal's rune layer the display face.
+                if (reveal) ctx.Role(reveal.RuneLayer, "content", "rune reveal layer (vanilla rune font: the runes are the content)");
                 ctx.Role(v.m_introTopic, "text.header", "intro saga topic");
                 ctx.Role(v.m_introText, "text.body", "intro saga text");
                 ctx.Role(v.m_ravenTopic, "text.header", "raven topic (big caps)");
