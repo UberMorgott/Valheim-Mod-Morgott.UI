@@ -89,5 +89,8 @@ namespace Morgott.UI.GameScreens
         }
 
         public static bool Done(float t, float hold, float decode) => t >= hold + decode;
+
+        // The vanilla English rune line (TextViewer.m_runeText): hidden while the reveal is on, vanilla when it is off.
+        public static string VanillaRuneLine(bool revealOn, string vanilla) => revealOn ? "" : vanilla;
     }
 }

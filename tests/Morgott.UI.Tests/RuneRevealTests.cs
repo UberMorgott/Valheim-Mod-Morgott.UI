@@ -50,6 +50,13 @@ namespace Morgott.UI.Tests
         }
 
         [Fact]
+        public void VanillaRuneLineHiddenOnlyWhileRevealOn()
+        {
+            Assert.Equal("", RuneRevealMath.VanillaRuneLine(true, "Here fell a warrior"));
+            Assert.Equal("Here fell a warrior", RuneRevealMath.VanillaRuneLine(false, "Here fell a warrior"));
+        }
+
+        [Fact]
         public void ProgressIsMonotoneInTime()
         {
             var prev = 0f;

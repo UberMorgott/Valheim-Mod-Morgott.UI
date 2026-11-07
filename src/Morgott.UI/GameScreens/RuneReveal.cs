@@ -31,6 +31,7 @@ namespace Morgott.UI.GameScreens
 
         private TMP_Text _text;
         private TMP_Text _runes;
+        private TMP_Text _vanillaRunes;
         private Color32 _red;
         private float _t = float.MaxValue;
         private float _hold, _decode;
@@ -43,6 +44,7 @@ namespace Morgott.UI.GameScreens
         {
             if (!v.m_text || !v.m_runeText) return null;
             if (!v.m_text.TryGetComponent<RuneReveal>(out var r)) r = v.m_text.gameObject.AddComponent<RuneReveal>();
+            r._vanillaRunes = v.m_runeText;
             r.Init(v.m_text, v.m_runeText.font);
             return r;
         }
@@ -70,7 +72,10 @@ namespace Morgott.UI.GameScreens
         public void Play()
         {
             if (!_text || !_runes) return;
-            if (!RuneRevealConfig.Enabled.Value) { Finish(); return; }
+            var on = RuneRevealConfig.Enabled.Value;
+            // ShowText refilled the vanilla English rune line (TextViewer.cs:105): our rune layer replaces it while on.
+            if (_vanillaRunes) _vanillaRunes.text = RuneRevealMath.VanillaRuneLine(on, _vanillaRunes.text);
+            if (!on) { Finish(); return; }
             _red = ThemeTokens.GetColor("color.rune.carved", new Color(1f, 0.165f, 0.118f));
             _hold = RuneRevealConfig.HoldSec.Value;
             _decode = RuneRevealConfig.DecodeSec.Value;
