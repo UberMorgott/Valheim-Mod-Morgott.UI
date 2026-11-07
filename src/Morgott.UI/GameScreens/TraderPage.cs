@@ -127,7 +127,9 @@ namespace Morgott.UI.GameScreens
             if (_coins != null)
             {
                 Hide(_coins.Rt.gameObject, currencies);
-                _coins.Put(_canvas, bar.H / _coins.Box0.H, bar.X, bar.Y);
+                // Its plate art reaches ~1/3 past its box (run 20261107-153302: touched the screen top): 0.62 of the bar, centred.
+                var kc = bar.H * 0.62f / _coins.Box0.H;
+                _coins.Put(_canvas, kc, bar.X + 8f * u, bar.Y + (bar.H - _coins.Box0.H * kc) / 2f);
             }
             for (var i = board ? _wells.Length : mod ? 1 : 0; i < _wells.Length; i++) _wells[i]?.Place(_canvas, default, false);
             if (!mod) return;
@@ -213,7 +215,7 @@ namespace Morgott.UI.GameScreens
             if (_sell != null)
             {
                 // Inside the Buy row (its own panel stack reaches past it: run 20261107-151323 stuck out 17 px below).
-                var k = Mathf.Min(row * 0.7f / _sell.Box0.H, half / _sell.Box0.W);
+                var k = Mathf.Min(row * 0.9f / _sell.Box0.H, half / _sell.Box0.W); // visible in the Buy row (0.7 read as missing, run 20261107-153302)
                 _sell.Put(_canvas, k, col.X + half + gap + (half - _sell.Box0.W * k) / 2f, y + (row - _sell.Box0.H * k) / 2f);
             }
         }
