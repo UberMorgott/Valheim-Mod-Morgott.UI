@@ -197,7 +197,12 @@ namespace Morgott.UI.ItemBrowser
                 int level;
                 // Warfare's ItemManager patch needs the local player here (design 5): fall back to the base fields.
                 try { station = r.GetRequiredStation(q); level = r.GetRequiredStationLevel(q); }
-                catch (Exception) { station = q == 1 ? r.m_craftingStation : r.m_repairStation ? r.m_repairStation : r.m_craftingStation; level = r.m_minStationLevel; }
+                catch (Exception)
+                {
+                    // Vanilla bodies (Recipe.cs GetRequiredStation / GetRequiredStationLevel): an upgrade needs a level per quality.
+                    station = r.m_craftingStation ? r.m_craftingStation : q > 1 ? r.m_repairStation : null;
+                    level = PageModel.StationLevel(r.m_minStationLevel, q);
+                }
                 var amount = q == 1 ? Math.Max(1, r.m_amount) : 1;
                 Add(q == 1 ? RelationKind.Craft : RelationKind.Upgrade, r.name, ins, new[] { new Stack(r.m_item.name, amount, amount) }, Station(station), station ? level : 0, q,
                     r.m_requireOnlyOneIngredient ? "$ib_cond_anyone" : null);

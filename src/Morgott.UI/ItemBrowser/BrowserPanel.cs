@@ -47,6 +47,7 @@ namespace Morgott.UI.ItemBrowser
         private string _query = "";
         private int _type = 1, _cat = -1, _gridScroll, _gridScrollMax, _pageScroll, _pageScrollMax, _quality = 1, _variant;
         private string _pageId;
+        private PageSection _jump; // hover key: section the next page layout scrolls to
         private readonly History _history = new History();
         private List<Entry> _results = new List<Entry>();
         private int _resultsGen = -1, _resultsType = -1, _resultsCat = -2;
@@ -70,6 +71,8 @@ namespace Morgott.UI.ItemBrowser
         private Image _backPlate, _pageSocket, _pageIcon, _favOn, _favOff;
         private TMP_Text _crumb, _pageName, _pageType, _pageDesc, _pageMod, _qualLabel;
         private readonly List<Button> _quals = new List<Button>(), _variants = new List<Button>();
+        private readonly Pool<Button> _rowQuals = new Pool<Button>(); // upgrade rows: resulting quality, click selects it
+        private readonly List<int> _rowQualOf = new List<int>();
         private Image _fromHeader, _usedHeader;
         private TMP_Text _fromLabel, _usedLabel, _fromNote, _usedNote, _measure;
         private readonly Pool<Slot> _sockets = new Pool<Slot>(), _inChips = new Pool<Slot>(), _titles = new Pool<Slot>(), _stations = new Pool<Slot>();
@@ -103,6 +106,7 @@ namespace Morgott.UI.ItemBrowser
         {
             public Action<PointerEventData> Click;
             public Action Enter;
+            public Func<string> Id; // entry under the pointer (hover keys)
             public void OnPointerClick(PointerEventData e) => Click?.Invoke(e);
             public void OnPointerEnter(PointerEventData e) => Enter?.Invoke();
         }
@@ -215,6 +219,7 @@ namespace Morgott.UI.ItemBrowser
                 }
                 return;
             }
+            if (InventoryGui.IsVisible()) HoverKeys();
             if (!_up) return;
             if (!InventoryGui.IsVisible())
             {
@@ -222,6 +227,7 @@ namespace Morgott.UI.ItemBrowser
                 return;
             }
             Enforce();
+            if (Browser.Devcommands != _resultsDev) _dirty = true; // devcommands toggled: list (KnownOnly override) changes
             var typing = _search && _search.isFocused;
             Block(typing);
             // Fingerprint (hash over every recipe) once a second, not per frame.
@@ -269,6 +275,65 @@ namespace Morgott.UI.ItemBrowser
         }
 
         // CraftingSkin.Apply: the body box (canvas units) while the tab is up.
+        // ---------------------------------------------------------------- hover keys (VNEI R / U)
+
+        /// <summary>Opens the ITEMS tab on an entry's page at a section; false when the index has no such entry.</summary>
+        internal bool Show(string id, PageSection section)
+        {
+            if (id == null) return false;
+            Open();
+            if (Browser.Index == null || !Browser.Index.Entries.ContainsKey(id)) return false;
+            OpenPage(id);
+            _jump = section;
+            _dirty = true;
+            return true;
+        }
+
+        private readonly List<RaycastResult> _rays = new List<RaycastResult>();
+
+        private void HoverKeys()
+        {
+            if (Browser.RecipeKey == null) return;
+            bool r = Browser.RecipeKey.Value.IsDown(), u = Browser.UsedInKey.Value.IsDown();
+            if (!r && !u) return;
+            var section = PageModel.HoverKey(r, u, TextFocused());
+            if (section != PageSection.None) Show(Hovered(), section);
+        }
+
+        // Any text input owns the keys: our search, chat, console, sign / rename dialogs, other mods' fields.
+        private static bool TextFocused()
+        {
+            var go = EventSystem.current ? EventSystem.current.currentSelectedGameObject : null;
+            if (go && (go.TryGetComponent<TMP_InputField>(out var t) && t.isFocused || go.TryGetComponent<InputField>(out var f) && f.isFocused)) return true;
+            return Chat.instance && Chat.instance.HasFocus() || Console.IsVisible() || TextInput.IsVisible() || Menu.IsVisible();
+        }
+
+        // Prefab id under the pointer: a browser slot, any InventoryGrid cell (player, chest, backpack, equipment / quick
+        // slot grids of other mods) through the public InventoryGrid.GetItem (InventoryGrid.cs:589), or a crafting list row.
+        private string Hovered()
+        {
+            var es = EventSystem.current;
+            if (!es) return null;
+            var pos = ZInput.pointerPosition;
+            _rays.Clear();
+            es.RaycastAll(new PointerEventData(es) { position = pos }, _rays);
+            foreach (var ray in _rays)
+            {
+                var go = ray.gameObject;
+                if (!go) continue;
+                var hit = go.GetComponentInParent<Hit>();
+                if (hit && hit.Id != null) return hit.Id();
+                var grid = go.GetComponentInParent<InventoryGrid>();
+                if (grid && grid.GetInventory() != null) return ItemId(grid.GetItem(new Vector2i((int)pos.x, (int)pos.y)));
+                foreach (var p in _gui.m_availableRecipes)
+                    if (p.InterfaceElement && go.transform.IsChildOf(p.InterfaceElement.transform))
+                        return p.Recipe && p.Recipe.m_item ? p.Recipe.m_item.gameObject.name : null;
+            }
+            return null;
+        }
+
+        private static string ItemId(ItemDrop.ItemData item) => item != null && item.m_dropPrefab ? item.m_dropPrefab.name : null;
+
         public void Place(RectTransform canvas, Box area)
         {
             _canvas = canvas;
@@ -470,6 +535,7 @@ namespace Morgott.UI.ItemBrowser
         private void Tip(GameObject go, Func<string> id, Func<int> quality)
         {
             var hit = go.GetComponent<Hit>() ?? go.AddComponent<Hit>();
+            hit.Id = id;
             if (!_tooltipPrefab) return;
             var tip = go.AddComponent<UITooltip>();
             tip.m_tooltipPrefab = _tooltipPrefab;
@@ -555,7 +621,7 @@ namespace Morgott.UI.ItemBrowser
 
         private List<Entry> Results()
         {
-            var known = Browser.KnownOnly.Value;
+            var known = Browser.KnownFilter;
             var dev = Browser.Devcommands;
             var cat = _type == 1 ? _cat : -1;
             if (_resultsGen == Browser.Generation && _resultsQuery == _query && _resultsType == _type && _resultsCat == cat && _resultsKnownOnly == known && _resultsDev == dev) return _results;
@@ -646,7 +712,7 @@ namespace Morgott.UI.ItemBrowser
             }
             else { Off(_track); Off(_thumb); }
             // Known-only is config-only (no checkbox): an empty list names the filter.
-            if (list.Count == 0 && Browser.KnownOnly.Value)
+            if (list.Count == 0 && Browser.KnownFilter)
             {
                 Put(_empty, 20f, top + 20f, UnitW - 40f, 80f);
                 Fit(_empty, L("$ib_empty_known"), 18f);
@@ -792,7 +858,7 @@ namespace Morgott.UI.ItemBrowser
             top += 18f;
 
             // Scrolled body: the two sections as blocks of real heights, scrolled block by block.
-            _sockets.Used = _inChips.Used = _titles.Used = _stations.Used = _chances.Used = _rules.Used = 0;
+            _sockets.Used = _inChips.Used = _titles.Used = _stations.Used = _chances.Used = _rules.Used = _rowQuals.Used = 0;
             var from = PageModel.Obtain(ix, e.Id, _quality);
             var used = PageModel.UsedIn(ix, e.Id);
             var blocks = new List<(int Kind, PageRow Row)> { (0, null) };
@@ -815,6 +881,11 @@ namespace Morgott.UI.ItemBrowser
                 heights.Add(PageModel.Height(row, kind == 4, flow.Count == 0 ? 1 : flow[flow.Count - 1].Line + 1));
             }
             _pageScrollMax = PageModel.MaxFirst(heights, h - top);
+            if (_jump != PageSection.None)
+            {
+                _pageScroll = PageModel.SectionScroll(_jump, blocks.FindIndex(b => b.Kind == 3), _pageScrollMax);
+                _jump = PageSection.None;
+            }
             _pageScroll = Mathf.Clamp(_pageScroll, 0, _pageScrollMax);
             var shown = new bool[6];
             var y = top;
@@ -842,6 +913,25 @@ namespace Morgott.UI.ItemBrowser
             Rest(_stations);
             for (var i = _chances.Used; i < _chances.Items.Count; i++) Off(_chances.Items[i]);
             for (var i = _rules.Used; i < _rules.Items.Count; i++) Off(_rules.Items[i]);
+            for (var i = _rowQuals.Used; i < _rowQuals.Items.Count; i++) Off(_rowQuals.Items[i]);
+        }
+
+        // Upgrade row: the quality it makes as a numbered square like the page's quality selector, at the socket's
+        // bottom-right corner; click selects that quality.
+        private void RowQuality(PageRow r, float x, float y)
+        {
+            var n = _rowQuals.Used;
+            var b = _rowQuals.Next(i =>
+            {
+                _rowQualOf.Add(0);
+                return Btn(_pageView.transform, "RowQuality" + i, "ib.square", out _, () => { _quality = _rowQualOf[i]; _variant = 0; _pageScroll = 0; _dirty = true; });
+            });
+            _rowQualOf[n] = r.Quality;
+            b.transform.SetAsLastSibling(); // over the socket
+            Square(b, false, x, y, 26f, 26f);
+            var lab = b.transform.Find("Label").GetComponent<TMP_Text>();
+            Put(lab, x, y, 26f, 26f);
+            Fit(lab, r.Quality.ToString(), 16f);
         }
 
         // Input chip flow: icon, name, amount at rendered widths, wrapped inside [x0, InputEnd] (10 units before the station
@@ -905,6 +995,7 @@ namespace Morgott.UI.ItemBrowser
             Put(sock.Back, 4f, y + 4f, s, sh);
             Put(sock.Icon, 10f, y + 9f, s - 12f, sh - 10f);
             SetIcon(sock.Icon, r.Icon);
+            if (r.Quality > 1) RowQuality(r, 4f + s - 24f, y + 4f + sh - 24f);
             var x0 = used ? 94f : 81f;
             var lines = flow.Count == 0 ? 1 : flow[flow.Count - 1].Line + 1;
             var iy = y + (used ? 38f : (h - PageModel.LineH * lines) / 2f);
@@ -913,7 +1004,7 @@ namespace Morgott.UI.ItemBrowser
                 var title = _titles.Next(n => Chip("RowTitle" + n, "text.ember"));
                 title.Id = r.Icon;
                 title.Quality = sock.Quality;
-                Chip(title, x0, y + 6f, 290f, 30f, 0f, NameOf(r.Icon) + (r.Quality > 1 ? " +" + r.Quality : ""), 22f);
+                Chip(title, x0, y + 6f, 290f, 30f, 0f, NameOf(r.Icon), 22f); // an upgrade's quality = its RowQuality square
             }
             else if (!r.Recipe)
             {

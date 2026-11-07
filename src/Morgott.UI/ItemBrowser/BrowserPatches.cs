@@ -37,6 +37,34 @@ namespace Morgott.UI.ItemBrowser
             if (BrowserPanel.Up) BrowserPanel.Instance.Enforce();
         }
 
+        // Hover key hint under inventory grid tooltips only: InventoryGrid.CreateItemTooltip (InventoryGrid.cs:409-412) sets
+        // the tooltip from item.GetTooltip(); appending inside GetTooltip keeps UITooltip.Set's equal-text early-out.
+        private static bool _gridTip;
+
+        [HarmonyPatch(typeof(InventoryGrid), nameof(InventoryGrid.CreateItemTooltip))]
+        [HarmonyPrefix]
+        private static void GridTip_Prefix() => _gridTip = true;
+
+        [HarmonyPatch(typeof(InventoryGrid), nameof(InventoryGrid.CreateItemTooltip))]
+        [HarmonyFinalizer]
+        private static void GridTip_Finalizer() => _gridTip = false;
+
+        [HarmonyPatch(typeof(ItemDrop.ItemData), nameof(ItemDrop.ItemData.GetTooltip), typeof(int))]
+        [HarmonyPostfix]
+        private static void GetTooltip_Postfix(ref string __result)
+        {
+            if (_gridTip && Browser.RecipeKey != null) __result += KeyHint(Browser.RecipeKey.Value, Browser.UsedInKey.Value);
+        }
+
+        // Latin key names from the live config (memory key-hints-english), words through the browser's own tokens.
+        internal static string KeyHint(BepInEx.Configuration.KeyboardShortcut recipe, BepInEx.Configuration.KeyboardShortcut used)
+        {
+            var parts = new System.Collections.Generic.List<string>(2);
+            if (recipe.MainKey != KeyCode.None) parts.Add($"[{recipe}] {Browser.Localize("$ib_obtained_from")}");
+            if (used.MainKey != KeyCode.None) parts.Add($"[{used}] {Browser.Localize("$ib_used_in")}");
+            return parts.Count == 0 ? "" : $"\n\n<color={GameScreens.ActiveEffectsPage.Hex("color.text.muted", new Color(0.62f, 0.58f, 0.5f))}>{string.Join("   ", parts)}</color>";
+        }
+
         // Text typed into the browser's search must not close the inventory (InventoryGui.Update :551: "Use" / "Inventory").
         [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.Update))]
         [HarmonyPrefix]

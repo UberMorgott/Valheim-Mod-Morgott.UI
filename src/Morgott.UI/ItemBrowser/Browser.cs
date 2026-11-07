@@ -15,7 +15,7 @@ namespace Morgott.UI.ItemBrowser
         public const string FavoritesKey = "ui_ib_favorites"; // Player.m_customData, ';'-joined prefab ids
 
         public static ConfigEntry<bool> Cheat, CheatCreatures, KnownOnly;
-        public static ConfigEntry<KeyboardShortcut> Hotkey;
+        public static ConfigEntry<KeyboardShortcut> Hotkey, RecipeKey, UsedInKey;
 
         public static BrowserIndex Index { get; private set; }
         public static int Generation { get; private set; }
@@ -31,7 +31,14 @@ namespace Morgott.UI.ItemBrowser
             CheatCreatures = cfg.Bind("ItemBrowser", "CheatCreatures", true, "Take on a creature spawns it in front of you (same gate as EnableCheating).");
             KnownOnly = cfg.Bind("ItemBrowser", "KnownOnly", true, "ITEMS tab lists only what your character knows (config only; an empty list names this setting).");
             Hotkey = cfg.Bind("ItemBrowser", "Hotkey", new KeyboardShortcut(KeyCode.H, KeyCode.LeftAlt), "Opens the inventory on the ITEMS tab.");
+            // R / U as VNEI; free in the inventory: vanilla Hide (R) and Morgott.Power TopUpKey (U) only read while
+            // Player.TakeInput holds, which an open inventory blocks.
+            RecipeKey = cfg.Bind("ItemBrowser", "RecipeKey", new KeyboardShortcut(KeyCode.R), "Over an item in the inventory (any grid, crafting list, ITEMS tab): opens its ITEMS page at \"Obtained from\".");
+            UsedInKey = cfg.Bind("ItemBrowser", "UsedInKey", new KeyboardShortcut(KeyCode.U), "Over an item in the inventory (any grid, crafting list, ITEMS tab): opens its ITEMS page at \"Used in\".");
         }
+
+        // devcommands lists every entry, known or not (user, 2026-11-07).
+        public static bool KnownFilter => PageModel.KnownFilter(KnownOnly.Value, Devcommands);
 
         // ---------------------------------------------------------------- index
 

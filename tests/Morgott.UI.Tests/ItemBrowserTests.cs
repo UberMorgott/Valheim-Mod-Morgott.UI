@@ -332,6 +332,53 @@ namespace Morgott.UI.Tests
         }
 
         [Theory]
+        [InlineData(true, false, true)]   // KnownOnly on: filtered
+        [InlineData(true, true, false)]   // devcommands overrides KnownOnly
+        [InlineData(false, false, false)]
+        [InlineData(false, true, false)]
+        public void Devcommands_lists_unknown_entries(bool knownOnly, bool dev, bool filtered) =>
+            Assert.Equal(filtered, PageModel.KnownFilter(knownOnly, dev));
+
+        [Theory]
+        [InlineData(true, false, false, PageSection.Recipe)]
+        [InlineData(false, true, false, PageSection.UsedIn)]
+        [InlineData(true, true, false, PageSection.Recipe)]  // both in one frame: recipe wins
+        [InlineData(true, false, true, PageSection.None)]    // typing in a text field / chat
+        [InlineData(false, true, true, PageSection.None)]
+        [InlineData(false, false, false, PageSection.None)]
+        public void Hover_keys_route_to_a_section(bool recipe, bool used, bool typing, PageSection want) =>
+            Assert.Equal(want, PageModel.HoverKey(recipe, used, typing));
+
+        [Fact]
+        public void Used_in_key_scrolls_to_the_used_in_header()
+        {
+            Assert.Equal(0, PageModel.SectionScroll(PageSection.Recipe, 4, 6));
+            Assert.Equal(4, PageModel.SectionScroll(PageSection.UsedIn, 4, 6));
+            Assert.Equal(2, PageModel.SectionScroll(PageSection.UsedIn, 4, 2)); // clamped: the tail already fits
+            Assert.Equal(0, PageModel.SectionScroll(PageSection.UsedIn, -1, 2));
+        }
+
+        [Theory]
+        [InlineData(0, 1, 1)]
+        [InlineData(1, 2, 2)]
+        [InlineData(2, 4, 5)]  // Recipe.GetRequiredStationLevel: max(1, min) + quality - 1
+        public void Upgrade_station_level_matches_vanilla(int min, int quality, int want) =>
+            Assert.Equal(want, PageModel.StationLevel(min, quality));
+
+        [Fact]
+        public void Upgrade_rows_carry_their_quality_and_station_level()
+        {
+            var ix = new BrowserIndex();
+            ix.Add(Craft("AxeAncient", 1, "Wood"));
+            ix.Add(Craft("AxeAncient", 2, "Wood"));
+            ix.Add(Craft("AxeAncient", 3, "Wood"));
+            var ups = PageModel.UsedIn(ix, "AxeAncient").Where(r => r.R.Kind == RelationKind.Upgrade).ToList();
+            Assert.Equal(new[] { 2, 3 }, ups.Select(r => r.Quality));           // the RowQuality square's number
+            Assert.Equal(new[] { 2, 3 }, ups.Select(r => r.R.StationLevel));
+            Assert.Equal(new[] { 1, 2 }, ups.Select(r => r.BaseQuality));       // the base item one quality lower
+        }
+
+        [Theory]
         [InlineData("ashland_pot1_green", "Ashlands pot (green)")]
         [InlineData("CastleKit_brazier", "Castle brazier")]
         [InlineData("Pickable_Stone", "Pickable stone")]

@@ -7,6 +7,9 @@ namespace Morgott.UI.ItemBrowser
     // Category row under "Items" (mockup docs\mockups\2026-11-04\04-items-right-panel.png), enum order = button order.
     public enum ItemCategory { Weapons, Armor, Utility, Ammo, Tools, Food, Meads, Materials, Trophies, Fish, Misc }
 
+    // Item page section a hover key opens (ItemBrowser.RecipeKey / UsedInKey).
+    public enum PageSection { None, Recipe, UsedIn }
+
     /// <summary>One row of the item page: an "Obtained from" or "Used in" relation as the page draws it.</summary>
     public sealed class PageRow
     {
@@ -145,6 +148,20 @@ namespace Morgott.UI.ItemBrowser
             }
             return 0;
         }
+
+        /// <summary>The KnownOnly filter applies unless devcommands is on (then every entry is listed).</summary>
+        public static bool KnownFilter(bool knownOnly, bool devcommands) => knownOnly && !devcommands;
+
+        /// <summary>Vanilla Recipe.GetRequiredStationLevel (Recipe.cs): max(1, min level) + quality - 1.</summary>
+        public static int StationLevel(int minStationLevel, int quality) => Math.Max(1, minStationLevel) + quality - 1;
+
+        /// <summary>Hover key over an item: recipe key wins over used-in; nothing while a text field / chat has focus.</summary>
+        public static PageSection HoverKey(bool recipe, bool usedIn, bool typing) =>
+            typing ? PageSection.None : recipe ? PageSection.Recipe : usedIn ? PageSection.UsedIn : PageSection.None;
+
+        /// <summary>Page scroll (block index) a hover key opens at: the "Used in" header block, else the top.</summary>
+        public static int SectionScroll(PageSection s, int usedHeaderBlock, int maxScroll) =>
+            s == PageSection.UsedIn ? Math.Max(0, Math.Min(usedHeaderBlock, maxScroll)) : 0;
 
         /// <summary>Variant button labels: station + level, a repeated label becomes "variant N".</summary>
         public static List<string> VariantLabels(List<Relation> variants, Func<string, string> name, string byHand, string level, string variant)
