@@ -130,7 +130,7 @@ namespace Morgott.UI.Restyle
         // Split line of a two-line row (y up from the row midline) that centres the block of both lines in the row: each
         // line's extent = its font's ascent - descent at its size (TMP textBounds). On the midline itself the upper
         // 20-unit name (PT Sans 1.294 em = 25.9) filled the 26-unit half row exactly, so a fallback-font glyph with a
-        // taller ascent line (Turkish İ, not in the RU+EN charset) rose above the row (issue #2, run 20261107-045922).
+        // taller ascent line (Turkish İ before it was baked; still CJK and the Ext-A letters PT Sans lacks) rose above the row (issue #2, run 20261107-045922).
         public static float TwoLineSplit(float rowH, float topExtent, float bottomExtent) =>
             Math.Max(-rowH * 0.5f, Math.Min(rowH * 0.5f, (bottomExtent - topExtent) * 0.5f));
 

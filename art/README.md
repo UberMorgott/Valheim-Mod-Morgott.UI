@@ -43,7 +43,7 @@ Style targets and palette: `STYLE.md`.
 | `src/kit/cuts.json` | cut spec: sheet rect, key, scale, nine/period, grading, Unity border/pivot/type/token/notes, palette |
 | `tools/` (Go, `go -C art/tools run . <cmd>`) | `build`, `check`, `compare`, `compare-m2`, `compare-m3`, `compare-m3s`, `sheet`, `zoom`, `sample`, `blobs` (piece rects on a sheet) |
 | `sprites/` | final sprites (authored at 2x reference px, PPU 200) + `sprites.json` |
-| `fonts/` | PT Sans Regular + Bold 2.003W (body; the display face is the game's own Valheim-Norsebold, loaded at runtime; Cormorant Bold 4.002 kept as a source only, not bundled since 2026-10-22), `charset-ru-en.txt` (309 chars), `bake-report.txt`, `licenses/` (OFL 1.1) |
+| `fonts/` | PT Sans Regular + Bold 2.003W (body; the display face is the game's own Valheim-Norsebold, loaded at runtime; Cormorant Bold 4.002 kept as a source only, not bundled since 2026-10-22), `charset-ru-en.txt` (409 chars: RU + EN + Latin-1 + Latin Extended-A except the 28 letters PT Sans Web lacks, e.g. U+010A, U+0132, U+0166; those still fall back), `bake-report.txt`, `licenses/` (OFL 1.1) |
 | `../unity/Assets/Editor/BuildBundles.cs` | import (9-slice borders, pivot, PPU), SpriteAtlas (BC7, no rotation/tight packing), static TMP SDF fonts, bundle build, contents check |
 
 ## sprites.json contract
