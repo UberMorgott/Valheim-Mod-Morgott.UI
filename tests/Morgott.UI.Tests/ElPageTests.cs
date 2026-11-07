@@ -63,6 +63,16 @@ namespace Morgott.UI.Tests
             Assert.True(right.IsEmpty);
         }
 
+        // Content starting 95 below the panel's own top lands on the area top; the panel sits that much (scaled) above.
+        [Fact]
+        public void AlignContentPutsTheWidgetsOnTheAreaTop()
+        {
+            var k = ElPageMath.AlignContent(new Box(0f, 0f, 1000f, 700f), new Box(20f, 95f, 960f, 560f), new Box(600f, 200f, 1200f, 800f), out var x, out var y);
+            Assert.Equal(1.25f, k, 4);
+            Assert.Equal(200f - 95f * k, y, 2);
+            Assert.Equal(600f + (1200f - 960f * k) / 2f - 20f * k, x, 2);
+        }
+
         [Fact]
         public void GridCellsTileTheArea()
         {

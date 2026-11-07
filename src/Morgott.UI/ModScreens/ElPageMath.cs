@@ -46,6 +46,17 @@ namespace Morgott.UI.ModScreens
             return k;
         }
 
+        // A mod panel placed by its visible content (content0 = union of its widgets, whole0 = the panel's own box, both in
+        // the prefab layout): the content fits area (Fit, top-aligned, centred), the panel goes where that puts it. Hildir's
+        // temper panel box runs ~95 px above its first widget (run 20261107-154027).
+        public static float AlignContent(Box whole0, Box content0, Box area, out float x, out float y)
+        {
+            var k = Fit(content0.W, content0.H, area, out var cx, out var cy);
+            x = cx - (content0.X - whole0.X) * k;
+            y = cy - (content0.Y - whole0.Y) * k;
+            return k;
+        }
+
         // Trader body: store column ~30 % (mockup 04 x 40..617 of 1840) left, the mod board right; without a board the
         // store column is centred.
         public const float StoreShare = 0.3f, BoardGap = 0.016f;

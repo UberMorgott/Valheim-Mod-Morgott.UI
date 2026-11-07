@@ -28,6 +28,7 @@ namespace Morgott.UI.GameScreens
         private InfoPage _page;
         private RuneWindowHeader _header;
         private PagePart _list, _buy, _sell, _coins;
+        private List<PagePart> _coinKids = new List<PagePart>();
         private RectTransform _topic;
         private readonly List<GameObject> _gated = new List<GameObject>();
         private readonly PagePart.Pane[] _wells = new PagePart.Pane[4];
@@ -57,6 +58,7 @@ namespace Morgott.UI.GameScreens
             _buy = PagePart.Of(_canvas, _gui.m_buyButton ? (RectTransform)_gui.m_buyButton.transform : null);
             _sell = PagePart.Of(_canvas, Child("SellPanel"));
             _coins = PagePart.Of(_canvas, Child("coins"));
+            _coinKids = PagePart.Children(_canvas, Child("coins"));
             // The vanilla "topic" plate text: the page title shows the trader's name instead.
             _topic = Child("topic");
             for (var i = 0; i < _wells.Length; i++)
@@ -89,7 +91,9 @@ namespace Morgott.UI.GameScreens
             if (!_canvas || !_page || !_gui) return;
             if (_list == null && _buy == null) Measure();
             if (!_header) _header = _store.GetComponentInChildren<RuneWindowHeader>(true) ?? RuneWindowHeader.Ensure(_store, "page.store");
-            if (_header && _gui.m_trader) _header.Text(_gui.m_trader.m_name);
+            // The trader's name; vanilla's own topic text where it has none (Bog Witch showed "-", run 20261107-154027).
+            if (_header && _gui.m_trader)
+                _header.Text(!string.IsNullOrEmpty(_gui.m_trader.m_name) ? _gui.m_trader.m_name : _topic && _topic.TryGetComponent<TMPro.TMP_Text>(out var tt) ? tt.text : "");
             if (_topic && !_gated.Contains(_topic.gameObject))
             {
                 RenderGate.Set(_topic.gameObject, Gate, true);
@@ -127,9 +131,10 @@ namespace Morgott.UI.GameScreens
             if (_coins != null)
             {
                 Hide(_coins.Rt.gameObject, currencies);
-                // Its plate art reaches ~1/3 past its box (run 20261107-153302: touched the screen top): 0.62 of the bar, centred.
-                var kc = bar.H * 0.62f / _coins.Box0.H;
-                _coins.Put(_canvas, kc, bar.X + 8f * u, bar.Y + (bar.H - _coins.Box0.H * kc) / 2f);
+                // Like the Epic Loot currency rows at Haldor / Hildir: its coin icon + count fitted into the bar (the bar cap is
+                // the frame), its own plate off (scaled, its art sat on the screen top / read blank: runs 20261107-153302 / -154027).
+                if (_coins.Rt.TryGetComponent<Image>(out var plate) && plate.enabled) plate.enabled = false;
+                if (_coinKids.Count > 0) PagePart.Fit(_canvas, _coinKids, new Box(bar.X + 8f * u, bar.Y + 6f * u, bar.W - 16f * u, bar.H - 12f * u), left: true);
             }
             for (var i = board ? _wells.Length : mod ? 1 : 0; i < _wells.Length; i++) _wells[i]?.Place(_canvas, default, false);
             if (!mod) return;
@@ -171,10 +176,13 @@ namespace Morgott.UI.GameScreens
             }
             else if (m.Whole != null)
             {
-                // Inset by the panel stack's reach (its frame art runs past the panel box: run 20261107-144822 x 585 vs 632).
-                var reach = 48f * u;
-                var zone = new Box(right.X + reach, right.Y + 1.5f * reach, right.W - 2f * reach, right.H - 2f * reach); // its column heads sit above its box
-                m.Whole.Put(_canvas, ElPageMath.Fit(m.Whole.Box0.W, m.Whole.Box0.H, zone, out var x0, out var y0), x0, y0);
+                // Placed by its widgets (ElPageMath.AlignContent): their top on the frame's inner top (the panel box ran ~95 px
+                // above them, run 20261107-154027).
+                var pad = 24f * u;
+                var zone = new Box(right.X + pad, right.Y + pad, right.W - 2f * pad, right.H - 2f * pad);
+                var kw = m.Content.IsEmpty ? ElPageMath.Fit(m.Whole.Box0.W, m.Whole.Box0.H, zone, out var x0, out var y0)
+                    : ElPageMath.AlignContent(m.Whole.Box0, m.Content, zone, out x0, out y0);
+                m.Whole.Put(_canvas, kw, x0, y0);
                 _wells[0]?.Place(_canvas, right, true);
             }
             // Both panels' currencies (and the board's sundial) in the top bar (mockup 04).
@@ -188,6 +196,7 @@ namespace Morgott.UI.GameScreens
         private sealed class Mod
         {
             public PagePart Whole, Sundial;
+            public Box Content; // union of its own widgets in the prefab layout (frame art / anchors excluded)
             public List<PagePart> CurrencyParts = new List<PagePart>();
             public readonly List<PagePart> Sections = new List<PagePart>();
             public readonly List<List<PagePart>> SectionKids = new List<List<PagePart>>();
@@ -214,8 +223,15 @@ namespace Morgott.UI.GameScreens
             if (_buy != null) _buy.Put(_canvas, row / _buy.Box0.H, new Box(col.X, y, half, row));
             if (_sell != null)
             {
-                // Inside the Buy row (its own panel stack reaches past it: run 20261107-151323 stuck out 17 px below).
-                var k = Mathf.Min(row * 0.9f / _sell.Box0.H, half / _sell.Box0.W); // visible in the Buy row (0.7 read as missing, run 20261107-153302)
+                // Its own Morgott.UI panel stack off (the caps reached ~10 px under the column, run 20261107-154027): the Sell
+                // panel box itself fits the Buy row.
+                foreach (Transform c in _sell.Rt)
+                    if (c.name.StartsWith("RuneSkin", System.StringComparison.Ordinal) && !_gated.Contains(c.gameObject))
+                    {
+                        RenderGate.Set(c.gameObject, Gate, true);
+                        _gated.Add(c.gameObject);
+                    }
+                var k = Mathf.Min(row / _sell.Box0.H, half / _sell.Box0.W);
                 _sell.Put(_canvas, k, col.X + half + gap + (half - _sell.Box0.W * k) / 2f, y + (row - _sell.Box0.H * k) / 2f);
             }
         }
@@ -232,6 +248,11 @@ namespace Morgott.UI.GameScreens
                 }
             m.CurrencyParts = PagePart.Children(_canvas, mod.Find("Currencies"));
             m.Sundial = PagePart.Of(_canvas, mod.Find("Sundial") as RectTransform);
+            var kids = PagePart.Children(_canvas, mod);
+            kids.RemoveAll(k => k.Rt.name == "Frame" || k.Rt.name == "SelectedFrame" || k.Rt.name == "TooltipAnchor" || k.Rt.name == "Currencies" || k.Rt.name == "Sundial" || k.Rt.name == Compat.ModCompat.EpicLootDragSurface);
+            // Full-panel layers (backgrounds, input blockers) are no widgets.
+            if (m.Whole != null) kids.RemoveAll(k => k.Box0.W >= m.Whole.Box0.W * 0.95f && k.Box0.H >= m.Whole.Box0.H * 0.95f);
+            m.Content = PagePart.Union(kids, true);
             return m;
         }
         // The mod panel's own window chrome on the page: the board's whole Morgott.UI stack (the wells frame its sections),

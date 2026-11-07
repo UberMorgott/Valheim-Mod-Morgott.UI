@@ -86,7 +86,22 @@ namespace Morgott.UI.ModScreens
 
         // A group mapped into area at one fitting scale (ElPageMath.Fit over the bounding box of its active parts; inactive parts
         // go along with it).
-        public static void Fit(RectTransform canvas, List<PagePart> parts, Box area, bool left = false)
+        // Union of the parts' prefab boxes (active ones only when asked); empty when none.
+        public static Box Union(List<PagePart> parts, bool activeOnly)
+        {
+            float x0 = float.MaxValue, y0 = float.MaxValue, x1 = float.MinValue, y1 = float.MinValue;
+            foreach (var p in parts)
+            {
+                if (activeOnly && !p.Rt.gameObject.activeSelf) continue;
+                x0 = Mathf.Min(x0, p.Box0.X); y0 = Mathf.Min(y0, p.Box0.Y);
+                x1 = Mathf.Max(x1, p.Box0.Right); y1 = Mathf.Max(y1, p.Box0.Bottom);
+            }
+            return x1 > x0 ? new Box(x0, y0, x1 - x0, y1 - y0) : default;
+        }
+
+        // stretchRight: the group's right-edge parts (wide info / list panes) run on to the area's right edge (mockup 02 pane
+        // filled to its frame; run 20261107-154027 left ~570 px empty on the right).
+        public static void Fit(RectTransform canvas, List<PagePart> parts, Box area, bool left = false, bool stretchRight = false)
         {
             if (parts == null || parts.Count == 0 || area.IsEmpty) return;
             float x0 = float.MaxValue, y0 = float.MaxValue, x1 = float.MinValue, y1 = float.MinValue;
@@ -98,7 +113,14 @@ namespace Morgott.UI.ModScreens
             }
             if (x1 <= x0) return;
             var k = ElPageMath.Fit(x1 - x0, y1 - y0, area, out var ax, out var ay, left);
-            foreach (var p in parts) p.Put(canvas, k, ax + (p.Box0.X - x0) * k, ay + (p.Box0.Y - y0) * k);
+            foreach (var p in parts)
+            {
+                var px = ax + (p.Box0.X - x0) * k;
+                var py = ay + (p.Box0.Y - y0) * k;
+                if (stretchRight && p.Rt.gameObject.activeSelf && p.Box0.Right >= x1 - 2f && p.Box0.W >= 0.2f * (x1 - x0) && area.Right > px + p.Box0.W * k)
+                    p.Put(canvas, k, new Box(px, py, area.Right - px, p.Box0.H * k));
+                else p.Put(canvas, k, px, py);
+            }
         }
     }
 }

@@ -165,7 +165,7 @@ namespace Morgott.UI.ModScreens
             {
                 var on = f.List != null;
                 if (_divider.enabled != on) _divider.enabled = on;
-                if (on) Geo.Place(_canvas, _divider.rectTransform, new Box((column.Right + pane.X) / 2f - 2f * u, column.Y + 8f * u, 4f * u, column.H - 16f * u));
+                if (on) Geo.Place(_canvas, _divider.rectTransform, new Box(column.Right - 2f * u, column.Y + 8f * u, 4f * u, column.H - 16f * u)); // on the column boundary (mockup 02 x 574; it sat ~24 px right)
             }
             if (f.List != null)
             {
@@ -196,7 +196,7 @@ namespace Morgott.UI.ModScreens
                 y += h + 8f * u;
             }
             // Left-aligned (mockup 02 pane content; centred left ~320 px empty, run 20261107-145553).
-            PagePart.Fit(_canvas, f.Rest, new Box(pane.X + pad, y, pane.W - 2f * pad, Mathf.Max(0f, pane.Bottom - pad - y)), true);
+            PagePart.Fit(_canvas, f.Rest, new Box(pane.X + pad, y, pane.W - 2f * pad, Mathf.Max(0f, pane.Bottom - pad - y)), true, stretchRight: true);
         }
     }
 }
