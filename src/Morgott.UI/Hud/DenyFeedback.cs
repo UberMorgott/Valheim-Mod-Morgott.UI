@@ -22,7 +22,7 @@ namespace Morgott.UI.PlayerHud
 
         private static float _soundAt = DenyFlash.NeverAt;
         private static GameObject _sound;
-        private static bool _searched;
+        private static bool _warned;
 
         // While Player.SetMaxHealth(float, true) runs: its FlashHealthBar is the upgrade flash.
         internal static bool InMaxHealthUpgrade;
@@ -41,14 +41,8 @@ namespace Morgott.UI.PlayerHud
         private static void PlaySound()
         {
             var player = Player.m_localPlayer;
-            if (!player || !ZNetScene.instance) return;
-            if (!_searched)
-            {
-                _searched = true;
-                _sound = ZNetScene.instance.GetPrefab(SoundPrefab);
-                SoundName = _sound ? _sound.name : null;
-                if (!_sound) Plugin.Log.LogWarning($"[Morgott.UI] deny sound: {SoundPrefab} not in ZNetScene (flash only)");
-            }
+            if (!player) return;
+            if (!_sound) _sound = Find();
             if (!_sound) return;
             // local only: vanilla sfx prefabs carry a ZNetView (EffectList.Create spawns them networked); this cue is the
             // local player's own, so no ZDO is created (ZNetView.m_forceDisableInit, ZNetView.cs:45)
@@ -59,6 +53,24 @@ namespace Morgott.UI.PlayerHud
             Object.Destroy(go, 5f);
             LastSound = go.GetComponentInChildren<ZSFX>();
             Sounds++;
+        }
+
+        // The sfx is no ZNetScene prefab: vanilla holds it in InventoryGui.m_closeInventoryEffects (InventoryGui.cs:237,
+        // played at :1084). InventorySkin swaps that list for an empty one while its ghost window runs, so a miss is
+        // retried on the next refusal (warned once).
+        private static GameObject Find()
+        {
+            var fx = InventoryGui.instance ? InventoryGui.instance.m_closeInventoryEffects?.m_effectPrefabs : null;
+            if (fx != null)
+                foreach (var e in fx)
+                    if (e?.m_prefab && e.m_prefab.name == SoundPrefab)
+                    {
+                        SoundName = e.m_prefab.name;
+                        return e.m_prefab;
+                    }
+            if (!_warned) Plugin.Log.LogInfo($"[Morgott.UI] deny sound: {SoundPrefab} not in InventoryGui close effects yet (flash only)");
+            _warned = true;
+            return null;
         }
     }
 }
