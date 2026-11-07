@@ -76,13 +76,17 @@ namespace Morgott.UI.ModScreens
 
         public bool Locked => _lock && _lock.gameObject.activeSelf;
 
+        // Icon cap of the full-screen page's top-bar tab row (ElPage): icon + lock badge only, the page title names the feature.
+        public bool IconOnly;
+
         private void LateUpdate() => Apply();
 
         private void Apply()
         {
             if (!_cell) return;
             var r = _cell.rect;
-            ForeignMath.ElTabLayout(r.width, r.height, F("size.el.tab.icon", 28f), F("size.el.tab.gap", 3f), F("size.el.tab.caption.h", 40f),
+            var iconSide = IconOnly ? Mathf.Min(r.width, r.height) * 0.6f : F("size.el.tab.icon", 28f);
+            ForeignMath.ElTabLayout(r.width, r.height, iconSide, IconOnly ? 0f : F("size.el.tab.gap", 3f), IconOnly ? 0f : F("size.el.tab.caption.h", 40f),
                 F("size.el.tab.pad", 4f), F("size.el.tab.badge", 18f), out var icon, out var caption, out var badge);
             if (_icon)
             {
@@ -97,7 +101,12 @@ namespace Morgott.UI.ModScreens
                 var inset = Mathf.Round(badge.W * 0.22f);
                 InfoArt.Rect(_padlock, inset, inset, badge.W - 2f * inset, badge.H - 2f * inset, badge.H);
             }
-            Caption(caption);
+            if (IconOnly)
+            {
+                if (_label && _label.enabled) _label.enabled = false;
+                if (_caption && _caption.gameObject.activeSelf) _caption.gameObject.SetActive(false);
+            }
+            else Caption(caption);
             Tooltip();
         }
 
@@ -195,7 +204,8 @@ namespace Morgott.UI.ModScreens
 
         private void Apply()
         {
-            if (!_group || !_tabs) return;
+            // The full-screen page lays the tabs out as its top-bar row.
+            if (!_group || !_tabs || ElPage.Shows(transform.parent)) return;
             var mask = ((RectTransform)_group.transform).rect.width;
             var w = ForeignMath.ElTabWidth(ThemeTokens.GetFloat("size.el.tab.w", 136f), mask, ThemeTokens.GetFloat("size.el.tab.margin", 4f));
             var shown = 0;

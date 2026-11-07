@@ -37,6 +37,7 @@ namespace Morgott.UI.GameScreens
                 PopupSkin.Backdrops(ctx, r);
             });
             if (row) Row(row);
+            TraderPage.Ensure(s); // full-screen page (user 2026-11-07, mockup 2026-11-07/04)
         }
 
         // Epic Loot's trader panels (TemperPanel at Hildir, MerchantPanel at Haldor): built under the StoreGui in its

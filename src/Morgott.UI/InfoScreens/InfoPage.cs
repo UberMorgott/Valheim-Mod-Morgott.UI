@@ -44,6 +44,10 @@ namespace Morgott.UI.InfoScreens
 
         // Per-frame layout of a page without its own LateUpdate (compendium), with the skin scale.
         public Action<float> OnLayout;
+
+        // Name banner left edge (mockup px) and room kept free right of it before the Esc cap (a page's own top-bar items:
+        // the trader's currencies, mockup 2026-11-07/04).
+        public float NameX = 949f, NameRightReserve;
         public RectTransform Canvas => _canvas;
 
         // Harness / diagnostics: the page shown now (null = none).
@@ -272,8 +276,8 @@ namespace Morgott.UI.InfoScreens
             if (_items) Key(_items, new Box(639f * u, 32f * u, 266f * u, 56f * u), _itemsLabel, 28f * u);
             if (_name)
             {
-                var x = 949f * u;
-                var nb = new Box(x, 33f * u, Mathf.Max(0f, Mathf.Min(768f * u, esc.X - 48f * u - x)), 55f * u);
+                var x = NameX * u;
+                var nb = new Box(x, 33f * u, Mathf.Max(0f, Mathf.Min(768f * u, esc.X - 48f * u - NameRightReserve * u - x)), 55f * u);
                 Geo.Place(_canvas, _name.rectTransform, nb);
                 Ends(_name, ThemeTokens.GetFloat("size.info.page.title.end", 200f) * u * 55f / 68f);
                 if (_nameText)
