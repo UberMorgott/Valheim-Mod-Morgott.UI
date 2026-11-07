@@ -59,8 +59,7 @@ namespace Morgott.UI.GameScreens
             rt.anchorMin = Vector2.zero;
             rt.anchorMax = Vector2.one;
             rt.offsetMin = rt.offsetMax = Vector2.zero;
-            _runes = go.AddComponent<TextMeshProUGUI>();
-            _runes.font = runeFont;
+            _runes = UiText.Add(go, runeFont);
             _runes.raycastTarget = false;
             _runes.richText = true;
             _runes.enabled = false;
