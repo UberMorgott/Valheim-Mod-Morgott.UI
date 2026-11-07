@@ -260,6 +260,8 @@
   "ib_empty_known": "Only items your character knows are shown (config ItemBrowser.KnownOnly).",
   "ui_cp_coin_drop": "Coin Drop",
   "ui_cp_coin_drop_desc": "Click here to store coins in your pocket.",
+  "ui_cp_pocket": "Coin purse",
+  "ui_cp_pocket_desc": "Coins in the purse: $1. Coins you pick up, take from chests or get from traders go here and pay every coin cost. The button takes coins out.",
   "ui_bc_reloaded": "Build camera settings reloaded; diagnostic report saved.",
   "ui_bc_need_tool": "Equip your hammer or another building tool first.",
   "ui_bc_need_ground": "Stand on solid ground to enter the build camera.",

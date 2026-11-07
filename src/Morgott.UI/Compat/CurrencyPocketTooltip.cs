@@ -4,6 +4,8 @@ using System.Reflection.Emit;
 using BepInEx.Bootstrap;
 using BepInEx.Configuration;
 using HarmonyLib;
+using UnityEngine;
+using UnityEngine.UI;
 
 namespace Morgott.UI.Compat
 {
@@ -33,7 +35,47 @@ namespace Morgott.UI.Compat
                 Plugin.Log.LogWarning($"[Compat] CurrencyPocket {info.Metadata.Version}: PocketDrop.OnPointerEnter not found; tooltip stays English.");
                 return;
             }
-            harmony.Patch(target, transpiler: new HarmonyMethod(typeof(CurrencyPocketTooltip), nameof(Transpiler)));
+            harmony.Patch(target, transpiler: new HarmonyMethod(typeof(CurrencyPocketTooltip), nameof(Transpiler)),
+                postfix: new HarmonyMethod(typeof(CurrencyPocketTooltip), nameof(PointerEnterPostfix)));
+            var update = target.DeclaringType.GetMethod("Update", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
+            if (update != null) harmony.Patch(update, postfix: new HarmonyMethod(typeof(CurrencyPocketTooltip), nameof(UpdatePostfix)));
+            else Plugin.Log.LogWarning($"[Compat] CurrencyPocket {info.Metadata.Version}: PocketDrop.Update not found; the coin plate icon does not fade when empty.");
+        }
+
+        // CurrencyPocket Constants.CoinCountCustomData / ArmorIconName.
+        private const string PurseKey = "CoinPocket_CoinCount";
+        private const string IconName = "armor_icon";
+        // Empty purse: the coin glyph dimmed like an empty slot (user 2026-11-08: the plate was not read as a coin slot).
+        private const float EmptyAlpha = 0.35f;
+
+        private static bool Dragging(InventoryGui gui) => gui && gui.m_dragGo && gui.m_dragItem != null;
+
+        internal static int Purse(Player player) =>
+            player && player.m_customData.TryGetValue(PurseKey, out var text) && int.TryParse(text, out var coins) && coins > 0 ? coins : 0;
+
+        internal static float IconAlpha(int purse) => purse > 0 ? 1f : EmptyAlpha;
+
+        // CurrencyPocket shows a tooltip only while an item is dragged ("put coins here"); hovering the plate empty-handed
+        // now names it: the purse and how coins get there. Same tooltip object and call as its own (PocketDrop.OnPointerEnter).
+        private static void PointerEnterPostfix(MonoBehaviour __instance)
+        {
+            var gui = InventoryGui.instance;
+            if (!gui || Dragging(gui) || !gui.m_playerGrid || gui.m_playerGrid.m_elements.Count == 0) return;
+            var tooltip = gui.m_playerGrid.m_elements[0].m_tooltip;
+            if (!tooltip) return;
+            tooltip.Set("$ui_cp_pocket", Localization.instance.Localize("$ui_cp_pocket_desc", Purse(Player.m_localPlayer).ToString()));
+            tooltip.OnHoverStart(__instance.gameObject);
+        }
+
+        // After CurrencyPocket's own Update (it swaps the glyph sprite while coins are dragged): dim the coin glyph while
+        // the purse is empty.
+        private static void UpdatePostfix(MonoBehaviour __instance)
+        {
+            var icon = __instance.transform.Find(IconName);
+            if (!icon || !icon.TryGetComponent<Image>(out var image)) return;
+            var alpha = Dragging(InventoryGui.instance) ? 1f : IconAlpha(Purse(Player.m_localPlayer));
+            var c = image.color;
+            if (Mathf.Abs(c.a - alpha) > 0.001f) image.color = new Color(c.r, c.g, c.b, alpha);
         }
 
         private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
