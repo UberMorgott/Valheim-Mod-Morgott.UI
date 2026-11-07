@@ -116,7 +116,7 @@ namespace Morgott.UI.WorldHud
                 if (ctx.AdapterRoles.ContainsKey(t)) continue;
                 if (t.name == "piece_name") ctx.Role(t, "text.display", "selected piece name (display serif)");
                 else if (t.name == "res_amount") ctx.Role(t, "skill.level", "requirement amount");
-                else if (t.name == ComfortBadge.ValueName) ctx.Role(t, "skill.level", "piece comfort value (ComfortBadge)");
+                else if (t.name == ComfortBadge.ValueName) ctx.Role(t, "content", "piece comfort value (ComfortBadge, fixed size)");
             }
             PreWorldKit.Common(ctx, root);
             return ctx;

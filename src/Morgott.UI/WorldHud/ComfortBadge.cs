@@ -18,6 +18,7 @@ namespace Morgott.UI.WorldHud
     {
         public const string BadgeName = "RuneSkin_ComfortBadge";
         public const string ValueName = "RuneSkin_ComfortValue";
+        private const float ValueSize = 14f;
         private static Sprite _sprite;
         private static bool _warned;
 
@@ -71,7 +72,14 @@ namespace Morgott.UI.WorldHud
             icon.preserveAspect = true;
             icon.raycastTarget = false;
             SkinMark.Own(icon.gameObject, "content", "piece comfort badge (vanilla Rested icon)");
-            var value = InfoArt.RowText(rt, ValueName, "skill.level", TextAlignmentOptions.BottomRight);
+            // Fixed size, kept by the role pass ("content"): a role-sized label overflowed the 64 px cell (run
+            // 20261107-235729 m6-layout cell-text, '+2' bounds 20x93 px).
+            var value = InfoArt.NewText(ValueName, rt, "skill.level");
+            value.raycastTarget = false;
+            value.alignment = TextAlignmentOptions.BottomRight;
+            value.enableAutoSizing = false;
+            value.fontSize = ValueSize;
+            SkinMark.Own(value.gameObject, "content", "piece comfort value (ComfortBadge, fixed size)");
             value.rectTransform.anchorMin = Vector2.zero;
             value.rectTransform.anchorMax = Vector2.one;
             value.rectTransform.offsetMin = value.rectTransform.offsetMax = Vector2.zero;
