@@ -90,6 +90,10 @@ namespace Morgott.UI.Classify
                 var selectable = g.GetComponentInParent<Selectable>(true);
                 if (selectable && selectable.targetGraphic == g)
                 {
+                    // Vanilla click-outside closers (SplitDialog / VariantDialog / Texts / Achievements "CloseButton": full-screen
+                    // sprite-less Image at alpha 0 behind the dialog) draw nothing; as a button they painted the whole screen.
+                    if (selectable is Button && MarkMath.InvisibleHitArea(!string.IsNullOrEmpty(originalSprite), VanillaAlpha(image)))
+                        return Classification.Of("skip", "transparent hit area (vanilla click-outside closer, draws nothing)");
                     if (selectable is Button)
                         return Classification.Of("button", "Button.targetGraphic");
                     if (selectable is TMP_InputField || selectable is InputField)
@@ -224,6 +228,10 @@ namespace Morgott.UI.Classify
             if (input && input.targetGraphic == image) return Classification.Of("field", "TMP_InputField.targetGraphic");
             return null;
         }
+
+        // The colour vanilla gave the image (a restyle pass journals it on the mark).
+        private static float VanillaAlpha(Image image) =>
+            image.TryGetComponent<SkinMark>(out var m) && m.HasImageColor ? m.OrigImageColor.a : image.color.a;
 
         private static bool Stretches(RectTransform rt) =>
             rt.anchorMin == Vector2.zero && rt.anchorMax == Vector2.one;

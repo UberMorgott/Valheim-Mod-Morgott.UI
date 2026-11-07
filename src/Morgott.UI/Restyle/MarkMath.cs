@@ -20,5 +20,9 @@ namespace Morgott.UI.Restyle
         // Other faces keep the material they had (only the font is ours), so a material change there is not an overwrite.
         public static bool FaceOverwritten(bool fontIsOurs, bool loadedFace, bool materialIsOurs) =>
             !fontIsOurs || loadedFace && !materialIsOurs;
+
+        // A button graphic vanilla never draws (no sprite, alpha 0: a dialog's full-screen click-outside closer) keeps
+        // its vanilla look: button art on it paints the whole screen.
+        public static bool InvisibleHitArea(bool hasSprite, float vanillaAlpha) => !hasSprite && vanillaAlpha <= 0.01f;
     }
 }

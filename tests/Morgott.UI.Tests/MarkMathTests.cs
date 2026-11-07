@@ -38,5 +38,15 @@ namespace Morgott.UI.Tests
         [InlineData(true, false, false, false)] // body face: the material is the text's own, not ours
         public void FaceOverwrittenSeesTheMaterialOnLoadedFaces(bool fontIsOurs, bool loadedFace, bool materialIsOurs, bool want) =>
             Assert.Equal(want, MarkMath.FaceOverwritten(fontIsOurs, loadedFace, materialIsOurs));
+
+        // Player screenshot 2026-11-08: SplitDialog/CloseButton (sprite-less, white alpha 0, full screen) took button_normal
+        // + color.frame and painted an opaque full-screen plate under the split dialog.
+        [Theory]
+        [InlineData(false, 0f, true)]    // vanilla click-outside closer: keep it invisible
+        [InlineData(false, 1f, false)]   // sprite-less but drawn: a real (flat) button
+        [InlineData(true, 0f, false)]    // has art: button (alpha comes from its own transition)
+        [InlineData(true, 1f, false)]
+        public void InvisibleHitAreaKeepsVanillaClosersTransparent(bool hasSprite, float alpha, bool want) =>
+            Assert.Equal(want, MarkMath.InvisibleHitArea(hasSprite, alpha));
     }
 }
