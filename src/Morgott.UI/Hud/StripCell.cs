@@ -115,11 +115,11 @@ namespace Morgott.UI.PlayerHud
             _timer = Text(art, "Timer", "size.hud.strip.timer.font", "color.hud.timer", TextAlignmentOptions.Center);
             // a timer: the timer floor (12 px), not the number floor its 24-unit size picked (run 20261023-194139: at 720
             // the 14 px number floor pushed "20m" out of the food band)
-            // food (user 2026-11-08: "9s" under the ring unreadable): the body floor (16 px), fixed size, top-aligned in a
-            // line under the disc so a floored font grows away from the ring, never onto it
+            // food (user 2026-11-08: "9s" at the ring bottom unreadable): the body floor (16 px), fixed size, outlined HUD
+            // number over the disc bottom, bottom-aligned so a floored font grows up into the disc, never off the cell
             if (_timer.TryGetComponent<TextFloor>(out var tf))
                 tf.Px = ThemeTokens.GetFloat(round ? "floor.text.body.px" : "floor.text.timer.px", round ? 16f : 12f);
-            if (round) _timer.alignment = TextAlignmentOptions.Top;
+            if (round) _timer.alignment = TextAlignmentOptions.Bottom;
             _key.gameObject.SetActive(false);
             _count.gameObject.SetActive(false);
             _timer.gameObject.SetActive(false);
@@ -185,11 +185,11 @@ namespace Morgott.UI.PlayerHud
             // round cell with its timer band: the count sits above the band (bottom-right of the disc), never on the timer
             var countY = _round && timerBelow ? band : inset * 0.8f;
             Box(_count.rectTransform, inset, countY, w - 2f * inset, h * 0.5f);
-            if (timerBelow) // food: in the band under the disc, or (no band) a line just under the cell; never over the ring
+            if (timerBelow) // food: in the band under the disc, or (no band) over the disc bottom, above the ring (later sibling)
             {
+                // no band: the cell sits on the screen edge (run 20261108-015822: a line under it was cut in half at 720)
                 var timerLine = ThemeTokens.GetFloat("size.hud.strip.timer", 18f);
-                if (band > 0f) Box(_timer.rectTransform, 0f, 0f, w, band);
-                else Box(_timer.rectTransform, 0f, -timerLine, w, timerLine);
+                Box(_timer.rectTransform, 0f, band > 0f ? 0f : side * 0.04f, w, band > 0f ? band : timerLine);
             }
             else // cooldowns: the lower 70 % of the cell, clear of the key label (top-left)
                 Box(_timer.rectTransform, 0f, 0f, w, h * 0.7f);
