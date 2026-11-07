@@ -6,6 +6,16 @@ namespace Morgott.UI.PreWorld
     // Pure pre-world helpers (unit tested).
     public static class PreWorldMath
     {
+        // Uniform scale (<= 1) that fits a w x h window inside an area x areaH canvas with margin on every side; 1 when it
+        // already fits or nothing is measurable. Canvas units shrink as GuiScale grows (GuiScaler.cs:54-58), so the widened
+        // Settings window (1310 units) left a 1080p screen past GUI scale ~1.45.
+        public static float FitScale(float w, float h, float areaW, float areaH, float margin)
+        {
+            if (!(w > 0f) || !(h > 0f)) return 1f;
+            var k = Math.Min((areaW - 2f * margin) / w, (areaH - 2f * margin) / h);
+            return k > 0f && k < 1f ? k : 1f;
+        }
+
         // Input placeholder without vanilla's brackets; the untranslated "Filter" (server filter) in the given language.
         public static string CleanPlaceholder(string text, string language)
         {

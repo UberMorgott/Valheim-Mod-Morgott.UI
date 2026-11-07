@@ -766,6 +766,13 @@ namespace Morgott.UI.PreWorld
                     if (!sel) continue;
                     foreach (var img in sel.GetComponentsInChildren<Image>(true))
                         PanelSwap.Apply(img, img.sprite ? img.sprite.name : null);
+                    // Vanilla's selected label (Selected/LabelSelected) sat on the opaque highlight that hid the plain
+                    // label; with the highlight off both drew, stacked in two sizes and colours (player report, Settings
+                    // "Специальные возможности"). The plain label shows the state (TabLabelState), the selected one is off.
+                    var label = tab.m_button.GetComponent<TabLabelState>() is TabLabelState ls ? ls.Label : null;
+                    if (label && !label.transform.IsChildOf(sel))
+                        foreach (var t in sel.GetComponentsInChildren<TMP_Text>(true))
+                            PanelSwap.Apply(t, null);
                 }
         }
 

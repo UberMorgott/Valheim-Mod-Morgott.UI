@@ -70,6 +70,12 @@ namespace Morgott.UI.PreWorld
         {
             if (!root) return;
             var floor = ThemeTokens.GetFloat("size.text.readable", 16f);
+            if (!root.TryGetComponent<ReadableSweep>(out var sweep))
+            {
+                sweep = root.gameObject.AddComponent<ReadableSweep>();
+                sweep.hideFlags = HideFlags.HideInInspector;
+            }
+            sweep.Floor = floor;
             foreach (var t in root.GetComponentsInChildren<TMP_Text>(true))
             {
                 if (t.GetComponent<SkinMark>() is SkinMark m && m.Internal) continue;
@@ -79,14 +85,8 @@ namespace Morgott.UI.PreWorld
                 // Measured where it renders: screen code scales subtrees / sets sizes after the restyle (settings stepper
                 // 14.9 px, sex toggles 15.5 px with a one-shot floor, run 20261022-232945), so the floor re-applies for a
                 // sweep keeps it every 30 frames (ReadableSweep, in screen px like the check).
-                if (t.isActiveAndEnabled) ReadableSweep.Apply(t, floor);
+                if (t.isActiveAndEnabled) sweep.Apply(t, floor);
             }
-            if (!root.TryGetComponent<ReadableSweep>(out var sweep))
-            {
-                sweep = root.gameObject.AddComponent<ReadableSweep>();
-                sweep.hideFlags = HideFlags.HideInInspector;
-            }
-            sweep.Floor = floor;
         }
         public static void Common(ScreenContext ctx, Transform root)
         {
@@ -157,7 +157,7 @@ namespace Morgott.UI.PreWorld
     {
     }
 
-    // Vanilla panel image switched off under the RuneSkin panel stack; Revert turns it back on.
+    // Vanilla panel image (or a vanilla state label) switched off under the RuneSkin skin; Revert turns it back on.
     // Readable floor on a pre-world root (PreWorldKit.ReadableFloor): every 30 frames the active texts under it are
     // measured where they render (screen px of one local unit, normalised to a 1080 px screen, the m5-text-min
     // measure) and raised to Floor px. A one-shot pass in canvas units missed texts made later (settings stepper value
@@ -174,6 +174,7 @@ namespace Morgott.UI.PreWorld
         {
             if (Time.frameCount < _next || Screen.height <= 0) return;
             _next = Time.frameCount + 30;
+            if (_base.Count > 256) Prune(); // destroyed list rows
             Buffer.Clear();
             GetComponentsInChildren(false, Buffer);
             foreach (var t in Buffer)
@@ -186,16 +187,43 @@ namespace Morgott.UI.PreWorld
             Buffer.Clear();
         }
 
-        public static void Apply(TMP_Text t, float floor)
+        // Sizes as the screen code left them (base) and as last written here. The floor follows the live GUI scale both
+        // ways from the base: a raise-only floor kept the largest size of a GUI-scale slider drag (66 % -> 24 units) after
+        // the slider went back, so labels grew and re-wrapped with the drag history (player report, Масштаб интерфейса).
+        private struct Sizes { public float Size, Min, Max, WSize, WMin, WMax; }
+        private readonly System.Collections.Generic.Dictionary<TMP_Text, Sizes> _base = new System.Collections.Generic.Dictionary<TMP_Text, Sizes>();
+
+        public void Apply(TMP_Text t, float floor)
         {
             var want = Readable.Units(t, floor);
             if (!(want > 0f)) return;
-            if (!t.enableAutoSizing) { if (t.fontSize < want - 0.05f) t.fontSize = want; }
+            // Another writer changed the size since (or first sight): its value is the new base. Auto-size writes
+            // fontSize itself, so only its bounds count there.
+            if (!_base.TryGetValue(t, out var b) || (t.enableAutoSizing ? t.fontSizeMin != b.WMin || t.fontSizeMax != b.WMax : t.fontSize != b.WSize))
+                b = new Sizes { Size = t.fontSize, Min = t.fontSizeMin, Max = t.fontSizeMax };
+            if (!t.enableAutoSizing)
+            {
+                var size = Mathf.Max(b.Size, want);
+                if (Mathf.Abs(t.fontSize - size) > 0.05f) t.fontSize = size;
+            }
             else
             {
-                if (t.fontSizeMax < want) t.fontSizeMax = want;
-                if (t.fontSizeMin < want) t.fontSizeMin = want;
+                var max = Mathf.Max(b.Max, want);
+                var min = Mathf.Max(b.Min, want);
+                if (t.fontSizeMax != max) t.fontSizeMax = max;
+                if (t.fontSizeMin != min) t.fontSizeMin = min;
             }
+            b.WSize = t.fontSize;
+            b.WMin = t.fontSizeMin;
+            b.WMax = t.fontSizeMax;
+            _base[t] = b;
+        }
+
+        private void Prune()
+        {
+            var dead = new System.Collections.Generic.List<TMP_Text>();
+            foreach (var k in _base.Keys) if (!k) dead.Add(k);
+            foreach (var k in dead) _base.Remove(k);
         }
 
         public void Revert() => Destroy(this);
@@ -206,7 +234,7 @@ namespace Morgott.UI.PreWorld
         public string OrigSprite;
         public bool WasEnabled;
 
-        public static void Apply(Image img, string sprite)
+        public static void Apply(Graphic img, string sprite)
         {
             if (!img.TryGetComponent<PanelSwap>(out var s))
             {
@@ -220,7 +248,7 @@ namespace Morgott.UI.PreWorld
 
         public void Revert()
         {
-            if (TryGetComponent<Image>(out var img)) img.enabled = WasEnabled;
+            if (TryGetComponent<Graphic>(out var img)) img.enabled = WasEnabled;
             Destroy(this);
         }
     }

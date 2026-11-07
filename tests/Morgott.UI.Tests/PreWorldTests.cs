@@ -115,5 +115,37 @@ namespace Morgott.UI.Tests
         [InlineData("[]", "Russian", "[]")]
         public void PlaceholderLosesBrackets(string text, string language, string want) =>
             Assert.Equal(want, PreWorldMath.CleanPlaceholder(text, language));
+
+        // Settings window (1310 x 726 units, widened for the category column) at every GUI scale x resolution: inside the
+        // screen with the margin, full size whenever it already fits (no shrink at the default scale).
+        [Theory]
+        [InlineData(1280, 720)]
+        [InlineData(1920, 1080)]
+        [InlineData(2560, 1440)]
+        [InlineData(3840, 2160)]
+        [InlineData(1920, 1200)]
+        [InlineData(2560, 1080)]
+        [InlineData(1024, 768)]
+        public void SettingsWindowFitsEveryGuiScale(int screenW, int screenH)
+        {
+            const float w = 1310f, h = 726f, margin = 16f;
+            for (var s = 0.5f; s <= 1.5001f; s += 0.05f)
+            {
+                var factor = System.Math.Min(screenW / 1920f, screenH / 1080f) * s; // GuiScaler.GetScreenSizeFactor
+                float areaW = screenW / factor, areaH = screenH / factor;
+                var k = PreWorldMath.FitScale(w, h, areaW, areaH, margin);
+                Assert.True(k > 0f && k <= 1f);
+                Assert.True(w * k * factor <= screenW - 2f * margin * factor + 0.01f, $"{screenW}x{screenH} s={s} width");
+                Assert.True(h * k * factor <= screenH - 2f * margin * factor + 0.01f, $"{screenW}x{screenH} s={s} height");
+                if (w + 2f * margin <= areaW && h + 2f * margin <= areaH) Assert.Equal(1f, k);
+            }
+        }
+
+        [Fact]
+        public void FitScaleUnmeasurableIsOne()
+        {
+            Assert.Equal(1f, PreWorldMath.FitScale(0f, 100f, 1920f, 1080f, 16f));
+            Assert.Equal(1f, PreWorldMath.FitScale(100f, 100f, 10f, 10f, 16f)); // no room at all: leave it, never negative
+        }
     }
 }

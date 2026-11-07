@@ -29,6 +29,7 @@ namespace Morgott.UI.PreWorld
             PreWorldKit.Panels(root, "size.panel.pad");
             MainMenuSkin.TabSelected(root);
             Column(settings, panel);
+            if (panel && !panel.GetComponent<ScreenFit>()) panel.gameObject.AddComponent<ScreenFit>();
             GamepadInset(settings);
             ScreenRegistry.Register(root, () => Context(settings));
             ScreenRegistry.Restyle(root);
@@ -163,6 +164,23 @@ namespace Morgott.UI.PreWorld
             // Anchored y relative to the anchor point (anchors at y 0.5 of the host).
             var y = c.y - (host.rect.yMin + host.rect.height * rt.anchorMin.y);
             if (Mathf.Abs(rt.anchoredPosition.y - y) > 0.5f) rt.anchoredPosition = new Vector2(rt.anchoredPosition.x, y);
+        }
+    }
+
+    // Keeps a window inside its root canvas at every GUI scale / resolution: uniform localScale <= 1 about its pivot,
+    // re-measured per frame (the GUI scale slider applies live, AccessibilitySettings.cs:131-132), change-only writes.
+    public sealed class ScreenFit : MonoBehaviour
+    {
+        private void LateUpdate()
+        {
+            if (!(transform is RectTransform rt) || !(rt.parent is RectTransform parent)) return;
+            var canvas = rt.GetComponentInParent<Canvas>();
+            if (!canvas) return;
+            var area = ((RectTransform)canvas.rootCanvas.transform).rect.size;
+            // Window size in root canvas units at scale 1 (parents between them may scale).
+            var r = parent.lossyScale.x / Mathf.Max(1e-6f, canvas.rootCanvas.transform.lossyScale.x);
+            var k = PreWorldMath.FitScale(rt.rect.width * r, rt.rect.height * r, area.x, area.y, ThemeTokens.GetFloat("size.screen.margin", 16f));
+            if (Mathf.Abs(rt.localScale.x - k) > 0.001f) rt.localScale = new Vector3(k, k, 1f);
         }
     }
 
