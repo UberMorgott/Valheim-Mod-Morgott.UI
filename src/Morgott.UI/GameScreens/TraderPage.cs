@@ -126,7 +126,11 @@ namespace Morgott.UI.GameScreens
                 _storeWell.First(_storeWell.Fill.transform.GetSiblingIndex() > pb.GetSiblingIndex() ? pb.GetSiblingIndex() + 1 : pb.GetSiblingIndex());
             _storeWell?.Place(_canvas, new Box(col.X - 12f * u, col.Y, col.W + 24f * u, col.H + 12f * u), true);
             // One key-cap frame behind the top-bar currencies (mockup 04 currency caps).
-            _barCap?.Place(_canvas, new Box(bar.X - 8f * u, bar.Y, bar.W + 16f * u, bar.H), mod || _coins != null, fill: false); // frame only: drawn over the vanilla coin purse
+            _barCap?.Place(_canvas, new Box(bar.X - 8f * u, bar.Y, bar.W + 16f * u, bar.H), mod || _coins != null, fill: false); // frame only
+            // Under the vanilla coin purse: the cap's frame art has a dark centre and, created after the purse, covered it (run
+            // 20261107-193053: Bog Witch's coin icon + count barely visible). Epic Loot's currencies are later siblings anyway.
+            if (_barCap != null && _barCap.Frame && _coins != null && _barCap.Frame.transform.GetSiblingIndex() > _coins.Rt.GetSiblingIndex())
+                _barCap.First(_coins.Rt.GetSiblingIndex());
             StoreColumn(col, u);
             if (_coins != null)
             {
