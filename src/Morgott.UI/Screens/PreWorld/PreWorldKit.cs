@@ -199,8 +199,15 @@ namespace Morgott.UI.PreWorld
             if (!(want > 0f)) return;
             // Another writer changed the size since (or first sight): its value is the new base. Auto-size writes
             // fontSize itself, so only its bounds count there.
-            if (!_base.TryGetValue(t, out var b) || (t.enableAutoSizing ? t.fontSizeMin != b.WMin || t.fontSizeMax != b.WMax : t.fontSize != b.WSize))
-                b = new Sizes { Size = t.fontSize, Min = t.fontSizeMin, Max = t.fontSizeMax };
+            // Per field: TextInset rewrites only the minimum (live floor); taking the raised maximum as the new base
+            // with it kept a 63 % drag's 24.7 after the slider returned (run 20261108-010204, tab labels).
+            if (!_base.TryGetValue(t, out var b)) b = new Sizes { Size = t.fontSize, Min = t.fontSizeMin, Max = t.fontSizeMax };
+            else
+            {
+                if (!t.enableAutoSizing && t.fontSize != b.WSize) b.Size = t.fontSize;
+                if (t.fontSizeMin != b.WMin) b.Min = t.fontSizeMin;
+                if (t.fontSizeMax != b.WMax) b.Max = t.fontSizeMax;
+            }
             if (!t.enableAutoSizing)
             {
                 var size = Mathf.Max(b.Size, want);
