@@ -68,6 +68,7 @@
     <Compile Include="..\..\src\Morgott.UI\InfoScreens\StatsMath.cs" Link="Linked\StatsMath.cs" />
     <Compile Include="..\..\src\Morgott.UI\InfoScreens\StatBreakdown.cs" Link="Linked\StatBreakdown.cs" />
     <Compile Include="..\..\src\Morgott.UI\Screens\TooltipMath.cs" Link="Linked\TooltipMath.cs" />
+    <Compile Include="..\..\src\Morgott.UI\Screens\TooltipLayout.cs" Link="Linked\TooltipLayout.cs" />
     <Compile Include="..\..\src\Morgott.UI\Screens\DamageIconText.cs" Link="Linked\DamageIconText.cs" />
     <Compile Include="..\..\src\Morgott.UI\Screens\AdrenalineText.cs" Link="Linked\AdrenalineText.cs" />
     <Compile Include="..\..\src\Morgott.UI\ItemBrowser\BrowserIndex.cs" Link="Linked\BrowserIndex.cs" />

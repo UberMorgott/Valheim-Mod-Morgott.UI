@@ -40,13 +40,58 @@ namespace Morgott.UI.Screens
         {
             var tip = UITooltip.m_tooltip;
             if (!_tips || !tip || __instance == null) return;
-            if (!Ensure()) return;
-            var decorated = DamageIconText.Decorate(__instance.m_text, _tags);
-            if (ReferenceEquals(decorated, __instance.m_text)) return;
             var t = Utils.FindChild(tip.transform, "Text");
             if (!t || !t.TryGetComponent<TMP_Text>(out var text)) return;
-            if (text.spriteAsset != _asset) text.spriteAsset = _asset;
+            _laidText = null;
+            _refits = 0;
+            Write(text, __instance.m_text, Available(text)); // layout runs even without icons (Ensure false -> no tags)
+        }
+
+        // Item tooltip layout (TooltipLayout) state: the live text, its raw source and the width it was composed for.
+        // UpdateTextElements runs before the restyle and before Epic Loot's TooltipBox fits the width, so the placer's
+        // pass (TooltipPlacer) recomposes from the raw text when the width changed; capped so a fit loop cannot spin.
+        private static TMP_Text _laidText;
+        private static string _laidRaw;
+        private static float _laidWidth, _laidSize;
+        private static TMP_FontAsset _laidFont;
+        private static int _refits;
+        private const int MaxRefits = 3;
+
+        private static float Available(TMP_Text text) => text.rectTransform.rect.width - text.margin.x - text.margin.z;
+
+        private static void Write(TMP_Text text, string raw, float width)
+        {
+            var icons = Ensure();
+            var prior = text.spriteAsset;
+            if (icons) text.spriteAsset = _asset; // before measuring: cells carry icons
+            var tags = icons ? _tags : null;
+            var gap = ThemeTokens.GetFloat("size.tooltip.column.gap", 10f);
+            var desc = ColorUtility.ToHtmlStringRGBA(ThemeTokens.GetColor("color.tooltip.description", new Color(0.66f, 0.69f, 0.71f, 1f)));
+            var composed = TooltipLayout.Compose(raw,
+                cell => text.GetPreferredValues(Localization.instance.Localize(DamageIconText.Decorate(cell, tags))).x,
+                width / 2f - gap, desc);
+            var decorated = DamageIconText.Decorate(composed, tags);
+            // No icon of ours in the text: the text keeps its own sprite asset (other mods' <sprite> tags).
+            if (ReferenceEquals(decorated, composed)) text.spriteAsset = prior;
+            if (ReferenceEquals(decorated, raw)) return; // vanilla text as UpdateTextElements wrote it
             text.text = Localization.instance.Localize(decorated);
+            if (ReferenceEquals(composed, raw)) return; // icons only: width-independent
+            _laidText = text;
+            _laidRaw = raw;
+            _laidWidth = width;
+            _laidFont = text.font;
+            _laidSize = text.fontSize;
+        }
+
+        // TooltipPlacer pass of the live tooltip: recompose when the text width settled to another value.
+        internal static void Refit(Transform tip)
+        {
+            if (!_laidText || _refits >= MaxRefits || !_laidText.transform.IsChildOf(tip)) return;
+            var width = Available(_laidText);
+            // Measured before the restyle (font / size swap) or Epic Loot's width fit: either one re-lays the cells.
+            if (Mathf.Abs(width - _laidWidth) < 1f && _laidText.font == _laidFont && Mathf.Abs(_laidText.fontSize - _laidSize) < 0.01f) return;
+            _refits++;
+            Write(_laidText, _laidRaw, width);
         }
 
         // Crafting panel item description: InventoryGui.UpdateRecipe (InventoryGui.cs:1517) writes

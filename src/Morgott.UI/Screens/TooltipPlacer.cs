@@ -85,6 +85,7 @@ namespace Morgott.UI.Screens
             {
                 if (_dirty) { _dirty = false; Sweep(); }
                 TopOverlay.Lift(gameObject);
+                DamageIcons.Refit(transform); // item tooltip columns follow the settled text width
                 if (_frame) _frame.Fit();
                 var bounds = Bounds();
                 Scrolls(bounds);
