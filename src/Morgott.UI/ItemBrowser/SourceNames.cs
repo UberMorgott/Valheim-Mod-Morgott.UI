@@ -47,7 +47,15 @@ namespace Morgott.UI.ItemBrowser
         {
             var owner = LootTableOwner(id);
             if (owner != null) return $"$ib_el_loottable {ownerName(owner) ?? Readable(owner)}";
-            return id != null && id.StartsWith(ItemSetPrefix, StringComparison.Ordinal) ? $"$ib_el_itemset {Readable(id.Substring(ItemSetPrefix.Length))}" : null;
+            return id != null && id.StartsWith(ItemSetPrefix, StringComparison.Ordinal) ? $"$ib_el_itemset {SetName(id.Substring(ItemSetPrefix.Length))}" : null;
+        }
+
+        // Epic Loot set names glue words and tiers ("Tier2weapons", "ShardUnique"): split at case / digit steps, digits kept
+        // (Readable drops them: run 20261108-043049 text-denylist flagged "Tier2weapons").
+        private static string SetName(string name)
+        {
+            var s = System.Text.RegularExpressions.Regex.Replace(name, "(?<=[a-z])(?=[A-Z0-9])|(?<=[0-9])(?=[A-Za-z])|_", " ").Trim();
+            return s.Length == 0 ? name : char.ToUpperInvariant(s[0]) + s.Substring(1).ToLowerInvariant();
         }
 
         public static string Readable(string id)

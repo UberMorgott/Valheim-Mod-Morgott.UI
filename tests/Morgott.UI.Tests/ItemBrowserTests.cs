@@ -447,6 +447,7 @@ namespace Morgott.UI.Tests
             Assert.Equal("$ib_el_loottable $enemy_troll", ix.Entries["EL:loottable:Troll"].Name);
             Assert.Equal("$ib_el_loottable Unknown thing", ix.Entries["EL:loottable:Unknown_thing"].Name);
             Assert.Equal("$ib_el_itemset Shard unique", ix.Entries["EL:itemset:ShardUnique"].Name);
+            Assert.Equal("$ib_el_itemset Tier 2 weapons", SourceNames.EpicLootName("EL:itemset:Tier2weapons", _ => null));
             Assert.Equal("Troll", SourceNames.LootTableOwner("EL:loottable:Troll"));
             Assert.Null(SourceNames.LootTableOwner("EL:itemset:ShardUnique"));
             Assert.True(PageModel.LootPage(EntryType.Other, "EL:loottable:Troll"));
