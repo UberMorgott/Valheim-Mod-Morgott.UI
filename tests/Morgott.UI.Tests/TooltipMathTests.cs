@@ -11,6 +11,14 @@ namespace Morgott.UI.Tests
 
         private static TipRect Cell(float x, float y) => TipRect.Sized(x, y, 64f, 64f);
 
+        [Theory]
+        [InlineData(400f, 900f, 20f, 864f, 864f)]  // long content: grows to the cap, not cut at the prefab's 400
+        [InlineData(400f, 600f, 20f, 864f, 620f)]  // fits: content + padding
+        [InlineData(400f, 100f, 20f, 864f, 400f)]  // short: never below the prefab height
+        [InlineData(400f, 900f, 20f, 300f, 300f)]  // small screen: the cap wins
+        public void ScrollViewSizesToContentWithinTheCap(float orig, float content, float pad, float cap, float want) =>
+            Assert.Equal(want, TooltipMath.FitHeight(orig, content, pad, cap), 3);
+
         [Fact]
         public void BoundsFloorIsTheStripTop()
         {

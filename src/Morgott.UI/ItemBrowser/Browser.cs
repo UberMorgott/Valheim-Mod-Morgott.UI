@@ -14,7 +14,7 @@ namespace Morgott.UI.ItemBrowser
     {
         public const string FavoritesKey = "ui_ib_favorites"; // Player.m_customData, ';'-joined prefab ids
 
-        public static ConfigEntry<bool> Cheat, CheatCreatures, KnownOnly;
+        public static ConfigEntry<bool> Cheat, CheatCreatures, ShowUnknown;
         public static ConfigEntry<KeyboardShortcut> Hotkey, RecipeKey, UsedInKey;
 
         public static BrowserIndex Index { get; private set; }
@@ -29,7 +29,7 @@ namespace Morgott.UI.ItemBrowser
         {
             Cheat = cfg.Bind("ItemBrowser", "EnableCheating", true, "Right-click take in the ITEMS tab (only for admins, devcommands or worlds with no build / craft cost).");
             CheatCreatures = cfg.Bind("ItemBrowser", "CheatCreatures", true, "Take on a creature spawns it in front of you (same gate as EnableCheating).");
-            KnownOnly = cfg.Bind("ItemBrowser", "KnownOnly", true, "ITEMS tab lists only what your character knows (config only; an empty list names this setting).");
+            ShowUnknown = cfg.Bind("ItemBrowser", "ShowUnknown", true, "ITEMS tab also lists what your character has not discovered yet (checkbox in the ITEMS header; devcommands always lists everything).");
             Hotkey = cfg.Bind("ItemBrowser", "Hotkey", new KeyboardShortcut(KeyCode.H, KeyCode.LeftAlt), "Opens the inventory on the ITEMS tab.");
             // R / U as VNEI; free in the inventory: vanilla Hide (R) and Morgott.Power TopUpKey (U) only read while
             // Player.TakeInput holds, which an open inventory blocks.
@@ -48,7 +48,7 @@ namespace Morgott.UI.ItemBrowser
         }
 
         // devcommands lists every entry, known or not (user, 2026-11-07).
-        public static bool KnownFilter => PageModel.KnownFilter(KnownOnly.Value, Devcommands);
+        public static bool KnownFilter => PageModel.KnownFilter(!ShowUnknown.Value, Devcommands);
 
         // ---------------------------------------------------------------- index
 
@@ -164,6 +164,7 @@ namespace Morgott.UI.ItemBrowser
         public static Sprite Icon(string id, out IconState state)
         {
             state = IconState.Missing;
+            if (SourceNames.LootTableOwner(id) is string owner) return Icon(owner, out state); // Epic Loot table: its owner's icon
             var go = Prefab(id);
             if (!go) return null;
             Sprite s = null;

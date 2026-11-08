@@ -30,6 +30,26 @@ namespace Morgott.UI.ItemBrowser
         private static readonly HashSet<string> Variants = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             { "green", "red", "blue", "yellow", "white", "black", "small", "large", "big", "old", "broken" };
 
+        // Morgott.EpicLoot LootGraph pseudo sources: one per Epic Loot loot table (owner = creature / container prefab) and
+        // per item set.
+        public const string LootTablePrefix = "EL:loottable:", ItemSetPrefix = "EL:itemset:";
+
+        public static bool EpicLootPseudo(string id) =>
+            id != null && (id.StartsWith(LootTablePrefix, StringComparison.Ordinal) || id.StartsWith(ItemSetPrefix, StringComparison.Ordinal));
+
+        /// <summary>Loot table's owner prefab ("EL:loottable:Troll" -> "Troll"), else null.</summary>
+        public static string LootTableOwner(string id) =>
+            id != null && id.StartsWith(LootTablePrefix, StringComparison.Ordinal) ? id.Substring(LootTablePrefix.Length) : null;
+
+        /// <summary>Name token(s) of an Epic Loot pseudo source, localized as a whole: "$ib_el_loottable $enemy_troll"
+        /// ("Epic Loot drops: Troll"); ownerName = the owner entry's token, null = readable prefab. Null for other ids.</summary>
+        public static string EpicLootName(string id, Func<string, string> ownerName)
+        {
+            var owner = LootTableOwner(id);
+            if (owner != null) return $"$ib_el_loottable {ownerName(owner) ?? Readable(owner)}";
+            return id != null && id.StartsWith(ItemSetPrefix, StringComparison.Ordinal) ? $"$ib_el_itemset {Readable(id.Substring(ItemSetPrefix.Length))}" : null;
+        }
+
         public static string Readable(string id)
         {
             if (string.IsNullOrEmpty(id)) return id;

@@ -20,6 +20,7 @@ namespace Morgott.UI.ItemBrowser
         public int BaseQuality;  // quality of Inputs[0] when it is that upgrade base, else 0
         public string Right;     // station / tool / trader drawn on the right, null = by hand or none
         public bool Recipe;      // inputs + station layout; false = source name + chance
+        public string Tag;       // source row: readable prefab name when another source has the same name but other drops
 
         public int Lines => Recipe ? Math.Max(1, (Inputs.Length + 1) / 2) : 1;
     }
@@ -85,10 +86,40 @@ namespace Morgott.UI.ItemBrowser
                     ? Recipe(r, id)
                     : new PageRow { R = r, Icon = r.Source, Inputs = Array.Empty<Stack>(), Right = null });
             }
+            Dedupe(ix, id, rows);
             // Stable sort by rank (List.Sort is not stable).
             var ordered = new List<PageRow>(rows.Count);
             for (var rank = 0; rank <= 3; rank++) foreach (var row in rows) if (Rank(row.R.Kind) == rank) ordered.Add(row);
             return ordered;
+        }
+
+        /// <summary>Pages whose second section is loot ("Loot", not "Used in"): creatures and Epic Loot tables / sets.</summary>
+        public static bool LootPage(EntryType type, string id) => type == EntryType.Creature || SourceNames.EpicLootPseudo(id);
+
+        /// <summary>Source row label: "Grows from: calf" for a Growup source, the readable prefab tag when names collide.</summary>
+        public static string SourceLabel(PageRow r, string name, string growsFrom)
+        {
+            if (r.Tag != null) name = $"{name} ({r.Tag})";
+            return r.R.Kind == RelationKind.Grow ? $"{growsFrom} {name}" : name;
+        }
+
+        // Source rows: prefabs with one name and the same yield of this item (Bjorn + Bjorn_sleeping) are one row; one name
+        // with different yields keeps every row, each tagged with its readable prefab name.
+        private static void Dedupe(BrowserIndex ix, string id, List<PageRow> rows)
+        {
+            string NameKey(PageRow r) => (int)r.R.Kind + "|" + (ix.Entries.TryGetValue(r.R.Source, out var e) ? e.Name : r.R.Source);
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            var names = new Dictionary<string, int>(StringComparer.Ordinal);
+            rows.RemoveAll(r =>
+            {
+                if (r.Recipe) return false;
+                var sb = new System.Text.StringBuilder(NameKey(r)).Append('|').Append(r.R.Conditions);
+                foreach (var s in r.R.Outputs)
+                    if (s.Prefab == id) sb.Append('|').Append(s.Min).Append('-').Append(s.Max).Append('@').Append(s.Chance.ToString("R", System.Globalization.CultureInfo.InvariantCulture));
+                return !seen.Add(sb.ToString());
+            });
+            foreach (var r in rows) if (!r.Recipe) names[NameKey(r)] = names.TryGetValue(NameKey(r), out var n) ? n + 1 : 1;
+            foreach (var r in rows) if (!r.Recipe && names[NameKey(r)] > 1) r.Tag = SourceNames.Readable(r.R.Source);
         }
 
         /// <summary>"Used in": a row for every relation the entry takes part in, its own upgrades first (all qualities).</summary>
@@ -148,6 +179,11 @@ namespace Morgott.UI.ItemBrowser
             }
             return 0;
         }
+
+        /// <summary>Amounts a CharacterDrop can roll: GenerateDropList (CharacterDrop.cs:139) takes int Random.Range(min, max),
+        /// max exclusive; min when equal.</summary>
+        // shortcut: a reversed pair (no vanilla drop has one) shows min only, as before.
+        public static (int Min, int Max) DropRange(int min, int max) => max > min ? (min, max - 1) : (min, min);
 
         /// <summary>The KnownOnly filter applies unless devcommands is on (then every entry is listed).</summary>
         public static bool KnownFilter(bool knownOnly, bool devcommands) => knownOnly && !devcommands;

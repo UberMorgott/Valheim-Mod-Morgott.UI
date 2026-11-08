@@ -91,8 +91,12 @@ namespace Morgott.UI.ItemBrowser
                     case CharacterDrop cd:
                         foreach (var d in cd.m_drops)
                             if (d.m_prefab)
-                                Add(RelationKind.CreatureDrop, id, null, new[] { new Stack(d.m_prefab.name, d.m_amountMin, Math.Max(d.m_amountMin, d.m_amountMax), Mathf.Clamp01(d.m_chance)) }, null, 0, 0,
-                                    d.m_onePerPlayer ? "$ib_cond_oneperplayer" : d.m_levelMultiplier && !d.m_dontScale ? "$ib_cond_perstar" : null);
+                            {
+                                // Base amount + chance only (user 2026-11-08: no per-star note).
+                                var (min, max) = PageModel.DropRange(d.m_amountMin, d.m_amountMax);
+                                Add(RelationKind.CreatureDrop, id, null, new[] { new Stack(d.m_prefab.name, min, max, Mathf.Clamp01(d.m_chance)) }, null, 0, 0,
+                                    d.m_onePerPlayer ? "$ib_cond_oneperplayer" : null);
+                            }
                         break;
                     case Humanoid h when !(h is Player):
                         Gear(h.m_defaultItems);

@@ -84,6 +84,7 @@ namespace Morgott.UI.Screens
             try
             {
                 if (_dirty) { _dirty = false; Sweep(); }
+                Unmask();
                 TopOverlay.Lift(gameObject);
                 DamageIcons.Refit(transform); // item tooltip columns follow the settled text width
                 if (_frame) _frame.Fit();
@@ -96,6 +97,21 @@ namespace Morgott.UI.Screens
                 Plugin.Log.LogWarning($"[Morgott.UI] tooltip placer: {e.GetType().Name}: {e.Message}");
                 enabled = false;
             }
+        }
+
+        // UITooltip instantiates under the hovered element's nearest Canvas (UITooltip.cs:155) and a fixed anchor parents
+        // it there too (UITooltip.cs:103): under a RectMask2D / Mask viewport (a scrolled grid) it is clipped. Such a
+        // tooltip moves to the root canvas, world position kept.
+        private void Unmask()
+        {
+            var root = GetComponentInParent<Canvas>()?.rootCanvas;
+            if (!root || transform.parent == root.transform) return;
+            for (var t = transform.parent; t && t != root.transform; t = t.parent)
+                if (t.GetComponent<RectMask2D>() || t.GetComponent<Mask>())
+                {
+                    transform.SetParent(root.transform, true);
+                    return;
+                }
         }
 
         // ---------------------------------------------------------------- raycasts + views
@@ -207,8 +223,12 @@ namespace Morgott.UI.Screens
                 if (v.OrigClipH < 0f) { v.OrigClipH = v.Clip.rect.height; v.OrigViewH = v.Viewport.rect.height; }
                 var lossy = Mathf.Max(0.0001f, v.Clip.lossyScale.y);
                 var capLocal = maxH / lossy;
-                SetHeightKeepTop(v.Clip, Mathf.Min(v.OrigClipH, capLocal));
-                if (v.Viewport != v.Clip) SetHeightKeepTop(v.Viewport, Mathf.Min(v.OrigViewH, capLocal));
+                // Sized to its content (never below the prefab's height), capped to the screen: a fixed-height view
+                // (Epic Loot's box) cut long tooltips at its bottom while the screen had room (ITEMS grid, user 2026-11-08).
+                var pad = v.OrigClipH - v.OrigViewH;
+                var clipH0 = TooltipMath.FitHeight(v.OrigClipH, v.Content.rect.height, pad, capLocal);
+                SetHeightKeepTop(v.Clip, clipH0);
+                if (v.Viewport != v.Clip) SetHeightKeepTop(v.Viewport, clipH0 - pad);
 
                 var clipH = Mathf.Min(v.Clip.rect.height, v.Viewport.rect.height);
                 var contentH = v.Content.rect.height;

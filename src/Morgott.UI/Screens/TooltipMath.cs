@@ -66,6 +66,9 @@ namespace Morgott.UI.Screens
             return TipRect.Sized(x, y, w, h);
         }
 
+        // Scroll view height: its content plus the clip's own padding, never below the prefab height, at most the cap.
+        public static float FitHeight(float origClipH, float contentH, float pad, float cap) => Math.Min(Math.Max(origClipH, contentH + pad), cap);
+
         // Content taller than its clip by more than the tolerance scrolls.
         public static bool Overflows(float contentH, float clipH) => contentH > clipH + 0.5f;
 

@@ -58,7 +58,9 @@ namespace Morgott.UI.ItemBrowser
         private GameObject _gridView;
         private TMP_InputField _search;
         private Image _searchBack, _searchGlyph, _track, _thumb, _typeStar;
-        private TMP_Text _caption, _empty, _hint;
+        private TMP_Text _caption, _empty, _hint, _unknownLabel;
+        private Button _unknownBox;
+        private Image _unknownCheck;
         private readonly Button[] _types = new Button[6];
         private readonly TMP_Text[] _typeLabels = new TMP_Text[6];
         private readonly Button[] _cats = new Button[CatKeys.Length];
@@ -227,7 +229,7 @@ namespace Morgott.UI.ItemBrowser
                 return;
             }
             Enforce();
-            if (Browser.Devcommands != _resultsDev) _dirty = true; // devcommands toggled: list (KnownOnly override) changes
+            if (Browser.Devcommands != _resultsDev || Browser.KnownFilter != _resultsKnownOnly) _dirty = true; // devcommands / ShowUnknown (checkbox, ConfigurationManager) toggled: the list changes
             var typing = _search && _search.isFocused;
             Block(typing);
             // Fingerprint (hash over every recipe) once a second, not per frame.
@@ -393,6 +395,11 @@ namespace Morgott.UI.ItemBrowser
                 }
             }
             _caption = Txt(g, "Caption", "text.body", TextAlignmentOptions.Left);
+            // "Show undiscovered" checkbox (config ItemBrowser.ShowUnknown), right of the caption.
+            _unknownBox = Btn(g, "ShowUnknown", "toggle.box", out var boxLabel, () => { Browser.ShowUnknown.Value = !Browser.ShowUnknown.Value; _gridScroll = 0; _dirty = true; });
+            Off(boxLabel);
+            _unknownCheck = Img(_unknownBox.transform, "Check", "toggle.check");
+            _unknownLabel = Txt(g, "ShowUnknownLabel", "text.body", TextAlignmentOptions.Right);
             _empty = Txt(g, "Empty", "text.muted", TextAlignmentOptions.Top, FontStyles.Italic);
             _empty.textWrappingMode = TextWrappingModes.Normal;
             _track = Img(g, "ScrollTrack", "scrollbar.track");
@@ -675,7 +682,12 @@ namespace Morgott.UI.ItemBrowser
             }
             var list = Results();
             var capY = items ? 149f : CatY;
-            Put(_caption, 0f, capY, UnitW, 26f);
+            Put(_caption, 0f, capY, UnitW - 270f, 26f);
+            Put(_unknownLabel, UnitW - 300f, capY, 266f, 26f);
+            Fit(_unknownLabel, L("$ib_show_unknown"), 18f);
+            Put(_unknownBox, UnitW - 26f, capY, 26f, 26f);
+            if (Browser.ShowUnknown.Value) Put(_unknownCheck, UnitW - 22f, capY + 4f, 18f, 18f);
+            else Off(_unknownCheck);
             Fit(_caption, $"{(items && _cat >= 0 ? CatName((ItemCategory)_cat) : _type == 5 ? L("$ib_type_favorites") : L(TypeTokens[_type]))} · {list.Count}", 20f);
 
             var top = capY + 37f;
@@ -711,7 +723,7 @@ namespace Morgott.UI.ItemBrowser
                 Put(_thumb, UnitW - 6f, top + (viewH - thumbH) * _gridScroll / _gridScrollMax, 6f, thumbH);
             }
             else { Off(_track); Off(_thumb); }
-            // Known-only is config-only (no checkbox): an empty list names the filter.
+            // Undiscovered hidden (checkbox off): an empty list names the checkbox.
             if (list.Count == 0 && Browser.KnownFilter)
             {
                 Put(_empty, 20f, top + 20f, UnitW - 40f, 80f);
@@ -888,6 +900,7 @@ namespace Morgott.UI.ItemBrowser
             }
             _pageScroll = Mathf.Clamp(_pageScroll, 0, _pageScrollMax);
             var shown = new bool[6];
+            var loot = PageModel.LootPage(e.Type, e.Id); // a creature's / loot table's second section lists what it drops
             var y = top;
             for (var i = _pageScroll; i < blocks.Count && (i == _pageScroll || y + heights[i] <= h + 0.5f); i++)
             {
@@ -896,9 +909,9 @@ namespace Morgott.UI.ItemBrowser
                 switch (kind)
                 {
                     case 0: Header(_fromHeader, _fromLabel, L("$ib_obtained_from"), y); break;
-                    case 3: Header(_usedHeader, _usedLabel, L("$ib_used_in"), y); break;
+                    case 3: Header(_usedHeader, _usedLabel, L(loot ? "$ib_loot" : "$ib_used_in"), y); break;
                     case 2: Put(_fromNote, 0f, y, UnitW, 30f); Fit(_fromNote, L("$ib_no_source"), 17f); break;
-                    case 5: Put(_usedNote, 0f, y, UnitW, 30f); Fit(_usedNote, L("$ib_not_used"), 17f); break;
+                    case 5: Put(_usedNote, 0f, y, UnitW, 30f); Fit(_usedNote, L(loot ? "$ib_no_loot" : "$ib_not_used"), 17f); break;
                     default: Row(row, y, heights[i], kind == 4, _flows[i]); break;
                 }
                 y += heights[i];
@@ -1011,7 +1024,7 @@ namespace Morgott.UI.ItemBrowser
                 var src = _stations.Next(n => Chip("Station" + n, "text.body"));
                 src.Id = r.Icon;
                 src.Quality = 1;
-                Chip(src, x0, y, 290f, h, 0f, NameOf(r.Icon), 19f);
+                Chip(src, x0, y, 290f, h, 0f, PageModel.SourceLabel(r, NameOf(r.Icon), L("$ib_grows_from")), 19f);
             }
             // Chips as flowed (Flow); the amount is its own label, so only a name wider than the whole span loses letters.
             for (var i = 0; i < r.Inputs.Length; i++)
@@ -1039,7 +1052,7 @@ namespace Morgott.UI.ItemBrowser
                 st.Quality = 1;
                 var label = r.Right == null ? L("$ib_by_hand") : r.R.StationLevel > 1 ? $"{NameOf(r.Right)} {L("$ib_level_short")}{r.R.StationLevel}" : NameOf(r.Right);
                 // Output amount / conditions ("any one ingredient", per star) under the station when there are any.
-                var note = Chance(r, used ? r.Icon : _pageId);
+                var note = Chance(r, used ? r.Icon : _pageId, used);
                 Chip(st, 398f, note.Length > 0 ? y + 2f : y + (h - 42f) / 2f, UnitW - 398f, note.Length > 0 ? 34f : 42f, r.Right == null ? 0f : note.Length > 0 ? 34f : 40f, label, 18f);
                 if (note.Length > 0)
                 {
@@ -1052,7 +1065,7 @@ namespace Morgott.UI.ItemBrowser
             {
                 var t = _chances.Next(n => Txt(_pageView.transform, "Chance" + n, "text.accent", TextAlignmentOptions.Right));
                 Put(t, 330f, y, UnitW - 340f, h);
-                Fit(t, Chance(r, used ? r.Icon : _pageId), 18f);
+                Fit(t, Chance(r, used ? r.Icon : _pageId, used), 18f);
             }
             Rule(0f, y + h - 2f, UnitW, 1.5f);
         }
@@ -1089,11 +1102,12 @@ namespace Morgott.UI.ItemBrowser
         private static string Amount(Stack s) => s.Min == s.Max ? s.Min.ToString() : $"{s.Min}-{s.Max}";
 
         // Source row / creature drop: amount, base chance (weighted tables: no number), conditions.
-        private static string Chance(PageRow r, string item)
+        private static string Chance(PageRow r, string item, bool used)
         {
             var o = r.R.Outputs.Length > 0 ? r.R.Outputs[0] : default;
             foreach (var s in r.R.Outputs) if (s.Prefab == item) o = s;
             var parts = new List<string>();
+            if (used && r.R.Kind == RelationKind.Grow) parts.Add(L("$ib_kind_grow")); // the page's creature / sapling grows into the row's
             if (o.Prefab != null && !(o.Min == 1 && o.Max == 1)) parts.Add("x" + Amount(o));
             if (float.IsNaN(o.Chance)) parts.Add(L("$ib_weighted"));
             else if (o.Chance < 1f) parts.Add($"{L("$ib_chance")} {o.Chance * 100f:0.#}%");

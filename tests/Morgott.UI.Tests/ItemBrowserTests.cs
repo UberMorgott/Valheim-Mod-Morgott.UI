@@ -69,7 +69,7 @@ namespace Morgott.UI.Tests
         {
             var ix = Sample();
             Assert.True(ix.Add(Craft("Bronze", 2, "Copper", "Tin")));                    // other quality
-            Assert.True(ix.Add(Drop("Seagal", "HC_WildEgg", 0.5f, "$ib_cond_perstar")));  // other conditions
+            Assert.True(ix.Add(Drop("Seagal", "HC_WildEgg", 0.5f, "$ib_cond_oneperplayer")));  // other conditions
             Assert.True(ix.Add(Drop("Seagal", "HC_WildEgg", 0.25f)));                     // other chance
             Assert.Equal(2, ix.ObtainedFrom("Bronze").Count);
             Assert.Equal(3, ix.ObtainedFrom("HC_WildEgg").Count);
@@ -391,5 +391,67 @@ namespace Morgott.UI.Tests
         [InlineData("Pickable_Stone", "Pickable stone")]
         [InlineData("vfx_Destroyed(Clone)", "Destroyed")]
         public void Unnamed_sources_get_readable_names(string id, string want) => Assert.Equal(want, SourceNames.Readable(id));
+
+        [Theory]
+        [InlineData(1, 3, 1, 2)]  // CharacterDrop: int Random.Range(min, max), max exclusive
+        [InlineData(1, 2, 1, 1)]
+        [InlineData(2, 2, 2, 2)]  // equal: Random.Range returns min
+        [InlineData(1, 1, 1, 1)]
+        public void Creature_drop_range_matches_vanilla(int min, int max, int wantMin, int wantMax) =>
+            Assert.Equal((wantMin, wantMax), PageModel.DropRange(min, max));
+
+        [Fact]
+        public void Same_name_same_drop_sources_are_one_row()
+        {
+            var ix = new BrowserIndex();
+            ix.Add(new Entry { Id = "Bjorn", Name = "$enemy_bjorn", Type = EntryType.Creature });
+            ix.Add(new Entry { Id = "Bjorn_sleeping", Name = "$enemy_bjorn", Type = EntryType.Creature });
+            ix.Add(Drop("Bjorn", "TrophyBjorn"));
+            ix.Add(Drop("Bjorn_sleeping", "TrophyBjorn"));
+            var row = Assert.Single(PageModel.Obtain(ix, "TrophyBjorn", 1));
+            Assert.Null(row.Tag);
+            Assert.Equal("Bjorn", row.R.Source);
+        }
+
+        [Fact]
+        public void Same_name_other_drop_sources_get_a_tag()
+        {
+            var ix = new BrowserIndex();
+            ix.Add(new Entry { Id = "Bjorn", Name = "$enemy_bjorn", Type = EntryType.Creature });
+            ix.Add(new Entry { Id = "Bjorn_sleeping", Name = "$enemy_bjorn", Type = EntryType.Creature });
+            ix.Add(Drop("Bjorn", "TrophyBjorn", 0.5f));
+            ix.Add(Drop("Bjorn_sleeping", "TrophyBjorn", 0.1f));
+            var rows = PageModel.Obtain(ix, "TrophyBjorn", 1);
+            Assert.Equal(new[] { "Bjorn", "Bjorn sleeping" }, rows.Select(r => r.Tag));
+            Assert.Equal("Bear (Bjorn sleeping)", PageModel.SourceLabel(rows[1], "Bear", "Grows from:"));
+        }
+
+        [Fact]
+        public void Grow_source_row_says_grows_from()
+        {
+            var ix = new BrowserIndex();
+            ix.Add(new Entry { Id = "Lox_Calf", Name = "$enemy_loxcalf", Type = EntryType.Creature });
+            ix.Add(new Relation { Kind = RelationKind.Grow, Source = "Lox_Calf", Outputs = new[] { new Stack("Lox") } });
+            var row = Assert.Single(PageModel.Obtain(ix, "Lox", 1));
+            Assert.Equal("Grows from: Lox calf", PageModel.SourceLabel(row, "Lox calf", "Grows from:"));
+        }
+
+        [Fact]
+        public void Epic_loot_tables_get_readable_names_and_loot_pages()
+        {
+            var ix = new BrowserIndex();
+            ix.Add(new Entry { Id = "Troll", Name = "$enemy_troll", Type = EntryType.Creature });
+            ix.Add(new Relation { Kind = RelationKind.LootTable, Source = "EL:loottable:Troll", Outputs = new[] { new Stack("Tin", 1, 1, float.NaN) } });
+            ix.Add(new Relation { Kind = RelationKind.LootTable, Source = "EL:loottable:Unknown_thing", Outputs = new[] { new Stack("Tin", 1, 1, float.NaN) } });
+            ix.Add(new Relation { Kind = RelationKind.LootTable, Source = "EL:itemset:ShardUnique", Outputs = new[] { new Stack("Tin", 1, 1, float.NaN) } });
+            Assert.Equal("$ib_el_loottable $enemy_troll", ix.Entries["EL:loottable:Troll"].Name);
+            Assert.Equal("$ib_el_loottable Unknown thing", ix.Entries["EL:loottable:Unknown_thing"].Name);
+            Assert.Equal("$ib_el_itemset Shard unique", ix.Entries["EL:itemset:ShardUnique"].Name);
+            Assert.Equal("Troll", SourceNames.LootTableOwner("EL:loottable:Troll"));
+            Assert.Null(SourceNames.LootTableOwner("EL:itemset:ShardUnique"));
+            Assert.True(PageModel.LootPage(EntryType.Other, "EL:loottable:Troll"));
+            Assert.True(PageModel.LootPage(EntryType.Creature, "Troll"));
+            Assert.False(PageModel.LootPage(EntryType.Item, "Tin"));
+        }
     }
 }
