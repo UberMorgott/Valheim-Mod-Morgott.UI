@@ -406,6 +406,18 @@ namespace Morgott.UI.Tests
         [InlineData(30f, 60f, 0f, 0f)]                        // no window
         public void ShieldOverlayOwnScale(float shield, float max, float window, float want) =>
             Assert.Equal(want, HudMath.ShieldOverlay(shield, max, window), 3);
+
+        // Shield edge mask (2026-11-08): centre third clear, max at both edges, symmetric, rising toward the edges.
+        [Fact]
+        public void ShieldEdgeAlphaClearCentreThird()
+        {
+            for (var v = 1f / 3f; v <= 2f / 3f; v += 0.01f) Assert.Equal(0f, HudMath.ShieldEdgeAlpha(v), 4);
+            Assert.Equal(1f, HudMath.ShieldEdgeAlpha(0f), 4);
+            Assert.Equal(1f, HudMath.ShieldEdgeAlpha(1f), 4);
+            Assert.Equal(0.5f, HudMath.ShieldEdgeAlpha(1f / 6f), 3);
+            Assert.Equal(HudMath.ShieldEdgeAlpha(0.1f), HudMath.ShieldEdgeAlpha(0.9f), 4);
+            Assert.True(HudMath.ShieldEdgeAlpha(0.05f) > HudMath.ShieldEdgeAlpha(0.2f));
+        }
         // Variant C (2026-10-26): HP value alone, "HP " while the fill is the energy shield; shield label of its own.
         [Theory]
         [InlineData(142f, 200f, false, "142/200")]

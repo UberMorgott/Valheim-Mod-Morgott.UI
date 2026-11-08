@@ -10,6 +10,8 @@
     { "token": "color.hud.gauge.frame", "value": "#C2CAD2FF" },
     { "token": "color.hud.shield.glow", "value": "#5BE8F2FF" },
     { "token": "color.hud.shield.sheen", "value": "#5BE8F238" },
+    { "token": "color.hud.shield.edge", "value": "#5BE8F259" },
+    { "token": "color.hud.shield.rim", "value": "#5BE8F2A6" },
     { "token": "color.frame", "value": "#FFFFFFFF" },
     { "token": "color.text.item.title", "value": "#F0C419FF" },
     { "token": "color.text.display.gold", "value": "#FFD54FFF" },

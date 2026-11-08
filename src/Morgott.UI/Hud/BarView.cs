@@ -47,7 +47,21 @@ namespace Morgott.UI.PlayerHud
         private float _frontCore, _frontClock;
         // Shield layer (health bar only): current / max shield of the full window from its left end (HudMath.ShieldOverlay):
         // upper band, or the top line over the sheen.
-        private Image _shield;
+        private Image _shield, _shieldRimB;
+        private static Sprite _edgeMask;
+
+        // 1x64 alpha mask of the shield edge glow (white, alpha = HudMath.ShieldEdgeAlpha; the tint carries the max alpha).
+        private static Sprite EdgeMask()
+        {
+            if (_edgeMask) return _edgeMask;
+            const int n = 64;
+            var tex = new Texture2D(1, n, TextureFormat.RGBA32, false) { name = "ShieldEdgeMask", wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear, hideFlags = HideFlags.DontSave };
+            for (var i = 0; i < n; i++) tex.SetPixel(0, i, new Color(1f, 1f, 1f, HudMath.ShieldEdgeAlpha((i + 0.5f) / n)));
+            tex.Apply(false, true);
+            _edgeMask = Sprite.Create(tex, new Rect(0f, 0f, 1f, n), new Vector2(0.5f, 0.5f));
+            _edgeMask.hideFlags = HideFlags.DontSave;
+            return _edgeMask;
+        }
         private float _shieldValue, _shieldMax, _shownShield = -1f, _shownMaxLabel = -2f, _shownPlus = -1f, _shownPlusMax = -1f;
         // Wet: a few single drip clusters at irregular spots along the frame bottom (a tiled row read as a zipper).
         private static readonly float[] WetSpots = { 0.07f, 0.38f, 0.79f };
@@ -130,10 +144,15 @@ namespace Morgott.UI.PlayerHud
             var sheenArt = mainValue && ThemeTokens.GetSprite("sprite.hud.strip4.shield.mid");
             if (mainValue)
             {
-                // with the sheen: the shield's top line, a plain bright quad; else the band sprite
-                _shield = sheenArt ? art.Image("Shield", _window, null, "color.hud.shield.glow", Image.Type.Simple)
+                // with the edge mask: the shield's top rim (+ _shieldRimB bottom), plain quads; else the band sprite
+                _shield = sheenArt ? art.Image("Shield", _window, null, "color.hud.shield.rim", Image.Type.Simple)
                     : art.Image("Shield", _window, shieldToken ?? "sprite.hud.bar.fill", "color.hud.shield", shieldToken != null ? Image.Type.Simple : Image.Type.Sliced);
                 _shield.gameObject.SetActive(false);
+                if (sheenArt)
+                {
+                    _shieldRimB = art.Image("ShieldRimB", _window, null, "color.hud.shield.rim", Image.Type.Simple);
+                    _shieldRimB.gameObject.SetActive(false);
+                }
                 if (_edge)
                 {
                     _shieldEdge = art.Image("ShieldEdge", _window, "sprite.hud.bar.edge", HudMath.EdgeColorToken("color.hud.shield"), Image.Type.Simple);
@@ -142,7 +161,9 @@ namespace Morgott.UI.PlayerHud
             }
             if (sheenArt)
             {
-                _sheen = art.Image("ShieldSheen", _window, "sprite.hud.strip4.fill", "color.hud.shield.sheen", Image.Type.Sliced);
+                // edge glow: code mask (HudMath.ShieldEdgeAlpha), clear centre third over the HP fill (user 2026-11-08)
+                _sheen = art.Image("ShieldSheen", _window, null, "color.hud.shield.edge", Image.Type.Simple);
+                _sheen.sprite = EdgeMask();
                 _sheen.gameObject.SetActive(false);
             }
             _reserved = art.Image("Reserved", _window, "sprite.hud.reserved", "color.hud.reserve", Image.Type.Tiled);
@@ -521,15 +542,15 @@ namespace Morgott.UI.PlayerHud
             if (_shield)
             {
                 // Shield over the HP fill in its own scale (user 2026-11-03: shield / max shield of the full window, from the
-                // left end, independent of HP). With the sheen: the faint sheen full height + a thin line along its top
-                // (Codex call 2026-11-03); else the upper band. Over the shader fill too (it draws no shield).
+                // left end, independent of HP). With the edge mask: glow at the top + bottom edges fading to a clear centre
+                // third, 1 px rims on both edges (user + Codex call 2026-11-08); else the upper band. Over the shader fill too.
                 float sx, sy, sw, sh;
                 if (_sheen)
                 {
                     sx = 0f;
                     sw = HudMath.ShieldOverlay(_shieldValue, _shieldMax, l);
                     PlaceAt(_sheen, sx, 0f, sw, _h, true);
-                    sh = ThemeTokens.GetFloat("size.hud.shield.line", 5f);
+                    sh = ThemeTokens.GetFloat("size.hud.shield.rim", 1f);
                     sy = _h - sh;
                 }
                 else HudMath.ShieldBand(_shieldValue, _shieldMax, l, _h, ThemeTokens.GetFloat("share.hud.shield.band", 0.4f), out sx, out sy, out sw, out sh);
@@ -540,6 +561,16 @@ namespace Morgott.UI.PlayerHud
                     var sr = _shield.rectTransform;
                     sr.anchoredPosition = new Vector2(sx, sy);
                     sr.sizeDelta = new Vector2(sw, sh);
+                }
+                if (_shieldRimB)
+                {
+                    if (_shieldRimB.gameObject.activeSelf != son) _shieldRimB.gameObject.SetActive(son);
+                    if (son)
+                    {
+                        var br = _shieldRimB.rectTransform;
+                        br.anchoredPosition = new Vector2(sx, 0f);
+                        br.sizeDelta = new Vector2(sw, sh);
+                    }
                 }
                 if (_shieldEdge) Edge(_shieldEdge, sx + sw, sy, sh, !_fx && son && EdgeMode == 2 && sx + sw < l - 0.5f);
             }

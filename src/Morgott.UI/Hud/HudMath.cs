@@ -223,6 +223,14 @@ namespace Morgott.UI.PlayerHud
             return Math.Min(1f, shield / shieldMax) * windowPx;
         }
 
+        // Shield edge glow mask over the bar height v (0 bottom .. 1 top), user + Codex call 2026-11-08: 0 over the centre
+        // third (HP reads unobstructed), smoothstep up to 1 at the top / bottom edges; the tint carries the max alpha.
+        public static float ShieldEdgeAlpha(float v)
+        {
+            var t = Math.Min(1f, Math.Max(0f, (Math.Abs(2f * v - 1f) - 1f / 3f) * 1.5f));
+            return t * t * (3f - 2f * t);
+        }
+
         // Shield band rect in window px (user call 2026-10-22 r2: the shield never hides HP): the upper `share` of the
         // window height, ShieldOverlay wide from the window's left.
         public static void ShieldBand(float shield, float shieldMax, float windowW, float windowH, float share,
