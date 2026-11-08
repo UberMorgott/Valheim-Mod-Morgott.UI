@@ -706,6 +706,28 @@
       "notes": "header action button pressed: darker inset face, cyan rim; glyph cyan + share.action.glyph.pressed"
     },
     {
+      "name": "glyph_act_quick_stack",
+      "file": "glyph_act_quick_stack.png",
+      "size": [
+        48,
+        48
+      ],
+      "border": {
+        "left": 0,
+        "bottom": 0,
+        "right": 0,
+        "top": 0
+      },
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "imageType": "Simple",
+      "fillCenter": true,
+      "token": "glyph.action.quick_stack",
+      "notes": "panel action: quick stack to nearby chests (item splitting into two chests, candidate 1, Codex 8.5/10); white mask, tint color.action.glyph"
+    },
+    {
       "name": "glyph_act_sort_mode",
       "file": "glyph_act_sort_mode.png",
       "size": [
