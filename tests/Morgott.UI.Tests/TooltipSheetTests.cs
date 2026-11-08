@@ -83,7 +83,7 @@ namespace Morgott.UI.Tests
                 ElSetColor = set,
                 Sockets = "1/2",
             };
-            d.DropLines.Add("<color=#26ffff>$mod_epicloot_legendaryset</color>");
+            d.DropLines.Add("$mod_epicloot_legendaryset");
             d.Effects.Add(new TooltipSheet.Effect { Text = "+12% fire" });
             d.Effects.Add(new TooltipSheet.Effect { Text = "Lifesteal 3%" });
             var s = new TooltipSheet.Set { Name = "Jarl", Equipped = 2, Full = 4 };
@@ -118,6 +118,9 @@ namespace Morgott.UI.Tests
             Assert.Equal("40 (30-40)", TooltipSheet.Plain("<color=orange>40</color> <color=yellow>(30-40) </color>"));
             var food = "<color=#ff8080ff>20</color>  ($item_current:<color=yellow>25</color>)";
             Assert.Equal(food, TooltipSheet.Plain(food));
+            var r = TooltipSheet.Compose("$item_movement_modifier: <color=orange>-5%</color> ($item_total:<color=yellow>+0%</color>)", new TooltipSheet.SheetData { Name = "$n" }, S);
+            Assert.Contains(">-5%</color></align>", r);
+            Assert.DoesNotContain("$item_total", r);
         }
 
         [Fact]

@@ -45,7 +45,7 @@ namespace Morgott.UI.Screens
             public string Sockets;                 // "used/count", null = none
             public List<Set> Sets = new List<Set>();
             public List<string> Hints = new List<string>(); // "[RMB] $ui_tip_equip" (key labels already Latin)
-            public List<string> DropLines = new List<string>(); // exact lines of the raw text shown elsewhere (Epic Loot set label)
+            public List<string> DropLines = new List<string>(); // raw lines containing one of these are shown elsewhere (Epic Loot set label token)
             public string ElEffectsColor, ElSetColor; // Epic Loot drew its effects / set blocks into the raw text: stripped
         }
 
@@ -120,7 +120,7 @@ namespace Morgott.UI.Screens
                     if (rows.Count > 0 && rows[rows.Count - 1] != Spacer(s)) rows.Add(Spacer(s));
                     continue;
                 }
-                if (d.DropLines.Contains(trimmed)) continue;
+                if (d.DropLines.Exists(x => trimmed.IndexOf(x, StringComparison.Ordinal) >= 0)) continue;
                 if (inSet || trimmed.StartsWith(VanillaSet, StringComparison.Ordinal)) { inSet = true; setLines.Add(line); continue; }
                 var token = Token(trimmed);
                 if (token != null && MetaTokens.Contains(token)) continue;
@@ -238,6 +238,10 @@ namespace Morgott.UI.Screens
             var colon = line.IndexOf(':');
             var label = line.Substring(0, colon);
             var value = Plain(line.Substring(colon + 1).Trim());
+            // "+5% ($item_total:+10%)" (ItemDrop.cs eitr regen, Player.AppendEquipmentModifierTooltips): the equipment
+            // total ran into the label in the narrow column (run 20261108-183456); the row keeps the item's own value.
+            var total = value.IndexOf(" ($item_total", StringComparison.Ordinal);
+            if (total > 0) value = value.Substring(0, total);
             return "<color=#" + labelColor + ">" + label + "</color>" + RightCell(value, valueColor);
         }
 

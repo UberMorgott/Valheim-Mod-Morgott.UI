@@ -112,6 +112,8 @@ namespace Morgott.UI.Screens
             {
                 var go = new GameObject("MorgottTipDecor", typeof(RectTransform), typeof(Image));
                 go.transform.SetParent(_text.transform, false);
+                // Our graphic, drawn as set here: never classified by the restyle pass (run 20261108-183456 reported it unknown).
+                Restyle.SkinMark.Own(go, "content", "tooltip sheet decor (TooltipDecor: rule / icon / durability bar)");
                 _images.Add(go.GetComponent<Image>());
             }
             var img = _images[_used++];
