@@ -78,6 +78,7 @@
     <Compile Include="..\..\src\Morgott.UI\Compat\BuildCameraWords.cs" Link="Linked\BuildCameraWords.cs" />
     <Compile Include="..\..\src\Morgott.UI\Compat\ModWords.cs" Link="Linked\ModWords.cs" />
     <Compile Include="..\..\src\Morgott.UI\WorldHud\ComfortBadgeMath.cs" Link="Linked\ComfortBadgeMath.cs" />
+    <Compile Include="..\..\src\Morgott.UI\Hud\KeyLabels.cs" Link="Linked\KeyLabels.cs" />
     <EmbeddedResource Include="..\..\src\Morgott.UI\Theme\default-theme.json" LogicalName="Morgott.UI.default-theme.json" />
     <EmbeddedResource Include="..\..\src\Morgott.UI\Translations\English.json" LogicalName="Morgott.UI.Translations.English.json" />
     <EmbeddedResource Include="..\..\src\Morgott.UI\Translations\Russian.json" LogicalName="Morgott.UI.Translations.Russian.json" />

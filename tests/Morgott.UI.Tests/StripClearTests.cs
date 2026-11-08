@@ -69,5 +69,16 @@ namespace Morgott.UI.Tests
             Assert.Equal(-1, StripClearMath.SiblingBelow(4, new int[0]));
             Assert.Equal(-1, StripClearMath.SiblingBelow(4, new[] { -1 }));
         }
+
+        // Build piece info vs the key hint row (StripClear stacks it on the hints' drawn top), with the rects of run
+        // 20261108-051942 at 1920x1080: hints row y 145..198 x 395..1798, info drawn from y 169 (cells) x 715..1219.
+        [Fact]
+        public void Lift_StacksBuildInfoOnKeyHints()
+        {
+            var lift = StripClearMath.Lift(169f, 715f, 1219f, 198f, 395f, 1798f, 12f);
+            Assert.Equal(41f, lift, 3);
+            Assert.True(169f + lift >= 198f + 12f, "info bottom clears the hint row top + gap");
+            Assert.Equal(0f, StripClearMath.Lift(169f, 715f, 1219f, 198f, 1300f, 1798f, 12f)); // hint row beside the info: no lift
+        }
     }
 }
