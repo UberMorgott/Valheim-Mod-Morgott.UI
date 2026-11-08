@@ -1678,8 +1678,10 @@ namespace Morgott.UI.CraftingScreen
             var free = player.NoCostCheat() || ZoneSystem.instance && ZoneSystem.instance.GetGlobalKey(GlobalKeys.NoCraftCost);
             var inv = player.GetInventory();
             var prefab = recipe.m_item ? recipe.m_item.gameObject : null;
+            // Core IChainCraft (Morgott.Patcher): Create also crafts missing intermediates, so a chain amount is craftable too.
+            Morgott.Core.Services.TryGet<Morgott.Core.IChainCraft>(out var chain);
             _max = CraftingMath.LargestOk(cap, n =>
-                (free || player.HaveRequirements(recipe, false, 1, n)) &&
+                (free || player.HaveRequirements(recipe, false, 1, n) || chain != null && chain.CanCraft(recipe, n)) &&
                 (!prefab || inv == null || inv.CanAddItem(prefab, recipe.GetAmount(1, out _, out _, n))));
             return _max;
         }

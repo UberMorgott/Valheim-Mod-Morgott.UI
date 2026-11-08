@@ -67,16 +67,20 @@ namespace Morgott.UI.CraftingScreen
 
         [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.OnCraftPressed))]
         [HarmonyPrefix]
-        private static void OnCraftPressed_Prefix()
+        private static void OnCraftPressed_Prefix(bool __runOriginal)
         {
             Arm();
-            Queue(s => s.PressPrefix());
+            if (__runOriginal) Queue(s => s.PressPrefix());
         }
 
-        // Craft queue (CraftingSkin.PressPrefix): N single vanilla crafts instead of one batch.
+        // Craft queue (CraftingSkin.PressPrefix): N single vanilla crafts instead of one batch. A press another mod took
+        // over (a prefix returned false, e.g. Morgott.Patcher RecipeChains crafting a chain) is not ours to queue.
         [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.OnCraftPressed))]
         [HarmonyPostfix]
-        private static void OnCraftPressed_Postfix() => Queue(s => s.PressPostfix());
+        private static void OnCraftPressed_Postfix(bool __runOriginal)
+        {
+            if (__runOriginal) Queue(s => s.PressPostfix());
+        }
 
         [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.DoCrafting))]
         [HarmonyPrefix]
