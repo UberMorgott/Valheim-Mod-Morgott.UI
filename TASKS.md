@@ -8,6 +8,13 @@ Finished work: History below (one line per milestone); details in `git log` / ta
 
 ### Item icons
 
+- [ ] Build strip: piece description glyphs 1-6 px into the display-face name (`m6-build-help-clear`, thatch roof 45,
+  1920x1080). Unfixed baseline: name bottom 321 px, description top 327 px (run 20261108-051942). Tried (branch
+  `wip/build-description-under-name`, not shipped): a Hud.SetupPieceInfo postfix moving the description down by the
+  measured gap. Every measure saw no overlap (run 20261108-060835 log: name bottom == description top, 433 / 324 px,
+  1.667 / 1.25 px per unit) while the final frame still had description top 323 vs name bottom 321: the texts move
+  after SetupPieceInfo (canvas layout / restyle later in the frame). Next: measure after the canvas layout
+  (Canvas.willRenderCanvases, like BuildCamera's LayoutGridUI) or fix the name / description rects in BuildHudSkin.
 - [ ] Needs regen without yellow cast: 217 restyled icons reverted to their original sprite (2026-11-08,
       fix/revert-yellow-icons) because the restyle tinted them yellow: wood / plank family, honey, bee, berries,
       mushrooms + every override with Lab `b*` up >= 12 into the yellow hue band vs its original. List:
