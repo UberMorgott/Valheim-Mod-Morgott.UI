@@ -84,9 +84,13 @@ namespace Morgott.UI.Screens
                     // As tall as the header lines, at most the icon column (TooltipSheet.Style.IconIndent), centred in it.
                     var column = ThemeTokens.GetFloat("size.tooltip.icon", 60f);
                     var size = Mathf.Min(iconTop - line.descender, column);
+                    // Framed tile like the mockup: the inventory cell plate, the icon inset in it.
+                    var plate = Next(ThemeTokens.GetSprite("sprite.tooltip.icon.plate"), ThemeTokens.GetColor("color.tooltip.icon.plate", Color.white));
+                    Set(plate.rectTransform, new Vector2(0f, 1f), new Vector2(left + (column - size) / 2f, iconTop), new Vector2(size, size));
+                    var inset = size * ThemeTokens.GetFloat("share.tooltip.icon.inset", 0.12f);
                     var img = Next(sprite, Color.white);
                     img.preserveAspect = true;
-                    Set(img.rectTransform, new Vector2(0f, 1f), new Vector2(left + (column - size) / 2f, iconTop), new Vector2(size, size));
+                    Set(img.rectTransform, new Vector2(0f, 1f), new Vector2(left + (column - size) / 2f + inset, iconTop - inset), new Vector2(size - 2f * inset, size - 2f * inset));
                 }
                 else if (id.StartsWith(TooltipSheet.LinkBar))
                 {
