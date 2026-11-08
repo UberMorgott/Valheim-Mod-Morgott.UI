@@ -1309,6 +1309,7 @@
     { "role": "plate.stat", "sprite": "sprite.plate.stat", "color": "color.frame", "imageType": "Sliced", "fillCenter": "true" },
     { "role": "glyph.stat.armor", "sprite": "sprite.glyph.stat.armor", "color": "color.action.glyph", "imageType": "Simple", "preserveAspect": true },
     { "role": "glyph.stat.weight", "sprite": "sprite.glyph.stat.weight", "color": "color.action.glyph", "imageType": "Simple", "preserveAspect": true },
+    { "role": "glyph.stat.coins", "sprite": "sprite.glyph.stat.coins", "color": "color.text.display.gold", "imageType": "Simple", "preserveAspect": true },
     { "role": "glyph.trash", "sprite": "sprite.glyph.trash", "color": "color.action.glyph", "imageType": "Simple", "preserveAspect": true },
     { "role": "glyph.panel.chest", "sprite": "sprite.glyph.panel.chest", "color": "color.frame", "imageType": "Simple", "preserveAspect": true },
     { "role": "glyph.panel.backpack", "sprite": "sprite.glyph.panel.backpack", "color": "color.frame", "imageType": "Simple", "preserveAspect": true },

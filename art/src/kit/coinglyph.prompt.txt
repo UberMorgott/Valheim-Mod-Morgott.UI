@@ -1,0 +1,8 @@
+Use the image_gen tool. First load with view_image: D:\tmp\claude\f70186b8ccd13605\0a552e96-1204-4221-910c-98f30f43f8ee\scratchpad\glyphs.png (our existing stat plate glyphs: armor shield, weight bell, old coin; top row large, bottom row the real 32/20 px in-game size). Match the shield and bell exactly: bevelled white-to-grey metal shading, soft rim light, bold clean silhouette.
+Draw THREE variants of one small game UI icon MASK for the coin purse stat plate of an inventory: it must read instantly as MONEY / A PILE OF COINS even at 24 px. Each = pure white with soft grey shading, very faint soft white glow, perfectly flat pure BLACK #000000 background, no colour at all (pure white and grey only), no frame, no circle or square behind the glyph, absolutely no text, letters, digits or runes.
+Canvas 1536x512 as a strict grid of 3 columns x 1 row (cells 512x512); each icon about 340x340 px centred in its cell, at least 120 px black between icons.
+(1) a short slightly leaning stack of five thick coins seen from a low three-quarter angle, coin edges with clear milled ridges, plus one coin standing upright leaning against the stack;
+(2) two stacks of coins side by side (left taller: five coins, right shorter: three coins), three-quarter view, thick coins with dark gaps between them so every coin is a separate band;
+(3) a small heap of round coins: three flat coins at the bottom, two tilted coins on top showing their round faces with a simple raised rim, chunky and bold.
+Coins thick and few: the coin bands must stay separate at 24 px; no fine detail, no tiny coins.
+Save PNG to: D:\tmp\cx-augaskin\work\kit\coinglyph.png

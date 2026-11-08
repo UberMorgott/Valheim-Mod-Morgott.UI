@@ -37,6 +37,9 @@ namespace Morgott.UI.Compat
             }
             harmony.Patch(target, transpiler: new HarmonyMethod(typeof(CurrencyPocketTooltip), nameof(Transpiler)),
                 postfix: new HarmonyMethod(typeof(CurrencyPocketTooltip), nameof(PointerEnterPostfix)));
+            _coinSprite = target.DeclaringType.Assembly.GetType("CurrencyPocket.CurrencyPocket+InventoryGuiUpdatePatch")
+                ?.GetField("coinSprite", BindingFlags.Public | BindingFlags.Static);
+            if (_coinSprite == null) Plugin.Log.LogWarning($"[Compat] CurrencyPocket {info.Metadata.Version}: InventoryGuiUpdatePatch.coinSprite not found; the coin plate keeps the Coins item icon.");
             var update = target.DeclaringType.GetMethod("Update", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
             if (update != null) harmony.Patch(update, postfix: new HarmonyMethod(typeof(CurrencyPocketTooltip), nameof(UpdatePostfix)));
             else Plugin.Log.LogWarning($"[Compat] CurrencyPocket {info.Metadata.Version}: PocketDrop.Update not found; the coin plate icon does not fade when empty.");
@@ -47,6 +50,8 @@ namespace Morgott.UI.Compat
         private const string IconName = "armor_icon";
         // Empty purse: the coin glyph dimmed like an empty slot (user 2026-11-08: the plate was not read as a coin slot).
         private const float EmptyAlpha = 0.35f;
+        private const string CoinGlyph = "sprite.glyph.stat.coins";
+        private static FieldInfo _coinSprite;
 
         private static bool Dragging(InventoryGui gui) => gui && gui.m_dragGo && gui.m_dragItem != null;
 
@@ -73,6 +78,14 @@ namespace Morgott.UI.Compat
         {
             var icon = __instance.transform.Find(IconName);
             if (!icon || !icon.TryGetComponent<Image>(out var image)) return;
+            // PocketDrop.Update resets the glyph to coinSprite (the Coins item icon, an unreadable gold blob at plate size,
+            // user 2026-11-08) every frame: point it at our coin-stack glyph so both agree; drag swap stays CurrencyPocket's.
+            var glyph = Theme.ThemeTokens.GetSprite(CoinGlyph);
+            if (glyph && _coinSprite != null && !ReferenceEquals(_coinSprite.GetValue(null), glyph))
+            {
+                _coinSprite.SetValue(null, glyph);
+                if (!Dragging(InventoryGui.instance)) image.sprite = glyph;
+            }
             var alpha = Dragging(InventoryGui.instance) ? 1f : IconAlpha(Purse(Player.m_localPlayer));
             var c = image.color;
             if (Mathf.Abs(c.a - alpha) > 0.001f) image.color = new Color(c.r, c.g, c.b, alpha);

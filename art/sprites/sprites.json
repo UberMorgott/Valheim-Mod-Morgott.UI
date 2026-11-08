@@ -2485,7 +2485,7 @@
       "imageType": "Simple",
       "fillCenter": true,
       "token": "glyph.stat.coins",
-      "notes": "M2 stat plate icon: coins"
+      "notes": "CurrencyPocket coin plate: stack of coins (coinglyph.png variant 1, Codex 9/10 vs shield/bell; old single rune coin read as a medallion)"
     },
     {
       "name": "doll_backdrop",
