@@ -14,14 +14,14 @@ namespace Morgott.UI.MapScreen
     // gets the standard panel stack, the map image (RawImage "map", Minimap.m_mapImageLarge) is inset left of a legend
     // column (frame_inset well) that houses the vanilla pin panels: IconPanel (Icon0..4 + mouse hints, OnPressedIcon /
     // ToggleIconFilter wiring kept), IconPanel2 (death / boss / mod filters, e.g. Epic Loot's AdventurePinFilter*),
-    // IconPingPanel, PublicPanel / SharedPanel toggles. The cursor-biome text (m_biomeNameLarge, rewritten each frame,
+    // IconPingPanel, PublicPanel toggle (SharedPanel removed: map data is always shared). The cursor-biome text (m_biomeNameLarge, rewritten each frame,
     // Minimap.cs:2646) sits on a header plaque on the top edge. NameField stays where vanilla puts it (at the click,
     // Minimap.cs:819-824). Graphics are restyled through the role pass when the map opens (pins, markers and the
     // Jotunn overlay layers inside the map are content; Jotunn's MinimapOverlayPanel gets wells / checkboxes).
     public sealed partial class MinimapSkin
     {
         private static readonly string[] LegendPanels = { "IconPanel", "IconPanel2", "IconPingPanel" };
-        private static readonly string[] TogglePanels = { "PublicPanel", "SharedPanel" };
+        private static readonly string[] TogglePanels = { "PublicPanel" };
 
         private RectTransform _large, _legend;
 
@@ -49,6 +49,15 @@ namespace Morgott.UI.MapScreen
 
             foreach (var panel in LegendPanels) Adopt(panel);
             foreach (var panel in TogglePanels) Adopt(panel);
+            // Map data is always shared (user 2026-11-08): the cartography-table toggle (OnToggleSharedMapData, its only
+            // writer of m_showSharedMapData, Minimap.cs:2610-2612; default true, not saved) is removed, so shared data stays shown.
+            // Its panel is m_sharedMapHint, which vanilla re-shows on shared data (Minimap.cs:1645/1926): emptied, not hidden.
+            var shared = _large.Find("SharedPanel");
+            if (shared)
+            {
+                Hide(shared);
+                foreach (Transform child in shared) child.gameObject.SetActive(false);
+            }
             BuildLegendRows();
 
             // The map window's one header (RuneWindowHeader, user 2026-10-26): title = the cursor / player biome text

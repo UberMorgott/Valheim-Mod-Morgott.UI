@@ -380,7 +380,7 @@ namespace Morgott.UI.MapScreen
                 y += rowH;
             }
 
-            // Public / Shared toggle panels under the rows (vanilla toggles + labels).
+            // Public toggle panel under the rows (vanilla toggles + labels).
             y += 6f;
             foreach (var panel in TogglePanels)
             {
