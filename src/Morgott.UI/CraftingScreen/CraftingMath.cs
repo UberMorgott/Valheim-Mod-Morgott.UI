@@ -73,7 +73,7 @@ namespace Morgott.UI.CraftingScreen
 
     // Multi-craft (stepper N / Shift x5) as a queue of N single vanilla crafts, each with its own timer, resources,
     // effects and skill raise. Stops on the first craft that made nothing (resources gone, inventory full) or on cancel.
-    public sealed class CraftQueue
+    public sealed class CraftRun
     {
         public int Total { get; private set; }
         public int Done { get; private set; }

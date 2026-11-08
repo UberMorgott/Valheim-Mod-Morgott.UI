@@ -3,13 +3,13 @@ using Xunit;
 
 namespace Morgott.UI.Tests
 {
-    // CraftQueue: multi-craft as N single crafts, one after another.
+    // CraftRun: multi-craft as N single crafts, one after another.
     public class CraftQueueTests
     {
         [Fact]
         public void RunsEveryCraftThenEnds()
         {
-            var q = new CraftQueue();
+            var q = new CraftRun();
             q.Start(3);
             Assert.True(q.Running);
             Assert.Equal("1/3", q.Step);
@@ -25,7 +25,7 @@ namespace Morgott.UI.Tests
         [Fact]
         public void FailedCraftStopsQueueWithoutCountingIt()
         {
-            var q = new CraftQueue();
+            var q = new CraftRun();
             q.Start(5);
             q.Finished(true);
             Assert.False(q.Finished(false)); // resources gone / inventory full
@@ -36,7 +36,7 @@ namespace Morgott.UI.Tests
         [Fact]
         public void CancelStopsAndLaterResultsAreIgnored()
         {
-            var q = new CraftQueue();
+            var q = new CraftRun();
             q.Start(4);
             q.Finished(true);
             q.Stop();
@@ -48,7 +48,7 @@ namespace Morgott.UI.Tests
         [Fact]
         public void SingleCraftIsNoQueue()
         {
-            var q = new CraftQueue();
+            var q = new CraftRun();
             q.Start(1);
             Assert.False(q.Running);
         }

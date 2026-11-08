@@ -1709,12 +1709,12 @@ namespace Morgott.UI.CraftingScreen
         // timer, start effects), the timer in UpdateRecipe (:1619-1647, m_craftDuration), DoCrafting (requirements, consume,
         // skill, done effects). The next craft starts in the UpdateRecipe postfix right after DoCrafting reset the timer;
         // a timer back at -1 without our DoCrafting (cancel :2024, Hide :1067) ends the queue, nothing left is consumed.
-        private readonly CraftQueue _queue = new CraftQueue();
+        private readonly CraftRun _queue = new CraftRun();
         private Recipe _queueRecipe;
         private int _pressMulti, _before;
         private bool _restarting, _judged, _crafted;
 
-        public CraftQueue Queue => _queue;
+        public CraftRun Queue => _queue;
 
         // OnCraftPressed prefix (after Arm): a multi-armed press crafts one item; PressPostfix queues the rest.
         public void PressPrefix()
