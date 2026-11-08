@@ -682,7 +682,7 @@ namespace Morgott.UI.ItemBrowser
             }
             var list = Results();
             var capY = items ? 149f : CatY;
-            Put(_caption, 0f, capY, UnitW - 270f, 26f);
+            Put(_caption, 0f, capY, UnitW - 304f, 26f);
             Put(_unknownLabel, UnitW - 300f, capY, 266f, 26f);
             Fit(_unknownLabel, L("$ib_show_unknown"), 18f);
             Put(_unknownBox, UnitW - 26f, capY, 26f, 26f);
