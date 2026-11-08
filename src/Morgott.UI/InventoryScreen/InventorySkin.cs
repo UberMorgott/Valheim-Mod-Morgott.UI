@@ -307,7 +307,7 @@ namespace Morgott.UI.InventoryScreen
                 else if (t.name == "weight_icon") ctx.Role(image, "glyph.stat.weight", "weight plate icon");
                 else if (t.name == "armor_icon" && t.parent && t.parent.name == "Armor") ctx.Role(image, "glyph.stat.armor", "armor plate icon (InventoryGui.m_armor)");
                 else if (t.name == "armor_icon" && t.parent && t.parent.name == Morgott.Core.Contracts.Trash) ctx.Role(image, "glyph.trash", "MorgottTweaks trash plate icon");
-                else if (t.name == "armor_icon" && t.parent && t.parent.name == ModCompat.CoinPocketPlate) ctx.Role(image, "content", "MorgottTweaks coin pocket: item icon");
+                else if (t.name == "armor_icon" && t.parent && t.parent.name == ModCompat.CoinPocketPlate) ctx.Role(image, "glyph.stat.coins", "CurrencyPocket coin plate icon (CurrencyPocketTooltip keeps its coinSprite on this glyph)");
                 else if (t.name == "Background" && t.parent && t.parent.parent == _gui.m_info) ctx.Role(image, "tab.background", "info tab button background (Info/<tab>/Background)");
                 else if ((t.name == "Icon" || t.name == "Image") && t.parent && t.parent.parent == _gui.m_info) ctx.Role(image, "content", "info tab icon (Button.targetGraphic, keeps its picture)");
                 else if (t.parent && t.parent.name == "TitlePanel" && t.parent.parent == _gui.m_info && sprite.StartsWith("BraidLine", StringComparison.Ordinal)) ctx.Role(image, "skip", "name row braid halves (hidden under the RuneSkin name plaque)");
@@ -339,7 +339,6 @@ namespace Morgott.UI.InventoryScreen
             if (e.m_button && e.m_button.targetGraphic)
                 ctx.Role(e.m_button.targetGraphic, doll ? "slot.recess.item" : "slot.cell", doll ? "EAQS doll cell (recessed, item zones)" : "InventoryElement.m_button target (slot cell)");
             ctx.Role(e.m_icon, "content", "InventoryElement.m_icon (item icon)");
-            ctx.Role(e.m_equiped, "slot.marker.equipped", "InventoryElement.m_equiped marker (InventoryGrid.cs:334)");
             ctx.Role(e.m_queued, "content", "InventoryElement.m_queued marker");
             ctx.Role(e.m_noteleport, "content", "InventoryElement.m_noteleport marker");
             ctx.Role(e.m_food, "content", "InventoryElement.m_food marker");
@@ -1698,21 +1697,23 @@ namespace Morgott.UI.InventoryScreen
         // Markers never cover the icon (user call 2026-10-22, screenshot: a gold 4-point star hid an equipped sword). Epic
         // Loot re-dresses each cell on every UpdateGui (ItemBackgroundHelper): ApplyEquippedSprite puts its equipped sprite
         // at texture size over the cell centre (only skipped with Auga), "magicItem" = rarity glow behind the icon, "setItem"
-        // = the set sprite 64 x 64 as the LAST sibling (over the icon). After it (this postfix runs last): equipped = our
-        // small marker in the bottom-left corner, rarity = a rim in Epic Loot's colour on the cell edge, set = a small
-        // corner gem top-right.
+        // = the set sprite 64 x 64 as the LAST sibling (over the icon). After it (this postfix runs last): no badge on a
+        // cell but the quality number (user call 2026-11-08; set / food / teleport info stays in the tooltip), so equipped,
+        // equip-queued, no-teleport, food and set markers are hidden; rarity = a rim in Epic Loot's colour on the cell edge.
         private static void CellMarks(InventoryElement e)
         {
             if (!e) return;
+            // Vanilla (InventoryGrid.cs:334-359) and Epic Loot (API.ApplyMagicItemBackground) re-enable these every
+            // UpdateGui, so they are switched off here every frame.
+            Off(e.m_equiped);
+            Off(e.m_queued);
+            Off(e.m_noteleport);
+            Off(e.m_food);
+            if (e.transform.Find("setItem") is Transform set && set.TryGetComponent<Image>(out var si)) Off(si);
             var cell = (RectTransform)e.transform;
             var side = Mathf.Min(cell.rect.width, cell.rect.height);
             if (!(side > 1f)) return;
             GridCellLook.Apply(e);
-            var mark = side * ThemeTokens.GetFloat("share.inv.cell.mark", 0.24f);
-            if (e.m_equiped && e.m_equiped.TryGetComponent<Image>(out var eq))
-                Corner(eq, "sprite.marker.equipped", "color.marker.equipped", new Vector2(0f, 0f), mark);
-            if (e.transform.Find("setItem") is RectTransform set && set.TryGetComponent<Image>(out var si))
-                Corner(si, "sprite.gem.rarity", null, new Vector2(1f, 1f), mark);
             if (e.transform.Find("magicItem") is RectTransform magic && magic.TryGetComponent<Image>(out var mi))
             {
                 var rim = ThemeTokens.GetSprite("sprite.hud.strip.rim");
@@ -1725,6 +1726,11 @@ namespace Morgott.UI.InventoryScreen
                     magic.offsetMin = magic.offsetMax = Vector2.zero;
                 }
             }
+        }
+
+        private static void Off(Image img)
+        {
+            if (img && img.enabled) img.enabled = false;
         }
 
         // Crossbow magazine dots (PlayerHud.MagazinePips) on every cell of this grid that holds a magazine crossbow: player
@@ -1756,21 +1762,6 @@ namespace Morgott.UI.InventoryScreen
                 var dur = InventoryMath.Cell(cell.rect.width, cell.rect.height, tokens).Durability;
                 PlayerHud.MagazinePips.Apply(e, item, dur.X, dur.Y, Mathf.Abs(cell.lossyScale.y));
             }
-        }
-
-        private static void Corner(Image img, string token, string colorToken, Vector2 corner, float size)
-        {
-            var s = ThemeTokens.GetSprite(token);
-            if (s && img.sprite != s) img.sprite = s;
-            img.type = Image.Type.Simple;
-            img.preserveAspect = true;
-            if (colorToken != null) img.color = ThemeTokens.GetColor(colorToken, img.color);
-            var rt = img.rectTransform;
-            var inset = new Vector2(corner.x > 0.5f ? -2f : 2f, corner.y > 0.5f ? -2f : 2f);
-            if (rt.anchorMin != corner || rt.anchorMax != corner) { rt.anchorMin = rt.anchorMax = rt.pivot = corner; }
-            if (rt.anchoredPosition != inset) rt.anchoredPosition = inset;
-            var sz = new Vector2(size, size);
-            if (rt.sizeDelta != sz) rt.sizeDelta = sz;
         }
 
         // RuneSkin owns the HUD strip: the inventory's hotbar row is the strip's hotbar.

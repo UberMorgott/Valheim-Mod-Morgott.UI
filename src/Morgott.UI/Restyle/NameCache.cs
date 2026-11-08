@@ -25,6 +25,8 @@ namespace Morgott.UI.Restyle
             return name;
         }
 
+        public static void Forget(UnityEngine.Object o) => Names.Remove(o);
+
         public static int Count => Names.Count;
     }
 }

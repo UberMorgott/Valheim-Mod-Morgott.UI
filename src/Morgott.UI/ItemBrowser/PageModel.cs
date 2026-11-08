@@ -128,7 +128,8 @@ namespace Morgott.UI.ItemBrowser
             var rows = new List<PageRow>();
             foreach (var r in ix.ObtainedFrom(id)) if (r.Kind == RelationKind.Upgrade) rows.Add(Recipe(r, id));
             // One row per result: a loot table / conversion with several outputs lists each (Codex review).
-            foreach (var r in ix.UsedIn(id)) foreach (var o in r.Outputs) rows.Add(Recipe(r, o.Prefab, id));
+            // A cost sink is its own output (Morgott.EpicLoot `EL:enchant:Rare`): its page lists it under its source, not again here.
+            foreach (var r in ix.UsedIn(id)) foreach (var o in r.Outputs) if (o.Prefab != id) rows.Add(Recipe(r, o.Prefab, id));
             return rows;
         }
 

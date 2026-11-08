@@ -1,0 +1,7 @@
+Use the image_gen tool. First load with view_image: D:\tmp\cx-valheim-qs\work\ref\hdr_glyphs.png (our existing header button glyph masks: SORT, SORT MODE, RESET LAYOUT; match their flat pure white fill, bold chunky stroke weight, rounded square ends and clear gaps exactly).
+Icon mask sheet for a game UI. Output ONE image 1536x1024, pure black #000000 background. Three alternative candidates of the SAME icon, each in pure flat WHITE (#FFFFFF, no gradient, no texture, no shading, no outline, no glow), each centred in its third of the image, each about 360x360 px, with at least 80 px of black around each. Bold, chunky, readable at 20 px: thick strokes (about 40 px), gaps between parts at least 30 px wide. No text, letters or digits.
+Icon meaning: QUICK STACK TO NEARBY CHESTS (send matching items from the inventory into the chests around you).
+1: one small solid square item at the top centre with a thick arrow splitting into two arrows pointing down-left and down-right, each into a simple closed chest silhouette (box with a lid line), two chests side by side at the bottom.
+2: a simple closed chest silhouette at the bottom centre with a thick down arrow into it from above, and three short curved radiating arcs on each side of the chest (like signal waves) meaning "nearby".
+3: three simple closed chest silhouettes in a shallow arc (left, centre slightly higher, right) with one thick downward arrow above the centre chest and two small down triangles above the side chests.
+Save PNG to: D:\tmp\cx-valheim-qs\work\qs_glyphs.png

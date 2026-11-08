@@ -538,7 +538,6 @@ namespace Morgott.UI.PlayerHud
                     c.Glow(selected);
                 }
                 c.Rim(false, default);
-                c.Mark(false);
                 c.Durability(-1f, false);
                 MagazinePips.Hide(c.Root);
                 return;
@@ -555,10 +554,9 @@ namespace Morgott.UI.PlayerHud
             {
                 c.RarityItem = item;
                 c.RarityAt = Time.unscaledTime + 5f; // Epic Loot rebuilds its magic data per read (allocates): rarely
-                c.RarityMagic = EpicLootBridge.Rarity(item, out c.RarityColor, out c.RaritySet);
+                c.RarityMagic = EpicLootBridge.Rarity(item, out c.RarityColor);
             }
             c.Rim(c.RarityMagic, c.RarityColor);
-            c.Mark(c.RaritySet);
             var dur = item.m_shared.m_useDurability && item.m_durability < item.GetMaxDurability();
             c.Durability(dur ? item.GetDurabilityPercentage() : -1f, dur && item.m_durability <= 0f);
         }

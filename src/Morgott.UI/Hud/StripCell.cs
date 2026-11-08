@@ -16,7 +16,7 @@ namespace Morgott.UI.PlayerHud
     {
         public readonly RectTransform Root;
         public readonly Image Bowl;
-        private readonly Image _shadow, _glow, _select, _rim, _hover, _icon, _sweep, _ring, _mark, _durTrack, _durFill;
+        private readonly Image _shadow, _glow, _select, _rim, _hover, _icon, _sweep, _ring, _durTrack, _durFill;
         private readonly TMP_Text _key, _count, _timer;
         // Belt cells only (MorgottTweaks belt, approved mockup docs\mockups\belt\a-wings-extended.png): auto-use "A" pip
         // top-right, gear-granted gem at 12 o'clock on the rim. Made on first use.
@@ -29,7 +29,7 @@ namespace Morgott.UI.PlayerHud
         private Sprite _shownIcon;
         private string _shownKey;
         private int _shownCount = int.MinValue, _shownSeconds = int.MinValue;
-        private bool _shownGlow, _shownRim, _shownMark, _shownHover;
+        private bool _shownGlow, _shownRim, _shownHover;
         private Color _shownRimColor, _shownIconColor = Color.white;
         private bool _hasDur;
         private float _shownDurFill = -1f;
@@ -39,7 +39,7 @@ namespace Morgott.UI.PlayerHud
         // Epic Loot's config through a call that may allocate: not every frame).
         public ItemDrop.ItemData RarityItem;
         public float RarityAt;
-        public bool RarityMagic, RaritySet;
+        public bool RarityMagic;
         public Color RarityColor;
 
         // The cell's pointer input (hover state + tooltip), cached by HudStrip.
@@ -105,8 +105,6 @@ namespace Morgott.UI.PlayerHud
                 _ring.fillClockwise = false;
             }
             _ring.gameObject.SetActive(false);
-            _mark = art.Image("SetMark", Root, "sprite.gem.rarity", "color.hud.strip.set", Image.Type.Simple);
-            _mark.gameObject.SetActive(false);
             _durTrack = art.Image("Durability", Root, "sprite.hud.strip.dur", "color.hud.strip.dur.track", Image.Type.Sliced);
             _durFill = art.Image("Fill", _durTrack.rectTransform, "sprite.hud.strip.dur", "color.hud.strip.dur", Image.Type.Sliced);
             _durTrack.gameObject.SetActive(false);
@@ -173,11 +171,6 @@ namespace Morgott.UI.PlayerHud
             var ringIn = 2f * (_round ? side * 0.06f : side * 0.04f);
             Center(_ring.rectTransform, bw - ringIn, bh - ringIn, oy);
             if (_ringTrack) Center(_ringTrack.rectTransform, bw - ringIn, bh - ringIn, oy);
-            var m = side * ThemeTokens.GetFloat("share.hud.strip.mark", 0.24f);
-            var mr = _mark.rectTransform;
-            mr.anchorMin = mr.anchorMax = mr.pivot = new Vector2(1f, 1f);
-            mr.sizeDelta = new Vector2(m, m);
-            mr.anchoredPosition = new Vector2(-side * 0.06f, -side * 0.06f);
             var inset = side * 0.09f;
             // key label in the upper half: top inset 0.4 x (run 20261023-191817: the 27-unit glyph box, ~38 units with its
             // outline, ran 1.5 px below the cell centre from the full inset)
@@ -379,13 +372,6 @@ namespace Morgott.UI.PlayerHud
         {
             if (on != _shownRim) { _shownRim = on; _rim.gameObject.SetActive(on && _rim.sprite); }
             if (on && c != _shownRimColor) { _shownRimColor = c; _rim.color = c; }
-        }
-
-        public void Mark(bool on)
-        {
-            if (on == _shownMark) return;
-            _shownMark = on;
-            _mark.gameObject.SetActive(on && _mark.sprite);
         }
 
         // Durability fraction (< 0 = hidden); broken items blink (vanilla HotkeyBar.UpdateIcons).

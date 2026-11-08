@@ -42,15 +42,6 @@ namespace Morgott.UI.Tests
         [Fact]
         public void BannerHeightStacksTitleAndPads() => Assert.Equal(160f, GameScreenMath.BannerHeight(100f, 24f, 18f), 3);
 
-        // Bands sit clear of the text: their inner edge is exactly gap away from the text box.
-        [Fact]
-        public void BandOffsetClearsText()
-        {
-            const float text = 300f, band = 22f, gap = 10f;
-            var off = GameScreenMath.BandOffset(text, band, gap);
-            Assert.Equal(text * 0.5f + gap, off - band * 0.5f, 3);
-        }
-
         [Theory]
         [InlineData(0f, 40f, 0f)]
         [InlineData(1f, 40f, -40f)]

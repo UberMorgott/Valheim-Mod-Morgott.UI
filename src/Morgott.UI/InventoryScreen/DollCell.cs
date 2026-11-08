@@ -13,7 +13,7 @@ namespace Morgott.UI.InventoryScreen
     // drop onto the cell, without = OnClick), drop at the end of a drag (IDropHandler), right click = OnSecondary.
     public sealed class DollCell : MonoBehaviour, IPointerClickHandler, IDropHandler
     {
-        public Image Background, Icon, Glyph, Badge;
+        public Image Background, Icon, Glyph;
         private Sprite _glyph;
         public TMP_Text Amount;
         public UITooltip Tooltip;
@@ -51,22 +51,6 @@ namespace Morgott.UI.InventoryScreen
             amount.text = "";
             Mark(amount, "content", "doll cell amount (live value)");
             cell.Amount = amount;
-            // Mirror slots (API SlotSource.Mirror): chain-link badge "equipped from the grid".
-            if (backgroundRole == "slot.mirror")
-            {
-                var badge = new GameObject("Badge", typeof(RectTransform)).AddComponent<Image>();
-                var b = badge.rectTransform;
-                b.SetParent(rt, false);
-                b.anchorMin = b.anchorMax = b.pivot = new Vector2(1f, 1f);
-                b.anchoredPosition = new Vector2(-2f, -2f);
-                b.sizeDelta = new Vector2(18f, 18f);
-                badge.raycastTarget = false;
-                badge.preserveAspect = true;
-                var bm = Mark(badge, "glyph.link", "mirror link badge");
-                bm.Outcome = Restyler.Apply(badge, bm, ThemeTokens.Role("glyph.link")) ? Outcome.Styled : Outcome.Degraded;
-                badge.enabled = false;
-                cell.Badge = badge;
-            }
             cell._glyph = cell.Glyph.sprite;
             if (tooltipPrefab)
             {
@@ -114,7 +98,6 @@ namespace Morgott.UI.InventoryScreen
                 if (item != null) Icon.sprite = item.GetIcon();
                 Glyph.sprite = _glyph;
                 Glyph.enabled = Glyph.sprite && item == null;
-                if (Badge && Badge.sprite) Badge.enabled = item != null;
             }
             var text = amount > 1 ? amount.ToString() : "";
             if (Amount.text != text) Amount.text = text;

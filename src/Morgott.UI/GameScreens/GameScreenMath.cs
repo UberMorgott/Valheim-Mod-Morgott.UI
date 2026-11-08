@@ -28,11 +28,6 @@ namespace Morgott.UI.GameScreens
         public static float BannerHeight(float tipHeight, float titleHeight, float pad) =>
             Math.Max(0f, tipHeight) + Math.Max(0f, titleHeight) + 2f * Math.Max(0f, pad);
 
-        // Text viewer runic bands (band_runes above and below the text): centre offset of a band from the text box
-        // centre, along y (top band +, bottom band -), clear of the text by gap.
-        public static float BandOffset(float textHeight, float bandHeight, float gap) =>
-            Math.Max(0f, textHeight) * 0.5f + Math.Max(0f, gap) + Math.Max(0f, bandHeight) * 0.5f;
-
         // Teleport swirl: slow continuous turn (clockwise = negative z), wrapped to (-360, 0].
         public static float SpinAngle(float seconds, float degPerSecond)
         {
