@@ -7,8 +7,8 @@ using UnityEngine;
 
 namespace Morgott.UI.PlayerHud
 {
-    // Soft bridge to Epic Loot (no reference; EpicLoot.dll decompile 2026-10-22): item rarity colour + set membership
-    // for the strip's hotbar rims (ItemDataExtensions.IsMagic / GetRarityColor / IsSetItem: the rarity colours come
+    // Soft bridge to Epic Loot (no reference; EpicLoot.dll decompile 2026-10-22): item rarity colour
+    // for the strip's hotbar rims (ItemDataExtensions.IsMagic / GetRarityColor: the rarity colours come
     // from Epic Loot's own config incl. Mythic and Ancient), and its active abilities (AbilityController on the player,
     // 3 slots: GetCurrentAbility(i), Ability.TimeUntilCooldownEnds, AbilityDef.Cooldown / IconAsset, TryActivate,
     // static GetBindingKeycode(i)) registered as Morgott.UI.API ability slots. Delegates are compiled once (no per-frame
@@ -17,7 +17,7 @@ namespace Morgott.UI.PlayerHud
     {
         public const string Owner = "morgott.valheim.runeskin";
         private static bool _tried, _ok, _abilitiesOk;
-        private static Func<ItemDrop.ItemData, bool> _isMagic, _isSet;
+        private static Func<ItemDrop.ItemData, bool> _isMagic;
         private static Func<ItemDrop.ItemData, Color> _color;
         private static Type _controllerType;
         private static Func<Component, int, object> _getAbility;
@@ -39,9 +39,8 @@ namespace Morgott.UI.PlayerHud
                 if (ext == null) return false;
                 var item = typeof(ItemDrop.ItemData);
                 _isMagic = Static<Func<ItemDrop.ItemData, bool>>(ext.GetMethod("IsMagic", new[] { item }));
-                _isSet = Static<Func<ItemDrop.ItemData, bool>>(ext.GetMethod("IsSetItem", new[] { item }));
                 _color = Static<Func<ItemDrop.ItemData, Color>>(ext.GetMethod("GetRarityColor", new[] { item }));
-                _ok = _isMagic != null && _isSet != null && _color != null;
+                _ok = _isMagic != null && _color != null;
                 InitAbilities();
                 Plugin.Log.LogInfo($"[Morgott.UI] Epic Loot bridge: rarity {(_ok ? "on" : "off")}, abilities {(_abilitiesOk ? "on" : "off")}");
             }
@@ -82,14 +81,12 @@ namespace Morgott.UI.PlayerHud
             m == null ? null : (T)Delegate.CreateDelegate(typeof(T), m, false);
 
         // Rarity rim colour of a magic item (Epic Loot's configured colour per rarity); false = mundane / no Epic Loot.
-        public static bool Rarity(ItemDrop.ItemData item, out Color color, out bool setItem)
+        public static bool Rarity(ItemDrop.ItemData item, out Color color)
         {
             color = default;
-            setItem = false;
             if (item == null || !Init()) return false;
             try
             {
-                setItem = _isSet(item);
                 if (!_isMagic(item)) return false;
                 color = _color(item);
                 return true;
