@@ -201,16 +201,22 @@ namespace Morgott.UI.Tests
             Assert.False(r.Plus.Overlaps(r.Button));
         }
 
-        // Live craft row (craft_button_panel 300x64, gap 0.1 h, step gap 0.8): the label span right of the anvil
-        // (pad 0.18 h | glyph 0.58 h | 0.21 h | text | 0.21 h) holds RU "СОЗДАТЬ X 99" at the 16.05 floor
+        // Craft row in screen px (gap 0.1 h, step gap 0.8; run 20261108-044404: 171.33 x 42.67 at 1280x720 = 257 x 64
+        // units, the same row at 1920 measured glyph 1699..1736 / span 85 px): the label span right of the anvil
+        // (pad 0.12 h | glyph 0.58 h | 0.13 h | text | 0.13 h) holds RU "СОЗДАТЬ X 99" at the live 16.1 floor
         // (6.461 em, advances measured from art/fonts/PT_Sans-Web-Bold.ttf) without the ellipsis.
-        [Fact]
-        public void ActionRowCraftLabelFitsRuMultiCraftAtFloor()
+        [Theory]
+        [InlineData(1080f, 257f, 64f)]
+        [InlineData(900f, 214.17f, 53.33f)]
+        [InlineData(720f, 171.33f, 42.67f)]
+        [InlineData(1080f, 300f, 64f)]
+        public void ActionRowCraftLabelFitsRuMultiCraftAtFloor(float screenH, float rowW, float rowH)
         {
-            const float h = 64f;
-            var r = CraftingMath.ActionRow(new Box(0f, 0f, 300f, h), true, h * 0.1f, innerShare: 0.8f);
-            var span = r.Button.W - h * (0.18f + 0.58f + 2f * 0.21f);
-            Assert.True(span >= 6.461f * 16.05f, $"label span {span} < text {6.461f * 16.05f}");
+            var k = 1080f / screenH; // px -> canvas units (reference height 1080)
+            var h = rowH * k;
+            var r = CraftingMath.ActionRow(new Box(0f, 0f, rowW * k, h), true, h * 0.1f, innerShare: 0.8f);
+            var span = r.Button.W - h * (0.12f + 0.58f + 2f * 0.13f);
+            Assert.True(span >= 6.461f * 16.1f, $"label span {span} < text {6.461f * 16.1f}");
         }
 
         // Anvil box from the button alone (mockup idle: pad 0.18 h, side 0.58 h) and the label span after it never
