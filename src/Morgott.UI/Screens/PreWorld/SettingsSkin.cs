@@ -74,7 +74,9 @@ namespace Morgott.UI.PreWorld
                     var full = ThemeTokens.GetFloat("size.settings.tab.font", 20f);
                     t.fontSize = full;
                     t.fontSizeMax = full;
-                    t.fontSizeMin = Mathf.Min(full, ThemeTokens.GetFloat("size.text.readable", 16f));
+                    // The floor is the readable sweep's (16 px where it renders, follows the GUI scale): a canvas-unit 16 here
+                    // sat above the rendered floor until TextInset took the label over mid-drag (16 -> 12.4, run 20261108-025359-2).
+                    t.fontSizeMin = Mathf.Min(full, 1f);
                     t.enableAutoSizing = true;
                     t.textWrappingMode = TextWrappingModes.Normal;
                     var inset = ThemeTokens.GetFloat("size.settings.tab.inset", 30f);

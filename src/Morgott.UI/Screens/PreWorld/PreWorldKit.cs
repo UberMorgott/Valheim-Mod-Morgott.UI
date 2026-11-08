@@ -191,7 +191,10 @@ namespace Morgott.UI.PreWorld
         // ways from the base: a raise-only floor kept the largest size of a GUI-scale slider drag (66 % -> 24 units) after
         // the slider went back, so labels grew and re-wrapped with the drag history (player report, Масштаб интерфейса).
         private struct Sizes { public float Size, Min, Max, WSize, WMin, WMax; }
-        private readonly System.Collections.Generic.Dictionary<TMP_Text, Sizes> _base = new System.Collections.Generic.Dictionary<TMP_Text, Sizes>();
+        // Shared by every sweep: sweeps nest (Settings is instantiated under FejdStartup, FejdStartup.cs:2975, both roots
+        // sweep it) and a per-sweep base took the other sweep's raise as an outside write - 14 ratcheted to 19.6 over one
+        // slider drag (run 20261108-025359-2).
+        private static readonly System.Collections.Generic.Dictionary<TMP_Text, Sizes> _base = new System.Collections.Generic.Dictionary<TMP_Text, Sizes>();
 
         public void Apply(TMP_Text t, float floor)
         {
@@ -226,7 +229,7 @@ namespace Morgott.UI.PreWorld
             _base[t] = b;
         }
 
-        private void Prune()
+        private static void Prune()
         {
             var dead = new System.Collections.Generic.List<TMP_Text>();
             foreach (var k in _base.Keys) if (!k) dead.Add(k);
