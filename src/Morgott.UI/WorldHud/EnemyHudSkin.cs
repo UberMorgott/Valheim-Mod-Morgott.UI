@@ -143,7 +143,8 @@ namespace Morgott.UI.WorldHud
                     if (!child.name.StartsWith("health_", StringComparison.Ordinal)) continue;
                     var bar = child.Find("bar");
                     if (!bar || !bar.TryGetComponent<Image>(out var fill)) continue;
-                    // Boss / player / mount templates: health_fast deep HUD red, health_slow the soft lag ghost; friendly
+                    // Boss / player / mount templates: health_fast deep HUD red (players / mounts re-tinted by hostility in
+                    // Update), health_slow the soft lag ghost; friendly
                     // bars keep vanilla colours (GuiBar caches them). Enemy bars (enemy-b): the fill and the lag segment are
                     // strips cut from the approved mockup, untinted, stretched (straight cut end, its own bevel).
                     if (!boss && framed && child.name == "health_fast") MockupStrip(fill, "sprite.bar.enemy.fill.b", "enemy bar fill (cut from enemy-b)");
@@ -489,6 +490,7 @@ namespace Morgott.UI.WorldHud
             var low = ThemeTokens.GetFloat("alpha.enemy.hud.low", 0.75f);
             var fadeIn = ThemeTokens.GetFloat("time.enemy.hud.fade.in", 0.12f);
             var fadeOut = ThemeTokens.GetFloat("time.enemy.hud.fade.out", 0.35f);
+            var local = Player.m_localPlayer;
             foreach (var pair in hud.m_huds)
             {
                 var data = pair.Value;
@@ -524,6 +526,12 @@ namespace Morgott.UI.WorldHud
                         data.m_gui.transform.localScale = new Vector3(_baseScale * k, _baseScale * k, 1f);
                     }
                 }
+
+                // Player / mount templates have no health_fast_friendly, so vanilla's ally switch (EnemyHud.cs:226-233)
+                // never runs for them: tint the fill by that same rule (allies color.hud.ally, PvP-hostile players red).
+                if (!s.Boss && !data.m_healthFastFriendly && data.m_healthFast)
+                    data.m_healthFast.SetColor(!local || BaseAI.IsEnemy(local, data.m_character)
+                        ? ThemeTokens.GetColor("color.hud.health", Color.red) : ThemeTokens.GetColor("color.hud.ally", Color.green));
 
                 if (s.Boss)
                 {
