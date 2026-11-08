@@ -98,7 +98,7 @@ namespace Morgott.UI.Tests
             var order = new[]
             {
                 "Blood axe", "$inventory_slash", "$item_fulladrenaline", "$ui_tip_magic", "+12% fire", "$ui_tip_sockets 1/2",
-                "$ui_tip_set Jarl  (2/4)", "Helm", "<color=#" + S.Dim + ">  Legs", "<color=#" + S.Dim + ">(4)  Rage", "$item_desc",
+                "$ui_tip_set Jarl", "<b>2/4</b>", "Helm", "<color=#" + S.Dim + ">  Legs", "<color=#" + S.Dim + ">(4)  Rage", "$item_desc",
             }.Select(p => At(r, p)).ToList();
             Assert.Equal(order.OrderBy(i => i), order);
         }

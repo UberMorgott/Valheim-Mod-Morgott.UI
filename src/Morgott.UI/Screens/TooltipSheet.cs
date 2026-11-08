@@ -142,14 +142,14 @@ namespace Morgott.UI.Screens
             if (d.Effects.Count > 0 || d.Sockets != null)
             {
                 var magic = d.MagicColor ?? s.Accent;
-                Section(sb, s, "$ui_tip_magic", magic);
+                Section(sb, s, "$ui_tip_magic", s.Accent);
                 foreach (var e in d.Effects)
                     sb.Append("\n<color=#").Append(e.Color ?? magic).Append(">◆</color> ").Append(e.Text);
                 if (d.Sockets != null) sb.Append("\n<color=#").Append(s.Dim).Append(">$ui_tip_sockets ").Append(d.Sockets).Append("</color>");
             }
             foreach (var set in d.Sets)
             {
-                Section(sb, s, "$ui_tip_set " + set.Name + "  (" + set.Equipped + "/" + set.Full + ")", s.Accent);
+                Section(sb, s, "$ui_tip_set " + set.Name, s.Accent, set.Equipped + "/" + set.Full);
                 foreach (var p in set.Pieces)
                     sb.Append("\n<color=#").Append(p.On ? s.Body : s.Dim).Append(">  ").Append(p.Name).Append("</color>");
                 foreach (var b in set.Bonuses)
@@ -200,12 +200,15 @@ namespace Morgott.UI.Screens
         private static void Rule(StringBuilder sb, Style s) =>
             sb.Append("\n<size=").Append(s.RuleSize).Append("%><link=\"").Append(LinkRule).Append("\">").Append(Nbsp).Append("</link></size>");
 
-        private static void Section(StringBuilder sb, Style s, string label, string color)
+        // count = right-aligned on the label line (set "2/4"; a long name wrapped it onto its own line, Codex review).
+        private static void Section(StringBuilder sb, Style s, string label, string color, string count = null)
         {
             Rule(sb, s);
             if (label == null) return;
             sb.Append("\n<size=").Append(s.LabelSize).Append("%><b><uppercase><color=#").Append(color).Append('>')
-              .Append(label).Append("</color></uppercase></b></size>");
+              .Append(label).Append("</color></uppercase></b>");
+            if (count != null) sb.Append(RightCell("<b>" + count + "</b>", color));
+            sb.Append("</size>");
         }
 
         private static void Footer(StringBuilder sb, SheetData d, Style s)
