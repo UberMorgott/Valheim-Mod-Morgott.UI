@@ -24,8 +24,8 @@ namespace Morgott.UI.Tests
             var bad = Directory.EnumerateFiles(SrcRoot(), "*.cs", SearchOption.AllDirectories)
                 .Where(f => Path.GetFileName(f) != "UiText.cs")
                 .SelectMany(f => File.ReadAllLines(f).Select(l => (File: Path.GetFileName(f), Line: l.Trim())))
-                // ForeignUi's Harmony lookup typeof(TextMeshProUGUI), "OnEnable" is not a creation.
-                .Where(x => !x.Line.StartsWith("//") && Creation.IsMatch(x.Line) && !x.Line.Contains("\"OnEnable\""))
+                // Harmony lookups typeof(TextMeshProUGUI), "OnEnable" (ForeignUi) / "OnDestroy" (TextCacheRelease) are not creations.
+                .Where(x => !x.Line.StartsWith("//") && Creation.IsMatch(x.Line) && !x.Line.Contains("\"OnEnable\"") && !x.Line.Contains("\"OnDestroy\""))
                 .Select(x => x.File + ": " + x.Line)
                 .ToList();
             Assert.Empty(bad);
