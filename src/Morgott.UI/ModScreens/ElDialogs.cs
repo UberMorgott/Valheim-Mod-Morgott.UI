@@ -128,6 +128,24 @@ namespace Morgott.UI.ModScreens
             if (Field(type, "Icon")?.GetValue(dialog) is Image icon) _icon.To(icon.rectTransform);
             if (Field(type, "MagicBG")?.GetValue(dialog) is Image bg) _icon.To(bg.rectTransform);
             if (Field(type, "NameText")?.GetValue(dialog) is TMP_Text name) _name.To(name.rectTransform);
+            Modal(dialog.transform);
+        }
+
+        // The clone keeps the variant dialog's UIGroupHandler at the template's priority. A full-screen page lifts its own
+        // groups above every group (InfoPage.Focus, the enchanting page included), so the dialog over it was no longer the
+        // highest group and UIGroupHandler.Update set its CanvasGroup interactable = false: choices drawn, clicks dead (user
+        // 2026-11-08, augment paid, no choice possible). Modal over its window as vanilla's variant dialog is over the
+        // inventory: its groups go above every other group.
+        private static void Modal(Transform dialog)
+        {
+            var own = dialog.GetComponentsInChildren<UIGroupHandler>(true);
+            if (own.Length == 0) return;
+            int top = int.MinValue, min = int.MaxValue;
+            foreach (var g in UnityEngine.Object.FindObjectsByType<UIGroupHandler>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+                if (g && !g.transform.IsChildOf(dialog)) top = Mathf.Max(top, g.m_groupPriority);
+            foreach (var g in own) min = Mathf.Min(min, g.m_groupPriority);
+            if (top == int.MinValue || min > top) return;
+            foreach (var g in own) g.m_groupPriority += top + 1 - min;
         }
 
         private static readonly Dictionary<Type, Dictionary<string, FieldInfo>> Fields = new Dictionary<Type, Dictionary<string, FieldInfo>>();
