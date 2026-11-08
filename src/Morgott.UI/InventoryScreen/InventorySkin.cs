@@ -583,7 +583,9 @@ namespace Morgott.UI.InventoryScreen
                 h = h * 31 + ResponsiveContext.SkinScale.GetHashCode();
                 h = h * 31 + Screen.safeArea.GetHashCode();
                 var inv = Player.m_localPlayer.GetInventory();
-                h = h * 31 + inv.GetWidth() * 101 + EaqsBridge.VisibleRows(inv.GetHeight()) + (StripHotbar ? 7919 : 0);
+                // Identity too: a respawn spawns a new Player with a new Inventory (Game.cs:487, Humanoid.cs:73) of the same
+                // size; without a relayout the player ActionBar kept the dead one and its sort button stayed disabled.
+                h = h * 31 + (inv.GetHashCode() ^ (inv.GetWidth() * 101 + EaqsBridge.VisibleRows(inv.GetHeight()))) + (StripHotbar ? 7919 : 0);
                 var c = ContainerInventory();
                 h = h * 31 + (c != null ? c.GetHashCode() ^ (c.GetWidth() * 101 + c.GetHeight()) : 0);
                 h = h * 31 + (ContainerIsBackpack() ? 7 : 0);
