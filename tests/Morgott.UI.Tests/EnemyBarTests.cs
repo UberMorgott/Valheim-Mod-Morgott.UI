@@ -164,6 +164,15 @@ namespace Morgott.UI.Tests
         // Immunity row: Immune and Ignore count, every other modifier (VeryResistant included), chop / pickaxe and spirit do not;
         // bit order = DamageIconText.Types.
         [Fact]
+        public void ImmuneStepKeepsFullRowInsideTheBar()
+        {
+            Assert.Equal(23f, EnemyHudMath.ImmuneStep(20f, 3f, 150f, 0b11)); // few badges: size + gap
+            var step = EnemyHudMath.ImmuneStep(20f, 3f, 150f, 0b1111111); // all 7: 6 * step + 20 <= 150, still no overlap
+            Assert.True(6 * step + 20f <= 150f + 1e-3f && step >= 20f);
+            Assert.Equal(23f, EnemyHudMath.ImmuneStep(20f, 3f, 150f, 0)); // empty row: never divides by zero
+        }
+
+        [Fact]
         public void ImmuneMaskCountsImmuneAndIgnoreOnly()
         {
             var bat = new HitData.DamageModifiers

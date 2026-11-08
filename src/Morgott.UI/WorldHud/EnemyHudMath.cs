@@ -250,6 +250,14 @@ namespace Morgott.UI.WorldHud
             return mask;
         }
 
+        // Badge pitch: size + gap, closed up so a full row (7 badges) stays within the bar width.
+        public static float ImmuneStep(float size, float gap, float width, int mask)
+        {
+            var n = 0;
+            for (var m = mask; m != 0; m &= m - 1) n++;
+            return n < 2 ? size + gap : Math.Min(size + gap, (width - size) / (n - 1));
+        }
+
         private static bool Immune(HitData.DamageModifier m) => m == HitData.DamageModifier.Immune || m == HitData.DamageModifier.Ignore;
     }
 }
