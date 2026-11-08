@@ -289,6 +289,10 @@ namespace Morgott.UI.Tests
             var ix = Sword();
             ix.Add(new Relation { Kind = RelationKind.LootTable, Source = "EL:loottable:Draugr", Outputs = new[] { new Stack("Tin", 1, 1, float.NaN), new Stack("Copper", 1, 1, float.NaN) } });
             Assert.Equal(new[] { "Tin", "Copper" }, PageModel.UsedIn(ix, "EL:loottable:Draugr").Select(r => r.Icon));
+            // A cost sink (its own output): a row on its input's page, none on its own page.
+            ix.Add(new Relation { Kind = RelationKind.Other, Source = "EL:enchant:Rare", Station = "piece_enchanter", Inputs = new[] { new Stack("Tin", 5, 5) }, Outputs = new[] { new Stack("EL:enchant:Rare") } });
+            Assert.Contains(PageModel.UsedIn(ix, "Tin"), r => r.Icon == "EL:enchant:Rare" && r.Right == "piece_enchanter");
+            Assert.Empty(PageModel.UsedIn(ix, "EL:enchant:Rare"));
         }
 
         [Fact]
