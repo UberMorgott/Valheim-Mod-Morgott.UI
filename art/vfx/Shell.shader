@@ -6,7 +6,9 @@
 //   Body  (Cull Back, premultiplied alpha): the tier's Fresnel rim + the infusion surface (_Surface pattern id).
 // Per renderer (MaterialPropertyBlock on the shell slot): _Size (creature radius factor). Everything animated runs on
 // _Time, nothing per frame on the CPU. Distance: _FadeNear.._FadeFar fades the whole shell out (rgb, the blend is
-// additive / premultiplied); the line widens with view distance (x1 at 8 m, x2.2 at 40 m), capped at 0.25 m.
+// additive / premultiplied); the line widens with view distance (x1 at 8 m, x2.2 at 40 m), capped at 0.25 m, and never
+// gets thinner than _MinPixels on screen (halo: x _HaloWidth): a sub-pixel hull drops in and out of rasterisation from
+// frame to frame as the creature animates (flicker bug 2026-11-07: magic 0.012 m < 1 px past ~12 m at 1080p).
 // Fog: additive passes fade toward black, the body toward the fog colour (UNITY_APPLY_FOG).
 Shader "Morgott/Shell"
 {
@@ -28,6 +30,7 @@ Shader "Morgott/Shell"
         _Size ("Creature size factor", Float) = 1
         _FadeNear ("Fade start (m)", Float) = 30
         _FadeFar ("Fade end (m)", Float) = 45
+        _MinPixels ("Min line width (px)", Float) = 1.5
         _Flash ("Flash (shield hit)", Range(0, 1)) = 1
     }
 
@@ -38,7 +41,7 @@ Shader "Morgott/Shell"
     float _Line, _LineGlow, _Halo, _HaloWidth, _Pulse, _PulseSpeed, _Band, _RimGlow, _RimPower;
     float _Surface;
     float4 _SurfaceColor;
-    float _SurfaceGlow, _Size, _FadeNear, _FadeFar, _Flash;
+    float _SurfaceGlow, _Size, _FadeNear, _FadeFar, _Flash, _MinPixels;
 
     struct appdata
     {
@@ -61,15 +64,16 @@ Shader "Morgott/Shell"
         return 1.0 - smoothstep(_FadeNear, _FadeFar, dist);
     }
 
-    // Hull vertex: pushed out along the world normal by width metres (0 = body).
-    v2f Shell(appdata v, float width)
+    // Hull vertex: pushed out along the world normal by width metres (0 = body), at least minPx screen pixels.
+    v2f Shell(appdata v, float width, float minPx)
     {
         v2f o;
         float3 wp = mul(unity_ObjectToWorld, float4(v.vertex.xyz, 1.0)).xyz;
         float3 wn = normalize(UnityObjectToWorldNormal(v.normal));
         float dist = distance(_WorldSpaceCameraPos, wp);
         float grow = lerp(1.0, 2.2, saturate((dist - 8.0) / 32.0));
-        wp += wn * min(0.25, width * grow * _Size);
+        float pixel = 2.0 * dist / (abs(UNITY_MATRIX_P._m11) * _ScreenParams.y); // metres per screen pixel at this distance
+        wp += wn * min(0.25, max(width * grow * _Size, minPx * pixel));
         o.pos = mul(UNITY_MATRIX_VP, float4(wp, 1.0));
         o.wn = wn;
         o.view = _WorldSpaceCameraPos - wp;
@@ -200,19 +204,19 @@ Shader "Morgott/Shell"
     // ---- passes -----------------------------------------------------------------------------------------------------
     v2f vertLine(appdata v)
     {
-        v2f o = Shell(v, _Line);
+        v2f o = Shell(v, _Line, _MinPixels);
         if (_LineGlow <= 0.0) o.pos = float4(0, 0, -1, 1); // surface-only shell: no line
         return o;
     }
 
     v2f vertHalo(appdata v)
     {
-        v2f o = Shell(v, _Line * _HaloWidth);
+        v2f o = Shell(v, _Line * _HaloWidth, _MinPixels * _HaloWidth);
         if (_Halo <= 0.0) o.pos = float4(0, 0, -1, 1); // degenerate: no fragments for magic
         return o;
     }
 
-    v2f vertBody(appdata v) { return Shell(v, 0.0); }
+    v2f vertBody(appdata v) { return Shell(v, 0.0, 0.0); }
 
     float4 fragLine(v2f i) : SV_Target
     {
