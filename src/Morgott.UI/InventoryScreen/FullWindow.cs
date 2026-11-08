@@ -194,9 +194,15 @@ namespace Morgott.UI.InventoryScreen
         // Hide every root child that holds none of the open windows.
         private static void Apply(Transform root)
         {
+            var gui = InventoryGui.instance;
+            var variant = gui && gui.m_variantDialog ? gui.m_variantDialog.transform : null;
             foreach (Transform child in root)
             {
                 if (Holds(child)) { Show(child); continue; }
+                // The variant dialog is Epic Loot's template (ElDialogs: craft result / augment dialogs = Instantiate of it):
+                // hidden here, every clone made under a full window (the enchanting page) inherited the group at alpha 0 and
+                // the disabled gate canvas and drew nothing (user 2026-11-08: no enchant result). Inactive, it draws nothing.
+                if (child == variant) continue;
                 if (Find(child) != null) continue;
                 var h = new Hidden();
                 if (!child.TryGetComponent(out h.Group)) h.Group = child.gameObject.AddComponent<CanvasGroup>();
