@@ -20,12 +20,12 @@ namespace Morgott.UI.Screens
         public const string LinkHeaderEnd = "mui:hdr";
         public const string LinkBar = "mui:bar:";     // + fill in 1/1000
         public const string LinkBarValue = "mui:barval";
-        private const string Nbsp = " ";
+        private const char Nbsp = '\u00A0';
 
         public sealed class Effect { public string Text; public string Color; }
         public sealed class Piece { public string Name; public bool On; }
         public sealed class Bonus { public int Count; public string Text; public bool Active; }
-        public sealed class Set
+        public sealed class SetSection
         {
             public string Name; public int Equipped, Full;
             public List<Piece> Pieces = new List<Piece>();
@@ -43,7 +43,7 @@ namespace Morgott.UI.Screens
             public string MagicColor;              // effect bullets / magic label colour (rarity), null = Style.Accent
             public List<Effect> Effects = new List<Effect>();
             public string Sockets;                 // "used/count", null = none
-            public List<Set> Sets = new List<Set>();
+            public List<SetSection> Sets = new List<SetSection>();
             public List<string> Hints = new List<string>(); // "[RMB] $ui_tip_equip" (key labels already Latin)
             public List<string> DropLines = new List<string>(); // raw lines containing one of these are shown elsewhere (Epic Loot set label token)
             public string ElEffectsColor, ElSetColor; // Epic Loot drew its effects / set blocks into the raw text: stripped
@@ -121,7 +121,7 @@ namespace Morgott.UI.Screens
                     if (rows.Count > 0 && rows[rows.Count - 1] != Spacer(s)) rows.Add(Spacer(s));
                     continue;
                 }
-                if (d.DropLines.Exists(x => trimmed.IndexOf(x, StringComparison.Ordinal) >= 0)) continue;
+                if (d.DropLines.Exists(trimmed.Contains)) continue; // string.Contains(string) is ordinal
                 if (inSet || trimmed.StartsWith(VanillaSet, StringComparison.Ordinal)) { inSet = true; setLines.Add(line); continue; }
                 var token = Token(trimmed);
                 if (token != null && MetaTokens.Contains(token)) continue;
@@ -258,8 +258,9 @@ namespace Morgott.UI.Screens
         // any other colour (food health / stamina / eitr) carries meaning and stays.
         public static string Plain(string value)
         {
+            var lower = value.ToLowerInvariant();
             foreach (var keep in new[] { "<color=#ff", "<color=#9090" })
-                if (value.IndexOf(keep, StringComparison.OrdinalIgnoreCase) >= 0) return value;
+                if (lower.Contains(keep)) return value;
             var sb = new StringBuilder(value.Length);
             for (var i = 0; i < value.Length; i++)
             {

@@ -74,7 +74,7 @@ namespace Morgott.UI.Screens
                 }
                 else if (id.StartsWith(TooltipSheet.LinkIcon))
                 {
-                    int.TryParse(id.Substring(TooltipSheet.LinkIcon.Length), NumberStyles.Integer, CultureInfo.InvariantCulture, out iconId);
+                    if (!int.TryParse(id.Substring(TooltipSheet.LinkIcon.Length), NumberStyles.Integer, CultureInfo.InvariantCulture, out iconId)) iconId = -1;
                     iconTop = line.ascender;
                 }
                 else if (id == TooltipSheet.LinkHeaderEnd && iconId >= 0 && !float.IsNaN(iconTop))
@@ -94,7 +94,7 @@ namespace Morgott.UI.Screens
                 }
                 else if (id.StartsWith(TooltipSheet.LinkBar))
                 {
-                    int.TryParse(id.Substring(TooltipSheet.LinkBar.Length), NumberStyles.Integer, CultureInfo.InvariantCulture, out var fill);
+                    if (!int.TryParse(id.Substring(TooltipSheet.LinkBar.Length), NumberStyles.Integer, CultureInfo.InvariantCulture, out var fill)) continue;
                     var end = right;
                     for (var j = 0; j < info.linkCount; j++)
                         if (info.linkInfo[j].GetLinkID() == TooltipSheet.LinkBarValue && info.linkInfo[j].linkTextfirstCharacterIndex < info.characterCount)

@@ -132,7 +132,7 @@ namespace Morgott.UI.Screens
                 d.ElSetColor = el.SetColor;
                 foreach (var set in el.Sets)
                 {
-                    var t = new TooltipSheet.Set { Name = set.Name, Equipped = set.Equipped, Full = set.Full };
+                    var t = new TooltipSheet.SetSection { Name = set.Name, Equipped = set.Equipped, Full = set.Full };
                     foreach (var p in set.Pieces ?? new List<EpicLootTooltipData.Piece>()) t.Pieces.Add(new TooltipSheet.Piece { Name = p.Name, On = p.Equipped });
                     foreach (var b in set.Bonuses ?? new List<EpicLootTooltipData.Bonus>()) t.Bonuses.Add(new TooltipSheet.Bonus { Count = b.Count, Text = b.Text, Active = b.Active });
                     d.Sets.Add(t);

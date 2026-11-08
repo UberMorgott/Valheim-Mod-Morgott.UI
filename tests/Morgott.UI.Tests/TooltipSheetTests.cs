@@ -86,7 +86,7 @@ namespace Morgott.UI.Tests
             d.DropLines.Add("$mod_epicloot_legendaryset");
             d.Effects.Add(new TooltipSheet.Effect { Text = "+12% fire" });
             d.Effects.Add(new TooltipSheet.Effect { Text = "Lifesteal 3%" });
-            var s = new TooltipSheet.Set { Name = "Jarl", Equipped = 2, Full = 4 };
+            var s = new TooltipSheet.SetSection { Name = "Jarl", Equipped = 2, Full = 4 };
             s.Pieces.Add(new TooltipSheet.Piece { Name = "Helm", On = true });
             s.Pieces.Add(new TooltipSheet.Piece { Name = "Legs" });
             s.Bonuses.Add(new TooltipSheet.Bonus { Count = 4, Text = "Rage" });
