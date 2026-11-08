@@ -1,0 +1,13 @@
+Use ref-02.png in the current folder as the STRICT style reference (same 1920x1080 full-screen page chrome: opaque dark teal-black background #01161B, thin teal rails along the screen edge, copper corner caps with cyan runes, a top bar with key caps, knotwork name banner "DEVTESTER", "Esc" key cap top right, thin rule under the bar, centred knotwork title plaque, rows as dark plates with thin teal borders, selected row glowing cyan, bold sans-serif Cyrillic text, orange section headings). Generate a NEW 1920x1080 UI mockup in exactly that style: the full-screen TRADER page of Haldor in Valheim with the Epic Loot mod, Russian text, fully opaque (no game world).
+Top bar: name banner "DEVTESTER", right of it a currency strip of 4 small caps: gold coins "1 250", forest tokens "12", iron bounty tokens "3", gold bounty tokens "1"; Esc key cap at the right; a small sundial icon (stock refresh timer) next to the currencies.
+Title plaque under the bar: "ХАЛЬДОР".
+Body under the title, two zones, each section in a thin-bordered dark well with an orange heading:
+LEFT ZONE (~30% width), the vanilla trader:
+ - "ТОВАРЫ" list of 7 rows (square icon socket, name, price right with a gold coin): "Мегингьорд 950", "Обруч 620" (selected, cyan glow), "Рыболовная удочка 350", "Наживка x20 10", "Бочка 200", "Плащ 1 600", "Ящик для пояса 2 000" (greyed, unaffordable).
+ - under it a primary "КУПИТЬ" button and a "ПРОДАТЬ ЦЕННОСТИ" button (sells valuables one by one).
+RIGHT ZONE (~70% width), Epic Loot's merchant board as a 2x2 grid of sections:
+ - top-left "ТАЙНЫЙ ТАЙНИК": 4 magic item rows (icon with a coloured rarity frame: blue/purple/orange, name, price in coins), a "КУПИТЬ" button.
+ - top-right "АЗАРТ": 4 rows of unidentified items by type ("Случайный меч", "Случайный щит", ...) with coin prices, a "РИСКНУТЬ" button.
+ - bottom-left "КАРТЫ СОКРОВИЩ": 4 rows (biome name, price in forest tokens), a "КУПИТЬ КАРТУ" button.
+ - bottom-right "НАГРАДЫ": two small lists "Доступные" (2 rows: target name, biome, reward in iron tokens) and "Получить" (1 row), buttons "ПРИНЯТЬ", "ЗАБРАТЬ" and a small abandon (X) icon button.
+Flat clean UI art, crisp readable text, no characters, no 3D scene.
