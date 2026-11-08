@@ -473,6 +473,22 @@ namespace Morgott.UI.Tests
                         Assert.True(word[0] == '$' && words.ContainsKey(word.Substring(1)), $"{set}: '{word}' untranslated in {language}.json");
         }
 
+        // Run 20261108-193552: "[enemy_deerwhite]", DvergerTest, "EL:loottable:Tier3Mob" without a name / icon.
+        [Fact]
+        public void Untranslated_tokens_dev_prefabs_and_tier_mob_tables()
+        {
+            string Loc(string t) => t == "$enemy_hive" ? "[enemy_hive]" : t == "$enemy_troll" ? "Troll" : t;
+            Assert.False(SourceNames.Translated("$enemy_hive", Loc));
+            Assert.True(SourceNames.Translated("$enemy_troll", Loc));
+            Assert.True(SourceNames.Translated("Plain mod name", Loc));
+            Assert.False(SourceNames.Translated(null, Loc));
+            Assert.True(SourceNames.DevPrefab("DvergerTest"));
+            Assert.True(SourceNames.DevPrefab("Rock_destructible_test"));
+            Assert.False(SourceNames.DevPrefab("Troll"));
+            Assert.Equal("$ib_el_loottable $ib_el_set_elitemob, $ib_el_tier 3", SourceNames.EpicLootName("EL:loottable:Tier3EliteMob", _ => null));
+            Assert.Equal("$ib_el_loottable $ib_el_set_mob, $ib_el_tier 0", SourceNames.EpicLootName("EL:loottable:Tier0Mob", _ => null));
+        }
+
         [Fact]
         public void Provider_source_name_and_icon_win()
         {

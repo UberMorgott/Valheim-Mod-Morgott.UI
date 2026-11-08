@@ -167,7 +167,11 @@ namespace Morgott.UI.ItemBrowser
         {
             state = IconState.Missing;
             if (depth > 3) return null; // set -> set -> item chains are short; a cycle stops here
-            if (SourceNames.LootTableOwner(id) is string owner) return Icon(owner, out state, depth + 1); // Epic Loot table: its owner's icon
+            if (SourceNames.LootTableOwner(id) is string owner) // Epic Loot table: its owner's icon, else (Tier3Mob: no prefab) its loot's
+            {
+                var o = Icon(owner, out state, depth + 1);
+                return state != IconState.Missing ? o : PseudoIcon(id, out state, depth);
+            }
             if (Index != null && Index.Entries.TryGetValue(id, out var e) && e.Icon != null) return Icon(e.Icon, out state, depth + 1); // provider's SourceIcon
             var go = Prefab(id);
             if (!go) return PseudoIcon(id, out state, depth);
