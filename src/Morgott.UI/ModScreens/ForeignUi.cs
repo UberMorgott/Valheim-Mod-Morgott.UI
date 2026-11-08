@@ -85,6 +85,14 @@ namespace Morgott.UI.ModScreens
             Plugin.Log.LogInfo($"[Morgott.UI] fallback restyler on (generic={_generic}, opt-out [{string.Join(",", _optOut)}])");
         }
 
+        // A destroyed graphic (TextCacheRelease) leaves the per-graphic tables at once; their prune stays as backstop.
+        public static void Forget(Graphic g)
+        {
+            Decided.Remove(g);
+            Pending.Remove(g);
+            Retry.Remove(g);
+        }
+
         public static void Notice(Graphic g)
         {
             if (_on && g) Pending.Add(g);
