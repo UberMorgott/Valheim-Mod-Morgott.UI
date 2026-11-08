@@ -1795,9 +1795,17 @@ namespace Morgott.UI.CraftingScreen
                 StopQueue(why);
                 return;
             }
+            // Next single craft at amount 1 for every OnCraftPressed prefix (Morgott.Patcher RecipeChains runs before ours and
+            // would read the full N, see the inputs left short and start an N-target chain on top of the queue).
+            var multi = _gui.m_multiCraftAmount;
             _restarting = true;
+            _gui.m_multiCraftAmount = 1;
             try { _gui.OnCraftPressed(); }
-            finally { _restarting = false; }
+            finally
+            {
+                _restarting = false;
+                _gui.m_multiCraftAmount = multi;
+            }
         }
 
         private void StopQueue(string why)
