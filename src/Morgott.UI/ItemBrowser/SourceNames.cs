@@ -34,6 +34,14 @@ namespace Morgott.UI.ItemBrowser
         // per item set.
         public const string LootTablePrefix = "EL:loottable:", ItemSetPrefix = "EL:itemset:";
 
+        /// <summary>Vanilla dev / test prefab ("DvergerTest", "Rock_destructible_test").</summary>
+        public static bool DevPrefab(string id) => id != null && id.EndsWith("test", StringComparison.OrdinalIgnoreCase);
+
+        /// <summary>The token has a translation: Localization answers "[key]" for a key it lacks (Localization.Translate).
+        /// Plain text and an absent Localization (localize returns its input) count as translated.</summary>
+        public static bool Translated(string token, Func<string, string> localize) =>
+            !string.IsNullOrEmpty(token) && localize(token) is string s && s.Length > 0 && s[0] != '[';
+
         public static bool EpicLootPseudo(string id) =>
             id != null && (id.StartsWith(LootTablePrefix, StringComparison.Ordinal) || id.StartsWith(ItemSetPrefix, StringComparison.Ordinal));
 
@@ -46,7 +54,7 @@ namespace Morgott.UI.ItemBrowser
         public static string EpicLootName(string id, Func<string, string> ownerName)
         {
             var owner = LootTableOwner(id);
-            if (owner != null) return $"$ib_el_loottable {ownerName(owner) ?? Readable(owner)}";
+            if (owner != null) return $"$ib_el_loottable {ownerName(owner) ?? SetName(owner)}"; // "Tier3EliteMob": no prefab, set-style name
             return id != null && id.StartsWith(ItemSetPrefix, StringComparison.Ordinal) ? $"$ib_el_itemset {SetName(id.Substring(ItemSetPrefix.Length))}" : null;
         }
 
@@ -54,7 +62,8 @@ namespace Morgott.UI.ItemBrowser
         private static readonly HashSet<string> SetKinds = new HashSet<string>(StringComparer.Ordinal)
         {
             "mats", "runestone", "weapons", "armor", "shields", "tools", "trinkets", "utility", "everything",
-            "enchantingmats", "enchantingrunestones", "modutility", "shardunique", "shardslotchisel", "bossgems"
+            "enchantingmats", "enchantingrunestones", "modutility", "shardunique", "shardslotchisel", "bossgems",
+            "mob", "elitemob" // loot tables Tier<N>Mob / Tier<N>EliteMob (no owner prefab)
         };
 
         // "Tier1Mats" -> "$ib_el_set_mats, $ib_el_tier 1"; "MT_BossGems" -> "$ib_el_set_bossgems". A kind without a token

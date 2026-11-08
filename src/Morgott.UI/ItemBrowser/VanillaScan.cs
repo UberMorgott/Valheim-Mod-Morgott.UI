@@ -27,8 +27,12 @@ namespace Morgott.UI.ItemBrowser
                     foreach (var go in ZNetScene.instance.m_prefabs) if (go && seen.Add(go)) prefabs.Add(go);
                     foreach (var go in ZNetScene.instance.m_namedPrefabs.Values) if (go && seen.Add(go)) prefabs.Add(go);
                 }
+                // Dev prefabs (DvergerTest, Rock_destructible_test) are no source of anything; test items / pieces (CapeTest)
+                // stay, hidden by the unlisted rule.
+                prefabs.RemoveAll(go => SourceNames.DevPrefab(go.name) && !go.GetComponent<ItemDrop>() && !go.GetComponent<Piece>());
                 foreach (var go in prefabs) Entry(go);
                 foreach (var go in prefabs) Sources(go);
+                foreach (var go in prefabs) ResolveName(go);
                 foreach (var r in ObjectDB.instance.m_recipes) if (r && r.m_enabled && r.m_item) Recipe(r);
                 var tables = new HashSet<PieceTable>();
                 foreach (var go in ObjectDB.instance.m_items)
@@ -67,6 +71,32 @@ namespace Morgott.UI.ItemBrowser
             if (string.IsNullOrEmpty(e.Name)) e.Hidden = "no name";
             else if (id.StartsWith("JVLmock_", StringComparison.Ordinal)) e.Hidden = "Jotunn mock";
             _ix.Add(e);
+        }
+
+        // Shared name resolver: an entry whose token has no translation in the current language ("[enemy_hive]") takes the
+        // prefab's next name that has one (Character / Piece / ItemDrop, then hover / MineRock / Container / Pickable names),
+        // else its readable prefab name. Tokens vanilla never defines get a curated word in our Translations (enemy_deerwhite).
+        private static void ResolveName(GameObject go)
+        {
+            if (!_ix.Entries.TryGetValue(go.name, out var e) || SourceNames.Translated(e.Name, Browser.Localize)) return;
+            foreach (var c in go.GetComponents<Component>())
+            {
+                var token = c switch
+                {
+                    Character ch => ch.m_name,
+                    Piece p => p.m_name,
+                    ItemDrop d => d.m_itemData?.m_shared?.m_name,
+                    HoverText h => h.m_text,
+                    MineRock m => m.m_name,
+                    MineRock5 m5 => m5.m_name,
+                    Container ct => ct.m_name,
+                    Pickable pk => pk.m_overrideName,
+                    Plant pl => pl.m_name,
+                    _ => null
+                };
+                if (SourceNames.Translated(token, Browser.Localize)) { e.Name = token; return; }
+            }
+            e.Name = SourceNames.Readable(go.name);
         }
 
         private static void Gear(GameObject[] items)
