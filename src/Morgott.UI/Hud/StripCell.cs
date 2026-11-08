@@ -182,15 +182,15 @@ namespace Morgott.UI.PlayerHud
             // key label in the upper half: top inset 0.4 x (run 20261023-191817: the 27-unit glyph box, ~38 units with its
             // outline, ran 1.5 px below the cell centre from the full inset)
             Box(_key.rectTransform, inset, h * 0.5f, w - 2f * inset, h * 0.5f - inset * 0.4f);
-            // round cell with its timer band: the count sits above the band (bottom-right of the disc), never on the timer
-            var countY = _round && timerBelow ? band : inset * 0.8f;
+            // round food cell: the count sits above the timer (its band, or its line over the disc bottom), never on it
+            // (user 2026-11-08: the "4m" timer and the stack count merged into "4m0" once the band went to 0)
+            var timerLine = ThemeTokens.GetFloat("size.hud.strip.timer", 18f);
+            var timerY = band > 0f ? 0f : side * 0.04f;
+            var countY = _round && timerBelow ? (band > 0f ? band : timerY + timerLine) : inset * 0.8f;
             Box(_count.rectTransform, inset, countY, w - 2f * inset, h * 0.5f);
             if (timerBelow) // food: in the band under the disc, or (no band) over the disc bottom, above the ring (later sibling)
-            {
                 // no band: the cell sits on the screen edge (run 20261108-015822: a line under it was cut in half at 720)
-                var timerLine = ThemeTokens.GetFloat("size.hud.strip.timer", 18f);
-                Box(_timer.rectTransform, 0f, band > 0f ? 0f : side * 0.04f, w, band > 0f ? band : timerLine);
-            }
+                Box(_timer.rectTransform, 0f, timerY, w, band > 0f ? band : timerLine);
             else // cooldowns: the lower 70 % of the cell, clear of the key label (top-left)
                 Box(_timer.rectTransform, 0f, 0f, w, h * 0.7f);
             var line = ThemeTokens.GetFloat("size.hud.strip.dur.line", 5f);
