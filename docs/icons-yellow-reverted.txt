@@ -216,3 +216,6 @@ MushroomMagecap
 MushroomBlue
 MushroomJotunPuffs
 Blueberries
+# User 2026-11-08: wooden shield + wood tower shield keep the vanilla icon (not a defect, permanent).
+ShieldWood
+ShieldWoodTower
