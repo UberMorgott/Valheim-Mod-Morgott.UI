@@ -712,6 +712,7 @@
     { "token": "size.tooltip.icon", "value": 60 },
     { "token": "size.tooltip.icon.gap", "value": 12 },
     { "token": "share.tooltip.icon.inset", "value": 0.12 },
+    { "token": "share.tooltip.description.inset", "value": 0.25 },
     { "token": "size.tooltip.bar", "value": 8 },
     { "token": "size.tooltip.bar.gap", "value": 12 },    { "token": "size.tooltip.scroll.step", "value": 60 },
     { "token": "size.tooltip.scrollbar", "value": 4 },

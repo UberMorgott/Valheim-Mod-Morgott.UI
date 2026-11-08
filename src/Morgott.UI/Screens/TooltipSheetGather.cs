@@ -57,6 +57,7 @@ namespace Morgott.UI.Screens
                 SmallSize = P("size.tooltip.small", 90),
                 RuleSize = P("size.tooltip.rule.line", 45),
                 IconIndent = ThemeTokens.GetFloat("size.tooltip.icon", 60f) + ThemeTokens.GetFloat("size.tooltip.icon.gap", 12f),
+                DescriptionInset = ThemeTokens.GetFloat("share.tooltip.description.inset", 0.25f).ToString("0.###", System.Globalization.CultureInfo.InvariantCulture),
             };
         }
 
