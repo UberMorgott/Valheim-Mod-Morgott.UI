@@ -25,6 +25,7 @@ namespace Morgott.UI.WorldHud
             if (hud.m_buildHud)
             {
                 StripWell(hud.m_buildHud.transform.Find("SelectedInfo"));
+                DescriptionUnderName(hud.m_buildSelection, hud.m_pieceDescription);
                 Register(hud.m_buildHud.transform, ScreenId + ".Selected");
             }
             // Hovered piece author window (crossplay author name / platform id; kit popup): its own root unless it lives
@@ -58,6 +59,18 @@ namespace Morgott.UI.WorldHud
             wr.offsetMin = new Vector2(-pad, -pad);
             wr.offsetMax = new Vector2(pad, pad);
             go.GetComponent<Image>().raycastTarget = false;
+        }
+
+        // Hud.SetupPieceInfo (Hud.cs:1526) fills these two; the prefab rects abut (PlayHudMath.DescriptionTop), run
+        // 20261108-051942: name line box bottom == description line box top (324 px at 1080). Rect fix, set once.
+        private static void DescriptionUnderName(TMP_Text name, TMP_Text desc)
+        {
+            if (!name || !desc || name.transform.parent != desc.transform.parent) return;
+            var n = name.rectTransform;
+            var d = desc.rectTransform;
+            if (n.anchorMin.y != 1f || n.anchorMax.y != 1f || d.anchorMax.y != 1f) return; // prefab changed: top-anchored math no longer holds
+            var top = PlayHudMath.DescriptionTop(n.anchoredPosition.y, n.rect.height, n.pivot.y, d.offsetMax.y, Theme.ThemeTokens.GetFloat("size.build.desc.gap", 6f));
+            d.offsetMax = new Vector2(d.offsetMax.x, top);
         }
 
         public static void Templates(BuildUi ui)

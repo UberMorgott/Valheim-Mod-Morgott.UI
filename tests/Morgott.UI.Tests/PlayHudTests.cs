@@ -263,5 +263,15 @@ namespace Morgott.UI.Tests
         [InlineData(10f, 30f, 6f, 30f)]
         [InlineData(60f, 30f, 6f, 72f)]
         public void KeyPlateWidthFitsLabel(float label, float h, float pad, float want) => Assert.Equal(want, PlayHudMath.KeyPlateWidth(label, h, pad));
+
+        // Prefab values (Hud SelectedInfo): name bottom -26.42 == description top -26.42 -> description top -32.42 with gap 6;
+        // applying it again (re-attach) keeps it.
+        [Fact]
+        public void DescriptionTopSitsGapUnderName()
+        {
+            var top = PlayHudMath.DescriptionTop(-13.21f, 26.42f, 0.5f, -26.42f, 6f);
+            Assert.Equal(-32.42f, top, 3);
+            Assert.Equal(top, PlayHudMath.DescriptionTop(-13.21f, 26.42f, 0.5f, top, 6f), 3);
+        }
     }
 }

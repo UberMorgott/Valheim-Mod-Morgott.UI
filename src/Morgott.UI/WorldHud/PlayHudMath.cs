@@ -178,5 +178,13 @@ namespace Morgott.UI.WorldHud
             var t = Math.Max(0f, Math.Min(1f, distanceFromEdge / ramp));
             return t * t * (3f - 2f * t);
         }
+
+        // Selected-piece strip (Hud prefab SelectedInfo/selected_piece, both anchored to the parent's top): piece_name rect
+        // y -13.21 h 26.42 pivot 0.5 (vertical Middle, line box fills it) ends exactly where the top-aligned piece_description
+        // rect (offsetMax.y -26.42) starts, so the two line boxes touch and the display face's glyphs reach the description.
+        // Description top edge (offsetMax.y) moved to $gap under the name's bottom; its bottom stays (auto-size refits).
+        // Idempotent: never raises the edge.
+        public static float DescriptionTop(float nameY, float nameHeight, float namePivotY, float descriptionTop, float gap) =>
+            Math.Min(descriptionTop, nameY - nameHeight * namePivotY - gap);
     }
 }
