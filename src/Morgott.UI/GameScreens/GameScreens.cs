@@ -563,36 +563,33 @@ namespace Morgott.UI.GameScreens
                 }
         }
 
-        // Runic bands (art: band_runes above and below the text): the top one under the topic (it covered the topic when
-        // centred on the text box, run 20261022-122327), the bottom one under the text box.
+        // Runic bands (art: band_runes) on the panel itself (textroot/bkg), stretch-anchored to its top and bottom edges
+        // with equal side insets: placed off the text box they overhung the panel bottom (user 2026-11-08). The top inset
+        // clears the topic (it covered the topic, run 20261022-122327); the bottom band mirrors it.
         private static void Bands(TMP_Text topic, TMP_Text text)
         {
             var tr = text ? text.rectTransform : null;
-            if (!tr || !tr.parent || tr.parent.Find("RuneSkin_BandTop")) return;
+            var panel = tr && tr.parent ? tr.parent.Find("bkg") as RectTransform ?? tr.parent as RectTransform : null;
+            if (!panel || panel.Find("RuneSkin_BandTop")) return;
             var h = ThemeTokens.GetFloat("size.text.band.h", 22f);
             var gap = ThemeTokens.GetFloat("size.text.band.gap", 10f);
-            var off = GameScreenMath.BandOffset(tr.rect.height, h, gap);
-            var centre = tr.anchoredPosition + new Vector2((0.5f - tr.pivot.x) * tr.rect.width, (0.5f - tr.pivot.y) * tr.rect.height);
-            // Topic bottom in the band parent's space (world corners, any anchors); else the text-box rule.
-            var top = centre.y + off;
+            var side = ThemeTokens.GetFloat("size.text.band.inset", 30f);
+            var inset = side;
             if (topic)
             {
                 var pr = topic.rectTransform;
-                var parent = (RectTransform)tr.parent;
-                var local = parent.InverseTransformPoint(pr.TransformPoint(new Vector3(pr.rect.center.x, pr.rect.yMin, 0f)));
-                // anchoredPosition of a centre-anchored band: offset from the parent's anchor reference point.
-                var anchorRef = Vector2.Scale(parent.rect.size, (tr.anchorMin == tr.anchorMax ? tr.anchorMin : new Vector2(0.5f, 0.5f)) - parent.pivot);
-                top = local.y - anchorRef.y - gap - h * 0.5f;
+                var bottom = panel.InverseTransformPoint(pr.TransformPoint(new Vector3(pr.rect.center.x, pr.rect.yMin, 0f))).y;
+                inset = Mathf.Max(side, panel.rect.yMax - bottom + gap);
             }
-            foreach (var (name, y) in new[] { ("RuneSkin_BandTop", top), ("RuneSkin_BandBottom", centre.y - off) })
+            foreach (var (name, edge) in new[] { ("RuneSkin_BandTop", 1f), ("RuneSkin_BandBottom", 0f) })
             {
-                var band = GameScreenKit.Decor(tr.parent, name, "band.runes", "runic band (band_runes, tiled)");
+                var band = GameScreenKit.Decor(panel, name, "band.runes", "runic band (band_runes, tiled)");
                 var br = band.rectTransform;
-                br.SetSiblingIndex(tr.GetSiblingIndex());
-                br.anchorMin = br.anchorMax = tr.anchorMin == tr.anchorMax ? tr.anchorMin : new Vector2(0.5f, 0.5f);
-                br.pivot = new Vector2(0.5f, 0.5f);
-                br.sizeDelta = new Vector2(tr.rect.width, h);
-                br.anchoredPosition = new Vector2(centre.x, y);
+                br.anchorMin = new Vector2(0f, edge);
+                br.anchorMax = new Vector2(1f, edge);
+                br.pivot = new Vector2(0.5f, edge);
+                br.sizeDelta = new Vector2(-2f * side, h);
+                br.anchoredPosition = new Vector2(0f, edge > 0f ? -inset : inset);
                 AlphaFollow.Ensure(band.gameObject, text);
             }
         }
