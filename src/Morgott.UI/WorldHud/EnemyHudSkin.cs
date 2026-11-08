@@ -564,7 +564,8 @@ namespace Morgott.UI.WorldHud
                 if (s.Vt.sprite && EnemyHudMath.SocketCentre(s.Tier, out var x, out var y))
                 {
                     var u = fit.Scale * 100f / s.Vt.sprite.pixelsPerUnit; // frame units per sprite px (as SetFrame's offsets)
-                    s.NemesisPos = new Vector2(-fit.Left + x * u, (s.Vt.sprite.rect.height * 0.5f - y) * u);
+                    // The frame's centre sits (Top - Bottom) / 2 above the bar's centre (unequal top / bottom borders).
+                    s.NemesisPos = new Vector2(-fit.Left + x * u, (fit.Top - fit.Bottom) * 0.5f + (s.Vt.sprite.rect.height * 0.5f - y) * u);
                     s.NemesisSize = Vector2.one * (EnemyHudMath.NemesisIconPx * u);
                     if (s.Nemesis) Place(s);
                 }
