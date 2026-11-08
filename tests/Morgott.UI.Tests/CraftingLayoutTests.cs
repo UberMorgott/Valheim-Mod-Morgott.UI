@@ -201,6 +201,18 @@ namespace Morgott.UI.Tests
             Assert.False(r.Plus.Overlaps(r.Button));
         }
 
+        // Live craft row (craft_button_panel 300x64, gap 0.1 h, step gap 0.8): the label span right of the anvil
+        // (pad 0.18 h | glyph 0.58 h | 0.21 h | text | 0.21 h) holds RU "СОЗДАТЬ X 99" at the 16.05 floor
+        // (6.461 em, advances measured from art/fonts/PT_Sans-Web-Bold.ttf) without the ellipsis.
+        [Fact]
+        public void ActionRowCraftLabelFitsRuMultiCraftAtFloor()
+        {
+            const float h = 64f;
+            var r = CraftingMath.ActionRow(new Box(0f, 0f, 300f, h), true, h * 0.1f, innerShare: 0.8f);
+            var span = r.Button.W - h * (0.18f + 0.58f + 2f * 0.21f);
+            Assert.True(span >= 6.461f * 16.05f, $"label span {span} < text {6.461f * 16.05f}");
+        }
+
         // Anvil box from the button alone (mockup idle: pad 0.18 h, side 0.58 h) and the label span after it never
         // reaches back over it, whatever the label width.
         [Theory]

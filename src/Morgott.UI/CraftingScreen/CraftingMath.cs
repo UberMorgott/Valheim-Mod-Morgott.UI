@@ -331,8 +331,10 @@ namespace Morgott.UI.CraftingScreen
         // the whole stepper at most maxShare of the row, shrunk evenly below that), the craft button takes the rest.
         // Progress: framed bar | cancel button (cancelShare of the row, clamped to [h * 1.2, h * 2.6]). Everything inside
         // `craft`; stepper == false -> the button gets the whole row.
+        // maxShare 0.35 (was 0.4): at 0.4 RU "СОЗДАТЬ X 99" (6.46 em PT Sans Bold) did not fit the label span at the 16 px
+        // floor and ellipsized (anvil-clear-*, run 20261108-022445).
         public static CraftRow ActionRow(Box craft, bool stepper, float gap, float stepShare = 0.68f, float fieldShare = 0.85f,
-            float maxShare = 0.4f, float cancelShare = 0.27f, float stepH = 0.95f, float innerShare = 0.35f)
+            float maxShare = 0.35f, float cancelShare = 0.27f, float stepH = 0.95f, float innerShare = 0.35f)
         {
             var r = new CraftRow { Button = craft };
             if (craft.IsEmpty) return r;
