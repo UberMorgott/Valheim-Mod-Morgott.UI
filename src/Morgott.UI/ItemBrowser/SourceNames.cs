@@ -50,10 +50,21 @@ namespace Morgott.UI.ItemBrowser
             return id != null && id.StartsWith(ItemSetPrefix, StringComparison.Ordinal) ? $"$ib_el_itemset {SetName(id.Substring(ItemSetPrefix.Length))}" : null;
         }
 
-        // Epic Loot set names glue words and tiers ("Tier2weapons", "ShardUnique"): split at case / digit steps, digits kept
-        // (Readable drops them: run 20261108-043049 text-denylist flagged "Tier2weapons").
-        private static string SetName(string name)
+        // Epic Loot set kinds (baseconfig loottables.json ItemSets + our MT_ patch sets) with a $ib_el_set_<kind> token.
+        private static readonly HashSet<string> SetKinds = new HashSet<string>(StringComparer.Ordinal)
         {
+            "mats", "runestone", "weapons", "armor", "shields", "tools", "trinkets", "utility", "everything",
+            "enchantingmats", "enchantingrunestones", "modutility", "shardunique", "shardslotchisel", "bossgems"
+        };
+
+        // "Tier1Mats" -> "$ib_el_set_mats, $ib_el_tier 1"; "MT_BossGems" -> "$ib_el_set_bossgems". A kind without a token
+        // (another mod's set) falls back to the split words, digits kept (run 20261108-043049 flagged "Tier2weapons").
+        public static string SetName(string name)
+        {
+            var m = System.Text.RegularExpressions.Regex.Match(name, "^(?:MT_)?(?:Tier(\\d+))?(.+)$");
+            var kind = m.Groups[2].Value.Replace("_", "").ToLowerInvariant();
+            if (SetKinds.Contains(kind))
+                return m.Groups[1].Success ? $"$ib_el_set_{kind}, $ib_el_tier {m.Groups[1].Value}" : $"$ib_el_set_{kind}";
             var s = System.Text.RegularExpressions.Regex.Replace(name, "(?<=[a-z])(?=[A-Z0-9])|(?<=[0-9])(?=[A-Za-z])|_", " ").Trim();
             return s.Length == 0 ? name : char.ToUpperInvariant(s[0]) + s.Substring(1).ToLowerInvariant();
         }

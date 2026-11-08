@@ -161,15 +161,20 @@ namespace Morgott.UI.ItemBrowser
         private static readonly List<string> _queue = new List<string>();
         private const int RendersPerFrame = 2;
 
-        public static Sprite Icon(string id, out IconState state)
+        public static Sprite Icon(string id, out IconState state) => Icon(id, out state, 0);
+
+        private static Sprite Icon(string id, out IconState state, int depth)
         {
             state = IconState.Missing;
-            if (SourceNames.LootTableOwner(id) is string owner) return Icon(owner, out state); // Epic Loot table: its owner's icon
+            if (depth > 3) return null; // set -> set -> item chains are short; a cycle stops here
+            if (SourceNames.LootTableOwner(id) is string owner) return Icon(owner, out state, depth + 1); // Epic Loot table: its owner's icon
+            if (Index != null && Index.Entries.TryGetValue(id, out var e) && e.Icon != null) return Icon(e.Icon, out state, depth + 1); // provider's SourceIcon
             var go = Prefab(id);
-            if (!go) return null;
+            if (!go) return PseudoIcon(id, out state, depth);
             Sprite s = null;
             if (go.TryGetComponent<ItemDrop>(out var d)) s = d.m_itemData.GetIcon();
             else if (go.TryGetComponent<Piece>(out var p)) s = p.m_icon;
+            else s = Trophy(go);
             if (!s && _rendered.TryGetValue(id, out s) && !s)
                 return null; // render tried, nothing to draw
             if (s)
@@ -179,6 +184,32 @@ namespace Morgott.UI.ItemBrowser
             }
             if (!_queue.Contains(id)) _queue.Add(id);
             state = IconState.Pending;
+            return null;
+        }
+
+        // A creature reads at icon size by its trophy (a model render of a boss is a speck); none = the render.
+        private static Sprite Trophy(GameObject go)
+        {
+            if (!go.TryGetComponent<Character>(out _) || !go.TryGetComponent<CharacterDrop>(out var cd)) return null;
+            foreach (var drop in cd.m_drops)
+                if (drop.m_prefab && drop.m_prefab.TryGetComponent<ItemDrop>(out var item) && item.m_itemData.m_shared.m_itemType == ItemDrop.ItemData.ItemType.Trophy)
+                    return item.m_itemData.GetIcon();
+            return null;
+        }
+
+        // A source with no prefab (Epic Loot set, mod loot table) shows the first of its outputs that has an icon.
+        private static Sprite PseudoIcon(string id, out IconState state, int depth)
+        {
+            state = IconState.Missing;
+            if (Index == null) return null;
+            foreach (var r in Index.UsedIn(id))
+                if (r.Source == id)
+                    foreach (var o in r.Outputs)
+                    {
+                        if (o.Prefab == id) continue;
+                        var s = Icon(o.Prefab, out state, depth + 1);
+                        if (state != IconState.Missing) return s;
+                    }
             return null;
         }
 

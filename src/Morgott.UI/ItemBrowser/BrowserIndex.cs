@@ -11,6 +11,7 @@ namespace Morgott.UI.ItemBrowser
     public sealed class Entry
     {
         public string Id, Name, Desc, Mod, Hidden; // Name / Desc = localization tokens; Mod = plugin GUID, null = Valheim
+        public string Icon; // prefab whose icon stands for this entry (Relation.SourceIcon), null = its own / Browser.Icon fallback
         public EntryType Type;
         public ItemCategory Category = ItemCategory.Misc; // items only, set by the vanilla scan (PageModel.Categorize)
         public int MaxQuality = 1;
@@ -80,7 +81,7 @@ namespace Morgott.UI.ItemBrowser
             Relations.Add(r);
             // A recipe is no browsable thing (its station / inputs are); other bare sources (loot tables, rocks) are.
             if (!Entries.ContainsKey(r.Source))
-                Add(new Entry { Id = r.Source, Name = SourceNames.EpicLootName(r.Source, o => Entries.TryGetValue(o, out var oe) ? oe.Name : null) ?? SourceNames.Readable(r.Source), Type = EntryType.Other, Hidden = r.Kind == RelationKind.Craft || r.Kind == RelationKind.Upgrade ? "recipe" : null });
+                Add(new Entry { Id = r.Source, Icon = r.SourceIcon, Name = r.SourceName ?? SourceNames.EpicLootName(r.Source, o => Entries.TryGetValue(o, out var oe) ? oe.Name : null) ?? SourceNames.Readable(r.Source), Type = EntryType.Other, Hidden = r.Kind == RelationKind.Craft || r.Kind == RelationKind.Upgrade ? "recipe" : null });
             foreach (var s in r.Outputs) To(_from, s.Prefab, r);
             foreach (var s in r.Inputs) To(_used, s.Prefab, r);
             To(_used, r.Source, r); // a creature's drops, a tool's pieces, a nest's harvest

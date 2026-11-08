@@ -446,13 +446,41 @@ namespace Morgott.UI.Tests
             ix.Add(new Relation { Kind = RelationKind.LootTable, Source = "EL:itemset:ShardUnique", Outputs = new[] { new Stack("Tin", 1, 1, float.NaN) } });
             Assert.Equal("$ib_el_loottable $enemy_troll", ix.Entries["EL:loottable:Troll"].Name);
             Assert.Equal("$ib_el_loottable Unknown thing", ix.Entries["EL:loottable:Unknown_thing"].Name);
-            Assert.Equal("$ib_el_itemset Shard unique", ix.Entries["EL:itemset:ShardUnique"].Name);
-            Assert.Equal("$ib_el_itemset Tier 2 weapons", SourceNames.EpicLootName("EL:itemset:Tier2weapons", _ => null));
+            Assert.Equal("$ib_el_itemset $ib_el_set_shardunique", ix.Entries["EL:itemset:ShardUnique"].Name);
+            Assert.Equal("$ib_el_itemset $ib_el_set_weapons, $ib_el_tier 2", SourceNames.EpicLootName("EL:itemset:Tier2weapons", _ => null));
+            Assert.Equal("$ib_el_itemset Other mod set 3", SourceNames.EpicLootName("EL:itemset:OtherModSet3", _ => null));
             Assert.Equal("Troll", SourceNames.LootTableOwner("EL:loottable:Troll"));
             Assert.Null(SourceNames.LootTableOwner("EL:itemset:ShardUnique"));
             Assert.True(PageModel.LootPage(EntryType.Other, "EL:loottable:Troll"));
             Assert.True(PageModel.LootPage(EntryType.Creature, "Troll"));
             Assert.False(PageModel.LootPage(EntryType.Item, "Tin"));
+        }
+
+        // Shipped Epic Loot sets (baseconfig loottables.json ItemSets + patch MT_BossGems): every name is tokens only, each in
+        // both translation files (screenshot 2026-11-08: "Набор EpicLoot: Tier 1 mats").
+        [Theory]
+        [InlineData("English")]
+        [InlineData("Russian")]
+        public void Epic_loot_set_names_are_translated(string language)
+        {
+            using var stream = typeof(ItemBrowserTests).Assembly.GetManifestResourceStream($"Morgott.UI.Translations.{language}.json");
+            var words = System.Text.Json.JsonSerializer.Deserialize<System.Collections.Generic.Dictionary<string, string>>(stream);
+            var sets = "EnchantingMats Tier0Mats Tier5Mats EnchantingRunestones Tier3Runestone ModUtility ShardUnique ShardSlotChisel "
+                       + "Tier0Weapons Tier1Tools Tier2Armor Tier4Shields Tier5Trinkets Tier6Utility Tier8Everything MT_BossGems";
+            foreach (var set in sets.Split(' '))
+                foreach (var word in SourceNames.SetName(set).Split(' ', ','))
+                    if (word.Length > 0 && !char.IsDigit(word[0]))
+                        Assert.True(word[0] == '$' && words.ContainsKey(word.Substring(1)), $"{set}: '{word}' untranslated in {language}.json");
+        }
+
+        [Fact]
+        public void Provider_source_name_and_icon_win()
+        {
+            var ix = new BrowserIndex();
+            ix.Add(new Relation { Kind = RelationKind.LootTable, Source = "CR:treasure:epicloot:Rare", SourceName = "$cr_cond_treasure", SourceIcon = "Coins", Outputs = new[] { new Stack("EssenceRare", 1, 2) } });
+            ix.Add(new Relation { Kind = RelationKind.LootTable, Source = "CR:treasure:epicloot:Rare", SourceName = "$other", Outputs = new[] { new Stack("DustRare", 1, 2) } });
+            Assert.Equal("$cr_cond_treasure", ix.Entries["CR:treasure:epicloot:Rare"].Name);
+            Assert.Equal("Coins", ix.Entries["CR:treasure:epicloot:Rare"].Icon);
         }
     }
 }
