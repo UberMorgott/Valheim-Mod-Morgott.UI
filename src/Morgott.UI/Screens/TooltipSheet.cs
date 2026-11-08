@@ -56,6 +56,7 @@ namespace Morgott.UI.Screens
             public string PipOn = "4FE0E6FF", PipOff = "4FE0E633", PipDigit = "06090BFF", PipDigitOff = "A3ADB3FF", Key = "FFFFFF26";
             public int NameSize = 125, LabelSize = 82, SmallSize = 90, RuleSize = 45;
             public float IconIndent = 72f;
+            public string DescriptionInset = "0.25"; // em, invariant culture
         }
 
         // Vanilla stat tokens shown as label / value rows (ItemDrop.cs:884-1089, HitData.cs:508-603, Player.s_equipmentModifierTooltips).
@@ -141,14 +142,14 @@ namespace Morgott.UI.Screens
             if (d.Effects.Count > 0 || d.Sockets != null)
             {
                 var magic = d.MagicColor ?? s.Accent;
-                Section(sb, s, "$ui_tip_magic", magic);
+                Section(sb, s, "$ui_tip_magic", s.Accent);
                 foreach (var e in d.Effects)
                     sb.Append("\n<color=#").Append(e.Color ?? magic).Append(">◆</color> ").Append(e.Text);
                 if (d.Sockets != null) sb.Append("\n<color=#").Append(s.Dim).Append(">$ui_tip_sockets ").Append(d.Sockets).Append("</color>");
             }
             foreach (var set in d.Sets)
             {
-                Section(sb, s, "$ui_tip_set " + set.Name + "  (" + set.Equipped + "/" + set.Full + ")", s.Accent);
+                Section(sb, s, "$ui_tip_set " + set.Name, s.Accent, set.Equipped + "/" + set.Full);
                 foreach (var p in set.Pieces)
                     sb.Append("\n<color=#").Append(p.On ? s.Body : s.Dim).Append(">  ").Append(p.Name).Append("</color>");
                 foreach (var b in set.Bonuses)
@@ -162,7 +163,9 @@ namespace Morgott.UI.Screens
             if (!string.IsNullOrEmpty(d.Description))
             {
                 Rule(sb, s);
-                sb.Append("\n<i><color=#").Append(s.Description).Append('>').Append(d.Description.Trim('\n')).Append("</color></i>");
+                // Italic shears each line's first glyph left of the text edge (run 20261108-193552: 1-4 px): inset by the shear.
+                sb.Append("\n<margin-left=").Append(s.DescriptionInset).Append("em><i><color=#").Append(s.Description).Append('>')
+                  .Append(d.Description.Trim('\n')).Append("</color></i></margin>");
             }
             Footer(sb, d, s);
             return sb.ToString();
@@ -197,12 +200,15 @@ namespace Morgott.UI.Screens
         private static void Rule(StringBuilder sb, Style s) =>
             sb.Append("\n<size=").Append(s.RuleSize).Append("%><link=\"").Append(LinkRule).Append("\">").Append(Nbsp).Append("</link></size>");
 
-        private static void Section(StringBuilder sb, Style s, string label, string color)
+        // count = right-aligned on the label line (set "2/4"; a long name wrapped it onto its own line, Codex review).
+        private static void Section(StringBuilder sb, Style s, string label, string color, string count = null)
         {
             Rule(sb, s);
             if (label == null) return;
             sb.Append("\n<size=").Append(s.LabelSize).Append("%><b><uppercase><color=#").Append(color).Append('>')
-              .Append(label).Append("</color></uppercase></b></size>");
+              .Append(label).Append("</color></uppercase></b>");
+            if (count != null) sb.Append(RightCell("<b>" + count + "</b>", color));
+            sb.Append("</size>");
         }
 
         private static void Footer(StringBuilder sb, SheetData d, Style s)

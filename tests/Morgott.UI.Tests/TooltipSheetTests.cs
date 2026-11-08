@@ -49,7 +49,7 @@ namespace Morgott.UI.Tests
             {
                 "mui:icon:0", "$item_axe_bronze", "$ui_tip_type_onehandedweapon", "$ui_tip_quality 3", "mui:hdr",
                 "$inventory_slash", "$item_staminause", "$item_blockarmor", "$item_repairlevel",
-                "<i><color=#" + S.Description + ">$item_axe_bronze_description", "mui:bar:750", "150/200", "$ui_tip_weight 2.0", "$ui_tip_upgrade 3/4",
+                "em><i><color=#" + S.Description + ">$item_axe_bronze_description", "mui:bar:750", "150/200", "$ui_tip_weight 2.0", "$ui_tip_upgrade 3/4",
             }.Select(p => At(r, p)).ToList();
             Assert.Equal(order.OrderBy(i => i), order);
             // Meta lines shown from data, not twice; values without the game's orange / yellow.
@@ -98,7 +98,7 @@ namespace Morgott.UI.Tests
             var order = new[]
             {
                 "Blood axe", "$inventory_slash", "$item_fulladrenaline", "$ui_tip_magic", "+12% fire", "$ui_tip_sockets 1/2",
-                "$ui_tip_set Jarl  (2/4)", "Helm", "<color=#" + S.Dim + ">  Legs", "<color=#" + S.Dim + ">(4)  Rage", "$item_desc",
+                "$ui_tip_set Jarl", "<b>2/4</b>", "Helm", "<color=#" + S.Dim + ">  Legs", "<color=#" + S.Dim + ">(4)  Rage", "$item_desc",
             }.Select(p => At(r, p)).ToList();
             Assert.Equal(order.OrderBy(i => i), order);
         }
