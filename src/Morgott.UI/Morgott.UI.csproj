@@ -11,7 +11,7 @@
     <AssemblyName>Morgott.UI</AssemblyName>
     <RootNamespace>Morgott.UI</RootNamespace>
     <!-- Keep in sync with Plugin.Version. -->
-    <Version>0.29.28</Version>
+    <Version>0.29.29</Version>
     <!-- Plugin internals are not public API (the public contract is Morgott.Core). -->
     <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
@@ -21,6 +21,8 @@
     <EmbeddedResource Include="Translations\*.json" LogicalName="Morgott.UI.Translations.%(Filename).json" />
     <!-- Icons for other mods' icon-less statuses, loaded by Icons\ModStatusIcons. -->
     <EmbeddedResource Include="Assets\StatusIcons.png" LogicalName="Morgott.UI.StatusIcons.png" />
+    <!-- Nemesis demon head over the enemy HUD tier socket (Codex image gen), loaded by WorldHud\EnemyHudSkin. -->
+    <EmbeddedResource Include="Assets\NemesisHead.png" LogicalName="Morgott.UI.NemesisHead.png" />
   </ItemGroup>
 
   <ItemGroup>

@@ -187,6 +187,16 @@ namespace Morgott.UI.WorldHud
             _ => 0,
         };
 
+        // Round socket of frame_enemy_<tier> in sprite px from the top-left (centre x, centre y), measured from the art
+        // (inner disc ~106 px); tier 0 (normal) has none. The Nemesis head is drawn 96 px wide so the tier's ring stays visible.
+        public const float NemesisIconPx = 96f;
+
+        public static bool SocketCentre(int tier, out float x, out float y)
+        {
+            (x, y) = tier switch { 1 => (83.5f, 85.5f), 2 => (87.5f, 96f), 3 => (95f, 102f), _ => (0f, 0f) };
+            return tier > 0;
+        }
+
         // Only a real boss gets the boss bar: the creature says IsBoss() (m_boss: vanilla bosses, Vaettir's world boss, Epic
         // Loot bounty bosses) AND vanilla built its HUD from the boss template. A normal mob never does, and the target panel
         // Vaettir copies from that template is not an EnemyHud HUD at all.

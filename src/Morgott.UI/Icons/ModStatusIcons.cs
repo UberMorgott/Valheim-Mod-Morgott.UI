@@ -104,12 +104,30 @@ namespace Morgott.UI.Icons
 
         private static Sprite[] Load()
         {
+            var tex = LoadEmbedded("Morgott.UI.StatusIcons.png", "UI_StatusIcons");
+            if (!tex) return null;
+            var count = System.Math.Min(ModStatusIconMap.Cells.Length, tex.height / Cell * Columns);
+            var sprites = new Sprite[count];
+            for (var i = 0; i < count; i++)
+            {
+                // Cells from the top-left, texture origin bottom-left.
+                var rect = new Rect(i % Columns * Cell, tex.height - (i / Columns + 1) * Cell, Cell, Cell);
+                sprites[i] = Sprite.Create(tex, rect, new Vector2(0.5f, 0.5f), 100f);
+                sprites[i].name = "UI_StatusIcon_" + ModStatusIconMap.Cells[i];
+            }
+            Plugin.Log.LogInfo($"[Compat] status icons {tex.width}x{tex.height}, {count} sprites");
+            return sprites;
+        }
+
+        /// <summary>An embedded PNG as a mipmapped trilinear clamp texture; null (logged) when missing.</summary>
+        internal static Texture2D LoadEmbedded(string resource, string name)
+        {
             byte[] png;
-            using (var s = typeof(ModStatusIcons).Assembly.GetManifestResourceStream("Morgott.UI.StatusIcons.png"))
+            using (var s = typeof(ModStatusIcons).Assembly.GetManifestResourceStream(resource))
             {
                 if (s == null)
                 {
-                    Plugin.Log.LogError("[Compat] embedded StatusIcons.png missing");
+                    Plugin.Log.LogError($"[Compat] embedded {resource} missing");
                     return null;
                 }
                 using (var ms = new MemoryStream())
@@ -127,22 +145,12 @@ namespace Morgott.UI.Icons
                 Plugin.Log.LogError("[Compat] ImageConversion.LoadImage not found");
                 return null;
             }
-            var tex = new Texture2D(2, 2, TextureFormat.RGBA32, true) { name = "UI_StatusIcons" };
+            var tex = new Texture2D(2, 2, TextureFormat.RGBA32, true) { name = name };
             load.Invoke(null, new object[] { tex, png, false });
             tex.wrapMode = TextureWrapMode.Clamp;
             tex.filterMode = FilterMode.Trilinear;
             tex.Apply(true, true);
-            var count = System.Math.Min(ModStatusIconMap.Cells.Length, tex.height / Cell * Columns);
-            var sprites = new Sprite[count];
-            for (var i = 0; i < count; i++)
-            {
-                // Cells from the top-left, texture origin bottom-left.
-                var rect = new Rect(i % Columns * Cell, tex.height - (i / Columns + 1) * Cell, Cell, Cell);
-                sprites[i] = Sprite.Create(tex, rect, new Vector2(0.5f, 0.5f), 100f);
-                sprites[i].name = "UI_StatusIcon_" + ModStatusIconMap.Cells[i];
-            }
-            Plugin.Log.LogInfo($"[Compat] status icons {tex.width}x{tex.height}, {count} sprites");
-            return sprites;
+            return tex;
         }
     }
 }

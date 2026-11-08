@@ -77,7 +77,15 @@ namespace Morgott.UI.WorldHud
             public RectTransform Immune;
             public int ImmuneMask = -1;
             public float ImmuneAt;
+            public Image Nemesis; // NemesisName child, built on the first Nemesis
+            public bool IsNemesis;
+            public float NemesisAt;
+            public Vector2 NemesisPos, NemesisSize; // over the tier socket, set with the tier art
         }
+
+        public const string NemesisName = "RuneSkin_Nemesis";
+        private static Sprite _nemesisSprite;
+        private static bool _nemesisTried;
 
         private static readonly ConditionalWeakTable<EnemyHud.HudData, State> States = new ConditionalWeakTable<EnemyHud.HudData, State>();
 
@@ -550,11 +558,65 @@ namespace Morgott.UI.WorldHud
             if (vtOn && s.Vt.sprite != s.VtSet)
             {
                 var tierToken = EnemyHudMath.TierToken(s.Vt.sprite.name, s.Boss);
-                SetFrame(s.Vt, s.Health, tierToken, s.Boss);
+                var fit = SetFrame(s.Vt, s.Health, tierToken, s.Boss);
                 s.Tier = EnemyHudMath.TierIndex(tierToken);
                 s.VtSet = s.Vt.sprite;
+                if (s.Vt.sprite && EnemyHudMath.SocketCentre(s.Tier, out var x, out var y))
+                {
+                    var u = fit.Scale * 100f / s.Vt.sprite.pixelsPerUnit; // frame units per sprite px (as SetFrame's offsets)
+                    s.NemesisPos = new Vector2(-fit.Left + x * u, (s.Vt.sprite.rect.height * 0.5f - y) * u);
+                    s.NemesisSize = Vector2.one * (EnemyHudMath.NemesisIconPx * u);
+                    if (s.Nemesis) Place(s);
+                }
             }
             if (s.Own && s.Own.enabled == vtOn) s.Own.enabled = !vtOn && s.Own.sprite;
+            NemesisIcon(s, vtOn, now);
+        }
+
+        // Nemesis (Core ICreatureInfo, owner Morgott.Creatures): a red demon head replaces the tier socket's glyph.
+        // Status re-read once a second; tier 0 (normal frame) has no socket.
+        private static void NemesisIcon(State s, bool vtOn, float now)
+        {
+            if (now >= s.NemesisAt)
+            {
+                s.NemesisAt = now + VtRetrySeconds;
+                s.IsNemesis = vtOn && s.Tier > 0 && Morgott.Core.Services.TryGet<Morgott.Core.ICreatureInfo>(out var info) &&
+                              info.IsNemesis(s.Data.m_character);
+            }
+            var on = vtOn && s.IsNemesis && s.Tier > 0;
+            if (!s.Nemesis)
+            {
+                if (!on || !NemesisSprite()) return;
+                var go = new GameObject(NemesisName, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+                go.transform.SetParent(s.Health, false);
+                s.Nemesis = go.GetComponent<Image>();
+                s.Nemesis.sprite = _nemesisSprite;
+                s.Nemesis.raycastTarget = false;
+                s.Nemesis.preserveAspect = true;
+                var rt = s.Nemesis.rectTransform;
+                rt.anchorMin = rt.anchorMax = new Vector2(0f, 0.5f);
+                rt.pivot = new Vector2(0.5f, 0.5f);
+                Place(s);
+                Art.Note(s.Nemesis, "enemy.nemesis", true, "Nemesis demon head over the tier socket glyph (Codex art, Assets\\NemesisHead.png)");
+            }
+            if (s.Nemesis.enabled != on) s.Nemesis.enabled = on;
+        }
+
+        private static void Place(State s)
+        {
+            var rt = s.Nemesis.rectTransform;
+            rt.anchoredPosition = s.NemesisPos;
+            rt.sizeDelta = s.NemesisSize;
+            rt.SetAsLastSibling(); // over the frame and its glyph
+        }
+
+        private static bool NemesisSprite()
+        {
+            if (_nemesisTried) return _nemesisSprite;
+            _nemesisTried = true;
+            var tex = Morgott.UI.Icons.ModStatusIcons.LoadEmbedded("Morgott.UI.NemesisHead.png", "UI_NemesisHead");
+            if (tex) _nemesisSprite = Sprite.Create(tex, new Rect(0f, 0f, tex.width, tex.height), new Vector2(0.5f, 0.5f), 100f);
+            return _nemesisSprite;
         }
 
         // Shield band (spec 4): ZDO mt_es / mt_es_max on the creature when published, else the owner's SE_Shield

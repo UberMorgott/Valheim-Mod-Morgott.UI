@@ -85,6 +85,14 @@ namespace Morgott.UI.Tests
             Assert.True(Morgott.UI.WorldHud.EnemyHudMath.SparkAlpha(1) > Morgott.UI.WorldHud.EnemyHudMath.SparkAlpha(0));
             Assert.Equal(3, Morgott.UI.WorldHud.EnemyHudMath.TierIndex("sprite.frame.enemy.unique"));
             Assert.Equal(0, Morgott.UI.WorldHud.EnemyHudMath.TierIndex("sprite.frame.enemy.normal"));
+            // Nemesis head: no socket on the normal frame; on magic / rare / unique it sits inside the left socket, below the ring.
+            Assert.False(Morgott.UI.WorldHud.EnemyHudMath.SocketCentre(0, out _, out _));
+            for (var tier = 1; tier <= 3; tier++)
+            {
+                Assert.True(Morgott.UI.WorldHud.EnemyHudMath.SocketCentre(tier, out var x, out var y));
+                Assert.True(x > Morgott.UI.WorldHud.EnemyHudMath.NemesisIconPx / 2f && y > Morgott.UI.WorldHud.EnemyHudMath.NemesisIconPx / 2f);
+            }
+            Assert.True(Morgott.UI.WorldHud.EnemyHudMath.NemesisIconPx < 106f);
         }
 
         [Fact]
