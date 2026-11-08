@@ -310,8 +310,8 @@ namespace Morgott.UI.ItemBrowser
             return Chat.instance && Chat.instance.HasFocus() || Console.IsVisible() || TextInput.IsVisible() || Menu.IsVisible();
         }
 
-        // Prefab id under the pointer: a browser slot, any InventoryGrid cell (player, chest, backpack, equipment / quick
-        // slot grids of other mods) through the public InventoryGrid.GetItem (InventoryGrid.cs:589), or a crafting list row.
+        // Prefab id under the pointer: a browser slot, any InventoryGrid cell (player, chest, backpack, EAQS doll / quick
+        // cells, equipment / quick slot grids of other mods) through the public InventoryGrid.GetItem (InventoryGrid.cs:589), or a crafting list row.
         private string Hovered()
         {
             var es = EventSystem.current;
@@ -326,6 +326,9 @@ namespace Morgott.UI.ItemBrowser
                 var hit = go.GetComponentInParent<Hit>();
                 if (hit && hit.Id != null) return hit.Id();
                 var grid = go.GetComponentInParent<InventoryGrid>();
+                // EAQS 3.2 parents its slot cells (the doll) to EaqsSlotRoot under InventoryGui.m_player, outside the
+                // grid's transform; they stay player grid elements (m_elements, EquipmentPanel.UpdateInventorySlots).
+                if (!grid && go.GetComponentInParent<InventoryElement>() is InventoryElement cell && _gui.m_playerGrid.m_elements.Contains(cell)) grid = _gui.m_playerGrid;
                 if (grid && grid.GetInventory() != null && ItemId(grid.GetItem(new Vector2i((int)pos.x, (int)pos.y))) is string item) return item;
                 foreach (var p in _gui.m_availableRecipes)
                     if (p.InterfaceElement && go.transform.IsChildOf(p.InterfaceElement.transform))
