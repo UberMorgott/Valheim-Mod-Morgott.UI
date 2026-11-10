@@ -169,6 +169,8 @@ namespace Morgott.UI.InventoryScreen
                 case "Legs": glyph = "legs"; order = 6; tooltipKey = "$ui_slot_legs"; return;
                 case "Utility2": glyph = "ring"; order = 7; tooltipKey = "$ui_slot_ring"; return;
                 case "Utility3": glyph = "ring"; order = 8; tooltipKey = "$ui_slot_ring"; return;
+                // Morgott.Summons [PetCompanion]: the active pet's collar, the right column's last cell (user 2026-11-10)
+                case Morgott.Core.Contracts.PetCollarCell: glyph = "collar"; order = 9; tooltipKey = "$su_slot_collar"; return;
                 default: glyph = "generic"; order = 100; tooltipKey = id; return;
             }
         }

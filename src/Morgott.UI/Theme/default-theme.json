@@ -1348,6 +1348,7 @@
     { "role": "glyph.slot.neck", "sprite": "sprite.slot.glyph.neck", "color": "color.slot.glyph", "imageType": "Simple", "preserveAspect": true },
     { "role": "glyph.slot.ring", "sprite": "sprite.slot.glyph.ring", "color": "color.slot.glyph", "imageType": "Simple", "preserveAspect": true },
     { "role": "glyph.slot.light", "sprite": "sprite.slot.glyph.light", "color": "color.slot.glyph", "imageType": "Simple", "preserveAspect": true },
+    { "role": "glyph.slot.collar", "sprite": "sprite.slot.glyph.neck", "color": "color.slot.glyph", "imageType": "Simple", "preserveAspect": true },
     { "role": "glyph.slot.generic", "sprite": "sprite.slot.glyph.generic", "color": "color.slot.glyph", "imageType": "Simple", "preserveAspect": true },
     { "role": "glyph.action.take_all", "sprite": "sprite.action.take_all", "color": "color.action.glyph", "imageType": "Simple", "preserveAspect": true },
     { "role": "glyph.action.stack_all", "sprite": "sprite.action.stack_all", "color": "color.action.glyph", "imageType": "Simple", "preserveAspect": true },

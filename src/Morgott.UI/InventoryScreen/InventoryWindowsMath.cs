@@ -466,6 +466,7 @@ namespace Morgott.UI.InventoryScreen
                 case "neck": return 5;
                 case "ring": return 10;
                 case "light": return 20;
+                case "collar": return 30;
                 default: return 100;
             }
         }

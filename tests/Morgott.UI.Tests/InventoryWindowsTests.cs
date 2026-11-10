@@ -253,6 +253,7 @@ namespace Morgott.UI.Tests
             // necklace heads the right column, above the rings (user 2026-10-27)
             Assert.True(InventoryWindowsMath.DollRank("neck") < InventoryWindowsMath.DollRank("ring"));
             Assert.True(InventoryWindowsMath.DollRank("ring") < InventoryWindowsMath.DollRank("light") && InventoryWindowsMath.DollRank("light") < InventoryWindowsMath.DollRank("generic"));
+            Assert.True(InventoryWindowsMath.DollSide("collar") == 1 && InventoryWindowsMath.DollRank("light") < InventoryWindowsMath.DollRank("collar") && InventoryWindowsMath.DollRank("collar") < InventoryWindowsMath.DollRank("generic")); // pet collar: right column, last known cell
         }
 
         [Fact]
