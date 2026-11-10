@@ -1,6 +1,6 @@
 # Biome overlay ("Подсветка биомов") — design note
 
-Status: implemented in Morgott.UI 0.29.39 (Core 0.8.0 `Contracts.PortalPinType`, Morgott.Patcher 0.5.5 portal pin type). Approach: own RawImage (Jotunn MinimapManager overlays draw on the small map too and replace the map colour). Mockup: `docs/mockups/2026-11-10/biome-overlay.png` (rev 3).
+Status: implemented in Morgott.UI 0.29.40 (Core 0.8.0 `Contracts.PortalPinType`, Morgott.Patcher 0.5.5 portal pin type). Approach: own RawImage (Jotunn MinimapManager overlays draw on the small map too and replace the map colour). Mockup: `docs/mockups/2026-11-10/biome-overlay.png` (rev 3).
 
 User decisions (2026-11-10): overlay fills explored areas only; large map only (no HUD minimap overlay); legend becomes a filter list (checkbox per pin/marker type + per layer); map screen always full screen (windowed/restored state removed); maximize/restore button removed.
 
