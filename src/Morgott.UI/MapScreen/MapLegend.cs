@@ -44,7 +44,14 @@ namespace Morgott.UI.MapScreen
         {
             public float Delta;
             public bool Over;
-            public void OnScroll(PointerEventData e) => Delta += e.scrollDelta.y;
+            public Vector2 At;
+            public Camera Cam;
+            public void OnScroll(PointerEventData e)
+            {
+                Delta += e.scrollDelta.y;
+                At = e.position;
+                Cam = e.enterEventCamera;
+            }
             public void OnPointerEnter(PointerEventData e) => Over = true;
             public void OnPointerExit(PointerEventData e) => Over = false;
             private void OnDisable() => Over = false;
@@ -63,7 +70,9 @@ namespace Morgott.UI.MapScreen
         private PinRow _biomeRow;
         private readonly List<(Image Swatch, TMP_Text Name)> _key = new List<(Image, TMP_Text)>();
         private LegendScroll _scroll;
-        private int _firstRow;
+        private int _firstRow, _firstPlayer;
+        private float _playersTop, _playersBottom;
+        private Image _playerTrack, _playerThumb;
         private Slider _zoom;
         private bool _zoomWrite;
         private int _loggedButtons = -1;
@@ -100,8 +109,10 @@ namespace Morgott.UI.MapScreen
             _layersDivider = _art.Image("LayersDivider", _rows, "sprite.divider", "color.frame", Image.Type.Sliced);
             _scrollTrack = _art.Image("ScrollTrack", _rows, "sprite.bar.skill.trough", "color.frame", Image.Type.Sliced);
             _scrollThumb = _art.Image("ScrollThumb", _scrollTrack.transform, "sprite.bar.skill.fill", "color.text.accent", Image.Type.Sliced);
+            _playerTrack = _art.Image("PlayerScrollTrack", _rows, "sprite.bar.skill.trough", "color.frame", Image.Type.Sliced);
+            _playerThumb = _art.Image("ScrollThumb", _playerTrack.transform, "sprite.bar.skill.fill", "color.text.accent", Image.Type.Sliced);
             _biomeRow = NewRow("LayerRow");
-            _biomeRow.Glyph.sprite = ThemeTokens.GetSprite("sprite.glyph.cat.all");
+            _biomeRow.Glyph.sprite = MapIcons.Layers;
             _biomeRow.Glyph.enabled = _biomeRow.Glyph.sprite;
             foreach (var biome in MapFilterMath.Biomes)
             {
@@ -488,16 +499,19 @@ namespace Morgott.UI.MapScreen
                 var t = _legend.Find(panel) as RectTransform;
                 if (t && t.gameObject.activeSelf) toggles += t.rect.height + 6f;
             }
+            var barW2 = ThemeTokens.GetFloat("size.map.legend.scroll", 8f);
             var keyRows = (MapFilterMath.Biomes.Length + 1) / 2;
             var layersH = section + playerRow + keyRows * keyRow + 6f;
             var players = ZNet.instance ? ZNet.instance.GetPlayerList() : null;
-            var playersShown = Mathf.Min(players?.Count ?? 0, Mathf.RoundToInt(ThemeTokens.GetFloat("count.map.players.max", 4f)));
+            var playerCount = players?.Count ?? 0;
+            var playersShown = Mathf.Min(playerCount, Mathf.RoundToInt(ThemeTokens.GetFloat("count.map.players.max", 4f)));
             var playersH = section + playersShown * playerRow + 6f;
             var listTop = pad + section;
             var listBottom = zoomTop - labelH - toggles - layersH - playersH - 6f;
 
             // МЕТКИ.
             Place(_pinsHeader.rectTransform, pad, pad, rowW, headerH);
+            HeaderFace(_pinsHeader);
             _pinsHeader.text = Words.Get("$ui_map_pins");
             Place(_pinsDivider.rectTransform, pad, pad + headerH, rowW, divider);
             var avail = Mathf.Max(rowMin, listBottom - listTop);
@@ -506,7 +520,12 @@ namespace Morgott.UI.MapScreen
             var scrolling = _entries.Count > window;
             if (_scroll && Mathf.Abs(_scroll.Delta) > 0.01f)
             {
-                _firstRow -= Mathf.RoundToInt(Mathf.Sign(_scroll.Delta) * Mathf.Max(1f, Mathf.Abs(_scroll.Delta)));
+                // Over the ИГРОКИ block (last frame's place) the wheel scrolls the players, elsewhere the pin rows.
+                var step = Mathf.RoundToInt(Mathf.Sign(_scroll.Delta) * Mathf.Max(1f, Mathf.Abs(_scroll.Delta)));
+                var overPlayers = RectTransformUtility.ScreenPointToLocalPointInRectangle(_legend, _scroll.At, _scroll.Cam, out var lp)
+                    && _legend.rect.yMax - lp.y >= _playersTop && _legend.rect.yMax - lp.y < _playersBottom;
+                if (overPlayers) _firstPlayer -= step;
+                else _firstRow -= step;
                 _scroll.Delta = 0f;
             }
             _firstRow = MapFilterMath.ClampScroll(_firstRow, _entries.Count, window);
@@ -555,16 +574,28 @@ namespace Morgott.UI.MapScreen
             y = listTop + window * rowH + 6f;
             y = Section(_playersHeader, _playersDivider, "$ui_map_players", pad, y, rowW, headerH, divider);
             var localName = Game.instance && Game.instance.GetPlayerProfile() != null ? Game.instance.GetPlayerProfile().GetName() : null;
+            _playersTop = y;
+            _firstPlayer = MapFilterMath.ClampScroll(_firstPlayer, playerCount, playersShown);
+            var playerScroll = playerCount > playersShown;
             while (_playerRows.Count < playersShown) _playerRows.Add(NewRow("PlayerRow"));
+            if (_playerTrack.gameObject.activeSelf != playerScroll) _playerTrack.gameObject.SetActive(playerScroll);
+            if (playerScroll)
+            {
+                Place(_playerTrack.rectTransform, pad + rowW - barW2, y, barW2, playersShown * playerRow);
+                var thumb = _playerThumb.rectTransform;
+                thumb.anchorMin = new Vector2(0f, 1f - (float)(_firstPlayer + playersShown) / playerCount);
+                thumb.anchorMax = new Vector2(1f, 1f - (float)_firstPlayer / playerCount);
+                thumb.offsetMin = thumb.offsetMax = Vector2.zero;
+            }
             for (var i = 0; i < _playerRows.Count; i++)
             {
                 var r = _playerRows[i];
                 var on = i < playersShown;
                 if (r.Root.gameObject.activeSelf != on) r.Root.gameObject.SetActive(on);
                 if (!on) continue;
-                var p = players[i];
+                var p = players[_firstPlayer + i];
                 var me = p.m_name == localName;
-                LayRow(r, pad, y, rowW, playerRow, k);
+                LayRow(r, pad, y, playerScroll ? rowW - barW2 - 6f : rowW, playerRow, k);
                 var sprite = me && _map.m_largeMarker && _map.m_largeMarker.TryGetComponent<Image>(out var mk) ? mk.sprite : _map.GetSprite(Minimap.PinType.Player);
                 if (r.Glyph.sprite != sprite) { r.Glyph.sprite = sprite; r.Glyph.enabled = sprite; }
                 if (r.Name.text != p.m_name) r.Name.text = p.m_name;
@@ -573,6 +604,8 @@ namespace Morgott.UI.MapScreen
                 r.Name.color = ThemeTokens.GetColor(!hidden && (me || p.m_publicPosition) ? "color.text.body" : "color.state.disabled", Color.white);
                 y += playerRow;
             }
+
+            _playersBottom = y;
 
             // СЛОИ: biome highlight + its colour key (two columns).
             y += 6f;
@@ -635,10 +668,25 @@ namespace Morgott.UI.MapScreen
         private float Section(TMP_Text header, Image line, string token, float pad, float y, float w, float headerH, float divider)
         {
             Place(header.rectTransform, pad, y, w, headerH);
+            HeaderFace(header);
             var text = Words.Get(token);
             if (header.text != text) header.text = text;
             Place(line.rectTransform, pad, y + headerH, w, divider);
             return y + headerH + divider + 4f;
+        }
+
+        // Section titles in the map's own header face (mockup: a wide serif in capitals), font.display until it loads.
+        private static void HeaderFace(TMP_Text header)
+        {
+            var face = ThemeTokens.GetFont("font.map.header") ?? ThemeTokens.GetFont("font.display");
+            if (face && header.font != face)
+            {
+                header.font = face;
+                if (face.material) header.fontSharedMaterial = face.material;
+            }
+            var size = ThemeTokens.GetFloat("size.map.legend.header", 21f);
+            if (Mathf.Abs(header.fontSize - size) > 0.05f) header.fontSize = size;
+            if ((header.fontStyle & FontStyles.UpperCase) == 0) header.fontStyle |= FontStyles.UpperCase;
         }
 
         // Socket | name | checkbox; a vanilla icon button rides the socket (world placement: it stays in its own panel).

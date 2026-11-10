@@ -25,6 +25,8 @@
     <EmbeddedResource Include="Assets\NemesisHead.png" LogicalName="Morgott.UI.NemesisHead.png" />
     <!-- Gold paw on tameable creature cells of the item browser (Codex image gen, art v1), loaded by ItemBrowser\Browser. -->
     <EmbeddedResource Include="Assets\TameBadge.png" LogicalName="Morgott.UI.TameBadge.png" />
+    <EmbeddedResource Include="Assets\MapLayersIcon.png" LogicalName="Morgott.UI.MapLayersIcon.png" />
+    <EmbeddedResource Include="Assets\MapBossIcon.png" LogicalName="Morgott.UI.MapBossIcon.png" />
   </ItemGroup>
 
   <ItemGroup>

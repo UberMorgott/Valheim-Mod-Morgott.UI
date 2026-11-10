@@ -66,6 +66,7 @@ namespace Morgott.UI.Tests
                 Assert.True(MapConfig.BiomeOverlay.Value);
                 Assert.Equal(0.25f, MapConfig.FillAlpha.Value, 3);
                 Assert.Equal(0.60f, MapConfig.OutlineAlpha.Value, 3);
+                Assert.True(MapConfig.FogTint.Value);
                 Assert.All(MapFilterMath.Rows, r => Assert.True(MapConfig.Shown(r)));
                 MapConfig.Filters["Hammer"].Value = false;
                 MapConfig.Filters["Portal"].Value = false;
@@ -105,7 +106,9 @@ namespace Morgott.UI.Tests
             var t = ThemeJson.Parse(r.ReadToEnd());
             Assert.Empty(ThemeSchema.Validate(t));
             foreach (var b in MapFilterMath.Biomes) Assert.Contains(t.colors, c => c.token == MapFilterMath.ColorToken(b));
-            foreach (var token in new[] { "size.map.biome.row", "size.map.biome.font", "size.map.legend.scroll", "count.map.players.max" })
+            Assert.Contains(t.colors, c => c.token == "color.map.fog");
+            Assert.Equal("Valheim-AveriaSerifLibre", t.fonts.Single(f => f.token == "font.map.header").asset);
+            foreach (var token in new[] { "size.map.biome.row", "size.map.biome.font", "size.map.legend.scroll", "count.map.players.max", "size.map.biome.line", "size.map.biome.line.switch", "count.map.biome.lines.max" })
                 Assert.Contains(t.floats, f => f.token == token);
             // Mountain and Deep North must not share a colour (both are white in the vanilla map texture).
             Assert.NotEqual(t.colors.Single(c => c.token == "color.map.biome.mountain").value, t.colors.Single(c => c.token == "color.map.biome.deepnorth").value);
@@ -135,15 +138,18 @@ namespace Morgott.UI.Tests
         [Fact]
         public void BorderIsAnyDifferentFourNeighbour()
         {
-            // Grid is 4 wide but Border takes a square size: use a 4x4 padded copy.
+            // Grid is 4 wide but Border takes a square size: use a 4x4 padded copy. One-sided: only the higher id / land side.
             var ids = Grid.Concat(new byte[] { 1, 1, 2, 2 }).ToArray();
             Assert.False(MapFilterMath.Border(ids, 4, 0, 0)); // grid edge is no border
-            Assert.True(MapFilterMath.Border(ids, 4, 1, 0));
+            Assert.False(MapFilterMath.Border(ids, 4, 1, 0)); // meadows (1) beside black forest (2): the higher id draws the line
+            Assert.True(MapFilterMath.Border(ids, 4, 2, 0));
             Assert.True(MapFilterMath.Border(ids, 4, 2, 1));
             Assert.False(MapFilterMath.Border(ids, 4, 3, 0));
             Assert.True(MapFilterMath.Border(ids, 4, 3, 1)); // ocean below
-            Assert.True(MapFilterMath.Border(ids, 4, 3, 2)); // the ocean pixel itself
+            Assert.False(MapFilterMath.Border(ids, 4, 3, 2)); // the ocean pixel itself never
         }
+
+        private static readonly Color32 Fog = new Color32(55, 78, 102, 166);
 
         [Fact]
         public void PixelsFollowFogFillAndOutline()
@@ -153,23 +159,60 @@ namespace Morgott.UI.Tests
             var outline = MapFilterMath.Alpha(0.85f);
             Assert.Equal(76, fill); // 76.5 rounds to even
             Assert.Equal(217, outline);
-            var inside = MapFilterMath.Pixel(ids, 4, 0, 1, true, Palette, fill, outline);
+            var inside = MapFilterMath.Pixel(ids, 4, 0, 1, true, Palette, fill, outline, Fog);
             Assert.Equal((10, 76), (inside.r, inside.a));
-            var border = MapFilterMath.Pixel(ids, 4, 1, 1, true, Palette, fill, outline);
-            Assert.Equal((10, 217), (border.r, border.a));
-            var fog = MapFilterMath.Pixel(ids, 4, 1, 1, false, Palette, fill, outline);
-            Assert.Equal((10, 0), (fog.r, fog.a)); // unexplored: transparent, colour kept for bilinear edges
-            Assert.Equal(0, MapFilterMath.Pixel(ids, 4, 3, 2, true, Palette, fill, outline).a); // ocean
+            var border = MapFilterMath.Pixel(ids, 4, 2, 1, true, Palette, fill, outline, Fog);
+            Assert.Equal((20, 217), (border.r, border.a));
+            Assert.Equal(76, MapFilterMath.Pixel(ids, 4, 1, 1, true, Palette, fill, outline, Fog).a); // one-sided: meadows side stays fill
+            Assert.Equal(Fog, MapFilterMath.Pixel(ids, 4, 1, 1, false, Palette, fill, outline, Fog)); // unexplored = fog tint
+            var ocean = MapFilterMath.Pixel(ids, 4, 3, 2, true, Palette, fill, outline, Fog);
+            Assert.Equal((55, 0), (ocean.r, ocean.a)); // explored ocean: clear, fog colour kept for the bilinear edge
+            Assert.Equal(0, MapFilterMath.Pixel(ids, 4, 1, 1, false, Palette, fill, outline, default).a); // FogTint off
 
             var explored = new BitArray(16);
             var others = new BitArray(16);
             explored[0] = true;
             others[5] = true; // shared map data counts as explored
             var px = new Color32[16];
-            MapFilterMath.Compose(ids, 4, explored, others, Palette, fill, outline, px);
-            Assert.Equal(new[] { 0, 5 }, Enumerable.Range(0, 16).Where(i => px[i].a > 0).ToArray());
+            MapFilterMath.Compose(ids, 4, explored, others, Palette, fill, outline, Fog, px);
+            Assert.Equal(new[] { 0, 5 }, Enumerable.Range(0, 16).Where(i => !px[i].Equals(Fog)).ToArray());
+            Assert.True(px[0].a > 0 && px[5].a > 0);
         }
 
+        [Fact]
+        public void BorderSegmentsMergeRunsAndRespectFog()
+        {
+            // 4x4: column 0-1 meadows (1), column 2-3 black forest (2).
+            var ids = new byte[] { 1, 1, 2, 2, 1, 1, 2, 2, 1, 1, 2, 2, 1, 1, 2, 2 };
+            var all = new BitArray(16, true);
+            var none = new BitArray(16);
+            var segs = new List<MapFilterMath.Segment>();
+            Assert.True(MapFilterMath.Segments(ids, 4, all, none, 0, 0, 4, 4, 100, segs));
+            // One vertical run at corner x = 2 from y = 1 (window clamps to the inner lattice) to y = 3, meadows colour.
+            var s = Assert.Single(segs);
+            Assert.Equal((2, 1, 2, 3, (byte)1), (s.X0, s.Y0, s.X1, s.Y1, s.Id));
+            // Unexplored black forest: the border would reveal it, so nothing is drawn.
+            var half = new BitArray(16);
+            for (var i = 0; i < 16; i++) half[i] = i % 4 < 2;
+            Assert.True(MapFilterMath.Segments(ids, 4, half, none, 0, 0, 4, 4, 100, segs));
+            Assert.Empty(segs);
+            // Coast: land explored, ocean never blocks the line; colour = the land side.
+            var coast = new byte[] { 0, 0, 3, 3, 0, 0, 3, 3, 0, 0, 3, 3, 0, 0, 3, 3 };
+            var land = new BitArray(16);
+            for (var i = 0; i < 16; i++) land[i] = i % 4 >= 2;
+            Assert.True(MapFilterMath.Segments(coast, 4, land, none, 0, 0, 4, 4, 100, segs));
+            Assert.Equal((byte)3, Assert.Single(segs).Id);
+            // Over the cap: refused (caller falls back to the outline texture).
+            Assert.False(MapFilterMath.Segments(ids, 4, all, none, 0, 0, 4, 4, 0, segs));
+        }
+
+        [Fact]
+        public void TexelPixelsDecideLinesVersusOutline()
+        {
+            Assert.Equal(1.5f, MapFilterMath.TexelPixels(1536f, 0.5f, 2048), 3); // zoomed out: the texture outline is thin enough
+            Assert.Equal(15f, MapFilterMath.TexelPixels(1536f, 0.05f, 2048), 3);
+            Assert.Equal(0f, MapFilterMath.TexelPixels(1536f, 0f, 2048));
+        }
         [Fact]
         public void GridSamplesTheVanillaPixelCentres()
         {

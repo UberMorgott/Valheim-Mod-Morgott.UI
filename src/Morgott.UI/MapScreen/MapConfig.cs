@@ -14,6 +14,7 @@ namespace Morgott.UI.MapScreen
         public static ConfigEntry<bool> BiomeOverlay { get; private set; }
         public static ConfigEntry<float> FillAlpha { get; private set; }
         public static ConfigEntry<float> OutlineAlpha { get; private set; }
+        public static ConfigEntry<bool> FogTint { get; private set; }
         public static readonly Dictionary<string, ConfigEntry<bool>> Filters = new Dictionary<string, ConfigEntry<bool>>();
 
         public static void Bind(ConfigFile config)
@@ -24,6 +25,8 @@ namespace Morgott.UI.MapScreen
                 "Opacity of the biome tint inside a biome (0 = borders only).", new AcceptableValueRange<float>(0f, 1f)));
             OutlineAlpha = config.Bind(MapSection, "BiomeOverlayOutlineAlpha", 0.60f, new ConfigDescription(
                 "Opacity of the biome border line.", new AcceptableValueRange<float>(0f, 1f)));
+            FogTint = config.Bind(MapSection, "FogTint", true,
+                "Large map: tint the unexplored fog toward a cold grey (theme colour color.map.fog).");
             Filters.Clear();
             foreach (var row in MapFilterMath.Rows)
                 Filters[row.Key] = config.Bind(FilterSection, row.Key, true,

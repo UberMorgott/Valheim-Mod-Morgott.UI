@@ -113,7 +113,9 @@ namespace Morgott.UI.Tests
             using var s = typeof(ThemeSchema).Assembly.GetManifestResourceStream("Morgott.UI.default-theme.json");
             using var r = new System.IO.StreamReader(s!);
             var f = ThemeJson.Parse(r.ReadToEnd());
-            Assert.Equal(new[] { "font.display", "font.body", "font.body.bold" }, System.Array.ConvertAll(f.fonts, x => x.token));
+            // + font.map.header (2026-11-10 map mockup: the game's Averia serif for the map list section titles only, no role uses it).
+            Assert.Equal(new[] { "font.display", "font.map.header", "font.body", "font.body.bold" }, System.Array.ConvertAll(f.fonts, x => x.token));
+            Assert.DoesNotContain(f.roles, x => x.font == "font.map.header");
             Assert.Equal("loaded", System.Array.Find(f.fonts, x => x.token == "font.display").source);
             Assert.Equal("Valheim-Norsebold", System.Array.Find(f.fonts, x => x.token == "font.display").asset);
             foreach (var role in new[] { "menu.entry", "button.label.menu", "text.header", "info.title", "text.display" })

@@ -59,6 +59,7 @@ namespace Morgott.UI.MapScreen
             try
             {
                 BiomeOverlay.Attach(map);
+                MapIcons.ApplyBoss(map);
                 ApplyFilters();
             }
             catch (Exception e) { Plugin.Log.LogError($"[Morgott.UI] map filters / biome overlay failed (vanilla filters stay): {e}"); }

@@ -82,3 +82,11 @@ Vanilla `Minimap.PinType` (Minimap.cs:24): Icon0..Icon4, Death, Bed, Shout, None
 - Portals: own filter row "Портал" (`[Map Filters] Portal`), pin type `Contracts.PortalPinType` = 100 (Patcher grows `m_visibleIconTypes`).
 - Biome colour key: yes, two columns under "Подсветка биомов" in СЛОИ.
 - "Все" / "Мои" buttons of the mockup: not built (the shared-data toggle was removed on 2026-11-08, map data is always shared).
+
+## Run-2 follow-ups (coordinator 2026-11-10, Codex compare 7.5/10)
+
+- Fog tint: unexplored pixels of the overlay carry `color.map.fog` (#374E66, alpha 0.65) over the vanilla beige clouds, toward the mockup grey (`[Map] FogTint`, default on). No new fog art.
+- Borders: zoomed in (a texel wider than `size.map.biome.line.switch` = 2 screen px) the overlay shows the fill-only texture and `BorderLines` (UI quads per merged border run of a texel window around the view, max `count.map.biome.lines.max` = 12000, clipped to the map image) draws `size.map.biome.line` = 1.5 px lines; zoomed out the texture's one-texel outline is already that thin.
+- Section titles: `font.map.header` = the game's Valheim-AveriaSerifLibre, capitals (third face, map list only; the two-faces rule of 2026-10-22 otherwise stands).
+- Icons (Codex image gen, post-processed by crop + 128 px area resample only): `Assets\MapLayersIcon.png` (СЛОИ row), `Assets\MapBossIcon.png` (red boss skull: Boss pin sprite in `Minimap.m_icons`, existing boss pins, the vanilla Boss filter button).
+- Players: 4 rows visible (`count.map.players.max`), more scroll with the wheel over the ИГРОКИ block.
