@@ -118,10 +118,10 @@ namespace Morgott.UI.MapScreen
             {
                 var swatch = _art.Image("BiomeSwatch", _rows, null, "color.frame", Image.Type.Simple);
                 swatch.color = BiomeOverlay.BiomeColor(biome);
-                var name = _art.Text("BiomeName", _rows, "font.body", "color.text.body", ThemeTokens.GetFloat("size.map.biome.font", 15f), TextAlignmentOptions.Left);
-                name.textWrappingMode = TextWrappingModes.NoWrap;
-                name.overflowMode = TextOverflowModes.Ellipsis;
-                _key.Add((swatch, name));
+                var label = _art.Text("BiomeName", _rows, "font.body", "color.text.body", ThemeTokens.GetFloat("size.map.biome.font", 15f), TextAlignmentOptions.Left);
+                label.textWrappingMode = TextWrappingModes.NoWrap;
+                label.overflowMode = TextOverflowModes.Ellipsis;
+                _key.Add((swatch, label));
             }
             _zoomLabel = _art.Text("ZoomLabel", _rows, "font.body", "color.text.body", ThemeTokens.GetFloat("size.map.legend.font", 17f), TextAlignmentOptions.Left);
             BuildZoom();
@@ -686,7 +686,7 @@ namespace Morgott.UI.MapScreen
             }
             var size = ThemeTokens.GetFloat("size.map.legend.header", 21f);
             if (Mathf.Abs(header.fontSize - size) > 0.05f) header.fontSize = size;
-            if ((header.fontStyle & FontStyles.UpperCase) == 0) header.fontStyle |= FontStyles.UpperCase;
+            if ((header.fontStyle & FontStyles.UpperCase) != FontStyles.UpperCase) header.fontStyle |= FontStyles.UpperCase;
         }
 
         // Socket | name | checkbox; a vanilla icon button rides the socket (world placement: it stays in its own panel).

@@ -16,7 +16,7 @@ namespace Morgott.UI.Tests
     // pixels, biome colour key, list scrolling.
     public class MapFilterTests
     {
-        private static bool[] Vanilla() => Enumerable.Repeat(true, Enum.GetValues(typeof(Minimap.PinType)).Length).ToArray();
+        private static bool[] Vanilla() => Enumerable.Repeat(true, Enum.GetValues<Minimap.PinType>().Length).ToArray();
 
         [Fact]
         public void RowsCoverEveryDrawnVanillaTypeOnce()
@@ -24,7 +24,7 @@ namespace Morgott.UI.Tests
             var types = MapFilterMath.Rows.SelectMany(r => r.Types).ToList();
             Assert.Equal(types.Count, types.Distinct().Count());
             Assert.Equal(MapFilterMath.Rows.Length, MapFilterMath.Rows.Select(r => r.Key).Distinct().Count());
-            foreach (Minimap.PinType t in Enum.GetValues(typeof(Minimap.PinType)))
+            foreach (var t in Enum.GetValues<Minimap.PinType>())
                 Assert.Equal(t != Minimap.PinType.None && t != Minimap.PinType.Player, types.Contains(t));
             Assert.Contains(MapFilterMath.Portal, types);
             Assert.Equal(Morgott.Core.Contracts.PortalPinType, (int)MapFilterMath.Portal);
