@@ -833,6 +833,11 @@ namespace Morgott.UI.GameScreens
                 PopupSkin.Backdrops(ctx, r);
             });
             SplitAnchor.Ensure(s);
+            // User 2026-11-10: the dialog drew under the inventory windows (later siblings in the GUI canvas, and
+            // CoverCull gated it as covered) and the strip's raycast layer (StripHits, GUI order + 1) took clicks over it.
+            // Vanilla's full-screen CloseButton is the modal blocker; on the modal band (own canvas + raycaster, above
+            // GUI / StripHits, below the drag icon and tooltips) it is drawn and hit before every inventory window.
+            ModalLayer.Ensure(s.transform);
         }
     }
 
@@ -867,11 +872,33 @@ namespace Morgott.UI.GameScreens
             a._offY = d.Y + d.H / 2f - (p.Y + p.H / 2f);
         }
 
+        // The split slot's cell (InventoryGui.ShowSplitDialog postfix): the panel opens beside it. Null / hidden (a strip
+        // cell, row 0 drawn by the HUD strip) -> vanilla's spot off the player window.
+        private RectTransform _slot;
+
+        public static void Near(SplitDialog s, ItemDrop.ItemData item, Inventory from)
+        {
+            if (!s || !s.TryGetComponent<SplitAnchor>(out var a)) return;
+            a._slot = null;
+            var gui = s.GetComponentInParent<InventoryGui>(true);
+            if (!gui || item == null || from == null) return;
+            foreach (var g in gui.GetComponentsInChildren<InventoryGrid>(false))
+            {
+                if (g.GetInventory() != from) continue;
+                var e = g.GetElement(item.m_gridPos.x, item.m_gridPos.y, from.GetWidth());
+                if (e && e.isActiveAndEnabled) { a._slot = (RectTransform)e.transform; return; }
+            }
+        }
+
         private void LateUpdate()
         {
             if (!_panel || !_player || !_canvas || ZInput.IsTouchActive()) return;
             var d = InventoryScreen.Geo.BoxOf(_canvas, _panel);
-            var at = GameScreenMath.SplitPanelAt(InventoryScreen.Geo.BoxOf(_canvas, _player), _offX, _offY, d.W, d.H, _canvas.rect.width, _canvas.rect.height);
+            // InventorySkin hides row 0 (drawn by the HUD strip) and scrolled-out cells at scale 0: no size = not shown.
+            var slot = _slot && _slot.gameObject.activeInHierarchy ? InventoryScreen.Geo.BoxOf(_canvas, _slot) : default;
+            var at = slot.W > 1f && slot.H > 1f
+                ? GameScreenMath.SplitPanelNear(slot, 8f, d.W, d.H, _canvas.rect.width, _canvas.rect.height)
+                : GameScreenMath.SplitPanelAt(InventoryScreen.Geo.BoxOf(_canvas, _player), _offX, _offY, d.W, d.H, _canvas.rect.width, _canvas.rect.height);
             if (Mathf.Abs(at.X - d.X) > 0.25f || Mathf.Abs(at.Y - d.Y) > 0.25f)
                 InventoryScreen.Geo.SetTopLeft(_panel, InventoryScreen.Geo.World(_canvas, at.X, at.Y));
         }
@@ -932,6 +959,13 @@ namespace Morgott.UI.GameScreens
             if (__instance.m_textsDialog) Try("compendium", OwnershipRegistry.Compendium, () => CompendiumSkin.Attach(__instance.m_textsDialog));
             if (__instance.m_splitDialog) Try("split dialog", OwnershipRegistry.SplitDialog, () => SplitSkin.Attach(__instance.m_splitDialog));
         }
+
+        // ShowSplitDialog(item, fromInventory) (InventoryGui.cs:2273, from OnSelectedItem :990): the panel opens beside
+        // the split item's cell.
+        [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.ShowSplitDialog))]
+        [HarmonyPostfix]
+        private static void ShowSplit_Postfix(InventoryGui __instance, ItemDrop.ItemData item, Inventory __1) => // __1: the inventory (vanilla misspells the parameter name)
+            Try("split anchor", OwnershipRegistry.SplitDialog, () => SplitAnchor.Near(__instance.m_splitDialog, item, __1));
 
         // Topic rows are cloned per Setup and mods (Epic Loot pages) add parts there: restyle after it.
         [HarmonyPatch(typeof(TextsDialog), nameof(TextsDialog.Setup))]

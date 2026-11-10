@@ -39,6 +39,23 @@ namespace Morgott.UI.Tests
             Assert.Equal(0f, at.Y, 3);
         }
 
+        [Theory]
+        // slot x, y, canvas w, h -> panel x, y (368x260 panel, 64 slot, gap 8)
+        [InlineData(100f, 400f, 1920f, 1080f, 172f, 302f)]   // right of the slot, centred on it
+        [InlineData(1700f, 400f, 1920f, 1080f, 1324f, 302f)] // no room right -> left of the slot
+        [InlineData(100f, 1000f, 1920f, 1080f, 172f, 820f)]  // bottom edge clamp
+        [InlineData(100f, 0f, 1920f, 1080f, 172f, 0f)]       // top edge clamp
+        [InlineData(800f, 300f, 1280f, 720f, 872f, 202f)]  // 1280x720 GUI scale 1, fits right
+        [InlineData(1100f, 300f, 1280f, 720f, 724f, 202f)]   // 1280x720: flips left
+        [InlineData(300f, 300f, 640f, 360f, 0f, 100f)]       // max GUI scale (tiny canvas): neither side fits -> clamped
+        public void SplitPanelSitsBesideTheSlotOnCanvas(float sx, float sy, float cw, float ch, float ex, float ey)
+        {
+            var at = GameScreenMath.SplitPanelNear(new InventoryScreen.Box(sx, sy, 64f, 64f), 8f, 368f, 260f, cw, ch);
+            Assert.Equal(ex, at.X, 3);
+            Assert.Equal(ey, at.Y, 3);
+            Assert.True(at.X >= 0f && at.Y >= 0f && at.X + at.W <= cw && at.Y + at.H <= ch);
+        }
+
         [Fact]
         public void BannerHeightStacksTitleAndPads() => Assert.Equal(160f, GameScreenMath.BannerHeight(100f, 24f, 18f), 3);
 

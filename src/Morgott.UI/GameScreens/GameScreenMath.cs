@@ -15,6 +15,16 @@ namespace Morgott.UI.GameScreens
             return new Morgott.UI.InventoryScreen.Box(Math.Max(0f, Math.Min(x, canvasW - w)), Math.Max(0f, Math.Min(y, canvasH - h)), w, h);
         }
 
+        // Split stack panel beside the split slot (canvas units, y down): right of the slot, vertically centred on it;
+        // no room on the right -> left of it; kept on the canvas like SplitPanelAt.
+        public static Morgott.UI.InventoryScreen.Box SplitPanelNear(Morgott.UI.InventoryScreen.Box slot, float gap, float w, float h, float canvasW, float canvasH)
+        {
+            var x = slot.X + slot.W + gap;
+            if (x + w > canvasW) x = slot.X - gap - w;
+            var y = slot.Y + slot.H / 2f - h / 2f;
+            return new Morgott.UI.InventoryScreen.Box(Math.Max(0f, Math.Min(x, canvasW - w)), Math.Max(0f, Math.Min(y, canvasH - h)), w, h);
+        }
+
         // Respawn tip banner (mockup m6-load-b: panel banner bottom-centre): the tip's own box grown by the pads, its
         // width clamped to [minWidth, maxWidth] (long tips wrap inside the vanilla box, short ones keep a banner shape).
         public static float BannerWidth(float tipWidth, float pad, float minWidth, float maxWidth)
