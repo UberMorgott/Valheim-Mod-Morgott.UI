@@ -21,7 +21,7 @@ namespace Morgott.UI.PlayerHud
     //   (bit 0 stay, bit 1 Defensive, bit 2 Aggressive), float hp fraction, float ES fraction, double respawn time
     //   (ZNet.GetTimeSeconds), int generation, ZDOID body; MorgottTweaks SummonSlotsModule.MirrorUi). A loaded body of the
     //   slot's generation (body ZDO mt_sum_gen) gives live health and its ZDO ES (mt_sum_es / mt_sum_esmax).
-    // - Pets: loaded creatures whose ZDO long mt_pet_owner = the local player id (not in the slot list).
+    // - Pets: loaded creatures whose ZDO long su_pet_owner (Core Contracts.PetOwner) = the local player id (not in the slot list).
     // - Without mt_sum_ui: the loaded creatures that are this player's summons (vanilla's own test,
     //   Tameable.UnsummonMaxInstances, Tameable.cs:641-701: tamed, following this player by name; a summon prefab =
     //   unsummon distance or logout timer, Tameable.cs:30-32; a mt_sum_owner stamp of another player excludes it).
@@ -43,7 +43,7 @@ namespace Morgott.UI.PlayerHud
         private static readonly int EsKey = "mt_sum_es".GetStableHashCode();
         private static readonly int EsMaxKey = "mt_sum_esmax".GetStableHashCode();
         private static readonly int OwnerKey = "mt_sum_owner".GetStableHashCode();
-        private static readonly int PetOwnerKey = "mt_pet_owner".GetStableHashCode();
+        private static readonly int PetOwnerKey = Morgott.Core.Contracts.PetOwner.GetStableHashCode(); // Summons 0.5.0 stamp
 
         private sealed class Tile
         {
