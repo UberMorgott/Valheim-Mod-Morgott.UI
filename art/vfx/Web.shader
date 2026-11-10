@@ -180,8 +180,8 @@ Shader "Morgott/Web"
                 float warp = 1.4 * Noise(p * float3(0.9, 0.6, 0.9));
                 float r1 = Ribbon(p.y * 3.2 + warp + 3.0 * a + 0.22 * sin(12.566371 * a + 2.0 * n2), n1 * 2.2 - 0.7, m);
                 float r2 = Ribbon(p.y * 2.6 - 0.8 * warp - 3.0 * a + 0.37 + 0.18 * sin(18.849556 * a + 1.1), n2 * 2.2 - 0.8, 1.0 - m);
-                float l1 = WrapLayer(a, aB, p.y * 1.6 + 0.8 * a, 1.0, 0.25, 0.0, 0.0);
-                float l2 = WrapLayer(a, aB, p.y * 1.3 - 0.5 * a + 0.5, 1.0, -0.35, 1.3, 0.37);
+                float l1 = WrapLayer(a, aB, p.y * 1.6, 1.0, 0.25, 0.0, 0.0); // y offsets periodic in a only (mirror period 2: no linear a term)
+                float l2 = WrapLayer(a, aB, p.y * 1.3 + 0.5, 1.0, -0.35, 1.3, 0.37);
                 float l3 = WrapLayer(a, aB, p.y * 2.2 + 0.2, 2.0, 0.45, 2.4, 0.71);
                 float l4 = WrapLayer(a, aB, p.y * 0.9 - 0.3, 1.0, -0.6, 4.1, 0.13);
                 float tangle = (max(l1, l2) + 0.6 * max(l3, l4)) * _WebGain * 1.3;
