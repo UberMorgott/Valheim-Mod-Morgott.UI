@@ -18,7 +18,7 @@ Shader "Morgott/Web"
         _MainTex ("Strand atlas (R)", 2D) = "black" {}
         _WebTex ("Vanilla web atlas (A), runtime", 2D) = "black" {}
         _WrapTex ("Vanilla tunnel web (A), runtime", 2D) = "black" {}
-        _WebGain ("Vanilla coverage gain", Float) = 1.9
+        _WebGain ("Vanilla coverage gain", Float) = 2.7
         _Color ("Silk colour", Color) = (0.82, 0.84, 0.86, 1)
         _Opacity ("Opacity", Range(0, 1)) = 0.9
         _DewColor ("Dew colour", Color) = (1, 1, 1, 1)
@@ -205,9 +205,9 @@ Shader "Morgott/Web"
                 }
                 else
                 {
-                    strand = i.uv.z > 3.5 ? saturate(tex2D(_WebTex, saturate(i.uv.xy)).a * _WebGain) // tile 4: vanilla art
+                    strand = i.uv.z > 3.5 ? saturate(tex2D(_WebTex, saturate(i.uv.xy)).a * _WebGain) // tile 4: vanilla art (pow 1.15 below: thin haze, keep strands)
                         : Tile(i.uv.xy, round(i.uv.z), ddx(i.uv.xy), ddy(i.uv.xy));
-                    strand = saturate(pow(strand, 0.8) * lerp(0.45, 1.35, Noise(i.wp * 0.4)) * smoothstep(0.04, 0.3, Noise(i.wp * 0.7 + 3.1))); // uneven density + large irregular gaps
+                    strand = saturate(pow(strand, i.uv.z > 3.5 ? 1.15 : 0.8) * lerp(0.45, 1.35, Noise(i.wp * 0.4)) * lerp(0.55, 1.0, smoothstep(0.04, 0.3, Noise(i.wp * 0.7 + 3.1)))); // gaps thin the fill, long threads stay connected // uneven density + large irregular gaps
                     float4 s = _SheetState[(int)clamp(round(i.sheet.x), 0.0, 31.0)];
                     clip(0.5 - s.x);
                     delay = s.y;

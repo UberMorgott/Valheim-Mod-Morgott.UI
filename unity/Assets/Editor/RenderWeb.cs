@@ -62,7 +62,7 @@ public static class RenderWeb
                 m.SetVectorArray("_SheetState", st);
             });
             Sheet("burn", burning, new Vector3(4.5f, 0.2f, 8f), new Vector3(9f, 0.2f, 11f), 3.2f, 0, 0.9f);
-            Shot(cam, new Vector3(1.5f, 1.7f, -1.5f), new Vector3(1.5f, 1.4f, 9f), Path.Combine(outDir, "web-zone.png"));
+            Shot(cam, new Vector3(1.5f, 1.7f, -4.5f), new Vector3(1.5f, 4f, 9f), Path.Combine(outDir, "web-zone.png")); // tall veils: frame up to ~10 m
 
             // Cocoon (= Morgott.Creatures WebCocoon: WebPiece.CocoonLook): player stand-in capsule, wrap feet..waist + 5 tethers
             // (two to trunks, three to the ground), seen from the side like the user ref.
@@ -139,11 +139,12 @@ public static class RenderWeb
 
     // = Morgott.Creatures WebPiece rects / card sets (vanilla fi_village_webs pieces).
     static readonly Rect BigTri = Rect.MinMaxRect(0.038f, 0.005f, 0.645f, 0.999f), UpperTri = Rect.MinMaxRect(0.364f, 0.321f, 0.937f, 0.995f),
-        HubTL = Rect.MinMaxRect(0.006f, 0.730f, 0.268f, 0.992f), HubR = Rect.MinMaxRect(0.768f, 0.546f, 0.988f, 0.801f);
+        HubTL = Rect.MinMaxRect(0.006f, 0.730f, 0.268f, 0.992f), HubR = Rect.MinMaxRect(0.768f, 0.546f, 0.988f, 0.801f), Threads = Rect.MinMaxRect(0.01f, 0.6f, 0.22f, 0.68f);
     static readonly (Rect Uv, bool Fan, bool Flip, float Z, float T0, float T1, float W0, float W1)[] SheetCards =
     {
-        (BigTri, true, false, -0.12f, 0f, 0.8f, 0.2f, 1.5f), (BigTri, true, true, 0.12f, 0.2f, 1f, 0.2f, 1.5f), // start over the ground: in-game the low tier read as one white mass
-        (UpperTri, false, false, 0f, 0f, 1f, 0.6f, 2.4f), (HubR, false, false, 0.05f, 0.25f, 0.75f, 0.2f, 1.2f),
+        (BigTri, true, false, -0.12f, 0f, 0.8f, 0.25f, 2f), (BigTri, true, true, 0.12f, 0.2f, 1f, 0.25f, 2f), // start over the ground: in-game the low tier read as one white mass
+        (UpperTri, false, false, 0f, 0f, 1f, 0.9f, 3.2f), (HubR, false, false, 0.05f, 0.25f, 0.75f, 0.3f, 1.4f),
+                (Threads, false, false, 0.03f, 0f, 1f, 0.85f, 1.0f), (Threads, false, true, -0.05f, 0f, 1f, 1.55f, 1.7f), // long anchor-to-anchor guy threads tie the veils into one net
     };
 
     // Layered veils a..b, height h, sag (m); UV0 = (atlas u, v, 4), UV1 = (sheet 0, local x, y m), COLOR.a sway.
@@ -153,19 +154,26 @@ public static class RenderWeb
         var v = new List<Vector3>(); var uv = new List<Vector4>(); var uv1 = new List<Vector3>(); var col = new List<Color>(); var tri = new List<int>();
         var len = Vector3.Distance(a, b);
         var n = Vector3.Cross((b - a).normalized, Vector3.up);
-        foreach (var (r, fan, flip, z, t0, t1, w0, w1) in SheetCards)
+        var k = Mathf.Repeat(len * 7.31f + h * 3.17f + a.y * 1.7f, 1f); // = WebPiece.Sheet per-sheet variant
+        foreach (var card in SheetCards)
         {
+            var (r, fan, flip, z, t0, t1, w0, w1) = card;
+            if (r == HubR && k > 0.55f) continue;
+            if (w1 > 1f) w1 = 1f + (w1 - 1f) * (0.7f + 0.6f * k);
+            if (fan) (t0, t1) = flip ? (0.35f - 0.3f * k, t1) : (t0, 0.65f + 0.3f * k);
+            if (r == UpperTri && Mathf.Repeat(k * 7f, 1f) > 0.5f) flip = !flip;
             var k0 = v.Count;
             for (var i = 0; i <= nx; i++)
             {
                 var t = i / (float)nx;
                 var tt = Mathf.Lerp(t0, t1, t);
-                var s = sag * Mathf.Sin(tt * Mathf.PI) * (1f + z);
+                var s = (0.3f + 0.05f * len) * Mathf.Sin(tt * Mathf.PI) * (1f + z);
                 var endRim = (i == 0 && t0 > 0f) || (i == nx && t1 < 1f);
                 for (var j = 0; j <= ny; j++)
                 {
                     var w = j / (float)ny;
                     var y = Mathf.LerpUnclamped(0.2f + s * 0.5f, h - s, Mathf.Lerp(w0, w1, w));
+                    if (r == Threads) y += (Mathf.Repeat(k * 3.3f + z * 10f, 1f) - 0.5f) * h * 1.2f * (tt - 0.5f) - s;
                     var p = Vector3.Lerp(a, b, tt) + Vector3.up * y + n * z;
                     var at = flip ? 1f - t : t;
                     var (u, vv) = fan ? (Mathf.Lerp(r.xMin, r.xMax, w), Mathf.Lerp(r.yMax, r.yMin, at)) : (Mathf.Lerp(r.xMin, r.xMax, at), Mathf.Lerp(r.yMin, r.yMax, w));
