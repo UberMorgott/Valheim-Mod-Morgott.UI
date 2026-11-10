@@ -102,11 +102,12 @@ namespace Morgott.UI.ItemBrowser
         /// <summary>Badge kind of a creature prefab. Tame = vanilla's taming path can run: taming time only counts down
         /// while fed (Tameable.TamingUpdate, Tameable.cs:409 !IsHungry), feeding = Tameable.OnConsumedItem fired by
         /// MonsterAI.UpdateConsumeItem, which needs m_consumeItems (MonsterAI.cs:642); m_startsTamed prefabs are tame from
-        /// Awake (born tame, e.g. Hen from an egg: not tameable, not a summon). Summon = another Tameable with a summon
-        /// mark: vanilla's summon fields m_unsummonDistance / m_unsummonOnOwnerLogoutSeconds (Tameable.cs:30-32) or spawned
-        /// by an item attack's SpawnAbility (Dead Raiser, mod staffs). Neither path = no badge (Codex review: no false blue).</summary>
+        /// Awake. Summon = a Tameable with a summon mark: vanilla's summon fields m_unsummonDistance /
+        /// m_unsummonOnOwnerLogoutSeconds (Tameable.cs:30-32) or spawned by an item attack's SpawnAbility (Dead Raiser, mod
+        /// staffs); a wild feedable creature stays Tame even then. A born-tame feedable creature without a summon mark
+        /// (Hen from an egg: domestic, breeds) = Tame. Neither = no badge (Codex review: no false blue).</summary>
         public static TameKind Kind(bool tameable, bool startsTamed, bool feeds, bool summonMark) =>
-            !tameable ? TameKind.None : !startsTamed && feeds ? TameKind.Tame : summonMark ? TameKind.Summon : TameKind.None;
+            !tameable ? TameKind.None : feeds && !startsTamed ? TameKind.Tame : summonMark ? TameKind.Summon : feeds ? TameKind.Tame : TameKind.None;
 
         /// <summary>Creature tooltip text: its description, then "$ib_tameable" (+ "$ib_breedable") or "$ib_summonable"
         /// (tokens; UITooltip localizes). Breeding only shows on a tameable creature.</summary>
