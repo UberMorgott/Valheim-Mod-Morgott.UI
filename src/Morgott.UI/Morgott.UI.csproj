@@ -11,7 +11,7 @@
     <AssemblyName>Morgott.UI</AssemblyName>
     <RootNamespace>Morgott.UI</RootNamespace>
     <!-- Keep in sync with Plugin.Version. -->
-    <Version>0.29.35</Version>
+    <Version>0.29.36</Version>
     <!-- Plugin internals are not public API (the public contract is Morgott.Core). -->
     <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
@@ -23,6 +23,8 @@
     <EmbeddedResource Include="Assets\StatusIcons.png" LogicalName="Morgott.UI.StatusIcons.png" />
     <!-- Nemesis demon head over the enemy HUD tier socket (Codex image gen), loaded by WorldHud\EnemyHudSkin. -->
     <EmbeddedResource Include="Assets\NemesisHead.png" LogicalName="Morgott.UI.NemesisHead.png" />
+    <!-- Gold paw on tameable creature cells of the item browser (Codex image gen, art v1), loaded by ItemBrowser\Browser. -->
+    <EmbeddedResource Include="Assets\TameBadge.png" LogicalName="Morgott.UI.TameBadge.png" />
   </ItemGroup>
 
   <ItemGroup>

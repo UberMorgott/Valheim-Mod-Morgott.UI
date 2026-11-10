@@ -85,7 +85,7 @@ namespace Morgott.UI.ItemBrowser
         private sealed class Slot
         {
             public RectTransform Rt;
-            public Image Back, Icon;
+            public Image Back, Icon, Badge;
             public TMP_Text A, D;
             public string Id;
             public int Quality = 1;
@@ -714,6 +714,14 @@ namespace Morgott.UI.ItemBrowser
                 Put(c.D, cx + CellW - 22f, cy + 2f, 18f, 18f);
                 Text(c.D, "★", 16f);
                 c.D.enabled = fav.Contains(c.Id);
+                // Tame badge: bottom-left, 3 units in from the socket frame (approved mockup, art v1); cells are reused.
+                var paw = Browser.TameableBadge.Value && list[n].Type == EntryType.Creature && Browser.Tameable(c.Id, out _) ? Browser.TameBadge() : null;
+                if (paw)
+                {
+                    Put(c.Badge, cx + 3f, cy + CellH - 25f, 22f, 22f);
+                    if (c.Badge.sprite != paw) c.Badge.sprite = paw;
+                }
+                else Off(c.Badge);
                 Put(c.A, cx + 1f, cy + CellH + 1f, CellW - 2f, 41f); // 7.5 units between neighbours
                 Fit(c.A, L(list[n].Name), 17.5f);
             }
@@ -740,6 +748,7 @@ namespace Morgott.UI.ItemBrowser
             var s = NewSlot(_gridView.transform, "Cell" + i, "craft.socket");
             s.D = Txt(s.Rt, "FavStar", "text.ember", TextAlignmentOptions.Center);
             s.D.raycastTarget = false;
+            s.Badge = Img(s.Rt, "TameBadge", "content");
             // Name under the socket, a sibling of it: as a child CellFit.KeepTexts pulls it into the cell (467b038).
             s.A = Txt(_gridView.transform, "CellName" + i, "text.body", TextAlignmentOptions.Top);
             s.A.textWrappingMode = TextWrappingModes.Normal;

@@ -14,7 +14,7 @@ namespace Morgott.UI.ItemBrowser
     {
         public const string FavoritesKey = "ui_ib_favorites"; // Player.m_customData, ';'-joined prefab ids
 
-        public static ConfigEntry<bool> Cheat, CheatCreatures, ShowUnknown;
+        public static ConfigEntry<bool> Cheat, CheatCreatures, ShowUnknown, TameableBadge;
         public static ConfigEntry<KeyboardShortcut> Hotkey, RecipeKey, UsedInKey;
 
         public static BrowserIndex Index { get; private set; }
@@ -30,6 +30,7 @@ namespace Morgott.UI.ItemBrowser
             Cheat = cfg.Bind("ItemBrowser", "EnableCheating", true, "Right-click take in the ITEMS tab (only for admins, devcommands or worlds with no build / craft cost).");
             CheatCreatures = cfg.Bind("ItemBrowser", "CheatCreatures", true, "Take on a creature spawns it in front of you (same gate as EnableCheating).");
             ShowUnknown = cfg.Bind("ItemBrowser", "ShowUnknown", true, "ITEMS tab also lists what your character has not discovered yet (checkbox in the ITEMS header; devcommands always lists everything).");
+            TameableBadge = cfg.Bind("ItemBrowser", "TameableBadge", true, "Gold paw on tameable creatures in the ITEMS tab grid.");
             Hotkey = cfg.Bind("ItemBrowser", "Hotkey", new KeyboardShortcut(KeyCode.H, KeyCode.LeftAlt), "Opens the inventory on the ITEMS tab.");
             // R / U as VNEI; free in the inventory: vanilla Hide (R) and Morgott.Power TopUpKey (U) only read while
             // Player.TakeInput holds, which an open inventory blocks.
@@ -114,6 +115,28 @@ namespace Morgott.UI.ItemBrowser
         {
             var go = ZNetScene.instance ? ZNetScene.instance.GetPrefab(id) : null;
             return go ? go : ObjectDB.instance ? ObjectDB.instance.GetItemPrefab(id) : null;
+        }
+
+        // Read live from the prefab, so components other mods add at OnPrefabsRegistered (Morgott.Summons tame wiring) count.
+        // Procreation needs Tameable (Procreation.Awake reads it), so breeding only counts on a tameable creature.
+        public static bool Tameable(string id, out bool breed)
+        {
+            var go = Prefab(id);
+            var tame = go && go.GetComponent<Tameable>();
+            breed = tame && go.GetComponent<Procreation>();
+            return tame;
+        }
+
+        private static Sprite _tameBadge;
+        private static bool _tameBadgeTried;
+
+        public static Sprite TameBadge()
+        {
+            if (_tameBadgeTried) return _tameBadge;
+            _tameBadgeTried = true;
+            var tex = Morgott.UI.Icons.ModStatusIcons.LoadEmbedded("Morgott.UI.TameBadge.png", "UI_TameBadge");
+            if (tex) _tameBadge = Sprite.Create(tex, new Rect(0f, 0f, tex.width, tex.height), new Vector2(0.5f, 0.5f), 100f);
+            return _tameBadge;
         }
 
         // ---------------------------------------------------------------- known / favorites
@@ -249,6 +272,7 @@ namespace Morgott.UI.ItemBrowser
         {
             topic = e.Name;
             text = e.Desc ?? "";
+            if (e.Type == EntryType.Creature) text = PageModel.CreatureTip(text, Tameable(e.Id, out var breed), breed);
             if (e.Type != EntryType.Item) return;
             if (!_tips.TryGetValue(e.Id, out var copy))
             {

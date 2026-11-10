@@ -460,6 +460,15 @@ namespace Morgott.UI.Tests
             Assert.False(PageModel.LootPage(EntryType.Item, "Tin"));
         }
 
+        // Tame badge spec: tame line only on tameable creatures, breed line under it, blank line after a description.
+        [Theory]
+        [InlineData("$enemy_boar_desc", true, true, "$enemy_boar_desc\n\n$ib_tameable\n$ib_breedable")]
+        [InlineData("$enemy_wolf_desc", true, false, "$enemy_wolf_desc\n\n$ib_tameable")]
+        [InlineData("", true, false, "$ib_tameable")]
+        [InlineData("$enemy_greydwarf_desc", false, false, "$enemy_greydwarf_desc")]
+        public void CreatureTipAddsTameLines(string desc, bool tame, bool breed, string want) =>
+            Assert.Equal(want, PageModel.CreatureTip(desc, tame, breed));
+
         // Shipped Epic Loot sets (baseconfig loottables.json ItemSets + patch MT_BossGems): every name is tokens only, each in
         // both translation files (screenshot 2026-11-08: "Набор EpicLoot: Tier 1 mats").
         [Theory]

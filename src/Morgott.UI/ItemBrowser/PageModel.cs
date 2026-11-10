@@ -96,6 +96,14 @@ namespace Morgott.UI.ItemBrowser
         /// <summary>Pages whose second section is loot ("Loot", not "Used in"): creatures and Epic Loot tables / sets.</summary>
         public static bool LootPage(EntryType type, string id) => type == EntryType.Creature || SourceNames.EpicLootPseudo(id);
 
+        /// <summary>Creature tooltip text: its description, then "$ib_tameable" and "$ib_breedable" lines (tokens; UITooltip localizes).</summary>
+        public static string CreatureTip(string desc, bool tame, bool breed)
+        {
+            if (!tame) return desc;
+            var lines = breed ? "$ib_tameable\n$ib_breedable" : "$ib_tameable";
+            return string.IsNullOrEmpty(desc) ? lines : desc + "\n\n" + lines;
+        }
+
         /// <summary>Source row label: "Grows from: calf" for a Growup source, the readable prefab tag when names collide.</summary>
         public static string SourceLabel(PageRow r, string name, string growsFrom)
         {
