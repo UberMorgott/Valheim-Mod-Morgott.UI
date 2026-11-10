@@ -38,6 +38,8 @@ namespace Morgott.UI.Restyle
         public const string Stats = "stats";
         public const string Compendium = "compendium";
         public const string Map = "map";
+        // Split stack dialog (GameScreens.SplitAnchor): offset = its absolute place (GameScreenMath.SplitDragOrigin).
+        public const string Split = "split";
 
         private static Dictionary<string, (float X, float Y)> _store;
         private static readonly Dictionary<string, Box> Defaults = new Dictionary<string, Box>();

@@ -870,6 +870,16 @@ namespace Morgott.UI.GameScreens
             var p = InventoryScreen.Geo.BoxOf(a._canvas, a._player);
             a._offX = d.X + d.W / 2f - (p.X + p.W / 2f);
             a._offY = d.Y + d.H / 2f - (p.Y + p.H / 2f);
+            // Drag band over the whole panel (WindowMove house mechanism: the slider / buttons keep their clicks,
+            // double-click = back beside the split cell); stretched, last child so it is hit before the panel art.
+            var band = WindowMove.Handle(panel, WindowMove.Split, panel);
+            if (band)
+            {
+                var rt = band.rectTransform;
+                rt.anchorMin = Vector2.zero;
+                rt.anchorMax = Vector2.one;
+                rt.offsetMin = rt.offsetMax = Vector2.zero;
+            }
         }
 
         // The split slot's cell (InventoryGui.ShowSplitDialog postfix): the panel opens beside it. Null / hidden (a strip
@@ -895,10 +905,16 @@ namespace Morgott.UI.GameScreens
             if (!_panel || !_player || !_canvas || ZInput.IsTouchActive()) return;
             var d = InventoryScreen.Geo.BoxOf(_canvas, _panel);
             // InventorySkin hides row 0 (drawn by the HUD strip) and scrolled-out cells at scale 0: no size = not shown.
+            // Dragged once (user 2026-11-10): the stored place at this resolution, clamped on screen (WindowMove.Place).
+            var origin = GameScreenMath.SplitDragOrigin(WindowMove.Bounds(_canvas), d.W, d.H);
+            var moved = WindowMove.Applied(WindowMove.Split, origin, _canvas);
             var slot = _slot && _slot.gameObject.activeInHierarchy ? InventoryScreen.Geo.BoxOf(_canvas, _slot) : default;
-            var at = slot.W > 1f && slot.H > 1f
+            var at = moved != Vector2.zero ? WindowMoveMath.Shift(origin, moved.x, moved.y)
+                : slot.W > 1f && slot.H > 1f
                 ? GameScreenMath.SplitPanelNear(slot, 8f, d.W, d.H, _canvas.rect.width, _canvas.rect.height)
                 : GameScreenMath.SplitPanelAt(InventoryScreen.Geo.BoxOf(_canvas, _player), _offX, _offY, d.W, d.H, _canvas.rect.width, _canvas.rect.height);
+            // Never moved: a drag starts from the shown place, not from the origin.
+            if (moved == Vector2.zero) WindowMoveProbe.Note(WindowMove.Split, new Vector2(at.X - origin.X, at.Y - origin.Y));
             if (Mathf.Abs(at.X - d.X) > 0.25f || Mathf.Abs(at.Y - d.Y) > 0.25f)
                 InventoryScreen.Geo.SetTopLeft(_panel, InventoryScreen.Geo.World(_canvas, at.X, at.Y));
         }

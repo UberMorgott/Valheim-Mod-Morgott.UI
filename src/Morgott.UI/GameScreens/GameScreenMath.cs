@@ -25,6 +25,12 @@ namespace Morgott.UI.GameScreens
             return new Morgott.UI.InventoryScreen.Box(Math.Max(0f, Math.Min(x, canvasW - w)), Math.Max(0f, Math.Min(y, canvasH - h)), w, h);
         }
 
+        // The split panel's WindowMove default (user 2026-11-10: draggable, opens where it was left): the bounds' top-left
+        // nudged one unit in, so the stored offset is the panel's absolute place and offset 0 ("never moved" -> beside
+        // the split cell) is never the result of a drag into the top-left corner (the clamp stops at -1 there).
+        public static Morgott.UI.InventoryScreen.Box SplitDragOrigin(Morgott.UI.InventoryScreen.Box bounds, float w, float h) =>
+            new Morgott.UI.InventoryScreen.Box(bounds.X + 1f, bounds.Y + 1f, w, h);
+
         // Respawn tip banner (mockup m6-load-b: panel banner bottom-centre): the tip's own box grown by the pads, its
         // width clamped to [minWidth, maxWidth] (long tips wrap inside the vanilla box, short ones keep a banner shape).
         public static float BannerWidth(float tipWidth, float pad, float minWidth, float maxWidth)

@@ -56,6 +56,40 @@ namespace Morgott.UI.Tests
             Assert.True(at.X >= 0f && at.Y >= 0f && at.X + at.W <= cw && at.Y + at.H <= ch);
         }
 
+        // Draggable split panel: the stored offset from SplitDragOrigin is the absolute place; WindowMoveMath.Clamp keeps it
+        // fully inside the bounds at any canvas size (GUI scale / resolution), a drag into the top-left corner stays a
+        // stored (non-zero) place, and the store round-trips per resolution.
+        [Fact]
+        public void SplitDragPlaceIsAbsoluteAndClampedOnScreen()
+        {
+            var bounds = new InventoryScreen.Box(6f, 6f, 1908f, 1000f);
+            var origin = GameScreenMath.SplitDragOrigin(bounds, 368f, 260f);
+            float dx = 900f, dy = 400f;
+            Restyle.WindowMoveMath.Clamp(origin, bounds, ref dx, ref dy);
+            var at = Restyle.WindowMoveMath.Shift(origin, dx, dy);
+            Assert.Equal(907f, at.X, 3);
+            Assert.Equal(407f, at.Y, 3);
+
+            // GUI scale up: smaller canvas, the saved place is clamped fully inside.
+            var small = new InventoryScreen.Box(6f, 6f, 628f, 340f);
+            var o2 = GameScreenMath.SplitDragOrigin(small, 368f, 260f);
+            float sx = dx, sy = dy;
+            Restyle.WindowMoveMath.Clamp(o2, small, ref sx, ref sy);
+            var s = Restyle.WindowMoveMath.Shift(o2, sx, sy);
+            Assert.True(s.X >= small.X && s.Y >= small.Y && s.Right <= small.Right + 1e-3f && s.Bottom <= small.Bottom + 1e-3f);
+
+            // Corner drag: clamp stops at -1, never the "never moved" zero.
+            float cx = -5000f, cy = -5000f;
+            Restyle.WindowMoveMath.Clamp(origin, bounds, ref cx, ref cy);
+            Assert.Equal(-1f, cx, 3);
+            Assert.Equal(-1f, cy, 3);
+
+            var key = Restyle.WindowMoveMath.Key("split", 1920, 1080);
+            var back = Restyle.WindowMoveMath.Parse(Restyle.WindowMoveMath.Format(new System.Collections.Generic.Dictionary<string, (float X, float Y)> { [key] = (dx, dy), [key.Replace("1920x1080", "1280x720")] = (cx, cy) }));
+            Assert.Equal((dx, dy), back[key]);
+            Assert.Equal((-1f, -1f), back["split@1280x720"]);
+        }
+
         [Fact]
         public void BannerHeightStacksTitleAndPads() => Assert.Equal(160f, GameScreenMath.BannerHeight(100f, 24f, 18f), 3);
 
