@@ -20,9 +20,9 @@ namespace Morgott.UI.MapScreen
         {
             BiomeOverlay = config.Bind(MapSection, "BiomeOverlay", true,
                 "Large map: tint explored land by biome with a biome border line (layer \"Biome highlight\" in the map's filter list).");
-            FillAlpha = config.Bind(MapSection, "BiomeOverlayFillAlpha", 0.30f, new ConfigDescription(
+            FillAlpha = config.Bind(MapSection, "BiomeOverlayFillAlpha", 0.25f, new ConfigDescription(
                 "Opacity of the biome tint inside a biome (0 = borders only).", new AcceptableValueRange<float>(0f, 1f)));
-            OutlineAlpha = config.Bind(MapSection, "BiomeOverlayOutlineAlpha", 0.85f, new ConfigDescription(
+            OutlineAlpha = config.Bind(MapSection, "BiomeOverlayOutlineAlpha", 0.60f, new ConfigDescription(
                 "Opacity of the biome border line.", new AcceptableValueRange<float>(0f, 1f)));
             Filters.Clear();
             foreach (var row in MapFilterMath.Rows)

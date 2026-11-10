@@ -64,8 +64,8 @@ namespace Morgott.UI.Tests
                 var cfg = new ConfigFile(path, true);
                 MapConfig.Bind(cfg);
                 Assert.True(MapConfig.BiomeOverlay.Value);
-                Assert.Equal(0.30f, MapConfig.FillAlpha.Value, 3);
-                Assert.Equal(0.85f, MapConfig.OutlineAlpha.Value, 3);
+                Assert.Equal(0.25f, MapConfig.FillAlpha.Value, 3);
+                Assert.Equal(0.60f, MapConfig.OutlineAlpha.Value, 3);
                 Assert.All(MapFilterMath.Rows, r => Assert.True(MapConfig.Shown(r)));
                 MapConfig.Filters["Hammer"].Value = false;
                 MapConfig.Filters["Portal"].Value = false;

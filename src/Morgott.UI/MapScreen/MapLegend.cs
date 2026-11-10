@@ -391,14 +391,25 @@ namespace Morgott.UI.MapScreen
                 ApplyFilters();
                 return;
             }
-            if (r.Icon) r.Icon.onClick.Invoke();
+            if (!r.Icon) return;
+            // A typed mod filter (in m_selectedIcons) toggles like a vanilla one, else its own button handler does.
+            if (Types().TryGetValue(r.Icon.gameObject, out var type) && (int)type < _map.m_visibleIconTypes.Length) _map.ToggleIconFilter(type);
+            else r.Icon.onClick.Invoke();
         }
 
         private bool Visible(PinRow r)
         {
             if (r.Row != null) return MapFilterMath.Shown(_map.m_visibleIconTypes, r.Row);
+            if (r.Icon && Types().TryGetValue(r.Icon.gameObject, out var type) && (int)type < _map.m_visibleIconTypes.Length) return _map.m_visibleIconTypes[(int)type];
             var c = r.Icon && r.Icon.targetGraphic ? r.Icon.targetGraphic.color : Color.white;
             return c.grayscale > 0.75f;
+        }
+
+        private static bool Covered(Minimap.PinType type)
+        {
+            foreach (var row in MapFilterMath.Rows)
+                if (System.Array.IndexOf(row.Types, type) >= 0) return true;
+            return false;
         }
 
         // The rows of this frame: every present filter group (with its vanilla button when it has one), then mod buttons.
@@ -432,9 +443,11 @@ namespace Morgott.UI.MapScreen
                 e.Row = row;
                 e.Icon = icon;
             }
+            // Mod filter buttons: untyped ones and those whose type has no row (Epic Loot adds its bounty / treasure types
+            // to m_selectedIcons, run 20261110-155326: AdventurePinFilter101 / 102).
             foreach (var b in _iconButtons)
             {
-                if (types.ContainsKey(b.gameObject)) continue;
+                if (types.TryGetValue(b.gameObject, out var ty) && Covered(ty)) continue;
                 var e = Next();
                 e.Row = null;
                 e.Icon = b;
@@ -639,6 +652,10 @@ namespace Morgott.UI.MapScreen
             var box = Mathf.Min(ThemeTokens.GetFloat("size.map.legend.check", 24f), rowH - 8f);
             Place(r.Box.rectTransform, w - box, (rowH - box) * 0.5f, box, box);
             Place(r.Name.rectTransform, cell + 10f, 0f, w - cell - 10f - box - 6f, rowH);
+            // Ellipsis also drops a line taller than the row: the label shrinks with squeezed rows (run 20261110-155326,
+            // 1280x720 @ GUI 1.5: names gone at row 28 / font 24).
+            var font = Mathf.Min(ThemeTokens.GetFloat("size.map.legend.font", 17f), rowH * 0.68f);
+            if (Mathf.Abs(r.Name.fontSize - font) > 0.05f) r.Name.fontSize = font;
             if (!r.Icon) return;
             var icon = (RectTransform)r.Icon.transform;
             icon.anchorMin = icon.anchorMax = icon.pivot = new Vector2(0.5f, 0.5f);

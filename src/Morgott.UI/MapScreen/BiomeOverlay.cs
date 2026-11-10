@@ -168,8 +168,8 @@ namespace Morgott.UI.MapScreen
             if (_palette != null) return _palette;
             var p = new Color32[MapFilterMath.Biomes.Length];
             for (var i = 0; i < p.Length; i++) p[i] = BiomeColor(MapFilterMath.Biomes[i]);
-            _fill = MapFilterMath.Alpha(MapConfig.FillAlpha?.Value ?? 0.3f);
-            _outline = MapFilterMath.Alpha(MapConfig.OutlineAlpha?.Value ?? 0.85f);
+            _fill = MapFilterMath.Alpha(MapConfig.FillAlpha?.Value ?? 0.25f);
+            _outline = MapFilterMath.Alpha(MapConfig.OutlineAlpha?.Value ?? 0.6f);
             return _palette = p;
         }
 

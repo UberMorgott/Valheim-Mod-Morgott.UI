@@ -170,6 +170,16 @@ namespace Morgott.UI.MapScreen
                 _clusterGroup.alpha = hide ? 0f : 1f;
                 Morgott.UI.Restyle.RenderGate.Set(cluster, MapOwner, hide);
             }
+            // The crosshair rage ring / stagger column (CenterGauges, on the HUD root at screen centre) drew over the
+            // full-screen map (run 20261110-155326): hidden with the cluster.
+            var gauges = Hud.instance && Hud.instance.m_rootObject ? Hud.instance.m_rootObject.transform.Find("RuneSkinCenterGauges") : null;
+            if (gauges)
+            {
+                if (!gauges.TryGetComponent<CanvasGroup>(out var gg)) gg = gauges.gameObject.AddComponent<CanvasGroup>();
+                gg.alpha = hide ? 0f : 1f;
+                gg.blocksRaycasts = false;
+                Morgott.UI.Restyle.RenderGate.Set(gauges, MapOwner, hide);
+            }
             // The hotbar (and the summon frames riding it) sits outside the map frame top-left (run 20261022-043546):
             // hidden with the cluster, as in mockup m4-map-a. With the HUD strip the vanilla bars are never drawn (the strip
             // owns the hotbar, HudCluster.HideForeign): leave them alone.

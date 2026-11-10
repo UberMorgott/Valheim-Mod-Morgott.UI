@@ -70,7 +70,7 @@ Vanilla `Minimap.PinType` (Minimap.cs:24): Icon0..Icon4, Death, Bed, Shout, None
 
 ## Config (Jotunn/ConfigurationManager, all features default ON)
 
-- `[Map] BiomeOverlay = true`; `[Map] BiomeOverlayFillAlpha = 0.30`; `[Map] BiomeOverlayOutlineAlpha = 0.85`.
+- `[Map] BiomeOverlay = true`; `[Map] BiomeOverlayFillAlpha = 0.25`; `[Map] BiomeOverlayOutlineAlpha = 0.60` (Codex compare of run 1: calmer borders).
 - Pin filters: `[Map Filters] <Row> = true` per vanilla row above (`Fire, Home, Hammer, Dot, Cave, Death, Boss, Bed, Event, Hildir, Memorial, Shout, Ping`). Applied to `m_visibleIconTypes` on map open (Minimap.Start postfix); checkbox click writes the entry, and a SettingChanged handler writes the array, so ConfigurationManager and the list stay in sync.
 - EpicLoot rows: not persisted by us (EpicLoot owns that state; persisting would need an EpicLoot adapter — skip).
 - Players: per-player visibility is session data (names change per server) — not persisted.
