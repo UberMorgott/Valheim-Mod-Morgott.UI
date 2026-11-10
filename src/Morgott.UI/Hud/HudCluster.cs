@@ -293,6 +293,9 @@ namespace Morgott.UI.PlayerHud
             AboveInventory();
             if (!visible) return;
             var dt = Time.deltaTime;
+            // discontinuities (character change, teleport / zone load) are no regen: drawn fills snap (death / respawn
+            // snap through SetChildrenActive: the HUD is hidden while dead)
+            if (player != _sampled || player.IsTeleporting()) { _sampled = player; _health?.FxResync(); _stamina?.FxResync(); _eitr?.FxResync(); _adrenaline?.FxResync(); }
             BarFxConfig.TickClock(); // shared living-fill clock (one global write per frame)
             StatusKeys();
             _hudStrip.Counts(player);
@@ -309,6 +312,7 @@ namespace Morgott.UI.PlayerHud
         }
 
         private bool _childrenOn = true;
+        private Player _sampled;
 
         // The strip's visuals keep the HUD's sort: every window / info box / TopOverlay / ModalLayer renders above them
         // (coordinator decision 2026-10-23). Only its raycast-only layer (StripHits) sorts above the GUI canvas while the
@@ -368,7 +372,7 @@ namespace Morgott.UI.PlayerHud
         {
             if (_childrenOn == on) return;
             _childrenOn = on;
-            if (on) { _health?.FxResync(); _stamina?.FxResync(); _eitr?.FxResync(); } // values changed while hidden are no events
+            if (on) { _health?.FxResync(); _stamina?.FxResync(); _eitr?.FxResync(); _adrenaline?.FxResync(); } // values changed while hidden are no events
             foreach (var c in Children.Of(_root)) c.gameObject.SetActive(on);
             if (on) _stripKey = int.MinValue; // views re-enabled: re-apply their visibility
         }

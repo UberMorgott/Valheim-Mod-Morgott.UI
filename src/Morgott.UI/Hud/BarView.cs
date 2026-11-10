@@ -78,10 +78,12 @@ namespace Morgott.UI.PlayerHud
 
         private float _insetL, _insetR, _insetB, _insetT, _h;
         private float _length = -1f;
-        private float _lagValue = -1f, _lagHold, _lastCur = -1f;
+        private float _lagValue = -1f, _lagHold, _lastCur = -1f, _lastReal = -1f;
         // Smoothed fill share (0..1) drawn this frame: eases toward the live value (BarFill.Smooth), so a small pool
         // moves pixel by pixel instead of in whole-point steps (user 2026-10-23); -1 = snap on the next frame.
         private float _shownShare = -1f, _shownVel;
+        private readonly BarFollow _follow = new BarFollow();
+        public float ShownShare => _shownShare; // harness check bar-follow
         private float _shownCur = -1f, _shownAvail = -1f, _shownExtra = -1f;
         private int _shownStripes = -1;
         private string _shownFill, _shownOverlaySprite;
@@ -426,24 +428,32 @@ namespace Morgott.UI.PlayerHud
             // Damage-lag ghost: absolute value, holds then eases down; heals and max changes never create one.
             // Rising value (regen, heal) snaps the ghost to the fill: a ghost only ever follows a decrease (user live
             // test 2026-10-22: a ghost easing after an earlier hit read as a trail while the bar refilled).
-            var rising = _lagValue < 0f || cur >= _lagValue || cur > _lastCur + 0.001f;
-            if (rising) { _lagValue = cur; _lagHold = 0f; }
+            // drawn fill: the live float value eased over BarFxConfig.FillSmoothing (numbers stay exact, the damage-lag
+            // ghost keeps its own hold / ease and never sits under the drawn fill)
+            // FollowRegen: regen ticks at their measured rate, drops instant (BarFollow); off = the plain ease both ways
+            var smooth = BarFxConfig.FillSmoothSeconds;
+            var follow = BarFxConfig.FollowRegen?.Value ?? true;
+            if (follow) _shownShare = _follow.Step(cur, max, Time.unscaledDeltaTime, smooth) / max; // unscaled: eases in a paused game too
+            else { _shownShare = BarFill.Smooth(_shownShare, ref _shownVel, cur / max, Time.unscaledDeltaTime, smooth); _follow.Reset(); }
+            var shown = _shownShare * max;
+            // ghost input: the drawn value under FollowRegen (a hit while the fill trails a regen tick lowers the drawn
+            // value, not below the old ghost: Codex review), else the live value
+            var g = follow ? shown : cur;
+            var rising = _lagValue < 0f || g >= _lagValue || cur > _lastReal + 0.001f; // a real rise, not the fill catching up (Codex)
+            _lastReal = cur;
+            if (rising) { _lagValue = g; _lagHold = 0f; }
             else
             {
-                if (cur < _lastCur - 0.001f) _lagHold = ThemeTokens.GetFloat("time.hud.lag.hold", 0.6f);
+                if (g < _lastCur - 0.001f) _lagHold = ThemeTokens.GetFloat("time.hud.lag.hold", 0.6f);
                 if (_lagHold > 0f) _lagHold -= dt;
                 else
                 {
                     var ease = Mathf.Max(0.05f, ThemeTokens.GetFloat("time.hud.lag.ease", 0.5f));
-                    _lagValue = Mathf.MoveTowards(_lagValue, cur, Mathf.Max(0.5f, (_lagValue - cur)) * dt / ease * 2f);
+                    _lagValue = Mathf.MoveTowards(_lagValue, g, Mathf.Max(0.5f, (_lagValue - g)) * dt / ease * 2f);
                 }
             }
             _lagValue = Mathf.Min(_lagValue, max);
-            _lastCur = cur;
-            // drawn fill: the live float value eased over BarFxConfig.FillSmoothing (numbers stay exact, the damage-lag
-            // ghost keeps its own hold / ease and never sits under the drawn fill)
-            _shownShare = BarFill.Smooth(_shownShare, ref _shownVel, cur / max, Time.unscaledDeltaTime, BarFxConfig.FillSmoothSeconds); // unscaled: eases in a paused game too
-            var shown = _shownShare * max;
+            _lastCur = g;
             // a heal / regen snaps the ghost to the DRAWN fill (no ghost ahead of a rising fill); a hit keeps it at least
             // at the drawn fill while the fill eases down
             _lagValue = rising ? Mathf.Min(shown, max) : Mathf.Max(_lagValue, Mathf.Min(shown, max));
@@ -846,7 +856,12 @@ namespace Morgott.UI.PlayerHud
 
         // The HUD was hidden (dead, menu, cutscene) or the player changed: forget the last samples, so the values seen on
         // return are no hit / heal.
-        public void FxResync() => _fxEvents.Resync();
+        public void FxResync()
+        {
+            _fxEvents.Resync();
+            _follow.Reset(); // the drawn fill snaps to the value on return too
+            _shownShare = -1f;
+        }
         // Shield drawn over the health fill on the next Render: amount and its own pool max (0 = none).
         public void SetShield(float amount, float max = 0f)
         {

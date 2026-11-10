@@ -29,4 +29,60 @@ namespace Morgott.UI.PlayerHud
             return next;
         }
     }
+
+    // Drawn value of a HUD resource bar (user 2026-11-10: Morgott.Patcher smooth regen pays HP in 1-hp steps; at max 5 each
+    // step was a 20 % glide-then-stop staircase). In units, so a max change (food eaten / decaying) rescales with no jump:
+    // - drop: instant (damage reads at once, never fuller than real; the BarView lag ghost shows the loss);
+    // - regular rise (a step at most 2x the last one, its interval within 0.5x..2x the last interval): constant speed =
+    //   gap / interval, so the fill arrives as the next tick lands -> continuous motion at the real regen rate, from
+    //   per-frame regen (lag <= 1 frame) to any slow tick period (no cap: two ticks agreeing define the period);
+    // - irregular rise (heal, potion, two equal heals 30 s apart, first tick after a pause): BarFill.Smooth ease over `seconds`.
+    // Pure (unit-tested); dt is the caller's frame time.
+    public sealed class BarFollow
+    {
+        private double _shown = -1.0; // double: 1 hp / 10 s at max 100000, 144 fps adds steps float loses (Codex review)
+        private float _last = -1f, _lastStep, _sinceRise = float.MaxValue, _interval = -1f, _speed, _vel;
+        private bool _linear;
+
+        public float Shown => (float)_shown;
+
+        // Next frame shows the real value (respawn, teleport, player change, HUD shown again).
+        public void Reset() => _shown = -1.0;
+
+        public float Step(float cur, float max, float dt, float seconds)
+        {
+            if (!(max > 0f)) max = 1f;
+            cur = Math.Max(0f, Math.Min(max, float.IsNaN(cur) ? 0f : cur));
+            if (dt > 0f && _sinceRise < float.MaxValue) _sinceRise += dt;
+            if (_shown < 0.0 || seconds <= 0f)
+            {
+                _last = cur;
+                _shown = cur;
+                _vel = 0f;
+                _linear = false;
+                _sinceRise = float.MaxValue;
+                _interval = -1f;
+                return cur;
+            }
+            var step = cur - _last;
+            if (step > 1e-6f)
+            {
+                // regular = a tick like the last one (x2 slack: fractional regen, frame-time jitter) at the same pace
+                var regular = _lastStep > 0f && step <= 2f * _lastStep + 1e-4f * max && _interval > 0f && _sinceRise < float.MaxValue
+                    && _sinceRise <= 2f * _interval && _sinceRise >= 0.5f * _interval;
+                if (regular) _speed = (float)((cur - _shown) / Math.Max(_sinceRise, 1e-4f));
+                _linear = regular;
+                _lastStep = step;
+                _interval = _sinceRise < float.MaxValue ? _sinceRise : -1f;
+                _sinceRise = 0f;
+                _vel = 0f;
+            }
+            else if (step < 0f) _shown = Math.Max(0.0, _shown + step); // a hit while the fill trails a tick reads at once too (Codex)
+            _last = cur;
+            if (cur <= _shown) { _shown = cur; _vel = 0f; return cur; }
+            if (_linear) _shown = Math.Min(cur, _shown + (double)_speed * Math.Max(0f, dt));
+            else _shown = Math.Min(cur, BarFill.Smooth((float)(_shown / max), ref _vel, cur / max, dt, seconds) * (double)max);
+            return (float)_shown;
+        }
+    }
 }

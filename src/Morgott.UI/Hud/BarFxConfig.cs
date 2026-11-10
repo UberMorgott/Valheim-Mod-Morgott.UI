@@ -40,7 +40,11 @@ namespace Morgott.UI.PlayerHud
             FillSmoothing = config.Bind("HudBars", "FillSmoothing", ThemeTokens.GetFloat("time.hud.bar.smooth", 0.25f), new ConfigDescription(
                 "Seconds a bar fill takes to glide to a new value (HP / stamina / eitr; 0 = jump). The numbers always show the exact value.",
                 new AcceptableValueRange<float>(0f, 1f)));
+            FollowRegen = config.Bind("HudBars", "FollowRegen", true,
+                "Bar fills follow regeneration at its measured rate (no stepping on small pools) and drop at once on damage. Off = the fill glides both ways over FillSmoothing.");
         }
+
+        public static ConfigEntry<bool> FollowRegen { get; private set; }
 
         // Live on/off and intensity of a pool's effects (Plain = always off).
         public static void For(BarFxPool pool, out bool on, out float intensity)
