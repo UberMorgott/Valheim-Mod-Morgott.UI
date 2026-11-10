@@ -472,14 +472,16 @@ namespace Morgott.UI.Tests
             Assert.Equal(want, PageModel.CreatureTip(desc, kind, breed));
 
         // Eligibility (vanilla taming path, Tameable.cs:409 / MonsterAI.cs:642): Boar (feeds) = Tame; Tar golem /
-        // Skeleton_Friendly (Tameable, nothing to feed, summon mark) = Summon; startsTamed with consume items = Summon;
-        // Tameable with no feed and no summon mark = None; no Tameable = None.
+        // Skeleton_Friendly (Tameable, nothing to feed, summon mark) = Summon; Hen (startsTamed, feeds, no summon mark;
+        // run 20261110-175238 showed it blue) = None; startsTamed summon = Summon; Tameable with no feed and no summon mark
+        // = None; no Tameable = None.
         [Theory]
         [InlineData(true, false, true, false, TameKind.Tame)]
         [InlineData(true, false, true, true, TameKind.Tame)]
         [InlineData(true, false, false, true, TameKind.Summon)]
-        [InlineData(true, true, true, false, TameKind.Summon)]
-        [InlineData(true, true, false, false, TameKind.Summon)]
+        [InlineData(true, true, true, false, TameKind.None)]
+        [InlineData(true, true, false, true, TameKind.Summon)]
+        [InlineData(true, true, false, false, TameKind.None)]
         [InlineData(true, false, false, false, TameKind.None)]
         [InlineData(false, false, true, true, TameKind.None)]
         public void KindFollowsVanillaTamingPath(bool tameable, bool startsTamed, bool feeds, bool summonMark, TameKind want) =>
