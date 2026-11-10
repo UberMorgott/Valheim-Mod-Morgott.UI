@@ -142,7 +142,7 @@ public static class RenderWeb
         HubTL = Rect.MinMaxRect(0.006f, 0.730f, 0.268f, 0.992f), HubR = Rect.MinMaxRect(0.768f, 0.546f, 0.988f, 0.801f);
     static readonly (Rect Uv, bool Fan, bool Flip, float Z, float T0, float T1, float W0, float W1)[] SheetCards =
     {
-        (BigTri, true, false, -0.12f, 0f, 0.8f, 0f, 1.5f), (BigTri, true, true, 0.12f, 0.2f, 1f, 0f, 1.5f),
+        (BigTri, true, false, -0.12f, 0f, 0.8f, 0.2f, 1.5f), (BigTri, true, true, 0.12f, 0.2f, 1f, 0.2f, 1.5f), // start over the ground: in-game the low tier read as one white mass
         (UpperTri, false, false, 0f, 0f, 1f, 0.6f, 2.4f), (HubR, false, false, 0.05f, 0.25f, 0.75f, 0.2f, 1.2f),
     };
 
@@ -188,7 +188,7 @@ public static class RenderWeb
     static void Carpet(string name, Material mat, Vector3 c, float sx, float sz)
     {
         var v = new List<Vector3>(); var uv = new List<Vector4>(); var uv1 = new List<Vector3>(); var col = new List<Color>(); var tri = new List<int>();
-        foreach (var (r, turn, scale) in new[] { (HubTL, 0f, 1f), (HubR, 45f, 0.8f) })
+        foreach (var (r, turn, scale) in new[] { (HubTL, 0f, 1f) })
         {
             var rot = Quaternion.Euler(0f, turn, 0f);
             var k = v.Count;

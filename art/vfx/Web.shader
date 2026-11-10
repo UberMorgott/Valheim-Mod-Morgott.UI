@@ -18,7 +18,7 @@ Shader "Morgott/Web"
         _MainTex ("Strand atlas (R)", 2D) = "black" {}
         _WebTex ("Vanilla web atlas (A), runtime", 2D) = "black" {}
         _WrapTex ("Vanilla tunnel web (A), runtime", 2D) = "black" {}
-        _WebGain ("Vanilla coverage gain", Float) = 2.3
+        _WebGain ("Vanilla coverage gain", Float) = 1.9
         _Color ("Silk colour", Color) = (0.82, 0.84, 0.86, 1)
         _Opacity ("Opacity", Range(0, 1)) = 0.9
         _DewColor ("Dew colour", Color) = (1, 1, 1, 1)
@@ -230,9 +230,9 @@ Shader "Morgott/Web"
                 // ---- light -----------------------------------------------------------------------------------------
                 float3 L = normalize(_WorldSpaceLightPos0.xyz);
                 float3 amb = max(0.0, ShadeSH9(float4(N, 1.0))) + 0.04;
-                float3 sun = _LightColor0.rgb * (0.3 + 0.5 * abs(dot(N, L)) + 1.6 * pow(saturate(dot(-V, L)), 6.0)); // + back-lit scatter
+                float3 sun = _LightColor0.rgb * (0.2 + 0.4 * abs(dot(N, L)) + 0.5 * pow(saturate(dot(-V, L)), 6.0)); // + back-lit scatter
                 float3 silk = lerp(_Color.rgb, float3(0.86, 0.93, 1.0), _Rime * 0.7) * i.color.rgb;
-                float3 col = silk * (amb + sun) + silk * _Glow;
+                float3 col = min(silk * (amb + sun) + silk * _Glow, 0.9); // LDR: stacked layers in noon sun bloomed to white glare (run 20261111-004927)
 
                 // ---- dew: sparse jittered drops on the strands, view-dependent glint -----------------------------------
                 if (!cocoon && _DewSparkle > 0.0)
