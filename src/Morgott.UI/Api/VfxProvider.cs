@@ -7,14 +7,14 @@ namespace Morgott.UI.Api
 {
     // Morgott.Core IVfx implementation (plan 5a): the small "morgott_vfx" bundle next to the DLL (unity BuildVfx), loaded on
     // the first call and kept loaded (handed-out shaders / template live as long as consumer copies may).
-    public sealed class VfxProvider : IVfx
+    public sealed class VfxProvider : IVfx, IWebVfx
     {
         public const string BundleFile = "morgott_vfx";
 
         private readonly string _path;
         private bool _loaded;
         private Shader _shell, _telegraph, _bossFx, _bar;
-        private Material _particle;
+        private Material _particle, _web;
 
         public VfxProvider(string pluginDir) => _path = Path.Combine(pluginDir, BundleFile);
 
@@ -25,6 +25,7 @@ namespace Morgott.UI.Api
         public Shader UiBossFx() => Load()._bossFx;
         public Shader UiBar() => Load()._bar;
         public Material AdditiveParticle() => Load()._particle;
+        public Material Web() => Load()._web;
 
         private VfxProvider Load()
         {
@@ -57,7 +58,9 @@ namespace Morgott.UI.Api
             }
             _particle = bundle.LoadAsset<Material>("AdditiveParticle");
             if (_particle && (!_particle.shader || !_particle.shader.isSupported)) _particle = null;
-            Plugin.Log.LogInfo($"[Morgott.UI] {BundleFile}: shell {(bool)_shell}, telegraph {(bool)_telegraph}, boss fx {(bool)_bossFx}, bar {(bool)_bar}, particle {(bool)_particle}");
+            _web = bundle.LoadAsset<Material>("Web");
+            if (_web && (!_web.shader || !_web.shader.isSupported || !_web.mainTexture)) _web = null;
+            Plugin.Log.LogInfo($"[Morgott.UI] {BundleFile}: shell {(bool)_shell}, telegraph {(bool)_telegraph}, boss fx {(bool)_bossFx}, bar {(bool)_bar}, particle {(bool)_particle}, web {(bool)_web}");
             return this;
         }
     }

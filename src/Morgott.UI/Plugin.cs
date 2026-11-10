@@ -18,12 +18,12 @@ namespace Morgott.UI
     // Morgott.UI (was RuneSkin): clean-room UI skin that restyles live vanilla uGUI from theme tokens (no prefab swaps, no
     // transpilers). Awake: config -> theme + asset bundle -> ownership frozen -> ITheme registered -> Harmony patches of owned families.
     [BepInPlugin(Contracts.UiGuid, "Morgott.UI", Version)]
-    [BepInDependency(Contracts.CoreGuid, "0.7.0")] // IChainCraft (0.5.1: IItemBrowser), ICreatureInfo.IsNemesis (0.7.0)
+    [BepInDependency(Contracts.CoreGuid, "0.9.0")] // IChainCraft (0.5.1: IItemBrowser), ICreatureInfo.IsNemesis (0.7.0), IWebVfx (0.9.0)
     [BepInDependency(Jotunn.Main.ModGuid)]
     [BepInProcess("valheim.exe")]
     public sealed class Plugin : BaseUnityPlugin
     {
-        public const string Version = "0.29.40";
+        public const string Version = "0.30.0";
 
         public static ManualLogSource Log { get; private set; }
         // Our Jotunn localization (Translations\*.json): Compat\ModText re-adds words a mod overwrites in English.
@@ -135,7 +135,11 @@ namespace Morgott.UI
             }
             Texts = Translations.Load(typeof(Plugin).Assembly, "Morgott.UI.Translations.");
             // Shared VFX (Core IVfx) do not depend on the theme: registered even when the skin stays inactive.
-            if (!CoreApi.Headless) Services.Register<IVfx>(VfxProvider.Instance = new VfxProvider(System.IO.Path.GetDirectoryName(Info.Location)));
+            if (!CoreApi.Headless)
+            {
+                Services.Register<IVfx>(VfxProvider.Instance = new VfxProvider(System.IO.Path.GetDirectoryName(Info.Location)));
+                Services.Register<IWebVfx>(VfxProvider.Instance);
+            }
             if (!CoreApi.Headless) Services.Register<IItemBrowser>(ItemBrowser.BrowserService.Instance); // inactive (false) until the ITEMS tab exists
             // Icons and compat text do not depend on the theme either (MorgottTweaks moved them here, TASKS 4.5).
             _harmony = new Harmony(Contracts.UiGuid);
@@ -273,7 +277,11 @@ namespace Morgott.UI
         private void OnDestroy()
         {
             if (_theme != null) Services.Unregister<ITheme>(_theme);
-            if (VfxProvider.Instance != null) Services.Unregister<IVfx>(VfxProvider.Instance);
+            if (VfxProvider.Instance != null)
+            {
+                Services.Unregister<IVfx>(VfxProvider.Instance);
+                Services.Unregister<IWebVfx>(VfxProvider.Instance);
+            }
             Services.Unregister<IItemBrowser>(ItemBrowser.BrowserService.Instance);
             _harmony?.UnpatchSelf();
         }
