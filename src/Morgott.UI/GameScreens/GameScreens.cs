@@ -849,6 +849,7 @@ namespace Morgott.UI.GameScreens
     public sealed class SplitAnchor : MonoBehaviour
     {
         private RectTransform _panel, _player, _canvas;
+        private WindowDrag _band;
         private float _offX, _offY;
 
         public static void Ensure(SplitDialog s)
@@ -872,7 +873,7 @@ namespace Morgott.UI.GameScreens
             a._offY = d.Y + d.H / 2f - (p.Y + p.H / 2f);
             // Drag band over the whole panel (WindowMove house mechanism: the slider / buttons keep their clicks,
             // double-click = back beside the split cell); stretched, last child so it is hit before the panel art.
-            var band = WindowMove.Handle(panel, WindowMove.Split, panel);
+            var band = a._band = WindowMove.Handle(panel, WindowMove.Split, panel);
             if (band)
             {
                 var rt = band.rectTransform;
@@ -903,9 +904,11 @@ namespace Morgott.UI.GameScreens
         private void LateUpdate()
         {
             if (!_panel || !_player || !_canvas || ZInput.IsTouchActive()) return;
+            if (_band && _band.enabled != WindowMove.Enabled) _band.enabled = WindowMove.Enabled; // Layout.MovableWindows toggled live
             var d = InventoryScreen.Geo.BoxOf(_canvas, _panel);
             // InventorySkin hides row 0 (drawn by the HUD strip) and scrolled-out cells at scale 0: no size = not shown.
             // Dragged once (user 2026-11-10): the stored place at this resolution, clamped on screen (WindowMove.Place).
+            // shortcut: a drop exactly on the origin (both axes within 0.01 unit) reads as never moved; add a "moved" flag if it is ever hit.
             var origin = GameScreenMath.SplitDragOrigin(WindowMove.Bounds(_canvas), d.W, d.H);
             var moved = WindowMove.Applied(WindowMove.Split, origin, _canvas);
             var slot = _slot && _slot.gameObject.activeInHierarchy ? InventoryScreen.Geo.BoxOf(_canvas, _slot) : default;
