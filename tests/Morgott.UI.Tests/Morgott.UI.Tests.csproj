@@ -48,6 +48,8 @@
     <Compile Include="..\..\src\Morgott.UI\InfoScreens\InfoMath.cs" Link="Linked\InfoMath.cs" />
     <Compile Include="..\..\src\Morgott.UI\MapScreen\MinimapMath.cs" Link="Linked\MinimapMath.cs" />
     <Compile Include="..\..\src\Morgott.UI\MapScreen\PinLabelMath.cs" Link="Linked\PinLabelMath.cs" />
+    <Compile Include="..\..\src\Morgott.UI\MapScreen\MapFilterMath.cs" Link="Linked\MapFilterMath.cs" />
+    <Compile Include="..\..\src\Morgott.UI\MapScreen\MapConfig.cs" Link="Linked\MapConfig.cs" />
     <Compile Include="..\..\src\Morgott.UI\WorldHud\EnemyHudMath.cs" Link="Linked\EnemyHudMath.cs" />
     <Compile Include="..\..\src\Morgott.UI\WorldHud\PlayHudMath.cs" Link="Linked\PlayHudMath.cs" />
     <Compile Include="..\..\src\Morgott.UI\WorldHud\HoldPromptMath.cs" Link="Linked\HoldPromptMath.cs" />
@@ -96,6 +98,7 @@
       <HintPath>$(ManagedDir)\UnityEngine.UIModule.dll</HintPath>
     </Reference>
     <Reference Include="Morgott.Core" HintPath="$(CoreRef)" />
+    <Reference Include="BepInEx" HintPath="$(BepInExCoreDir)\BepInEx.dll" />
     <Reference Include="assembly_valheim">
       <HintPath>$(ManagedDir)\assembly_valheim.dll</HintPath>
     </Reference>

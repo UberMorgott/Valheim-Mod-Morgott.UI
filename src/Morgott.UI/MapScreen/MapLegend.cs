@@ -2,43 +2,85 @@ using System.Collections.Generic;
 using Morgott.UI.Theme;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using Morgott.UI.Compat;
 
 namespace Morgott.UI.MapScreen
 {
-    // Large map legend as labelled rows (mockup m4-map-a): header "Pins" + divider, one row per pin-type button of the
-    // vanilla panels (IconPanel Icon0..4, IconPanel2 Death / Boss / mod filters such as Epic Loot's, IconPingPanel):
-    // recessed socket + the vanilla icon button (moved there, its onClick / right-click wiring and "Selected" frame
-    // untouched) + localized name + checkbox. Checkbox = the vanilla visibility filter: Minimap.m_visibleIconTypes /
-    // ToggleIconFilter (Minimap.cs:2625) for the types in m_selectedIcons; a mod filter button toggles itself on click,
-    // so its checkbox clicks the button and reads its grey tint (the vanilla filtered look, :2632); Ping has no filter.
-    // Then the Public / Shared toggle panels, "Players" (ZNet.GetPlayerList: name, dim when the position is hidden),
-    // and a zoom row pinned to the bottom (minus | slider on Minimap.LargeZoom | plus). A key hint line runs under the
-    // map when the game's KeyHints setting is on (Minimap.SetMapMode, :1237). Buttons stay children of their vanilla
-    // panels (mods find them by path); only their LayoutGroups are off and their rects are placed each frame.
+    // Large map side column = one filter list (mockup docs\mockups\2026-11-10\biome-overlay.png, design
+    // docs\biome-overlay-design.md): МЕТКИ - one row per pin type group (MapFilterMath.Rows: recessed socket with the
+    // vanilla icon button moved there when the type has one (IconPanel Icon0..4, IconPanel2 Death / Boss, IconPingPanel;
+    // its onClick / right-click wiring and "Selected" frame untouched), else the type's own map icon; localized name;
+    // checkbox = [Map Filters] entry -> Minimap.m_visibleIconTypes), then the buttons of mod filters (Epic Loot's
+    // AdventurePinFilter*: the checkbox clicks the button and reads its grey tint, the vanilla filtered look,
+    // Minimap.cs:2632); scrolled by the mouse wheel when the rows do not fit. ИГРОКИ - ZNet.GetPlayerList with a per-session
+    // checkbox (hides that player's marker on the large map). СЛОИ - "Подсветка биомов" ([Map] BiomeOverlay) and the biome
+    // colour key. Then the Public toggle panel and the zoom row pinned to the bottom (minus | slider on Minimap.LargeZoom |
+    // plus). A key hint line runs under the map when the game's KeyHints setting is on (Minimap.SetMapMode, :1237). Buttons
+    // stay children of their vanilla panels (mods find them by path); only their LayoutGroups are off and their rects are
+    // placed each frame.
     public sealed partial class MinimapSkin
     {
         private sealed class PinRow
         {
             public RectTransform Root;
-            public Image Socket, Box, Check;
+            public Image Socket, Glyph, Box, Check;
             public TMP_Text Name;
             public Button Toggle;
             public Button Icon;
+            public FilterRow Row;
         }
+
+        private sealed class Entry
+        {
+            public FilterRow Row;
+            public Button Icon;
+        }
+
+        // Mouse wheel over the side column scrolls the pin rows (and never zooms the map: ZInput scroll muted there,
+        // MapLegendInput).
+        private sealed class LegendScroll : MonoBehaviour, IScrollHandler, IPointerEnterHandler, IPointerExitHandler
+        {
+            public float Delta;
+            public bool Over;
+            public void OnScroll(PointerEventData e) => Delta += e.scrollDelta.y;
+            public void OnPointerEnter(PointerEventData e) => Over = true;
+            public void OnPointerExit(PointerEventData e) => Over = false;
+            private void OnDisable() => Over = false;
+        }
+
+        internal static bool LegendHover => Instance && Instance._scroll && Instance._scroll.Over && Instance._large && Instance._large.gameObject.activeInHierarchy;
 
         private RectTransform _rows, _footer;
         private readonly List<PinRow> _pinRows = new List<PinRow>();
+        private readonly List<Entry> _entries = new List<Entry>();
+        private readonly List<PinRow> _playerRows = new List<PinRow>();
         private readonly List<Button> _iconButtons = new List<Button>();
-        private readonly List<TMP_Text> _playerNames = new List<TMP_Text>();
-        private readonly List<Image> _playerIcons = new List<Image>();
-        private TMP_Text _pinsHeader, _playersHeader, _zoomLabel;
-        private Image _pinsDivider, _playersDivider;
+        private readonly HashSet<string> _hiddenPlayers = new HashSet<string>();
+        private TMP_Text _pinsHeader, _playersHeader, _layersHeader, _zoomLabel;
+        private Image _pinsDivider, _playersDivider, _layersDivider, _scrollTrack, _scrollThumb;
+        private PinRow _biomeRow;
+        private readonly List<(Image Swatch, TMP_Text Name)> _key = new List<(Image, TMP_Text)>();
+        private LegendScroll _scroll;
+        private int _firstRow;
         private Slider _zoom;
         private bool _zoomWrite;
         private int _loggedButtons = -1;
         private Dictionary<GameObject, Minimap.PinType> _types;
+
+        // Harness: МЕТКИ rows in list order (FilterRow key or the mod button name), first shown row, rows in the window.
+        public IReadOnlyList<string> FilterKeys
+        {
+            get
+            {
+                var keys = new List<string>();
+                foreach (var e in _entries) keys.Add(e.Row != null ? e.Row.Key : e.Icon ? e.Icon.name : "?");
+                return keys;
+            }
+        }
+
+        public int FirstFilterRow => _firstRow;
 
         private void BuildLegendRows()
         {
@@ -48,10 +90,28 @@ namespace Morgott.UI.MapScreen
             _rows.offsetMin = _rows.offsetMax = Vector2.zero;
             _rows.anchorMin = Vector2.zero;
             _rows.anchorMax = Vector2.one;
-            _pinsHeader = _art.Text("PinsHeader", _rows, "font.display", "color.text.header", ThemeTokens.GetFloat("size.map.legend.header", 21f), TextAlignmentOptions.Center);
+            _scroll = _legend.gameObject.AddComponent<LegendScroll>();
+            var headerSize = ThemeTokens.GetFloat("size.map.legend.header", 21f);
+            _pinsHeader = _art.Text("PinsHeader", _rows, "font.display", "color.text.header", headerSize, TextAlignmentOptions.Center);
             _pinsDivider = _art.Image("PinsDivider", _rows, "sprite.divider", "color.frame", Image.Type.Sliced);
-            _playersHeader = _art.Text("PlayersHeader", _rows, "font.display", "color.text.header", ThemeTokens.GetFloat("size.map.legend.header", 21f), TextAlignmentOptions.Center);
+            _playersHeader = _art.Text("PlayersHeader", _rows, "font.display", "color.text.header", headerSize, TextAlignmentOptions.Center);
             _playersDivider = _art.Image("PlayersDivider", _rows, "sprite.divider", "color.frame", Image.Type.Sliced);
+            _layersHeader = _art.Text("LayersHeader", _rows, "font.display", "color.text.header", headerSize, TextAlignmentOptions.Center);
+            _layersDivider = _art.Image("LayersDivider", _rows, "sprite.divider", "color.frame", Image.Type.Sliced);
+            _scrollTrack = _art.Image("ScrollTrack", _rows, "sprite.bar.skill.trough", "color.frame", Image.Type.Sliced);
+            _scrollThumb = _art.Image("ScrollThumb", _scrollTrack.transform, "sprite.bar.skill.fill", "color.text.accent", Image.Type.Sliced);
+            _biomeRow = NewRow("LayerRow");
+            _biomeRow.Glyph.sprite = ThemeTokens.GetSprite("sprite.glyph.cat.all");
+            _biomeRow.Glyph.enabled = _biomeRow.Glyph.sprite;
+            foreach (var biome in MapFilterMath.Biomes)
+            {
+                var swatch = _art.Image("BiomeSwatch", _rows, null, "color.frame", Image.Type.Simple);
+                swatch.color = BiomeOverlay.BiomeColor(biome);
+                var name = _art.Text("BiomeName", _rows, "font.body", "color.text.body", ThemeTokens.GetFloat("size.map.biome.font", 15f), TextAlignmentOptions.Left);
+                name.textWrappingMode = TextWrappingModes.NoWrap;
+                name.overflowMode = TextOverflowModes.Ellipsis;
+                _key.Add((swatch, name));
+            }
             _zoomLabel = _art.Text("ZoomLabel", _rows, "font.body", "color.text.body", ThemeTokens.GetFloat("size.map.legend.font", 17f), TextAlignmentOptions.Left);
             BuildZoom();
             BuildHints(); // the vanilla key hint row, moved into the band under the map (MapHints.cs)
@@ -148,21 +208,49 @@ namespace Morgott.UI.MapScreen
             return _types;
         }
 
-        private static string NameKey(Minimap.PinType type)
+        // ---------------------------------------------------------------- filters <-> config
+
+        // Config -> m_visibleIconTypes (map start, SettingChanged): vanilla's own write + tint (ToggleIconFilter,
+        // Minimap.cs:2625-2634, without its gamepad rumble).
+        internal void ApplyFilters()
         {
-            switch (type)
+            if (!_map || _map.m_visibleIconTypes == null) return;
+            HookFilters();
+            var changed = false;
+            foreach (var row in MapFilterMath.Rows)
+                changed |= MapFilterMath.Apply(_map.m_visibleIconTypes, row, MapConfig.Shown(row));
+            if (!changed) return;
+            _map.m_pinUpdateRequired = true;
+            foreach (var pair in _map.m_selectedIcons)
+                if (pair.Value && pair.Value.transform.parent && pair.Value.transform.parent.TryGetComponent<Image>(out var img))
+                    img.color = (int)pair.Key < _map.m_visibleIconTypes.Length && _map.m_visibleIconTypes[(int)pair.Key] ? Color.white : Color.gray;
+        }
+
+        private static bool _filtersHooked;
+
+        private static void HookFilters()
+        {
+            if (_filtersHooked) return;
+            _filtersHooked = true;
+            foreach (var e in MapConfig.Filters.Values) e.SettingChanged += (_, __) => Instance?.ApplyFilters();
+        }
+
+        // Vanilla toggled one type (AddPin of a new pin re-shows a hidden type, Minimap.cs:2346): its row's entry follows.
+        // Not while saved pins load (SetMapData -> AddPin, Minimap.cs:2158): the saved filters win there and are applied
+        // again after the load (MapFilterInput).
+        internal void OnVanillaToggle(Minimap.PinType type)
+        {
+            if (!_map || MapFilterInput.LoadingPins) return;
+            var visible = _map.m_visibleIconTypes;
+            foreach (var row in MapFilterMath.Rows)
             {
-                case Minimap.PinType.Icon0: return "$ui_pin_icon0";
-                case Minimap.PinType.Icon1: return "$ui_pin_icon1";
-                case Minimap.PinType.Icon2: return "$ui_pin_icon2";
-                case Minimap.PinType.Icon3: return "$ui_pin_icon3";
-                case Minimap.PinType.Icon4: return "$ui_pin_icon4";
-                case Minimap.PinType.Death: return "$ui_pin_death";
-                case Minimap.PinType.Boss: return "$ui_pin_boss";
-                case Minimap.PinType.Ping: return "$ui_pin_ping";
-                default: return null; // mod pin types (Epic Loot 800 / 801...): the button names itself (ModName)
+                if (System.Array.IndexOf(row.Types, type) < 0 || !MapConfig.Filters.TryGetValue(row.Key, out var entry)) continue;
+                var shown = MapFilterMath.Shown(visible, row);
+                if (entry.Value != shown) entry.Value = shown; // SettingChanged -> ApplyFilters: the whole group follows
             }
         }
+
+        // ---------------------------------------------------------------- mod filter names
 
         private static readonly List<Button> ButtonScratch = new List<Button>(16);
         // Mod button labels per button (reflection over Epic Loot fields, name string work): computed once per button
@@ -259,12 +347,19 @@ namespace Morgott.UI.MapScreen
             return null;
         }
 
-        private PinRow NewRow()
+        // ---------------------------------------------------------------- rows
+
+        private PinRow NewRow(string name = "PinRow")
         {
-            var r = new PinRow { Root = HudArtRect("PinRow", _rows) };
+            var r = new PinRow { Root = HudArtRect(name, _rows) };
             Top(r.Root);
             r.Socket = _art.Image("Socket", r.Root, "sprite.slot.recess", "color.frame", Image.Type.Sliced);
+            r.Glyph = _art.Image("Glyph", r.Socket.transform, null, "color.text.body", Image.Type.Simple);
+            r.Glyph.preserveAspect = true;
+            r.Glyph.color = Color.white;
             r.Name = _art.Text("Name", r.Root, "font.body", "color.text.body", ThemeTokens.GetFloat("size.map.legend.font", 17f), TextAlignmentOptions.Left);
+            r.Name.textWrappingMode = TextWrappingModes.NoWrap;
+            r.Name.overflowMode = TextOverflowModes.Ellipsis;
             r.Box = _art.Image("Check", r.Root, "sprite.checkbox.box", "color.frame", Image.Type.Sliced, raycast: true);
             r.Check = _art.Image("Mark", r.Box.transform, "sprite.glyph.check", "color.text.accent", Image.Type.Simple);
             r.Check.preserveAspect = true;
@@ -277,30 +372,38 @@ namespace Morgott.UI.MapScreen
 
         private void OnToggle(PinRow r)
         {
-            if (!r.Icon) return;
-            if (Types().TryGetValue(r.Icon.gameObject, out var type))
+            if (r == _biomeRow)
             {
-                if (type != Minimap.PinType.Ping) _map.ToggleIconFilter(type);
+                if (MapConfig.BiomeOverlay != null) MapConfig.BiomeOverlay.Value = !MapConfig.BiomeOverlay.Value;
+                return;
             }
-            else r.Icon.onClick.Invoke();
+            if (_playerRows.Contains(r))
+            {
+                var key = r.Name.text;
+                if (!_hiddenPlayers.Remove(key)) _hiddenPlayers.Add(key);
+                return;
+            }
+            if (r.Row != null)
+            {
+                var on = !MapFilterMath.Shown(_map.m_visibleIconTypes, r.Row);
+                if (MapConfig.Filters.TryGetValue(r.Row.Key, out var entry)) entry.Value = on; // SettingChanged -> ApplyFilters
+                else if (MapFilterMath.Apply(_map.m_visibleIconTypes, r.Row, on)) _map.m_pinUpdateRequired = true;
+                ApplyFilters();
+                return;
+            }
+            if (r.Icon) r.Icon.onClick.Invoke();
         }
 
-        private bool Visible(Button icon, out bool hasFilter)
+        private bool Visible(PinRow r)
         {
-            if (Types().TryGetValue(icon.gameObject, out var type))
-            {
-                hasFilter = type != Minimap.PinType.Ping && (int)type < _map.m_visibleIconTypes.Length;
-                return !hasFilter || _map.m_visibleIconTypes[(int)type];
-            }
-            hasFilter = true;
-            var c = icon.targetGraphic ? icon.targetGraphic.color : Color.white;
+            if (r.Row != null) return MapFilterMath.Shown(_map.m_visibleIconTypes, r.Row);
+            var c = r.Icon && r.Icon.targetGraphic ? r.Icon.targetGraphic.color : Color.white;
             return c.grayscale > 0.75f;
         }
 
-        // Per frame while the large map is open: rows for the current buttons (mods may add filters any time).
-        private void LegendRows(float inset)
+        // The rows of this frame: every present filter group (with its vanilla button when it has one), then mod buttons.
+        private void CollectEntries()
         {
-            if (!_rows) return;
             _iconButtons.Clear();
             foreach (var panel in LegendPanels)
             {
@@ -310,78 +413,180 @@ namespace Morgott.UI.MapScreen
                 _iconButtons.AddRange(ButtonScratch);
                 ButtonScratch.Clear();
             }
+            var types = Types();
+            var visible = _map.m_visibleIconTypes;
+            var n = 0;
+            Entry Next()
+            {
+                if (n == _entries.Count) _entries.Add(new Entry());
+                return _entries[n++];
+            }
+            foreach (var row in MapFilterMath.Rows)
+            {
+                if (!MapFilterMath.Present(visible, row)) continue;
+                Button icon = null;
+                foreach (var b in _iconButtons)
+                    if (types.TryGetValue(b.gameObject, out var ty) && System.Array.IndexOf(row.Types, ty) >= 0) { icon = b; break; }
+                if (!icon && !_map.GetSprite(row.Types[0])) continue; // nothing to show it with
+                var e = Next();
+                e.Row = row;
+                e.Icon = icon;
+            }
+            foreach (var b in _iconButtons)
+            {
+                if (types.ContainsKey(b.gameObject)) continue;
+                var e = Next();
+                e.Row = null;
+                e.Icon = b;
+            }
+            _entries.RemoveRange(n, _entries.Count - n);
             if (_iconButtons.Count != _loggedButtons)
             {
                 _loggedButtons = _iconButtons.Count;
-                var names = new List<string>();
-                foreach (var b in _iconButtons) names.Add($"{b.transform.parent.name}/{b.name}" + (Types().TryGetValue(b.gameObject, out var ty) ? $"={ty}" : ""));
-                Plugin.Log.LogInfo($"[Morgott.UI] map legend rows: {string.Join(", ", names)}");
+                Plugin.Log.LogInfo($"[Morgott.UI] map filter rows: {string.Join(", ", FilterKeys)}");
             }
+        }
+
+        // Per frame while the large map is open: the whole column, top to bottom; the pin rows take what the fixed
+        // sections leave and scroll when they do not fit.
+        private void LegendRows(float inset)
+        {
+            if (!_rows) return;
+            CollectEntries();
             var w = _legend.rect.width;
             var h = _legend.rect.height;
             var pad = ThemeTokens.GetFloat("size.map.legend.pad", 16f);
             var headerH = ThemeTokens.GetFloat("size.map.legend.header.h", 30f);
-            var y = pad;
-            Place(_pinsHeader.rectTransform, pad, y, w - 2f * pad, headerH);
-            _pinsHeader.text = Words.Get("$ui_map_pins");
-            // A section title of the map window (user 2026-10-26: the side panel is part of the map window, fixed in
-            // place; only the whole window moves, by its header).
-            y += headerH;
-            Place(_pinsDivider.rectTransform, pad, y, w - 2f * pad, ThemeTokens.GetFloat("size.map.legend.divider", 11f));
-            y += ThemeTokens.GetFloat("size.map.legend.divider", 11f) + 4f;
-
-            // Bottom block (zoom) reserved first; the pin rows take what the toggles / players leave.
-            var zoomH = ThemeTokens.GetFloat("size.map.zoom.h", 34f);
-            var zoomTop = h - pad - zoomH;
+            var divider = ThemeTokens.GetFloat("size.map.legend.divider", 11f);
             var labelH = ThemeTokens.GetFloat("size.map.legend.label.h", 24f);
+            var zoomH = ThemeTokens.GetFloat("size.map.zoom.h", 34f);
+            var playerRow = ThemeTokens.GetFloat("size.map.player.row", 26f);
+            var keyRow = ThemeTokens.GetFloat("size.map.biome.row", 22f);
+            var rowPref = ThemeTokens.GetFloat("size.map.legend.row", 40f);
+            var rowMin = ThemeTokens.GetFloat("size.map.legend.row.min", 28f);
+            var section = headerH + divider + 4f;
+            var rowW = w - 2f * pad;
+
+            // Fixed blocks, bottom up: zoom, Public toggle, СЛОИ (layer row + biome key), ИГРОКИ.
+            var zoomTop = h - pad - zoomH;
             var toggles = 0f;
             foreach (var panel in TogglePanels)
             {
                 var t = _legend.Find(panel) as RectTransform;
                 if (t && t.gameObject.activeSelf) toggles += t.rect.height + 6f;
             }
+            var keyRows = (MapFilterMath.Biomes.Length + 1) / 2;
+            var layersH = section + playerRow + keyRows * keyRow + 6f;
             var players = ZNet.instance ? ZNet.instance.GetPlayerList() : null;
-            var playerRow = ThemeTokens.GetFloat("size.map.player.row", 26f);
-            var playersH = headerH + 15f + (players?.Count ?? 0) * playerRow;
-            var rowH = MinimapMath.RowHeight(zoomTop - labelH - y - toggles - playersH - 8f, _iconButtons.Count,
-                ThemeTokens.GetFloat("size.map.legend.row", 40f), ThemeTokens.GetFloat("size.map.legend.row.min", 28f));
-            while (_pinRows.Count < _iconButtons.Count) _pinRows.Add(NewRow());
+            var playersShown = Mathf.Min(players?.Count ?? 0, Mathf.RoundToInt(ThemeTokens.GetFloat("count.map.players.max", 4f)));
+            var playersH = section + playersShown * playerRow + 6f;
+            var listTop = pad + section;
+            var listBottom = zoomTop - labelH - toggles - layersH - playersH - 6f;
+
+            // МЕТКИ.
+            Place(_pinsHeader.rectTransform, pad, pad, rowW, headerH);
+            _pinsHeader.text = Words.Get("$ui_map_pins");
+            Place(_pinsDivider.rectTransform, pad, pad + headerH, rowW, divider);
+            var avail = Mathf.Max(rowMin, listBottom - listTop);
+            var rowH = MinimapMath.RowHeight(avail, _entries.Count, rowPref, rowMin);
+            var window = MapFilterMath.Window(avail, rowH);
+            var scrolling = _entries.Count > window;
+            if (_scroll && Mathf.Abs(_scroll.Delta) > 0.01f)
+            {
+                _firstRow -= Mathf.RoundToInt(Mathf.Sign(_scroll.Delta) * Mathf.Max(1f, Mathf.Abs(_scroll.Delta)));
+                _scroll.Delta = 0f;
+            }
+            _firstRow = MapFilterMath.ClampScroll(_firstRow, _entries.Count, window);
+            var barW = scrolling ? ThemeTokens.GetFloat("size.map.legend.scroll", 8f) : 0f;
+            var listW = rowW - (scrolling ? barW + 6f : 0f);
+            while (_pinRows.Count < _entries.Count) _pinRows.Add(NewRow());
             var k = _legend.lossyScale.x;
+            var y = listTop;
             for (var i = 0; i < _pinRows.Count; i++)
             {
                 var r = _pinRows[i];
-                var on = i < _iconButtons.Count;
-                if (r.Root.gameObject.activeSelf != on) r.Root.gameObject.SetActive(on);
-                if (!on) { r.Icon = null; continue; }
-                r.Icon = _iconButtons[i];
-                Place(r.Root, pad, y, w - 2f * pad, rowH);
-                var cell = rowH - 4f;
-                Place(r.Socket.rectTransform, 0f, 2f, cell, cell);
-                var box = Mathf.Min(ThemeTokens.GetFloat("size.map.legend.check", 24f), rowH - 8f);
-                var rowW = w - 2f * pad;
-                Place(r.Box.rectTransform, rowW - box, (rowH - box) * 0.5f, box, box);
-                Place(r.Name.rectTransform, cell + 10f, 0f, rowW - cell - 10f - box - 6f, rowH);
-                var key = Types().TryGetValue(r.Icon.gameObject, out var type) ? NameKey(type) : null;
-                var label = key != null ? Words.Get(key) : CachedModName(r.Icon);
+                var has = i < _entries.Count;
+                var shown = has && i >= _firstRow && i < _firstRow + window;
+                if (r.Root.gameObject.activeSelf != shown) r.Root.gameObject.SetActive(shown);
+                var e = has ? _entries[i] : null;
+                if (r.Icon && (!has || r.Icon != e.Icon)) ShowButton(r.Icon, true); // the button moved to another row / left
+                r.Row = e?.Row;
+                r.Icon = e?.Icon;
+                if (!has) continue;
+                if (r.Icon) ShowButton(r.Icon, shown);
+                if (!shown) continue;
+                LayRow(r, pad, y, listW, rowH, k);
+                var label = r.Row != null ? Words.Get(r.Row.NameToken) : CachedModName(r.Icon);
                 if (r.Name.text != label) r.Name.text = label;
-                var visible = Visible(r.Icon, out var filter);
-                if (r.Box.gameObject.activeSelf != filter) r.Box.gameObject.SetActive(filter);
+                // Own icon for a group without a vanilla button (bed, events, Hildir, memorial, shout, portals).
+                var sprite = r.Icon ? null : _map.GetSprite(r.Row.Types[0]);
+                if (r.Glyph.sprite != sprite) r.Glyph.sprite = sprite;
+                if (r.Glyph.enabled != (bool)sprite) r.Glyph.enabled = sprite;
+                var visible = Visible(r);
                 if (r.Check.enabled != visible) r.Check.enabled = visible;
                 r.Name.color = ThemeTokens.GetColor(visible ? "color.text.body" : "color.state.disabled", Color.white);
-                // The vanilla button sits in the socket (world placement: it stays in its own panel).
-                var icon = (RectTransform)r.Icon.transform;
-                icon.anchorMin = icon.anchorMax = icon.pivot = new Vector2(0.5f, 0.5f);
-                var parentK = icon.parent ? icon.parent.lossyScale.x : 1f;
-                var s = (cell - ThemeTokens.GetFloat("size.map.legend.icon.inset", 8f)) * (parentK > 0f ? k / parentK : 1f);
-                if (Mathf.Abs(icon.sizeDelta.x - s) > 0.1f || Mathf.Abs(icon.sizeDelta.y - s) > 0.1f) icon.sizeDelta = new Vector2(s, s);
-                var socket = r.Socket.rectTransform;
-                var world = socket.TransformPoint(socket.rect.center);
-                if ((icon.position - world).sqrMagnitude > 1e-4f) icon.position = world;
                 y += rowH;
             }
+            if (_scrollTrack.gameObject.activeSelf != scrolling) _scrollTrack.gameObject.SetActive(scrolling);
+            if (scrolling)
+            {
+                var trackH = window * rowH;
+                Place(_scrollTrack.rectTransform, pad + rowW - barW, listTop, barW, trackH);
+                var thumb = _scrollThumb.rectTransform;
+                thumb.anchorMin = new Vector2(0f, 1f - (float)(_firstRow + window) / _entries.Count);
+                thumb.anchorMax = new Vector2(1f, 1f - (float)_firstRow / _entries.Count);
+                thumb.offsetMin = thumb.offsetMax = Vector2.zero;
+            }
 
-            // Public toggle panel under the rows (vanilla toggles + labels).
+            // ИГРОКИ.
+            y = listTop + window * rowH + 6f;
+            y = Section(_playersHeader, _playersDivider, "$ui_map_players", pad, y, rowW, headerH, divider);
+            var localName = Game.instance && Game.instance.GetPlayerProfile() != null ? Game.instance.GetPlayerProfile().GetName() : null;
+            while (_playerRows.Count < playersShown) _playerRows.Add(NewRow("PlayerRow"));
+            for (var i = 0; i < _playerRows.Count; i++)
+            {
+                var r = _playerRows[i];
+                var on = i < playersShown;
+                if (r.Root.gameObject.activeSelf != on) r.Root.gameObject.SetActive(on);
+                if (!on) continue;
+                var p = players[i];
+                var me = p.m_name == localName;
+                LayRow(r, pad, y, rowW, playerRow, k);
+                var sprite = me && _map.m_largeMarker && _map.m_largeMarker.TryGetComponent<Image>(out var mk) ? mk.sprite : _map.GetSprite(Minimap.PinType.Player);
+                if (r.Glyph.sprite != sprite) { r.Glyph.sprite = sprite; r.Glyph.enabled = sprite; }
+                if (r.Name.text != p.m_name) r.Name.text = p.m_name;
+                var hidden = _hiddenPlayers.Contains(p.m_name);
+                if (r.Check.enabled == hidden) r.Check.enabled = !hidden;
+                r.Name.color = ThemeTokens.GetColor(!hidden && (me || p.m_publicPosition) ? "color.text.body" : "color.state.disabled", Color.white);
+                y += playerRow;
+            }
+
+            // СЛОИ: biome highlight + its colour key (two columns).
             y += 6f;
+            y = Section(_layersHeader, _layersDivider, "$ui_map_layers", pad, y, rowW, headerH, divider);
+            LayRow(_biomeRow, pad, y, rowW, playerRow, k);
+            _biomeRow.Name.text = Words.Get("$ui_map_biomes");
+            var overlay = MapConfig.BiomeOverlay?.Value ?? true;
+            if (_biomeRow.Check.enabled != overlay) _biomeRow.Check.enabled = overlay;
+            _biomeRow.Name.color = ThemeTokens.GetColor(overlay ? "color.text.body" : "color.state.disabled", Color.white);
+            y += playerRow;
+            var colW = rowW * 0.5f;
+            var sw = keyRow * 0.6f;
+            for (var i = 0; i < _key.Count; i++)
+            {
+                var (swatch, name) = _key[i];
+                var x = pad + (i % 2) * colW + 6f;
+                var ky = y + (i / 2) * keyRow;
+                Place(swatch.rectTransform, x, ky + (keyRow - sw) * 0.5f, sw, sw);
+                swatch.color = BiomeOverlay.BiomeColor(MapFilterMath.Biomes[i]);
+                Place(name.rectTransform, x + sw + 6f, ky, colW - sw - 18f, keyRow);
+                var label = Words.Get(MapFilterMath.NameKey(MapFilterMath.Biomes[i]));
+                if (name.text != label) name.text = label;
+                name.color = ThemeTokens.GetColor(overlay ? "color.text.body" : "color.state.disabled", Color.white);
+            }
+            y += keyRows * keyRow + 6f;
+
+            // Public toggle panel (vanilla toggle + label).
             foreach (var panel in TogglePanels)
             {
                 var t = _legend.Find(panel) as RectTransform;
@@ -390,51 +595,19 @@ namespace Morgott.UI.MapScreen
                 y += t.rect.height + 6f;
             }
 
-            // Players.
-            Place(_playersHeader.rectTransform, pad, y, w - 2f * pad, headerH);
-            _playersHeader.text = Words.Get("$ui_map_players");
-            y += headerH;
-            Place(_playersDivider.rectTransform, pad, y, w - 2f * pad, 11f);
-            y += 15f;
-            var n = players?.Count ?? 0;
-            while (_playerNames.Count < n)
-            {
-                var icon = _art.Image("PlayerIcon", _rows, null, "color.text.body", Image.Type.Simple);
-                icon.preserveAspect = true;
-                _playerIcons.Add(icon);
-                _playerNames.Add(_art.Text("PlayerName", _rows, "font.body", "color.text.body", ThemeTokens.GetFloat("size.map.legend.font", 17f), TextAlignmentOptions.Left));
-            }
-            var localName = Game.instance && Game.instance.GetPlayerProfile() != null ? Game.instance.GetPlayerProfile().GetName() : null;
-            for (var i = 0; i < _playerNames.Count; i++)
-            {
-                var on = i < n && y + playerRow <= zoomTop - labelH;
-                if (_playerNames[i].gameObject.activeSelf != on) { _playerNames[i].gameObject.SetActive(on); _playerIcons[i].gameObject.SetActive(on); }
-                if (!on) continue;
-                var p = players[i];
-                var me = p.m_name == localName;
-                var sprite = me && _map.m_largeMarker && _map.m_largeMarker.TryGetComponent<Image>(out var mk) ? mk.sprite : _map.GetSprite(Minimap.PinType.Player);
-                if (_playerIcons[i].sprite != sprite) { _playerIcons[i].sprite = sprite; _playerIcons[i].enabled = sprite; }
-                var ic = playerRow - 8f;
-                Place(_playerIcons[i].rectTransform, pad + 6f, y + 4f, ic, ic);
-                Place(_playerNames[i].rectTransform, pad + ic + 16f, y, w - 2f * pad - ic - 16f, playerRow);
-                if (_playerNames[i].text != p.m_name) _playerNames[i].text = p.m_name;
-                _playerNames[i].color = ThemeTokens.GetColor(me || p.m_publicPosition ? "color.text.body" : "color.state.disabled", Color.white);
-                y += playerRow;
-            }
-
             // Zoom row pinned to the bottom: label above, minus | slider | plus.
-            Place(_zoomLabel.rectTransform, pad, zoomTop - labelH, w - 2f * pad, labelH);
+            Place(_zoomLabel.rectTransform, pad, zoomTop - labelH, rowW, labelH);
             _zoomLabel.text = Words.Get("$ui_map_zoom");
             var minus = _rows.Find("ZoomMinus") as RectTransform;
             var plus = _rows.Find("ZoomPlus") as RectTransform;
             if (minus) Place(minus, pad, zoomTop, zoomH, zoomH);
             if (plus) Place(plus, w - pad - zoomH, zoomTop, zoomH, zoomH);
-            var trackH = ThemeTokens.GetFloat("size.map.zoom.track", 12f);
+            var trackH2 = ThemeTokens.GetFloat("size.map.zoom.track", 12f);
             var zr = (RectTransform)_zoom.transform;
-            Place(zr, pad + zoomH + 10f, zoomTop + (zoomH - trackH) * 0.5f, w - 2f * pad - 2f * zoomH - 20f, trackH);
+            Place(zr, pad + zoomH + 10f, zoomTop + (zoomH - trackH2) * 0.5f, w - 2f * pad - 2f * zoomH - 20f, trackH2);
             var hs = ThemeTokens.GetFloat("size.map.zoom.handle", 26f);
             var hr = _zoom.handleRect;
-            if (hr && Mathf.Abs(hr.sizeDelta.x - hs) > 0.1f) hr.sizeDelta = new Vector2(hs, hs - trackH);
+            if (hr && Mathf.Abs(hr.sizeDelta.x - hs) > 0.1f) hr.sizeDelta = new Vector2(hs, hs - trackH2);
             var v = MinimapMath.ZoomToSlider(_map.LargeZoom, _map.m_minZoom, _map.m_maxZoom);
             if (Mathf.Abs(_zoom.value - v) > 0.002f)
             {
@@ -444,6 +617,81 @@ namespace Morgott.UI.MapScreen
             }
 
             LayoutHints(inset);
+        }
+
+        private float Section(TMP_Text header, Image line, string token, float pad, float y, float w, float headerH, float divider)
+        {
+            Place(header.rectTransform, pad, y, w, headerH);
+            var text = Words.Get(token);
+            if (header.text != text) header.text = text;
+            Place(line.rectTransform, pad, y + headerH, w, divider);
+            return y + headerH + divider + 4f;
+        }
+
+        // Socket | name | checkbox; a vanilla icon button rides the socket (world placement: it stays in its own panel).
+        private void LayRow(PinRow r, float x, float y, float w, float rowH, float k)
+        {
+            Place(r.Root, x, y, w, rowH);
+            var cell = rowH - 4f;
+            Place(r.Socket.rectTransform, 0f, 2f, cell, cell);
+            var gi = ThemeTokens.GetFloat("size.map.legend.icon.inset", 8f) * 0.5f;
+            Place(r.Glyph.rectTransform, gi, gi, cell - 2f * gi, cell - 2f * gi);
+            var box = Mathf.Min(ThemeTokens.GetFloat("size.map.legend.check", 24f), rowH - 8f);
+            Place(r.Box.rectTransform, w - box, (rowH - box) * 0.5f, box, box);
+            Place(r.Name.rectTransform, cell + 10f, 0f, w - cell - 10f - box - 6f, rowH);
+            if (!r.Icon) return;
+            var icon = (RectTransform)r.Icon.transform;
+            icon.anchorMin = icon.anchorMax = icon.pivot = new Vector2(0.5f, 0.5f);
+            var parentK = icon.parent ? icon.parent.lossyScale.x : 1f;
+            var s = (cell - ThemeTokens.GetFloat("size.map.legend.icon.inset", 8f)) * (parentK > 0f ? k / parentK : 1f);
+            if (Mathf.Abs(icon.sizeDelta.x - s) > 0.1f || Mathf.Abs(icon.sizeDelta.y - s) > 0.1f) icon.sizeDelta = new Vector2(s, s);
+            var socket = r.Socket.rectTransform;
+            var world = socket.TransformPoint(socket.rect.center);
+            if ((icon.position - world).sqrMagnitude > 1e-4f) icon.position = world;
+        }
+
+        // A vanilla / mod icon button of a row scrolled out of the window: not drawn, not clickable (it stays active
+        // in its panel, mods find it there).
+        private static void ShowButton(Button b, bool visible)
+        {
+            if (!b) return;
+            var go = b.gameObject;
+            if (!go.TryGetComponent<CanvasGroup>(out var g))
+            {
+                if (visible) return;
+                g = go.AddComponent<CanvasGroup>();
+            }
+            var a = visible ? 1f : 0f;
+            if (g.alpha != a) g.alpha = a;
+            if (g.blocksRaycasts != visible) g.blocksRaycasts = visible;
+            Morgott.UI.Restyle.RenderGate.Set(go, "maplegend.scroll", !visible);
+        }
+
+        // ИГРОКИ checkboxes: a hidden player's marker (Minimap.m_playerPins, index-aligned with m_tempPlayerInfo by
+        // UpdatePlayerPins, Minimap.cs:1491-1530; the own marker m_largeMarker) is not drawn on the large map; its name
+        // label follows the marker (PinLabels.Hidden).
+        private void HidePlayers()
+        {
+            var infos = _map.m_tempPlayerInfo;
+            var pins = _map.m_playerPins;
+            for (var i = 0; i < pins.Count && i < infos.Count; i++)
+                if (pins[i].m_uiElement) Gate(pins[i].m_uiElement.gameObject, !_hiddenPlayers.Contains(infos[i].m_name));
+            var me = Game.instance && Game.instance.GetPlayerProfile() != null ? Game.instance.GetPlayerProfile().GetName() : null;
+            if (_map.m_largeMarker) Gate(_map.m_largeMarker.gameObject, me == null || !_hiddenPlayers.Contains(me));
+        }
+
+        private static void Gate(GameObject go, bool visible)
+        {
+            if (!go.TryGetComponent<CanvasGroup>(out var g))
+            {
+                if (visible) return;
+                g = go.AddComponent<CanvasGroup>();
+                g.interactable = false;
+            }
+            var a = visible ? 1f : 0f;
+            if (g.alpha != a) g.alpha = a;
+            if (g.blocksRaycasts != visible) g.blocksRaycasts = visible;
+            Morgott.UI.Restyle.RenderGate.Set(go, "map.players", !visible);
         }
 
         // Band under the map image that holds the key hint row (0 while the game's KeyHints setting is off: vanilla then
@@ -458,6 +706,48 @@ namespace Morgott.UI.MapScreen
             if ((rt.anchoredPosition - p).sqrMagnitude > 0.01f) rt.anchoredPosition = p;
             var s = new Vector2(w, h);
             if ((rt.sizeDelta - s).sqrMagnitude > 0.01f) rt.sizeDelta = s;
+        }
+    }
+
+    // [Map Filters] vs vanilla's own filter writes (Minimap.ToggleIconFilter :2626, saved pins loading in SetMapData :2158).
+    [HarmonyLib.HarmonyPatch]
+    public static class MapFilterInput
+    {
+        internal static bool LoadingPins;
+
+        private static bool Prepare() => Ownership.OwnershipRegistry.IsOwned(Ownership.OwnershipRegistry.Minimap);
+
+        [HarmonyLib.HarmonyPatch(typeof(Minimap), nameof(Minimap.SetMapData))]
+        [HarmonyLib.HarmonyPrefix]
+        private static void SetMapData_Prefix() => LoadingPins = true;
+
+        [HarmonyLib.HarmonyPatch(typeof(Minimap), nameof(Minimap.SetMapData))]
+        [HarmonyLib.HarmonyFinalizer]
+        private static void SetMapData_Finalizer()
+        {
+            LoadingPins = false;
+            MinimapSkin.Instance?.ApplyFilters();
+        }
+
+        [HarmonyLib.HarmonyPatch(typeof(Minimap), nameof(Minimap.ToggleIconFilter))]
+        [HarmonyLib.HarmonyPostfix]
+        private static void ToggleIconFilter_Postfix(Minimap.PinType type) => MinimapSkin.Instance?.OnVanillaToggle(type);
+    }
+
+    // Mouse wheel over the map's side column scrolls its pin rows, not the map zoom: Minimap.UpdateMap reads
+    // ZInput.GetMouseScrollWheel wherever the pointer is (Minimap.cs:941).
+    [HarmonyLib.HarmonyPatch]
+    public static class MapLegendInput
+    {
+        private static bool Prepare() => Ownership.OwnershipRegistry.IsOwned(Ownership.OwnershipRegistry.Minimap);
+
+        [HarmonyLib.HarmonyPatch(typeof(ZInput), nameof(ZInput.GetMouseScrollWheel))]
+        [HarmonyLib.HarmonyPrefix]
+        private static bool GetMouseScrollWheel_Prefix(ref float __result)
+        {
+            if (!MinimapSkin.LegendHover) return true;
+            __result = 0f;
+            return false;
         }
     }
 }

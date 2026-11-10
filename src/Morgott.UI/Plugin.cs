@@ -188,6 +188,7 @@ namespace Morgott.UI
                 new AcceptableValueRange<float>(1f, 1000f)));
             WorldHud.EnemyHudConfig.Bind(Config);
             PlayerHud.BarFxConfig.Bind(Config);
+            MapScreen.MapConfig.Bind(Config);
             GameScreens.RuneRevealConfig.Bind(Config);
             // [Diagnostics]: development switches, not looks (perf audit B4: were mixed into [Ownership]).
             _requireAssets = Config.Bind("Diagnostics", "RequireAssets", true, new ConfigDescription(

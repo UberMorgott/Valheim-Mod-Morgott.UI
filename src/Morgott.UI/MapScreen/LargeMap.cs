@@ -61,18 +61,15 @@ namespace Morgott.UI.MapScreen
             BuildLegendRows();
 
             // The map window's one header (RuneWindowHeader, user 2026-10-26): title = the cursor / player biome text
-            // (m_biomeNameLarge, rewritten by vanilla each frame, Minimap.cs:2646, mirrored); dragging it moves the whole
-            // window (MovableWindow on m_largeRoot: the side panel is part of the window, fixed in place), a double-click
-            // resets it; the maximize / restore button sits in its aux slot (MapWindowButton, LargeMap.Maximize).
-            MovableWindow.Ensure(_large, WindowMove.Map);
+            // (m_biomeNameLarge, rewritten by vanilla each frame, Minimap.cs:2646, mirrored). The window is always full
+            // screen and never moves (MapWindow.cs): no MovableWindow, header drag off, no maximize button.
             _header = RuneWindowHeader.Ensure(_large, WindowMove.Map, _large);
             if (_header)
             {
                 if (_map.m_biomeNameLarge) _header.Adopt(_map.m_biomeNameLarge, "$ui_win_map");
                 else _header.Fallback("$ui_win_map").Text("$ui_win_map");
-                _header.Stretch(MaxButtonShare);
+                _header.Stretch();
             }
-            BuildMaxButton();
             // Above the gameplay HUD (hotbar / resource cluster drew over the map frame, Codex r1): own sorting.
             var canvas = _large.gameObject.AddComponent<Canvas>();
             canvas.overrideSorting = true;
@@ -115,7 +112,7 @@ namespace Morgott.UI.MapScreen
                 ScreenRegistry.Restyle(_large);
                 _inset = -1f;
             }
-            Maximize();
+            FitSafeArea();
             var inset = _decor ? _decor.ContentInset() : 0f;
             var legendW = ThemeTokens.GetFloat("size.map.legend", 300f);
             var gap = ThemeTokens.GetFloat("size.map.gap", 12f);
@@ -144,8 +141,9 @@ namespace Morgott.UI.MapScreen
                 _legend.offsetMax = new Vector2(-inset, -top);
             }
             RefitMapView();
-            PlaceMaxButton();
+            BiomeOverlay.Instance?.LateUpdate();
             LegendRows(inset);
+            HidePlayers();
             // Every frame while open: a label vanilla activates late (DelayActivation 1 s, Minimap.cs:883-890) or a zoom /
             // pan re-place (UpdatePins) is hung under its pin and decluttered before the canvas draws (PinLabels.cs).
             PlaceLabels();
@@ -199,7 +197,6 @@ namespace Morgott.UI.MapScreen
             if (_rows) ctx.Exclude(_rows, "RuneSkin legend rows (own sockets, names, checkboxes, players, zoom)");
             if (_footer) ctx.Exclude(_footer, "RuneSkin map key hint line");
             if (_legendImage) ctx.Role(_legendImage, "craft.well", "map legend column");
-            if (_maxButton) ctx.Exclude(_maxButton.transform, "RuneSkin map window maximize / restore button (own art)");
             var mapImage = _map.m_mapImageLarge ? _map.m_mapImageLarge.transform : null;
             foreach (var g in root.GetComponentsInChildren<Graphic>(true))
             {

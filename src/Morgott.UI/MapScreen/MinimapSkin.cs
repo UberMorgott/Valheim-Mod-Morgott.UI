@@ -56,6 +56,12 @@ namespace Morgott.UI.MapScreen
             catch (Exception e) { Plugin.Log.LogError($"[Morgott.UI] minimap ring build failed (vanilla small map stays): {e}"); }
             try { BuildLarge(); }
             catch (Exception e) { Plugin.Log.LogError($"[Morgott.UI] large map restyle failed (vanilla large map stays): {e}"); }
+            try
+            {
+                BiomeOverlay.Attach(map);
+                ApplyFilters();
+            }
+            catch (Exception e) { Plugin.Log.LogError($"[Morgott.UI] map filters / biome overlay failed (vanilla filters stay): {e}"); }
             Plugin.Log.LogInfo("[Morgott.UI] minimap attached");
         }
 
@@ -152,6 +158,7 @@ namespace Morgott.UI.MapScreen
         private void LateUpdate()
         {
             if (!_map) return;
+            BiomeOverlay.Instance?.EnsureGrid();
             if (_small && _small.gameObject.activeInHierarchy)
             {
                 if (!_maskChecked) CheckMask();
