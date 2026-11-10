@@ -20,7 +20,7 @@ namespace Morgott.UI.Tests
         {
             "_Mode", "_MainTex", "_Color", "_Opacity", "_DewColor", "_DewDensity", "_DewSparkle", "_Rime", "_Glow", "_WindAmp",
             "_WindFreq", "_FadeNear", "_FadeFar", "_Tear", "_TriScale", "_BurnStart", "_Clock", "_SweepSpeed", "_BurnEdge",
-            "_BurnColor", "_CharColor", "_BurnOrigin",
+            "_BurnColor", "_CharColor", "_BurnOrigin", "_WebTex", "_WrapTex", "_WebGain",
         };
 
         [Fact]
@@ -28,6 +28,15 @@ namespace Morgott.UI.Tests
         {
             var s = Shader();
             foreach (var name in Props) Assert.Contains($"        {name} (\"", s);
+        }
+
+        // Creatures meshes: UV0 = (u, v, tile, card edge); tile 4 = direct UVs into the vanilla web atlas (VfxProvider binds _WebTex).
+        [Fact]
+        public void VanillaTileAndCardEdge()
+        {
+            var s = Shader();
+            Assert.Contains("float4 uv : TEXCOORD0;", s);
+            Assert.Contains("i.uv.z > 3.5 ? saturate(tex2D(_WebTex, saturate(i.uv.xy)).a * _WebGain)", s);
         }
 
         [Fact]

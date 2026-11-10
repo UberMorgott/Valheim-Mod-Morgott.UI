@@ -2,7 +2,11 @@
 // WebBurn). Template material "Web" = this shader + the strand atlas (2 x 2 Codex tiles, R = strand coverage).
 //   _Mode 0 strands: cards between anchors. UV0 = (tile-local u (repeats), v 0..1, tile id), UV1 = (sheet index into
 //           _SheetState, sheet-local x, y m), COLOR.rgb tint, COLOR.a wind sway weight.
-//   _Mode 1 cocoon: object-space triplanar wraps of the band tile, no UVs / sway; burns from world _BurnOrigin.
+//           UV0.w (optional, missing = 1) = card-edge distance 0 rim .. 1 inside: ragged noisy taper toward 0.
+//           Tile 4 (TileVanilla) = vanilla Mistlands web art: UV0.xy are direct UVs into _WebTex (the game's
+//           fi_village_webs, A = coverage; vertical_web / horizontal_web), bound at runtime by Morgott.UI VfxProvider.
+//   _Mode 1 cocoon: helical wraps of the vanilla tunnel web (_WrapTex = tunnelweb_d, A) around object Y, cylindrical
+//           coords, no UVs / sway; burns from world _BurnOrigin.
 // Burn: one ignition per patch, set once. A fragment ignites at _BurnStart + delay + dist / _SweepSpeed and is gone
 // _BurnEdge seconds later (Core WebBurn.GoneAt), clipped at a per-fragment noise threshold < 1 (ragged ember front).
 // Premultiplied alpha, double-sided, no depth write, no shadow caster. Everything animated runs on the shader clock.
@@ -12,6 +16,9 @@ Shader "Morgott/Web"
     {
         _Mode ("Mode (0 strands, 1 cocoon)", Float) = 0
         _MainTex ("Strand atlas (R)", 2D) = "black" {}
+        _WebTex ("Vanilla web atlas (A), runtime", 2D) = "black" {}
+        _WrapTex ("Vanilla tunnel web (A), runtime", 2D) = "black" {}
+        _WebGain ("Vanilla coverage gain", Float) = 2.3
         _Color ("Silk colour", Color) = (0.82, 0.84, 0.86, 1)
         _Opacity ("Opacity", Range(0, 1)) = 0.9
         _DewColor ("Dew colour", Color) = (1, 1, 1, 1)
@@ -54,8 +61,10 @@ Shader "Morgott/Web"
             #include "Lighting.cginc"
 
             sampler2D _MainTex;
+            sampler2D _WebTex;
+            sampler2D _WrapTex;
             float4 _Color, _DewColor, _BurnColor, _CharColor, _BurnOrigin;
-            float _Mode, _Opacity, _DewDensity, _DewSparkle, _Rime, _Glow, _WindAmp, _WindFreq, _FadeNear, _FadeFar, _Tear,
+            float _WebGain, _Mode, _Opacity, _DewDensity, _DewSparkle, _Rime, _Glow, _WindAmp, _WindFreq, _FadeNear, _FadeFar, _Tear,
                 _TriScale, _BurnStart, _Clock, _SweepSpeed, _BurnEdge;
             float4 _SheetState[32]; // x cut (1 = hidden), y graph delay s, zw burn entry point (sheet-local m)
 
@@ -64,7 +73,7 @@ Shader "Morgott/Web"
                 float4 vertex : POSITION;
                 float3 normal : NORMAL;
                 float4 color : COLOR;
-                float3 uv : TEXCOORD0;
+                float4 uv : TEXCOORD0;
                 float3 sheet : TEXCOORD1;
                 UNITY_VERTEX_INPUT_INSTANCE_ID
             };
@@ -72,14 +81,13 @@ Shader "Morgott/Web"
             struct v2f
             {
                 float4 pos : SV_POSITION;
-                float3 uv : TEXCOORD0;
+                float4 uv : TEXCOORD0;
                 float3 sheet : TEXCOORD1;
                 float3 wp : TEXCOORD2;
                 float3 wn : TEXCOORD3;
-                float3 op : TEXCOORD4;   // object position in metres (cocoon triplanar)
-                float3 on : TEXCOORD5;   // object normal
-                float4 color : TEXCOORD6; // rgb tint, a distance fade
-                UNITY_FOG_COORDS(7)
+                float3 op : TEXCOORD4;   // object position in metres (cocoon wraps)
+                float4 color : TEXCOORD5; // rgb tint, a distance fade
+                UNITY_FOG_COORDS(6)
             };
 
             float Hash(float3 p)
@@ -115,7 +123,6 @@ Shader "Morgott/Web"
                 o.wp = wp;
                 o.wn = UnityObjectToWorldNormal(v.normal);
                 o.op = v.vertex.xyz * length(unity_ObjectToWorld._m00_m10_m20);
-                o.on = v.normal;
                 float dist = distance(_WorldSpaceCameraPos, wp);
                 float fade = (1.0 - smoothstep(_FadeNear, _FadeFar, dist)) * smoothstep(0.25, 0.9, dist);
                 o.color = float4(_Mode < 0.5 ? v.color.rgb : float3(1, 1, 1), fade);
@@ -141,20 +148,47 @@ Shader "Morgott/Web"
                 return tex2Dgrad(_MainTex, origin + 0.0005 + f * 0.499, dx * 0.499, dy * 0.499).r;
             }
 
-            // Cocoon: two crossing tilted strand layers under broad ribbons with ragged, fibrous edges (bandage wraps).
-            float Wraps(float2 p)
+            // Cocoon wrap layer: the vanilla tunnel web (strands run along its u, the dense band is v 0.28..0.70, the
+            // range the game's tunnel_web mesh uses) wound k times around object Y; v mirrors so bands stack up the body,
+            // a sine tilt makes them cross. a / aB = turns with the seam on opposite sides: equal values, the smaller
+            // gradient wins (no mip seam at the atan2 wrap).
+            float WrapLayer(float a, float aB, float y, float k, float amp, float ph, float off)
             {
-                float2 a = float2(p.x, p.y + 0.35 * p.x + 0.06 * sin(p.x * 5.1));
-                float2 b = float2(p.x + 0.37, p.y - 0.55 * p.x + 0.29);
-                float2 c = float2(p.x * 3.0 + 0.11, p.y * 3.0 + 0.9 * p.x);
-                float l1 = Tile(float2(a.x, frac(a.y)), 3.0, ddx(a), ddy(a));
-                float l2 = Tile(float2(b.x, frac(b.y)), 3.0, ddx(b), ddy(b));
-                float fibre = Tile(float2(c.x, frac(c.y)), 3.0, ddx(c), ddy(c));
-                float wave = sin((p.y + 0.3 * p.x) * 24.0 + 2.5 * sin(p.x * 3.1 + p.y * 1.7));
-                float ribbon = smoothstep(0.45, 0.8, 0.5 + 0.5 * wave + 0.35 * (Noise(float3(p * 7.0, 0.0)) - 0.5) + 0.15 * (fibre - 0.3));
-                return saturate(max(l1, l2 * 0.8) * lerp(0.35, 3.0, ribbon) + ribbon * (0.45 + 0.5 * fibre));
+                float2 uA = float2(a * k + off, y + amp * sin(6.2831853 * a + ph));
+                float2 uB = float2(aB * k + off, y + amp * sin(6.2831853 * aB + ph));
+                float2 dx = ddx(uA), dy = ddy(uA), dxB = ddx(uB), dyB = ddy(uB);
+                if (abs(dxB.x) + abs(dyB.x) < abs(dx.x) + abs(dy.x)) { dx = dxB; dy = dyB; }
+                float m = abs(frac(uA.y * 0.5) * 2.0 - 1.0);
+                return tex2Dgrad(_WrapTex, float2(frac(uA.x), 0.28 + 0.42 * m), dx * float2(1.0, 0.42), dy * float2(1.0, 0.42)).a;
             }
 
+            // Helical ribbon mask: s rises with height and integer steps per turn (seamless), ragged far edge, bundled.
+            float Ribbon(float s, float n, float m)
+            {
+                float b = frac(s);
+                float f = 0.12 * (m - 0.5); // fibrous, wandering rims
+                float edge = smoothstep(0.0 + f, 0.1 + f, b) * (1.0 - smoothstep(0.4 + 0.14 * n - f, 0.54 + 0.14 * n - f, b));
+                return edge * (0.55 + 0.45 * smoothstep(-0.6 + 0.5 * m, 0.7 - 0.3 * m, sin(b * (40.0 + 25.0 * n) + 4.0 * n + 5.0 * m))); // bundles: wavy, uneven thickness
+            }
+
+            // Cocoon (user ref cocoon-ref.webp): many tangled, overlapping strands - four vanilla tunnel-web layers at different
+            // pitches / wobbles - over a faint silk veil, gathered in places into irregular helical bundles (uneven pitch).
+            float Wraps(float3 p)
+            {
+                float a = atan2(p.z, p.x) / 6.2831853, aB = frac(a + 1.0);
+                float n1 = Noise(p * 1.7), n2 = Noise(p * 1.7 + 7.3), m = Noise(p * 6.0);
+                float warp = 1.4 * Noise(p * float3(0.9, 0.6, 0.9));
+                float r1 = Ribbon(p.y * 3.2 + warp + 3.0 * a + 0.22 * sin(12.566371 * a + 2.0 * n2), n1 * 2.2 - 0.7, m);
+                float r2 = Ribbon(p.y * 2.6 - 0.8 * warp - 3.0 * a + 0.37 + 0.18 * sin(18.849556 * a + 1.1), n2 * 2.2 - 0.8, 1.0 - m);
+                float l1 = WrapLayer(a, aB, p.y * 1.6 + 0.8 * a, 1.0, 0.25, 0.0, 0.0);
+                float l2 = WrapLayer(a, aB, p.y * 1.3 - 0.5 * a + 0.5, 1.0, -0.35, 1.3, 0.37);
+                float l3 = WrapLayer(a, aB, p.y * 2.2 + 0.2, 2.0, 0.45, 2.4, 0.71);
+                float l4 = WrapLayer(a, aB, p.y * 0.9 - 0.3, 1.0, -0.6, 4.1, 0.13);
+                float tangle = (max(l1, l2) + 0.6 * max(l3, l4)) * _WebGain * 1.3;
+                float r3 = Ribbon(p.y * 2.1 + 1.6 * warp + 0.3 * sin(6.2831853 * a + 3.0 * n1) + 0.61, n1 * 2.0 - 1.0, m); // near-horizontal wraps break the diamond repeat
+                float bundles = max(max(r1, r2 * 0.9), r3 * 0.85);
+                return saturate(bundles * (0.6 + 0.6 * saturate(tangle)) + (1.0 - bundles) * 0.14 * tangle); // thick crossing bundles, dark gaps with loose strands
+            }
             float4 frag(v2f i, float face : VFACE) : SV_Target
             {
                 float3 V = normalize(_WorldSpaceCameraPos - i.wp);
@@ -166,21 +200,20 @@ Shader "Morgott/Web"
                 float dist, delay = 0.0;
                 if (cocoon)
                 {
-                    float3 p = i.op * _TriScale;
-                    float3 w = pow(abs(normalize(i.on)), 4.0);
-                    w /= w.x + w.y + w.z;
-                    strand = Wraps(p.zy) * w.x + Wraps(p.xz) * w.y + Wraps(p.xy) * w.z;
+                    strand = Wraps(i.op * _TriScale) * lerp(0.35, 1.0, saturate(abs(dot(N, V)) * 2.5)); // no glassy rim at grazing angles
                     dist = distance(i.wp, _BurnOrigin.xyz);
                 }
                 else
                 {
-                    strand = Tile(i.uv.xy, round(i.uv.z), ddx(i.uv.xy), ddy(i.uv.xy));
-                    strand = saturate(pow(strand, 0.8) * lerp(0.65, 1.35, Noise(i.wp * 0.4))); // uneven density across a patch
+                    strand = i.uv.z > 3.5 ? saturate(tex2D(_WebTex, saturate(i.uv.xy)).a * _WebGain) // tile 4: vanilla art
+                        : Tile(i.uv.xy, round(i.uv.z), ddx(i.uv.xy), ddy(i.uv.xy));
+                    strand = saturate(pow(strand, 0.8) * lerp(0.45, 1.35, Noise(i.wp * 0.4)) * smoothstep(0.04, 0.3, Noise(i.wp * 0.7 + 3.1))); // uneven density + large irregular gaps
                     float4 s = _SheetState[(int)clamp(round(i.sheet.x), 0.0, 31.0)];
                     clip(0.5 - s.x);
                     delay = s.y;
                     dist = distance(i.sheet.yz, s.zw);
                 }
+                strand *= saturate((i.uv.w * 1.7 - 0.7 * Noise(i.wp * 2.3)) * 3.0); // UV0.w card edge (0 rim .. 1, default 1): ragged taper
                 clip(strand - 0.003); // empty atlas texels: no lighting / blending work
                 bool burning = _BurnStart > -500000.0;
                 float n = burning || _Tear > 0.0 ? Noise(i.wp * 3.1) : 0.5;

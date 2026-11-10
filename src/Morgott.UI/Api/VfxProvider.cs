@@ -25,7 +25,30 @@ namespace Morgott.UI.Api
         public Shader UiBossFx() => Load()._bossFx;
         public Shader UiBar() => Load()._bar;
         public Material AdditiveParticle() => Load()._particle;
-        public Material Web() => Load()._web;
+        public Material Web() => BindVanillaWeb(Load()._web);
+
+        private static readonly int WebTexId = Shader.PropertyToID("_WebTex"), WrapTexId = Shader.PropertyToID("_WrapTex");
+        private bool _vanillaBound;
+
+        // Morgott/Web tile 4 and the cocoon draw the game's own Mistlands web art: the textures of the vanilla prefabs
+        // vertical_web (fi_village_webs) and tunnel_web (tunnelweb_d), set on the template before consumers copy it.
+        // Needs ZNetScene (webs are built in a world); before that the template is returned unbound and the bind retried.
+        private Material BindVanillaWeb(Material web)
+        {
+            if (!web || _vanillaBound || !ZNetScene.instance) return web;
+            _vanillaBound = true;
+            web.SetTexture(WebTexId, VanillaTexture("vertical_web"));
+            web.SetTexture(WrapTexId, VanillaTexture("tunnel_web"));
+            return web;
+        }
+
+        private static Texture VanillaTexture(string prefab)
+        {
+            var tex = ZNetScene.instance.GetPrefab(prefab)?.GetComponentInChildren<MeshRenderer>(true)?.sharedMaterial?.mainTexture;
+            if (tex) return tex;
+            Plugin.Log.LogError($"[Morgott.UI] vanilla web texture of {prefab} not found: webs drawn as solid veils");
+            return Texture2D.whiteTexture; // webs are gameplay-critical: visible beats invisible
+        }
 
         private VfxProvider Load()
         {
