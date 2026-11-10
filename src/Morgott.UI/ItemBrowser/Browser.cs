@@ -30,7 +30,7 @@ namespace Morgott.UI.ItemBrowser
             Cheat = cfg.Bind("ItemBrowser", "EnableCheating", true, "Right-click take in the ITEMS tab (only for admins, devcommands or worlds with no build / craft cost).");
             CheatCreatures = cfg.Bind("ItemBrowser", "CheatCreatures", true, "Take on a creature spawns it in front of you (same gate as EnableCheating).");
             ShowUnknown = cfg.Bind("ItemBrowser", "ShowUnknown", true, "ITEMS tab also lists what your character has not discovered yet (checkbox in the ITEMS header; devcommands always lists everything).");
-            TameableBadge = cfg.Bind("ItemBrowser", "TameableBadge", true, "Gold paw on tameable creatures in the ITEMS tab grid.");
+            TameableBadge = cfg.Bind("ItemBrowser", "TameableBadge", true, "Paw on creatures in the ITEMS tab grid: gold = tameable, blue = summon.");
             Hotkey = cfg.Bind("ItemBrowser", "Hotkey", new KeyboardShortcut(KeyCode.H, KeyCode.LeftAlt), "Opens the inventory on the ITEMS tab.");
             // R / U as VNEI; free in the inventory: vanilla Hide (R) and Morgott.Power TopUpKey (U) only read while
             // Player.TakeInput holds, which an open inventory blocks.
@@ -117,26 +117,47 @@ namespace Morgott.UI.ItemBrowser
             return go ? go : ObjectDB.instance ? ObjectDB.instance.GetItemPrefab(id) : null;
         }
 
-        // Read live from the prefab, so components other mods add at OnPrefabsRegistered (Morgott.Summons tame wiring) count.
-        // Procreation needs Tameable (Procreation.Awake reads it), so breeding only counts on a tameable creature.
-        public static bool Tameable(string id, out bool breed)
+        // Read live from the prefab, so components other mods add at OnPrefabsRegistered (Morgott.Summons pet wiring adds
+        // Tameable + consume items) count. Procreation needs Tameable (Procreation.Awake reads it); breeding only on Tame.
+        public static TameKind Tameable(string id, out bool breed)
         {
             var go = Prefab(id);
-            var tame = go && go.GetComponent<Tameable>();
-            breed = tame && go.GetComponent<Procreation>();
-            return tame;
+            var t = go ? go.GetComponent<Tameable>() : null;
+            var ai = go ? go.GetComponent<MonsterAI>() : null;
+            var kind = PageModel.Kind(t, t && t.m_startsTamed, ai && ai.m_consumeItems != null && ai.m_consumeItems.Exists(i => i),
+                t && (t.m_unsummonDistance > 0f || t.m_unsummonOnOwnerLogoutSeconds > 0f || Summoned().Contains(go)));
+            breed = kind == TameKind.Tame && go.GetComponent<Procreation>();
+            return kind;
         }
 
-        private static Sprite _tameBadge;
-        private static bool _tameBadgeTried;
+        private static ObjectDB _summonedDb;
+        private static readonly HashSet<GameObject> _summoned = new HashSet<GameObject>();
 
-        public static Sprite TameBadge()
+        // Creature prefabs some item's attack spawns (staffs, mod summon weapons; SummonFrames.Summoned), once per ObjectDB.
+        private static HashSet<GameObject> Summoned()
         {
-            if (_tameBadgeTried) return _tameBadge;
-            _tameBadgeTried = true;
-            var tex = Morgott.UI.Icons.ModStatusIcons.LoadEmbedded("Morgott.UI.TameBadge.png", "UI_TameBadge");
-            if (tex) _tameBadge = Sprite.Create(tex, new Rect(0f, 0f, tex.width, tex.height), new Vector2(0.5f, 0.5f), 100f);
-            return _tameBadge;
+            var db = ObjectDB.instance;
+            if (!db || db == _summonedDb) return _summoned;
+            _summonedDb = db;
+            _summoned.Clear();
+            foreach (var item in db.m_items)
+                if (item && item.TryGetComponent<ItemDrop>(out var drop)) Morgott.UI.PlayerHud.SummonFrames.Summoned(drop.m_itemData.m_shared, _summoned);
+            return _summoned;
+        }
+
+        private static readonly Sprite[] _badges = new Sprite[3];
+        private static readonly bool[] _badgeTried = new bool[3];
+
+        // Gold paw (art v1) for Tame; its hue-rotated copy SummonBadge.png (+170 deg, same pixels otherwise) for Summon.
+        public static Sprite TameBadge(TameKind kind)
+        {
+            var k = (int)kind;
+            if (kind == TameKind.None || _badgeTried[k]) return _badges[k];
+            _badgeTried[k] = true;
+            var file = kind == TameKind.Tame ? "TameBadge" : "SummonBadge";
+            var tex = Morgott.UI.Icons.ModStatusIcons.LoadEmbedded($"Morgott.UI.{file}.png", "UI_" + file);
+            if (tex) _badges[k] = Sprite.Create(tex, new Rect(0f, 0f, tex.width, tex.height), new Vector2(0.5f, 0.5f), 100f);
+            return _badges[k];
         }
 
         // ---------------------------------------------------------------- known / favorites

@@ -714,8 +714,9 @@ namespace Morgott.UI.ItemBrowser
                 Put(c.D, cx + CellW - 22f, cy + 2f, 18f, 18f);
                 Text(c.D, "★", 16f);
                 c.D.enabled = fav.Contains(c.Id);
-                // Tame badge: bottom-left, 3 units in from the socket frame (approved mockup, art v1); cells are reused.
-                var paw = Browser.TameableBadge.Value && list[n].Type == EntryType.Creature && Browser.Tameable(c.Id, out _) ? Browser.TameBadge() : null;
+                // Tame badge: bottom-left, 3 units in from the socket frame (approved mockup, art v1); gold = tameable, blue =
+                // summon; cells are reused.
+                var paw = Browser.TameableBadge.Value && list[n].Type == EntryType.Creature ? Browser.TameBadge(Browser.Tameable(c.Id, out _)) : null;
                 if (paw)
                 {
                     Put(c.Badge, cx + 3f, cy + CellH - 25f, 22f, 22f);

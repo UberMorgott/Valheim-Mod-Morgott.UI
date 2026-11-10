@@ -159,38 +159,46 @@ namespace Morgott.UI.PlayerHud
             var s = item?.m_shared;
             if (s == null) return false;
             if (SummonerCache.TryGetValue(s, out var known)) return known;
-            var result = SummonsCreature(s.m_spawnOnHit) || AttackSummons(s.m_attack) || AttackSummons(s.m_secondaryAttack);
+            var result = Summoned(s, null);
             SummonerCache[s] = result;
             return result;
         }
+
+        // Adds to `into` (when given) every tameable Character prefab this item's attacks spawn; true when there is one.
+        // The item browser's blue summon paw reads it over every ObjectDB item.
+        public static bool Summoned(ItemDrop.ItemData.SharedData s, HashSet<GameObject> into) =>
+            SummonsCreature(s.m_spawnOnHit, into) | AttackSummons(s.m_attack, into) | AttackSummons(s.m_secondaryAttack, into);
 
         // Every object an attack instantiates and sets up as an IProjectile: the attack projectile (Attack.cs:887,
         // FireProjectileBurst), its Projectile.m_spawnOnHit (Projectile.cs:109 / 804-808), the spawn-on-trigger
         // (Attack.cs:135, instantiated :1091-1093 / :1502-1504) and the chance spawn-on-hit (Attack.cs:999-1001 /
         // :1581-1583). Same test as MorgottTweaks EpicLootItemRequirements.AttackSummons (summon affix gating).
-        private static bool AttackSummons(Attack a)
+        private static bool AttackSummons(Attack a, HashSet<GameObject> into)
         {
             if (a == null) return false;
             var p = a.m_attackProjectile;
-            if (SummonsCreature(p)) return true;
             var proj = p ? p.GetComponent<Projectile>() : null;
-            if (proj && SummonsCreature(proj.m_spawnOnHit)) return true;
-            if (SummonsCreature(a.m_spawnOnTrigger)) return true;
-            return a.m_spawnOnHitChance > 0f && SummonsCreature(a.m_spawnOnHit);
+            return SummonsCreature(p, into) | (proj && SummonsCreature(proj.m_spawnOnHit, into)) | SummonsCreature(a.m_spawnOnTrigger, into)
+                | (a.m_spawnOnHitChance > 0f && SummonsCreature(a.m_spawnOnHit, into));
         }
 
         // A SpawnAbility (on the object or a child, Attack.cs:1583 GetComponentInChildren; SpawnAbility.cs:30
         // m_spawnPrefab) spawning a tameable Character (Dead Raiser, Troll staff, mod summon staffs). A ward (Staff of
         // Protection) spawns no Character.
-        private static bool SummonsCreature(GameObject go)
+        private static bool SummonsCreature(GameObject go, HashSet<GameObject> into)
         {
             if (!go) return false;
             var ability = go.GetComponentInChildren<SpawnAbility>(true);
             if (!ability || ability.m_spawnPrefab == null) return false;
+            var any = false;
             foreach (var prefab in ability.m_spawnPrefab)
                 if (prefab && prefab.GetComponent<Character>() && prefab.GetComponent<Tameable>())
-                    return true;
-            return false;
+                {
+                    if (into == null) return true;
+                    into.Add(prefab);
+                    any = true;
+                }
+            return any;
         }
 
         // Bottom edge of the shown grid in screen px (bottom-left origin) for MessageSkin; false when nothing is shown.

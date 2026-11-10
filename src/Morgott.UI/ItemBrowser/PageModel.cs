@@ -10,6 +10,9 @@ namespace Morgott.UI.ItemBrowser
     // Item page section a hover key opens (ItemBrowser.RecipeKey / UsedInKey).
     public enum PageSection { None, Recipe, UsedIn }
 
+    // Creature cell badge: gold paw (tameable), blue paw (summon), none.
+    public enum TameKind { None, Tame, Summon }
+
     /// <summary>One row of the item page: an "Obtained from" or "Used in" relation as the page draws it.</summary>
     public sealed class PageRow
     {
@@ -96,11 +99,21 @@ namespace Morgott.UI.ItemBrowser
         /// <summary>Pages whose second section is loot ("Loot", not "Used in"): creatures and Epic Loot tables / sets.</summary>
         public static bool LootPage(EntryType type, string id) => type == EntryType.Creature || SourceNames.EpicLootPseudo(id);
 
-        /// <summary>Creature tooltip text: its description, then "$ib_tameable" and "$ib_breedable" lines (tokens; UITooltip localizes).</summary>
-        public static string CreatureTip(string desc, bool tame, bool breed)
+        /// <summary>Badge kind of a creature prefab. Tame = vanilla's taming path can run: taming time only counts down
+        /// while fed (Tameable.TamingUpdate, Tameable.cs:409 !IsHungry), feeding = Tameable.OnConsumedItem fired by
+        /// MonsterAI.UpdateConsumeItem, which needs m_consumeItems (MonsterAI.cs:642); m_startsTamed prefabs are tame from
+        /// Awake. Summon = another Tameable with a summon mark: starts tamed, vanilla's summon fields m_unsummonDistance /
+        /// m_unsummonOnOwnerLogoutSeconds (Tameable.cs:30-32), or spawned by an item attack's SpawnAbility (Dead Raiser,
+        /// mod staffs). A Tameable with neither path gets no badge (Codex review: no false blue).</summary>
+        public static TameKind Kind(bool tameable, bool startsTamed, bool feeds, bool summonMark) =>
+            !tameable ? TameKind.None : !startsTamed && feeds ? TameKind.Tame : startsTamed || summonMark ? TameKind.Summon : TameKind.None;
+
+        /// <summary>Creature tooltip text: its description, then "$ib_tameable" (+ "$ib_breedable") or "$ib_summonable"
+        /// (tokens; UITooltip localizes). Breeding only shows on a tameable creature.</summary>
+        public static string CreatureTip(string desc, TameKind kind, bool breed)
         {
-            if (!tame) return desc;
-            var lines = breed ? "$ib_tameable\n$ib_breedable" : "$ib_tameable";
+            if (kind == TameKind.None) return desc;
+            var lines = kind == TameKind.Summon ? "$ib_summonable" : breed ? "$ib_tameable\n$ib_breedable" : "$ib_tameable";
             return string.IsNullOrEmpty(desc) ? lines : desc + "\n\n" + lines;
         }
 

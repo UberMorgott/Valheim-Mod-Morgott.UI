@@ -295,6 +295,7 @@
   "ib_show_unknown": "Show undiscovered",
   "ib_tameable": "Tameable",
   "ib_breedable": "Can be bred",
+  "ib_summonable": "Summonable",
   "ib_empty_known": "Undiscovered entries are hidden: tick \"Show undiscovered\".",
   "ui_cp_coin_drop": "Coin Drop",
   "ui_cp_coin_drop_desc": "Click here to store coins in your pocket.",

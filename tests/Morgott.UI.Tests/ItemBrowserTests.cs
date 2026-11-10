@@ -460,14 +460,30 @@ namespace Morgott.UI.Tests
             Assert.False(PageModel.LootPage(EntryType.Item, "Tin"));
         }
 
-        // Tame badge spec: tame line only on tameable creatures, breed line under it, blank line after a description.
+        // Tame badge spec: tame line only on tameable creatures, breed line under it, summon line alone (no breed), blank
+        // line after a description.
         [Theory]
-        [InlineData("$enemy_boar_desc", true, true, "$enemy_boar_desc\n\n$ib_tameable\n$ib_breedable")]
-        [InlineData("$enemy_wolf_desc", true, false, "$enemy_wolf_desc\n\n$ib_tameable")]
-        [InlineData("", true, false, "$ib_tameable")]
-        [InlineData("$enemy_greydwarf_desc", false, false, "$enemy_greydwarf_desc")]
-        public void CreatureTipAddsTameLines(string desc, bool tame, bool breed, string want) =>
-            Assert.Equal(want, PageModel.CreatureTip(desc, tame, breed));
+        [InlineData("$enemy_boar_desc", TameKind.Tame, true, "$enemy_boar_desc\n\n$ib_tameable\n$ib_breedable")]
+        [InlineData("$enemy_wolf_desc", TameKind.Tame, false, "$enemy_wolf_desc\n\n$ib_tameable")]
+        [InlineData("", TameKind.Tame, false, "$ib_tameable")]
+        [InlineData("$enemy_greydwarf_desc", TameKind.None, false, "$enemy_greydwarf_desc")]
+        [InlineData("$enemy_skeleton_summoned", TameKind.Summon, true, "$enemy_skeleton_summoned\n\n$ib_summonable")]
+        public void CreatureTipAddsTameLines(string desc, TameKind kind, bool breed, string want) =>
+            Assert.Equal(want, PageModel.CreatureTip(desc, kind, breed));
+
+        // Eligibility (vanilla taming path, Tameable.cs:409 / MonsterAI.cs:642): Boar (feeds) = Tame; Tar golem /
+        // Skeleton_Friendly (Tameable, nothing to feed, summon mark) = Summon; startsTamed with consume items = Summon;
+        // Tameable with no feed and no summon mark = None; no Tameable = None.
+        [Theory]
+        [InlineData(true, false, true, false, TameKind.Tame)]
+        [InlineData(true, false, true, true, TameKind.Tame)]
+        [InlineData(true, false, false, true, TameKind.Summon)]
+        [InlineData(true, true, true, false, TameKind.Summon)]
+        [InlineData(true, true, false, false, TameKind.Summon)]
+        [InlineData(true, false, false, false, TameKind.None)]
+        [InlineData(false, false, true, true, TameKind.None)]
+        public void KindFollowsVanillaTamingPath(bool tameable, bool startsTamed, bool feeds, bool summonMark, TameKind want) =>
+            Assert.Equal(want, PageModel.Kind(tameable, startsTamed, feeds, summonMark));
 
         // Shipped Epic Loot sets (baseconfig loottables.json ItemSets + patch MT_BossGems): every name is tokens only, each in
         // both translation files (screenshot 2026-11-08: "Набор EpicLoot: Tier 1 mats").
