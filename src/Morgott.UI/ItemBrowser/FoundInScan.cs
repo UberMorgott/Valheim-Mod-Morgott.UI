@@ -50,6 +50,20 @@ namespace Morgott.UI.ItemBrowser
             host.StartCoroutine(Run(Browser.Index, generation));
         }
 
+        private static bool _unloadPending;
+
+        /// <summary>Panel tick: after a big fallback scan, one Resources.UnloadUnusedAssets (the game's own Game.cs:327 call)
+        /// while the browser is closed and no enemy is within 30 m (BaseAI.HaveEnemyInRange) - the hitch never lands in a fight.</summary>
+        public static void UnloadWhenSafe(bool browserOpen)
+        {
+            var p = Player.m_localPlayer;
+            if (!_unloadPending || browserOpen || !Done || !p || BaseAI.HaveEnemyInRange(p, p.transform.position, 30f)) return;
+            _unloadPending = false;
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            Resources.UnloadUnusedAssets();
+            Plugin.Log.LogInfo(FormattableString.Invariant($"[Morgott.UI] item browser found-in: Resources.UnloadUnusedAssets after the fallback scan ({sw.Elapsed.TotalMilliseconds:F0} ms to start)"));
+        }
+
         /// <summary>Autotest: the next <see cref="Ensure"/> scans again.</summary>
         public static void Rescan() => _gen = -1;
 
@@ -169,6 +183,7 @@ namespace Morgott.UI.ItemBrowser
             foreach (var e in ix.Entries.Values)
                 if (e.Type == EntryType.Creature && e.Hidden == null && !d.ByPrefab.ContainsKey(e.Id)) none.Add(e.Id);
             none.Sort(StringComparer.Ordinal);
+            if (loads > 50) _unloadPending = true; // a fallback scan (stale table): free the orphaned prefab objects once, at a safe moment
             for (var t0 = Time.realtimeSinceStartup; Time.realtimeSinceStartup - t0 < 2f;) yield return null; // async unloads settle
             StillLoaded = 0;
             foreach (var lr in _loadedRefs) if (lr.IsLoaded) StillLoaded++;

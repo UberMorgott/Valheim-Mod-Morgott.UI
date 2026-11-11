@@ -223,6 +223,7 @@ namespace Morgott.UI.ItemBrowser
                 return;
             }
             if (InventoryGui.IsVisible()) HoverKeys();
+            FoundInScan.UnloadWhenSafe(_up);
             if (!_up) return;
             if (!InventoryGui.IsVisible())
             {
