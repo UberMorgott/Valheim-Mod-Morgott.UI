@@ -231,13 +231,13 @@ Shader "Morgott/Web"
                 // ---- light -----------------------------------------------------------------------------------------
                 float3 L = normalize(_WorldSpaceLightPos0.xyz);
                 float3 amb = max(0.0, ShadeSH9(float4(N, 1.0))) + 0.04;
-                // Lit like the vanilla Mistlands webs (Particles/Standard Surface2: alpha blend, albedo _Color 0.75-1 x the art): diffuse
+                // Lit like the vanilla Mistlands webs (Particles/Standard Surface2: alpha blend, albedo _Color 0.75-1 x the grey art): diffuse
                 // albedo x (ambient + sun), two-sided for thin silk, no back-lit boost, no day emission (run 20261111-103356: the
                 // old back-scatter + base sun term read as an emissive glow at noon). Readability comes from coverage (alpha), not light.
                 float wrapL = abs(dot(N, L)); // thin silk: lit through from either side (vanilla cards are two-sided)
-                float3 silk = min(lerp(_Color.rgb, float3(0.86, 0.93, 1.0), _Rime * 0.7) * i.color.rgb, 0.75);
+                float3 silk = min(lerp(_Color.rgb, float3(0.86, 0.93, 1.0), _Rime * 0.7) * i.color.rgb, 0.6);
                 float night = saturate(1.0 - Luminance(_LightColor0.rgb));
-                float3 col = min(silk * (amb + _LightColor0.rgb * wrapL) + silk * _Glow * night, 0.85); // below the bloom threshold
+                float3 col = min(silk * (amb + _LightColor0.rgb * wrapL) + silk * _Glow * night, 0.75); // below the bloom threshold (run 20261111-120331: 0.85 still blew out dense crossings at noon)
 
                 // ---- dew: sparse jittered drops on the strands, view-dependent glint -----------------------------------
                 if (!cocoon && _DewSparkle > 0.0)
