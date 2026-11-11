@@ -37,7 +37,7 @@ namespace Morgott.UI.MapScreen
         public sealed class PortalHit : MonoBehaviour, IPointerClickHandler
         {
             public System.Action<PointerEventData> Click;
-            public void OnPointerClick(PointerEventData e) => Click?.Invoke(e);
+            public void OnPointerClick(PointerEventData eventData) => Click?.Invoke(eventData);
         }
 
         private sealed class PortalRowUi
@@ -316,8 +316,8 @@ namespace Morgott.UI.MapScreen
             var entry = ZDOMan.instance != null ? ZDOMan.instance.GetZDO(travel.Entry) : null;
             if (entry != null)
             {
-                var tag = entry.GetString(ZDOVars.s_tag);
-                here = new PortalInfo { Id = entry.m_uid, Name = Words.Get(string.IsNullOrEmpty(tag) ? "$piece_portal" : tag), Position = entry.GetPosition() };
+                var portalTag = entry.GetString(ZDOVars.s_tag);
+                here = new PortalInfo { Id = entry.m_uid, Name = Words.Get(string.IsNullOrEmpty(portalTag) ? "$piece_portal" : portalTag), Position = entry.GetPosition() };
             }
             _ppFav = PortalPickerMath.Build(shown, here, _ppSearch.text, _ppRows);
             _ppView.Clear();

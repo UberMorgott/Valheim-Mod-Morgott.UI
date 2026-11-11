@@ -31,7 +31,7 @@ namespace Morgott.UI.MapScreen
                 if (Matches(p.Name, query)) into.Add(new PortalRow { Portal = p, Distance = DistanceXZ(origin, p.Position) });
             into.Sort((a, b) => a.Portal.Favorite != b.Portal.Favorite ? (a.Portal.Favorite ? -1 : 1)
                 : a.Distance != b.Distance ? a.Distance.CompareTo(b.Distance)
-                : string.Compare(a.Portal.Name, b.Portal.Name, StringComparison.CurrentCultureIgnoreCase));
+                : string.Compare(a.Portal.Name, b.Portal.Name, StringComparison.OrdinalIgnoreCase));
             var favorites = 0;
             while (favorites < into.Count && into[favorites].Portal.Favorite) favorites++;
             if (here is PortalInfo h && Matches(h.Name, query)) into.Insert(favorites, new PortalRow { Portal = h, Here = true });

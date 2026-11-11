@@ -12,8 +12,8 @@
     <IsTestProject>true</IsTestProject>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <!-- The linked sources ship on net472, where ArgumentNullException.ThrowIfNull (CA1510) and span overloads of
-         uint.Parse (CA1846) do not exist; these net10-only suggestions cannot be applied to them. -->
-    <NoWarn>$(NoWarn);CA1510;CA1846</NoWarn>
+         uint.Parse (CA1846) and string.Contains(string, StringComparison) (CA2249) do not exist; these net10-only suggestions cannot be applied to them. -->
+    <NoWarn>$(NoWarn);CA1510;CA1846;CA2249</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
