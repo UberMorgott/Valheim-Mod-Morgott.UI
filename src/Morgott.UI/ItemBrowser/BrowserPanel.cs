@@ -71,7 +71,8 @@ namespace Morgott.UI.ItemBrowser
         private GameObject _pageView;
         private Button _back, _fav;
         private Image _backPlate, _pageSocket, _pageIcon, _favOn, _favOff;
-        private TMP_Text _crumb, _pageName, _pageType, _pageDesc, _pageMod, _qualLabel;
+        private TMP_Text _crumb, _pageName, _pageType, _pageDesc, _pageMod, _pageFound, _qualLabel;
+        private int _foundRev;
         private readonly List<Button> _quals = new List<Button>(), _variants = new List<Button>();
         private readonly Pool<Button> _rowQuals = new Pool<Button>(); // upgrade rows: resulting quality, click selects it
         private readonly List<int> _rowQualOf = new List<int>();
@@ -237,6 +238,8 @@ namespace Morgott.UI.ItemBrowser
             {
                 _nextCheck = Time.unscaledTime + 1f;
                 if (Browser.EnsureReady() != _resultsGen) _dirty = true;
+                FoundInScan.Ensure(this, Browser.Generation);
+                if (FoundInScan.Revision != _foundRev && _pageId != null) { _foundRev = FoundInScan.Revision; _dirty = true; }
             }
             if (!typing) Keys();
             Browser.RenderQueued();
@@ -425,6 +428,7 @@ namespace Morgott.UI.ItemBrowser
             _pageDesc = Txt(p, "Desc", "text.muted", TextAlignmentOptions.TopLeft, FontStyles.Italic);
             _pageDesc.textWrappingMode = TextWrappingModes.Normal;
             _pageMod = Txt(p, "Mod", "text.muted", TextAlignmentOptions.Left, FontStyles.Italic);
+            _pageFound = Txt(p, "FoundIn", "text.body", TextAlignmentOptions.Left);
             _qualLabel = Txt(p, "QualityLabel", "text.body", TextAlignmentOptions.Right);
             _fromHeader = Img(p, "FromHeader", "decor.plaque");
             _fromLabel = Txt(p, "FromLabel", "text.body", TextAlignmentOptions.Center, FontStyles.Bold);
@@ -624,6 +628,13 @@ namespace Morgott.UI.ItemBrowser
         }
 
         private static string L(string token) => Browser.Localize(token);
+
+        // Ocean has no legend colour: plain body text.
+        private static string BiomeWord(Heightmap.Biome b)
+        {
+            var name = L(Morgott.UI.MapScreen.MapFilterMath.NameKey(b));
+            return b == Heightmap.Biome.Ocean ? name : $"<color=#{ColorUtility.ToHtmlStringRGB(Morgott.UI.MapScreen.BiomeOverlay.BiomeColor(b))}>{name}</color>";
+        }
         private static string NameOf(string id) => Browser.Index != null && Browser.Index.Entries.TryGetValue(id, out var e) ? L(e.Name) : id;
         private static string CatName(ItemCategory c) => L("$ib_cat_" + CatKeys[(int)c]);
 
@@ -834,6 +845,15 @@ namespace Morgott.UI.ItemBrowser
             Text(_pageMod, $"{Browser.ModName(e.Mod)} · {e.Id}", 15f);
             _quality = Mathf.Clamp(_quality, 1, e.MaxQuality);
             var top = 152f;
+            // Creature: where it lives (biomes coloured like the map legend) and how it appears; unknown = no line.
+            var found = e.Type == EntryType.Creature ? FoundInScan.Line(e.Id, BiomeWord) : null;
+            if (found != null)
+            {
+                Put(_pageFound, 0f, 156f, UnitW, 24f);
+                Fit(_pageFound, L("$ib_found_in") + " " + found, 17f);
+                top = 184f;
+            }
+            else Off(_pageFound);
             if (e.MaxQuality > 1)
             {
                 Put(_qualLabel, 360f, 108f, 48f, 31f);

@@ -167,6 +167,9 @@ namespace Morgott.UI.ItemBrowser
                         if (gu.m_altGrownPrefabs != null)
                             foreach (var a in gu.m_altGrownPrefabs) if (a?.m_prefab) Add(RelationKind.Grow, id, null, new[] { new Stack(a.m_prefab.name, 1, 1, float.NaN) }, null, 0, 0);
                         break;
+                    case EggGrow eg when eg.m_grownPrefab: // a warm egg hatches (EggGrow.GrowUpdate)
+                        Add(RelationKind.Grow, id, null, new[] { new Stack(eg.m_grownPrefab.name) }, null, 0, 0);
+                        break;
                     case Plant pl:
                         Name(pl.m_name);
                         foreach (var g in pl.m_grownPrefabs) if (g) Add(RelationKind.Grow, id, null, new[] { new Stack(g.name) }, null, 0, 0);

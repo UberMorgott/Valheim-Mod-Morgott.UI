@@ -61,6 +61,11 @@
       <HintPath>$(ManagedDir)\assembly_utils.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <!-- Location / dungeon room prefabs are SoftReference<GameObject> (item browser "Found in" scan). -->
+    <Reference Include="SoftReferenceableAssets">
+      <HintPath>$(ManagedDir)\SoftReferenceableAssets.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
     <Reference Include="UnityEngine">
       <HintPath>$(ManagedDir)\UnityEngine.dll</HintPath>
       <Private>false</Private>

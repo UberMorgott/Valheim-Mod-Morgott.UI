@@ -134,7 +134,7 @@ namespace Morgott.UI.ItemBrowser
         private static readonly HashSet<GameObject> _summoned = new HashSet<GameObject>();
 
         // Creature prefabs some item's attack spawns (staffs, mod summon weapons; SummonFrames.Summoned), once per ObjectDB.
-        private static HashSet<GameObject> Summoned()
+        internal static HashSet<GameObject> Summoned()
         {
             var db = ObjectDB.instance;
             if (!db || db == _summonedDb) return _summoned;
