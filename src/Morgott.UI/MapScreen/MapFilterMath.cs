@@ -94,6 +94,10 @@ namespace Morgott.UI.MapScreen
             return (byte)(i < 0 ? 0 : i + 1);
         }
 
+        // Grid id of a map texel: underwater terrain (vanilla's map shows water there) is ocean whatever GetBiome says - its
+        // ocean test is a base-height contour, so shallow sea came back as meadows and drew fill + outline rings over water.
+        public static byte GridId(Heightmap.Biome biome, float height, float waterLevel) => height < waterLevel ? (byte)0 : Id(biome);
+
         // Theme token of a biome's overlay colour, its vanilla localisation key (EnvMan / MessageHud names).
         public static string ColorToken(Heightmap.Biome biome) => "color.map.biome." + biome.ToString().ToLowerInvariant();
         public static string NameKey(Heightmap.Biome biome) => "$biome_" + biome.ToString().ToLowerInvariant();
@@ -111,28 +115,94 @@ namespace Morgott.UI.MapScreen
 
         private static bool Lower(byte neighbour, byte id) => neighbour != id && (neighbour == 0 || neighbour < id);
 
-        // Overlay pixel: biome colour at the fill alpha (the outline alpha on a border), alpha 0 on explored ocean; a pixel
-        // nobody explored gets the fog tint instead (fog of war: unexplored borders never show; fog.a = 0 = no tint).
-        public static Color32 Pixel(byte[] ids, int size, int x, int y, bool explored, Color32[] palette, byte fill, byte outline, Color32 fog)
+        // Overlay pixel: biome colour at the fill alpha (the outline alpha on a border), alpha 0 on explored ocean, under
+        // the soft fog tint fogA (FogAlpha); a pixel nobody explored is the fog tint alone (fog of war: unexplored biomes
+        // and borders never show; fog.a = 0 = no tint).
+        public static Color32 Pixel(byte[] ids, int size, int x, int y, bool explored, byte fogA, Color32[] palette, byte fill, byte outline, Color32 fog)
         {
-            if (!explored) return fog;
+            var tint = new Color32(fog.r, fog.g, fog.b, fogA); // ocean / unexplored: fog colour kept for the bilinear edge
+            if (!explored) return tint;
             var id = ids[y * size + x];
-            if (id == 0 || id > palette.Length) return new Color32(fog.r, fog.g, fog.b, 0); // keeps the bilinear edge colour
+            if (id == 0 || id > palette.Length) return tint;
             var c = palette[id - 1];
             c.a = Border(ids, size, x, y) ? outline : fill;
-            return c;
+            return Over(tint, c);
         }
 
-        // Whole overlay from the vanilla explored bits (Minimap.m_explored / m_exploredOthers, index y * size + x).
-        public static void Compose(byte[] ids, int size, BitArray explored, BitArray others, Color32[] palette, byte fill, byte outline, Color32 fog, Color32[] into)
+        // Straight-alpha "a over b".
+        public static Color32 Over(Color32 a, Color32 b)
+        {
+            if (a.a == 0) return b;
+            if (a.a == 255 || b.a == 0) return a;
+            var under = b.a * (255 - a.a) / 255f;
+            var oa = a.a + under;
+            return new Color32((byte)Mathf.RoundToInt((a.r * a.a + b.r * under) / oa), (byte)Mathf.RoundToInt((a.g * a.a + b.g * under) / oa),
+                (byte)Mathf.RoundToInt((a.b * a.a + b.b * under) / oa), (byte)Mathf.RoundToInt(oa));
+        }
+
+        // Soft fog edge: the fog alpha of a texel = fog.a x the unexplored share of its 5x5 tent neighbourhood (weights
+        // 1-2-3-2-1 per axis, 81 in all; outside the grid counts as unexplored). Vanilla's _FogTex edge is soft in its
+        // shader; a binary per-texel tint drew 12 m stair steps once a texel spans several screen pixels.
+        private const int FogR = 2, RowSum = 9, FogSum = RowSum * RowSum;
+
+        private static int Tent(int d) => FogR + 1 - Math.Abs(d);
+
+        public static byte FogAlpha(BitArray explored, BitArray others, int size, int x, int y, byte a)
+        {
+            if (a == 0) return 0;
+            var s = 0;
+            for (var dy = -FogR; dy <= FogR; dy++)
+                for (var dx = -FogR; dx <= FogR; dx++)
+                {
+                    int px = x + dx, py = y + dy;
+                    if (px < 0 || py < 0 || px >= size || py >= size || !Seen(explored, others, py * size + px)) s += Tent(dx) * Tent(dy);
+                }
+            return (byte)((a * s + FogSum / 2) / FogSum);
+        }
+
+        // FogAlpha of every texel (separable, same integer result).
+        public static void FogAlphas(BitArray explored, BitArray others, int size, byte a, byte[] into)
+        {
+            if (a == 0) { Array.Clear(into, 0, size * size); return; }
+            var row = new int[size * size];
+            for (var y = 0; y < size; y++)
+                for (var x = 0; x < size; x++)
+                {
+                    var s = 0;
+                    for (var d = -FogR; d <= FogR; d++)
+                    {
+                        var px = x + d;
+                        if (px < 0 || px >= size || !Seen(explored, others, y * size + px)) s += Tent(d);
+                    }
+                    row[y * size + x] = s;
+                }
+            for (var y = 0; y < size; y++)
+                for (var x = 0; x < size; x++)
+                {
+                    var s = 0;
+                    for (var d = -FogR; d <= FogR; d++)
+                    {
+                        var py = y + d;
+                        s += Tent(d) * (py < 0 || py >= size ? RowSum : row[py * size + x]);
+                    }
+                    into[y * size + x] = (byte)((a * s + FogSum / 2) / FogSum);
+                }
+        }
+
+        // Whole overlay from the vanilla explored bits (Minimap.m_explored / m_exploredOthers, index y * size + x) and
+        // the FogAlphas of the same bits.
+        public static void Compose(byte[] ids, int size, BitArray explored, BitArray others, byte[] fogA, Color32[] palette, byte fill, byte outline, Color32 fog, Color32[] into)
         {
             for (var y = 0; y < size; y++)
                 for (var x = 0; x < size; x++)
                 {
                     var i = y * size + x;
-                    into[i] = Pixel(ids, size, x, y, explored[i] || others[i], palette, fill, outline, fog);
+                    into[i] = Pixel(ids, size, x, y, explored[i] || others[i], fogA[i], palette, fill, outline, fog);
                 }
         }
+
+        // Texels whose FogAlpha / Pixel change when texel (x, y) gets explored: its 5x5 neighbourhood.
+        public const int FogReach = FogR;
 
         // One biome border run on the texel-corner lattice: (X0, Y0) -> (X1, Y1), axis-aligned; Id = the colour's biome.
         public struct Segment
@@ -144,7 +214,7 @@ namespace Morgott.UI.MapScreen
         private static bool Seen(BitArray explored, BitArray others, int i) => explored[i] || others[i];
 
         // Border runs inside the texel window [x0, x1) x [y0, y1): an edge between two texels whose ids differ, drawn when
-        // every land side is explored (never reveals an unexplored biome); colour = the left / lower land side. Runs of one
+        // both sides are explored (never reveals an unexplored biome, never traces the fog edge); colour = the left / lower land side. Runs of one
         // colour along a line merge. Stops at max segments (returns false: too many, caller falls back).
         public static bool Segments(byte[] ids, int size, BitArray explored, BitArray others, int x0, int y0, int x1, int y1, int max, System.Collections.Generic.List<Segment> into)
         {
@@ -189,7 +259,7 @@ namespace Morgott.UI.MapScreen
             var ia = ids[a];
             var ib = ids[b];
             if (ia == ib) return 0;
-            if (ia != 0 && !Seen(explored, others, a) || ib != 0 && !Seen(explored, others, b)) return 0;
+            if (!Seen(explored, others, a) || !Seen(explored, others, b)) return 0; // never along the fog edge (coast included)
             return ia != 0 ? ia : ib;
         }
 

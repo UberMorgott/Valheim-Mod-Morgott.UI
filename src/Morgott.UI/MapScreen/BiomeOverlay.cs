@@ -15,13 +15,13 @@ namespace Morgott.UI.MapScreen
     // BuildThread, HeightmapBuilder.cs:83/159) - and cached in BepInEx\cache\Morgott.UI. The overlay RawImage is the
     // first child of m_mapImageLarge (drawn over the map, under its pin / marker children; uvRect mirrored each frame).
     // Unexplored pixels carry the fog tint (color.map.fog, [Map] FogTint: the vanilla beige clouds pulled toward the
-    // mockup's cold grey). Borders: zoomed in (a texel wider than size.map.biome.line.switch screen px) the texture is
+    // mockup's cold grey), soft-edged over a 5x5 tent (MapFilterMath.FogAlpha); underwater texels are ocean. Borders: zoomed in (a texel wider than size.map.biome.line.switch screen px) the texture is
     // fill only and BorderLines draws 1-2 px screen-space lines over it; zoomed out the texture's one-texel outline is
     // already that thin. Jotunn MinimapManager overlays were checked and not used: they draw on the small map too and
     // replace the map colour (MainTex at full alpha) instead of tinting it.
     public sealed class BiomeOverlay
     {
-        private const int CacheMagic = 0x4D42494F; // "MBIO"
+        private const int CacheMagic = 0x4D424932; // "MBI2": underwater texels are ocean (old "MBIO" grids are rebuilt)
         public const string ImageName = "RuneSkin_BiomeOverlay";
         public const string LinesName = "RuneSkin_BiomeLines";
 
@@ -32,6 +32,7 @@ namespace Morgott.UI.MapScreen
         private byte[] _ids;
         private volatile bool _gridReady, _composed;
         private Color32[] _pxOutline, _pxFill;
+        private byte[] _fogA;
         private Texture2D _texOutline, _texFill;
         private RawImage _image;
         private BorderLines _lines;
@@ -110,6 +111,7 @@ namespace Morgott.UI.MapScreen
             var path = CachePath();
             var pixel = _map.m_pixelSize;
             var size = _size;
+            var water = ZoneSystem.instance ? ZoneSystem.instance.m_waterLevel : 30f; // ZoneSystem.cs:466 default
             _worker = new Thread(() =>
             {
                 try
@@ -123,7 +125,12 @@ namespace Morgott.UI.MapScreen
                         {
                             var wy = MapFilterMath.WorldCoord(y, size, pixel);
                             for (var x = 0; x < size; x++)
-                                ids[y * size + x] = MapFilterMath.Id(wg.GetBiome(MapFilterMath.WorldCoord(x, size, pixel), wy));
+                            {
+                                // Same samples as Minimap.GenerateWorldMap (Minimap.cs:1967-1968): biome, then its height.
+                                var wx = MapFilterMath.WorldCoord(x, size, pixel);
+                                var biome = wg.GetBiome(wx, wy);
+                                ids[y * size + x] = MapFilterMath.GridId(biome, wg.GetBiomeHeight(biome, wx, wy, out _), water);
+                            }
                         }
                         WriteCache(path, size, ids);
                         Plugin.Log.LogInfo($"[Morgott.UI] biome overlay grid {size}x{size} built in {sw.ElapsedMilliseconds} ms, cached {path}");
@@ -196,9 +203,17 @@ namespace Morgott.UI.MapScreen
         internal void Explored(int x, int y)
         {
             if (!Ready || _full || x < 0 || y < 0 || x >= _size || y >= _size) return;
-            var i = y * _size + x;
-            _pxOutline[i] = MapFilterMath.Pixel(_ids, _size, x, y, true, _palette, _fill, _outline, _fog);
-            _pxFill[i] = MapFilterMath.Pixel(_ids, _size, x, y, true, _palette, _fill, _fill, _fog);
+            // The soft fog edge spreads FogReach texels: the whole neighbourhood is redone.
+            var r = MapFilterMath.FogReach;
+            for (var py = Mathf.Max(0, y - r); py <= Mathf.Min(_size - 1, y + r); py++)
+                for (var px = Mathf.Max(0, x - r); px <= Mathf.Min(_size - 1, x + r); px++)
+                {
+                    var i = py * _size + px;
+                    var seen = _map.m_explored[i] || _map.m_exploredOthers[i];
+                    var a = _fogA[i] = MapFilterMath.FogAlpha(_map.m_explored, _map.m_exploredOthers, _size, px, py, _fog.a);
+                    _pxOutline[i] = MapFilterMath.Pixel(_ids, _size, px, py, seen, a, _palette, _fill, _outline, _fog);
+                    _pxFill[i] = MapFilterMath.Pixel(_ids, _size, px, py, seen, a, _palette, _fill, _fill, _fog);
+                }
             _dirty = true;
             _linesDirty = true;
         }
@@ -247,8 +262,10 @@ namespace Morgott.UI.MapScreen
                 var palette = Palette();
                 _pxOutline ??= new Color32[_size * _size];
                 _pxFill ??= new Color32[_size * _size];
-                MapFilterMath.Compose(_ids, _size, _map.m_explored, _map.m_exploredOthers, palette, _fill, _outline, _fog, _pxOutline);
-                MapFilterMath.Compose(_ids, _size, _map.m_explored, _map.m_exploredOthers, palette, _fill, _fill, _fog, _pxFill);
+                _fogA ??= new byte[_size * _size];
+                MapFilterMath.FogAlphas(_map.m_explored, _map.m_exploredOthers, _size, _fog.a, _fogA);
+                MapFilterMath.Compose(_ids, _size, _map.m_explored, _map.m_exploredOthers, _fogA, palette, _fill, _outline, _fog, _pxOutline);
+                MapFilterMath.Compose(_ids, _size, _map.m_explored, _map.m_exploredOthers, _fogA, palette, _fill, _fill, _fog, _pxFill);
                 _composed = true;
                 _dirty = true;
                 _linesDirty = true;
