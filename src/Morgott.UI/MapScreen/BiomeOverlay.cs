@@ -32,6 +32,7 @@ namespace Morgott.UI.MapScreen
         private byte[] _ids;
         private volatile bool _gridReady, _composed;
         private Color32[] _pxOutline, _pxFill;
+        private byte[] _land; // explored land ids (MapFilterMath.LandIds), kept for the incremental blend
         private Texture2D _texOutline, _texFill;
         private RawImage _image;
         private BorderLines _lines;
@@ -202,16 +203,18 @@ namespace Morgott.UI.MapScreen
         internal void Explored(int x, int y)
         {
             if (!Ready || _full || x < 0 || y < 0 || x >= _size || y >= _size) return;
-            // The soft fog edge spreads FogReach texels: the whole neighbourhood is redone.
+            _land[y * _size + x] = _ids[y * _size + x];
+            // The soft fog edge / land blend spread FogReach texels: the whole neighbourhood is redone.
             var r = MapFilterMath.FogReach;
             for (var py = Mathf.Max(0, y - r); py <= Mathf.Min(_size - 1, y + r); py++)
                 for (var px = Mathf.Max(0, x - r); px <= Mathf.Min(_size - 1, x + r); px++)
                 {
                     var i = py * _size + px;
+                    var seen = _map.m_explored[i] || _map.m_exploredOthers[i];
                     var a = MapFilterMath.FogAlpha(_map.m_explored, _map.m_exploredOthers, _size, px, py, _fog.a);
-                    var cover = MapFilterMath.LandCover(_ids, _size, _map.m_explored, _map.m_exploredOthers, px, py);
-                    _pxOutline[i] = MapFilterMath.Pixel(_ids, _size, _map.m_explored, _map.m_exploredOthers, px, py, a, cover, _palette, _fill, _outline, _fog);
-                    _pxFill[i] = MapFilterMath.Pixel(_ids, _size, _map.m_explored, _map.m_exploredOthers, px, py, a, cover, _palette, _fill, 0, _fog);
+                    var m = seen ? MapFilterMath.LandMix(_land, _size, _palette, px, py) : default;
+                    _pxOutline[i] = MapFilterMath.Pixel(_ids, _size, px, py, seen, m, a, _palette, _fill, _outline, _fog);
+                    _pxFill[i] = MapFilterMath.Pixel(_ids, _size, px, py, seen, m, a, _palette, _fill, 0, _fog);
                 }
             _dirty = true;
             _linesDirty = true;
@@ -263,11 +266,10 @@ namespace Morgott.UI.MapScreen
                 _pxFill ??= new Color32[_size * _size];
                 var sw = System.Diagnostics.Stopwatch.StartNew();
                 var fogA = new byte[_size * _size];
-                var cover = new int[_size * _size];
+                _land ??= new byte[_size * _size];
+                MapFilterMath.LandIds(_ids, _map.m_explored, _map.m_exploredOthers, _land);
                 MapFilterMath.FogAlphas(_map.m_explored, _map.m_exploredOthers, _size, _fog.a, fogA);
-                MapFilterMath.LandCovers(_ids, _size, _map.m_explored, _map.m_exploredOthers, cover);
-                MapFilterMath.Compose(_ids, _size, _map.m_explored, _map.m_exploredOthers, fogA, cover, palette, _fill, _outline, _fog, _pxOutline);
-                MapFilterMath.Compose(_ids, _size, _map.m_explored, _map.m_exploredOthers, fogA, cover, palette, _fill, 0, _fog, _pxFill);
+                MapFilterMath.Compose(_ids, _land, _size, _map.m_explored, _map.m_exploredOthers, fogA, palette, _fill, _outline, _fog, _pxOutline, _pxFill);
                 Plugin.Log.LogInfo($"[Morgott.UI] biome overlay composed in {sw.ElapsedMilliseconds} ms");
                 _composed = true;
                 _dirty = true;
@@ -324,7 +326,8 @@ namespace Morgott.UI.MapScreen
         }
     }
 
-    // Biome border lines on the map image in screen pixels (UI quads, one per merged border run of the texel window).
+    // Biome border lines on the map image in screen pixels (UI quads along the marching-squares segments of the texel
+    // window, MapFilterMath.Segments: straight or 45-degree, land-land only).
     public sealed class BorderLines : MaskableGraphic
     {
         private readonly System.Collections.Generic.List<MapFilterMath.Segment> _segs = new System.Collections.Generic.List<MapFilterMath.Segment>();
@@ -379,26 +382,28 @@ namespace Morgott.UI.MapScreen
             {
                 var c = _palette[s.Id - 1];
                 c.a = _alpha;
-                var x0 = ox + s.X0 * sx;
-                var y0 = oy + s.Y0 * sy;
-                var x1 = ox + s.X1 * sx;
-                var y1 = oy + s.Y1 * sy;
-                // Axis-aligned quad, widened by half the line on every side (corners of a staircase join), clipped to the
-                // map image (the quads are geometry: nothing else clips them).
-                var ax = Mathf.Max(x0 - _half, r.xMin);
-                var bx = Mathf.Min(x1 + _half, r.xMax);
-                var ay = Mathf.Max(y0 - _half, r.yMin);
-                var by = Mathf.Min(y1 + _half, r.yMax);
-                if (ax >= bx || ay >= by) continue;
+                var p0 = new Vector2(ox + s.X0 * sx, oy + s.Y0 * sy);
+                var p1 = new Vector2(ox + s.X1 * sx, oy + s.Y1 * sy);
+                // Clipped to the map image shrunk by half the line (the quads are geometry: nothing else clips them).
+                var inner = new Rect(r.xMin + _half, r.yMin + _half, r.width - 2f * _half, r.height - 2f * _half);
+                var clipped = !inner.Contains(p0) || !inner.Contains(p1);
+                if (!MapFilterMath.Clip(inner, ref p0, ref p1)) continue;
+                // Quad along the segment, widened by half the line on every side (ends overlap: diagonal / straight
+                // pieces of one contour join without gaps).
+                var dir = p1 - p0;
+                var len = dir.magnitude;
+                if (len < 1e-4f) continue;
+                dir *= _half / len;
+                var nrm = new Vector2(-dir.y, dir.x);
                 var i = vh.currentVertCount;
-                vh.AddVert(new Vector3(ax, ay), c, Vector4.zero);
-                vh.AddVert(new Vector3(ax, by), c, Vector4.zero);
-                vh.AddVert(new Vector3(bx, by), c, Vector4.zero);
-                vh.AddVert(new Vector3(bx, ay), c, Vector4.zero);
+                vh.AddVert(p0 - dir - nrm, c, Vector4.zero);
+                vh.AddVert(p0 - dir + nrm, c, Vector4.zero);
+                vh.AddVert(p1 + dir + nrm, c, Vector4.zero);
+                vh.AddVert(p1 + dir - nrm, c, Vector4.zero);
                 vh.AddTriangle(i, i + 1, i + 2);
                 vh.AddTriangle(i + 2, i + 3, i);
                 Quads++;
-                if (ax > r.xMin && bx < r.xMax && ay > r.yMin && by < r.yMax) thin = Mathf.Min(thin, Mathf.Min(bx - ax, by - ay) * k);
+                if (!clipped) thin = Mathf.Min(thin, 2f * _half * k);
             }
             MeasuredPx = thin < float.MaxValue ? thin : 0f;
         }

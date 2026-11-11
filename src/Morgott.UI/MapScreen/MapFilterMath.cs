@@ -103,7 +103,7 @@ namespace Morgott.UI.MapScreen
         public static string NameKey(Heightmap.Biome biome) => "$biome_" + biome.ToString().ToLowerInvariant();
 
         // Pixel on a biome border, one side only so the texture line is one texel wide (Codex review 2): a 4-neighbour
-        // inside the grid is ocean or a lower id. The grid edge is no border; ocean pixels never are.
+        // inside the grid is a lower land id. Coasts are no border (the fill ramps out instead); ocean pixels never are.
         public static bool Border(byte[] ids, int size, int x, int y)
         {
             var id = ids[y * size + x];
@@ -113,47 +113,63 @@ namespace Morgott.UI.MapScreen
                 || y < size - 1 && Lower(ids[(y + 1) * size + x], id));
         }
 
-        private static bool Lower(byte neighbour, byte id) => neighbour != id && (neighbour == 0 || neighbour < id);
+        private static bool Lower(byte neighbour, byte id) => neighbour != 0 && neighbour < id;
 
-        // Overlay pixel under the soft fog tint fogA (FogAlpha). Unexplored: the fog tint alone (fog of war: unexplored
-        // biomes and borders never show; fog.a = 0 = no tint). Explored: biome fill at fill x cover / Tent2 (cover =
-        // LandCover: explored land share of the 5x5 tent), so coasts and the explored edge ramp over ~4 texels instead of
-        // stepping per 12 m texel; explored ocean beside land takes the tent-weighted land colour at that ramp. outline > 0:
-        // a border texel is drawn at the outline alpha instead (the zoomed-out outline texture; the fill texture passes 0).
-        public static Color32 Pixel(byte[] ids, int size, BitArray explored, BitArray others, int x, int y, byte fogA, int cover, Color32[] palette, byte fill, byte outline, Color32 fog)
+        // Explored land ids: ids where the texel is explored (by anyone), 0 elsewhere - the mask the fill blends over.
+        public static void LandIds(byte[] ids, BitArray explored, BitArray others, byte[] into)
         {
-            var tint = new Color32(fog.r, fog.g, fog.b, fogA); // ocean / unexplored: fog colour kept for the bilinear edge
-            if (!Seen(explored, others, y * size + x)) return tint;
-            var id = ids[y * size + x];
-            Color32 c;
-            if (id != 0 && id <= palette.Length)
-            {
-                c = palette[id - 1];
-                if (outline > 0 && Border(ids, size, x, y)) { c.a = outline; return Over(tint, c); }
-            }
-            else if (cover > 0) c = LandColour(ids, size, explored, others, x, y, palette);
-            else return tint;
-            c.a = (byte)((fill * cover + Tent2 / 2) / Tent2);
-            return Over(tint, c);
+            for (var i = 0; i < into.Length; i++) into[i] = Seen(explored, others, i) ? ids[i] : (byte)0;
         }
 
-        // Tent-weighted colour of the explored land around an ocean texel (only called when there is some).
-        private static Color32 LandColour(byte[] ids, int size, BitArray explored, BitArray others, int x, int y, Color32[] palette)
+        // Tent-weighted explored land around a texel: W = weight (0..81), R/G/B = weighted palette colour sums.
+        public struct Mix
         {
-            int r = 0, g = 0, b = 0, w = 0;
-            for (var dy = -R; dy <= R; dy++)
-                for (var dx = -R; dx <= R; dx++)
+            public int W, R, G, B;
+        }
+
+        public static Mix LandMix(byte[] land, int size, Color32[] palette, int x, int y)
+        {
+            var m = new Mix();
+            for (var dy = -Rad; dy <= Rad; dy++)
+            {
+                var py = y + dy;
+                if (py < 0 || py >= size) continue;
+                for (var dx = -Rad; dx <= Rad; dx++)
                 {
-                    int px = x + dx, py = y + dy;
-                    if (!Land(ids, size, explored, others, px, py)) continue;
-                    var c = palette[ids[py * size + px] - 1];
+                    var px = x + dx;
+                    if (px < 0 || px >= size) continue;
+                    var id = land[py * size + px];
+                    if (id == 0 || id > palette.Length) continue;
+                    var c = palette[id - 1];
                     var k = Tent(dx) * Tent(dy);
-                    r += c.r * k;
-                    g += c.g * k;
-                    b += c.b * k;
-                    w += k;
+                    m.W += k;
+                    m.R += c.r * k;
+                    m.G += c.g * k;
+                    m.B += c.b * k;
                 }
-            return w == 0 ? default : new Color32((byte)((r + w / 2) / w), (byte)((g + w / 2) / w), (byte)((b + w / 2) / w), 255);
+            }
+            return m;
+        }
+
+        // Overlay pixel under the soft fog tint fogA (FogAlpha). Unexplored: the fog tint alone (fog of war: unexplored
+        // biomes never show; fog.a = 0 = no tint). Explored: the tent-weighted colour of the explored land around it at
+        // fill x W / 81, so coasts, biome edges, single-texel specks and the explored edge blend over ~4 texels instead
+        // of stepping per 12 m texel. outline > 0: a border texel is its own biome colour at the outline alpha (the
+        // zoomed-out outline texture; the fill texture passes 0).
+        public static Color32 Pixel(byte[] ids, int size, int x, int y, bool seen, Mix m, byte fogA, Color32[] palette, byte fill, byte outline, Color32 fog)
+        {
+            var tint = new Color32(fog.r, fog.g, fog.b, fogA); // ocean / unexplored: fog colour kept for the bilinear edge
+            if (!seen) return tint;
+            var id = ids[y * size + x];
+            if (outline > 0 && id != 0 && id <= palette.Length && Border(ids, size, x, y))
+            {
+                var o = palette[id - 1];
+                o.a = outline;
+                return Over(tint, o);
+            }
+            if (m.W == 0) return tint;
+            var c = new Color32((byte)((m.R + m.W / 2) / m.W), (byte)((m.G + m.W / 2) / m.W), (byte)((m.B + m.W / 2) / m.W), (byte)((fill * m.W + Tent2 / 2) / Tent2));
+            return Over(tint, c);
         }
 
         // Straight-alpha "a over b".
@@ -167,155 +183,186 @@ namespace Morgott.UI.MapScreen
                 (byte)Mathf.RoundToInt((a.b * a.a + b.b * under) / oa), (byte)Mathf.RoundToInt(oa));
         }
 
-        // Soft edges: a 5x5 tent (weights 1-2-3-2-1 per axis, Tent2 = 81 in all) over a texel mask. Fog = unexplored
-        // (outside the grid counts as unexplored); land = explored and not ocean (outside = none). Vanilla's _FogTex edge
-        // is soft in its shader; binary per-texel tint / fill drew 12 m stair steps once a texel spans several screen px.
-        private const int R = 2, Tent1 = 9, Tent2 = Tent1 * Tent1;
+        // Soft edges: a 5x5 tent (weights 1-2-3-2-1 per axis, Tent2 = 81 in all). Fog = unexplored share (outside the
+        // grid counts as unexplored). Vanilla's _FogTex edge is soft in its shader; binary per-texel tint / fill drew
+        // 12 m stair steps once a texel spans several screen pixels.
+        private const int Rad = 2, Tent1 = 9, Tent2 = Tent1 * Tent1;
 
-        private static int Tent(int d) => R + 1 - Math.Abs(d);
+        private static int Tent(int d) => Rad + 1 - Math.Abs(d);
 
         private static bool Unseen(int size, BitArray explored, BitArray others, int x, int y) =>
             x < 0 || y < 0 || x >= size || y >= size || !Seen(explored, others, y * size + x);
 
-        private static bool Land(byte[] ids, int size, BitArray explored, BitArray others, int x, int y) =>
-            x >= 0 && y >= 0 && x < size && y < size && ids[y * size + x] != 0 && Seen(explored, others, y * size + x);
+        private static byte Scale(byte a, int s) => (byte)((a * s + Tent2 / 2) / Tent2);
 
-        // Tent sum (0..81) of one texel, direct; ids == null = the fog mask, else the land mask.
-        private static int TentAt(byte[] ids, int size, BitArray explored, BitArray others, int x, int y)
+        // Fog alpha of a texel = a x unexplored tent share.
+        public static byte FogAlpha(BitArray explored, BitArray others, int size, int x, int y, byte a)
         {
+            if (a == 0) return 0;
             var s = 0;
-            for (var dy = -R; dy <= R; dy++)
-                for (var dx = -R; dx <= R; dx++)
-                    if (ids == null ? Unseen(size, explored, others, x + dx, y + dy) : Land(ids, size, explored, others, x + dx, y + dy))
-                        s += Tent(dx) * Tent(dy);
-            return s;
+            for (var dy = -Rad; dy <= Rad; dy++)
+                for (var dx = -Rad; dx <= Rad; dx++)
+                    if (Unseen(size, explored, others, x + dx, y + dy)) s += Tent(dx) * Tent(dy);
+            return Scale(a, s);
         }
 
-        // Tent sum of every texel (separable, same integers as TentAt).
-        private static void TentAll(byte[] ids, int size, BitArray explored, BitArray others, int[] into)
+        // FogAlpha of every texel (separable, same integers).
+        public static void FogAlphas(BitArray explored, BitArray others, int size, byte a, byte[] into)
         {
+            if (a == 0) { Array.Clear(into, 0, size * size); return; }
             var row = new int[size * size];
             for (var y = 0; y < size; y++)
                 for (var x = 0; x < size; x++)
                 {
                     var s = 0;
-                    for (var d = -R; d <= R; d++)
-                        if (ids == null ? Unseen(size, explored, others, x + d, y) : Land(ids, size, explored, others, x + d, y)) s += Tent(d);
+                    for (var d = -Rad; d <= Rad; d++)
+                        if (Unseen(size, explored, others, x + d, y)) s += Tent(d);
                     row[y * size + x] = s;
                 }
-            var edge = ids == null ? Tent1 : 0; // a row outside the grid: all fog, no land
             for (var y = 0; y < size; y++)
                 for (var x = 0; x < size; x++)
                 {
                     var s = 0;
-                    for (var d = -R; d <= R; d++)
+                    for (var d = -Rad; d <= Rad; d++)
                     {
                         var py = y + d;
-                        s += Tent(d) * (py < 0 || py >= size ? edge : row[py * size + x]);
+                        s += Tent(d) * (py < 0 || py >= size ? Tent1 : row[py * size + x]);
                     }
-                    into[y * size + x] = s;
+                    into[y * size + x] = Scale(a, s);
                 }
         }
 
-        private static byte Scale(byte a, int s) => (byte)((a * s + Tent2 / 2) / Tent2);
-
-        // Fog alpha of a texel = a x unexplored tent share.
-        public static byte FogAlpha(BitArray explored, BitArray others, int size, int x, int y, byte a) =>
-            a == 0 ? (byte)0 : Scale(a, TentAt(null, size, explored, others, x, y));
-
-        // Explored land tent share of a texel, 0..81.
-        public static int LandCover(byte[] ids, int size, BitArray explored, BitArray others, int x, int y) => TentAt(ids, size, explored, others, x, y);
-
-        // FogAlpha of every texel.
-        public static void FogAlphas(BitArray explored, BitArray others, int size, byte a, byte[] into)
-        {
-            if (a == 0) { Array.Clear(into, 0, size * size); return; }
-            var s = new int[size * size];
-            TentAll(null, size, explored, others, s);
-            for (var i = 0; i < s.Length; i++) into[i] = Scale(a, s[i]);
-        }
-
-        // LandCover of every texel.
-        public static void LandCovers(byte[] ids, int size, BitArray explored, BitArray others, int[] into) => TentAll(ids, size, explored, others, into);
-
-        // Whole overlay from the vanilla explored bits (Minimap.m_explored / m_exploredOthers, index y * size + x), their
-        // FogAlphas and LandCovers.
-        public static void Compose(byte[] ids, int size, BitArray explored, BitArray others, byte[] fogA, int[] cover, Color32[] palette, byte fill, byte outline, Color32 fog, Color32[] into)
+        // Both overlay textures from the explored land ids (LandIds), the explored bits (Minimap.m_explored /
+        // m_exploredOthers, index y * size + x) and their FogAlphas, one land mix per texel.
+        public static void Compose(byte[] ids, byte[] land, int size, BitArray explored, BitArray others, byte[] fogA, Color32[] palette, byte fill, byte outline, Color32 fog, Color32[] outlineTex, Color32[] fillTex)
         {
             for (var y = 0; y < size; y++)
                 for (var x = 0; x < size; x++)
                 {
                     var i = y * size + x;
-                    into[i] = Pixel(ids, size, explored, others, x, y, fogA[i], cover[i], palette, fill, outline, fog);
+                    var seen = Seen(explored, others, i);
+                    var m = seen ? LandMix(land, size, palette, x, y) : default;
+                    outlineTex[i] = Pixel(ids, size, x, y, seen, m, fogA[i], palette, fill, outline, fog);
+                    fillTex[i] = Pixel(ids, size, x, y, seen, m, fogA[i], palette, fill, 0, fog);
                 }
         }
 
-        // Texels whose FogAlpha / LandCover / Pixel change when texel (x, y) gets explored: its 5x5 neighbourhood.
-        public const int FogReach = R;
+        // Texels whose FogAlpha / LandMix / Pixel change when texel (x, y) gets explored: its 5x5 neighbourhood.
+        public const int FogReach = Rad;
 
-        // One biome border run on the texel-corner lattice: (X0, Y0) -> (X1, Y1), axis-aligned; Id = the colour's biome.
+        // One biome border segment in texel-corner lattice units (texel (x, y) spans [x, x + 1) x [y, y + 1)); Id = the
+        // colour's biome.
         public struct Segment
         {
-            public int X0, Y0, X1, Y1;
+            public float X0, Y0, X1, Y1;
             public byte Id;
         }
 
         private static bool Seen(BitArray explored, BitArray others, int i) => explored[i] || others[i];
 
-        // Border runs inside the texel window [x0, x1) x [y0, y1): an edge between two texels whose ids differ, drawn when
-        // both sides are explored (never reveals an unexplored biome, never traces the fog edge); colour = the left / lower land side. Runs of one
-        // colour along a line merge. Stops at max segments (returns false: too many, caller falls back).
+        // Contour id of a texel: a land texel whose four neighbours are all one other land id takes that id (a lone
+        // 12 m speck draws no tiny diamond).
+        private static byte ContourId(byte[] ids, int size, int x, int y)
+        {
+            var i = y * size + x;
+            var id = ids[i];
+            if (id == 0 || x <= 0 || y <= 0 || x >= size - 1 || y >= size - 1) return id;
+            var n = ids[i - 1];
+            return n != 0 && n != id && ids[i + 1] == n && ids[i - size] == n && ids[i + size] == n ? n : id;
+        }
+
+        // Marching squares over the texel-centre grid inside the window [x0, x1) x [y0, y1): each 2x2 cell of texel
+        // centres puts a line point on every cell edge whose two texels are explored land of different contour ids
+        // (never against ocean - coasts are the fill ramp - and never against fog). Two points: one segment between them
+        // (straight, or a 45-degree diagonal across the corner instead of a stair step); 1, 3 or 4: spokes to the cell
+        // centre. Colour = the higher id of the first crossing. Straight segments continuing one another along a row
+        // merge. Stops at max segments (returns false: too many, caller falls back to the outline texture).
         public static bool Segments(byte[] ids, int size, BitArray explored, BitArray others, int x0, int y0, int x1, int y1, int max, System.Collections.Generic.List<Segment> into)
         {
             into.Clear();
-            x0 = Mathf.Clamp(x0, 1, size - 1);
-            y0 = Mathf.Clamp(y0, 1, size - 1);
+            x0 = Mathf.Clamp(x0, 0, size - 1);
+            y0 = Mathf.Clamp(y0, 0, size - 1);
             x1 = Mathf.Clamp(x1, x0, size - 1);
             y1 = Mathf.Clamp(y1, y0, size - 1);
-            // Vertical edges at corner x (between texel x - 1 and x), merged along y.
-            for (var x = x0; x <= x1; x++)
-            {
-                byte run = 0;
-                var start = 0;
-                for (var y = y0; y <= y1; y++)
+            var px = new float[4];
+            var py = new float[4];
+            for (var cy = y0; cy < y1; cy++)
+                for (var cx = x0; cx < x1; cx++)
                 {
-                    var c = y < y1 ? EdgeColour(ids, size, explored, others, y * size + x - 1, y * size + x) : (byte)0;
-                    if (c == run) continue;
-                    if (run != 0 && !Add(into, max, x, start, x, y, run)) return false;
-                    run = c;
-                    start = y;
+                    // Corners: a = (cx, cy), b = (cx + 1, cy), c = (cx + 1, cy + 1), d = (cx, cy + 1).
+                    var a = Contour(ids, size, explored, others, cx, cy);
+                    var b = Contour(ids, size, explored, others, cx + 1, cy);
+                    var c = Contour(ids, size, explored, others, cx + 1, cy + 1);
+                    var d = Contour(ids, size, explored, others, cx, cy + 1);
+                    var n = 0;
+                    byte colour = 0;
+                    // Edge midpoints in lattice units (texel centre = x + 0.5).
+                    if (Cross(a, b, ref colour)) { px[n] = cx + 1f; py[n++] = cy + 0.5f; }
+                    if (Cross(b, c, ref colour)) { px[n] = cx + 1.5f; py[n++] = cy + 1f; }
+                    if (Cross(c, d, ref colour)) { px[n] = cx + 1f; py[n++] = cy + 1.5f; }
+                    if (Cross(d, a, ref colour)) { px[n] = cx + 0.5f; py[n++] = cy + 1f; }
+                    if (n == 2)
+                    {
+                        if (!Add(into, max, px[0], py[0], px[1], py[1], colour)) return false;
+                    }
+                    else
+                        for (var k = 0; k < n; k++)
+                            if (!Add(into, max, px[k], py[k], cx + 1f, cy + 1f, colour)) return false;
                 }
-            }
-            // Horizontal edges at corner y (between texel y - 1 and y), merged along x.
-            for (var y = y0; y <= y1; y++)
-            {
-                byte run = 0;
-                var start = 0;
-                for (var x = x0; x <= x1; x++)
-                {
-                    var c = x < x1 ? EdgeColour(ids, size, explored, others, (y - 1) * size + x, y * size + x) : (byte)0;
-                    if (c == run) continue;
-                    if (run != 0 && !Add(into, max, start, y, x, y, run)) return false;
-                    run = c;
-                    start = x;
-                }
-            }
             return true;
         }
 
-        private static byte EdgeColour(byte[] ids, int size, BitArray explored, BitArray others, int a, int b)
+        // Contour id of an explored texel, 0 for ocean or unexplored.
+        private static byte Contour(byte[] ids, int size, BitArray explored, BitArray others, int x, int y) =>
+            Seen(explored, others, y * size + x) ? ContourId(ids, size, x, y) : (byte)0;
+
+        private static bool Cross(byte p, byte q, ref byte colour)
         {
-            var ia = ids[a];
-            var ib = ids[b];
-            if (ia == ib) return 0;
-            if (!Seen(explored, others, a) || !Seen(explored, others, b)) return 0; // never along the fog edge (coast included)
-            return ia != 0 ? ia : ib;
+            if (p == 0 || q == 0 || p == q) return false;
+            if (colour == 0) colour = Math.Max(p, q);
+            return true;
         }
 
-        private static bool Add(System.Collections.Generic.List<Segment> into, int max, int x0, int y0, int x1, int y1, byte id)
+        private static bool Add(System.Collections.Generic.List<Segment> into, int max, float x0, float y0, float x1, float y1, byte id)
         {
-            if (into.Count >= max) return false;
+            if (x1 < x0 || x1 == x0 && y1 < y0) { (x0, x1) = (x1, x0); (y0, y1) = (y1, y0); } // left / lower end first
+            var n = into.Count;
+            if (n > 0)
+            {
+                // Merge a straight continuation of the last segment (same colour, same line, end = start).
+                var l = into[n - 1];
+                if (l.Id == id && l.X1 == x0 && l.Y1 == y0 && (y0 == y1 && l.Y0 == l.Y1 || x0 == x1 && l.X0 == l.X1))
+                {
+                    l.X1 = x1;
+                    l.Y1 = y1;
+                    into[n - 1] = l;
+                    return true;
+                }
+            }
+            if (n >= max) return false;
             into.Add(new Segment { X0 = x0, Y0 = y0, X1 = x1, Y1 = y1, Id = id });
+            return true;
+        }
+
+        // Liang-Barsky: clips the segment p0-p1 to the rect; false when nothing is left.
+        public static bool Clip(Rect r, ref Vector2 p0, ref Vector2 p1)
+        {
+            float t0 = 0f, t1 = 1f;
+            var d = p1 - p0;
+            if (!Edge(-d.x, p0.x - r.xMin, ref t0, ref t1) || !Edge(d.x, r.xMax - p0.x, ref t0, ref t1)
+                || !Edge(-d.y, p0.y - r.yMin, ref t0, ref t1) || !Edge(d.y, r.yMax - p0.y, ref t0, ref t1)) return false;
+            var a = p0;
+            p0 = a + d * t0;
+            p1 = a + d * t1;
+            return t0 < t1 || d == Vector2.zero;
+        }
+
+        private static bool Edge(float p, float q, ref float t0, ref float t1)
+        {
+            if (p == 0f) return q >= 0f;
+            var t = q / p;
+            if (p < 0f) { if (t > t1) return false; if (t > t0) t0 = t; }
+            else { if (t < t0) return false; if (t < t1) t1 = t; }
             return true;
         }
 
