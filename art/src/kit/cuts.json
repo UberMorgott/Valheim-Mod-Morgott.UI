@@ -261,6 +261,9 @@
     {"name": "glyph_slot_utility", "sheet": "doll.png", "rect": [1172, 697, 344, 311], "key": "luma", "trim": true, "size": [72, 72], "pad": 3,
      "border": {"left": 0, "bottom": 0, "right": 0, "top": 0}, "pivot": [0.5, 0.5], "imageType": "Simple", "fillCenter": true,
      "token": "glyph.slot.utility", "notes": "M2 doll empty-cell glyph: generic / mod-added slot (Othala rune stone); fallback for unknown AddSlot types"},
+    {"name": "glyph_slot_collar", "sheet": "collarglyph.png", "rect": [1024, 0, 512, 512], "key": "luma", "trim": true, "size": [72, 72], "pad": 3,
+     "border": {"left": 0, "bottom": 0, "right": 0, "top": 0}, "pivot": [0.5, 0.5], "imageType": "Simple", "fillCenter": true,
+     "token": "glyph.slot.collar", "notes": "doll empty-cell glyph: Morgott.Summons pet collar cell (collarglyph.png variant 3: stitched strap, bone toggle, ring = the T0 leather collar; was the necklace glyph)"},
 
     {"name": "glyph_act_take_all", "sheet": "actions.png", "rect": [15, 20, 226, 301], "key": "luma", "trim": true, "size": [48, 48], "pad": 2,
      "border": {"left": 0, "bottom": 0, "right": 0, "top": 0}, "pivot": [0.5, 0.5], "imageType": "Simple", "fillCenter": true,
