@@ -32,7 +32,6 @@ namespace Morgott.UI.MapScreen
         private byte[] _ids;
         private volatile bool _gridReady, _composed;
         private Color32[] _pxOutline, _pxFill;
-        private byte[] _fogA;
         private Texture2D _texOutline, _texFill;
         private RawImage _image;
         private BorderLines _lines;
@@ -209,10 +208,10 @@ namespace Morgott.UI.MapScreen
                 for (var px = Mathf.Max(0, x - r); px <= Mathf.Min(_size - 1, x + r); px++)
                 {
                     var i = py * _size + px;
-                    var seen = _map.m_explored[i] || _map.m_exploredOthers[i];
-                    var a = _fogA[i] = MapFilterMath.FogAlpha(_map.m_explored, _map.m_exploredOthers, _size, px, py, _fog.a);
-                    _pxOutline[i] = MapFilterMath.Pixel(_ids, _size, px, py, seen, a, _palette, _fill, _outline, _fog);
-                    _pxFill[i] = MapFilterMath.Pixel(_ids, _size, px, py, seen, a, _palette, _fill, _fill, _fog);
+                    var a = MapFilterMath.FogAlpha(_map.m_explored, _map.m_exploredOthers, _size, px, py, _fog.a);
+                    var cover = MapFilterMath.LandCover(_ids, _size, _map.m_explored, _map.m_exploredOthers, px, py);
+                    _pxOutline[i] = MapFilterMath.Pixel(_ids, _size, _map.m_explored, _map.m_exploredOthers, px, py, a, cover, _palette, _fill, _outline, _fog);
+                    _pxFill[i] = MapFilterMath.Pixel(_ids, _size, _map.m_explored, _map.m_exploredOthers, px, py, a, cover, _palette, _fill, 0, _fog);
                 }
             _dirty = true;
             _linesDirty = true;
@@ -262,10 +261,14 @@ namespace Morgott.UI.MapScreen
                 var palette = Palette();
                 _pxOutline ??= new Color32[_size * _size];
                 _pxFill ??= new Color32[_size * _size];
-                _fogA ??= new byte[_size * _size];
-                MapFilterMath.FogAlphas(_map.m_explored, _map.m_exploredOthers, _size, _fog.a, _fogA);
-                MapFilterMath.Compose(_ids, _size, _map.m_explored, _map.m_exploredOthers, _fogA, palette, _fill, _outline, _fog, _pxOutline);
-                MapFilterMath.Compose(_ids, _size, _map.m_explored, _map.m_exploredOthers, _fogA, palette, _fill, _fill, _fog, _pxFill);
+                var sw = System.Diagnostics.Stopwatch.StartNew();
+                var fogA = new byte[_size * _size];
+                var cover = new int[_size * _size];
+                MapFilterMath.FogAlphas(_map.m_explored, _map.m_exploredOthers, _size, _fog.a, fogA);
+                MapFilterMath.LandCovers(_ids, _size, _map.m_explored, _map.m_exploredOthers, cover);
+                MapFilterMath.Compose(_ids, _size, _map.m_explored, _map.m_exploredOthers, fogA, cover, palette, _fill, _outline, _fog, _pxOutline);
+                MapFilterMath.Compose(_ids, _size, _map.m_explored, _map.m_exploredOthers, fogA, cover, palette, _fill, 0, _fog, _pxFill);
+                Plugin.Log.LogInfo($"[Morgott.UI] biome overlay composed in {sw.ElapsedMilliseconds} ms");
                 _composed = true;
                 _dirty = true;
                 _linesDirty = true;
