@@ -67,7 +67,7 @@ public static class RenderWeb
             // Cocoon (= Morgott.Creatures WebCocoon.Skin + WebPiece.CocoonLook): player stand-in = two leg capsules + torso, 7 tethers
             // (two to a trunk, the rest to the ground), seen from behind / above like the user ref; noon-ish light (in-game is brighter).
             sun.intensity = 1.5f;
-            sun.transform.rotation = Quaternion.Euler(50f, 150f, 0f);
+            sun.transform.rotation = Quaternion.Euler(50f, 200f, 0f);
             var feet = new Vector3(-3f, 0f, -3f);
             var skin = Solid(new Color(0.3f, 0.21f, 0.15f));
             void Limb(Vector3 a, Vector3 b, float r)
@@ -101,7 +101,7 @@ public static class RenderWeb
             var sk = new GameObject("skirt");
             sk.transform.position = trunkAt;
             sk.transform.rotation = Quaternion.LookRotation(new Vector3(0.6f, 0f, -1f).normalized);
-            sk.AddComponent<MeshFilter>().sharedMesh = Skirt(2.2f, new Vector3(0f, 0f, 2.8f), 1.1f, 7);
+            sk.AddComponent<MeshFilter>().sharedMesh = Skirt(2.2f, new Vector3(0f, 0f, 2.8f), 1.1f, 7, (x, z) => 0f);
             var sr = sk.AddComponent<MeshRenderer>();
             sr.sharedMaterial = plain;
             sr.shadowCastingMode = ShadowCastingMode.Off;
@@ -165,7 +165,7 @@ public static class RenderWeb
 
     // = Morgott.Creatures WebPiece rects / card sets (vanilla fi_village_webs pieces).
     static readonly Rect BigTri = Rect.MinMaxRect(0.038f, 0.005f, 0.645f, 0.999f), UpperTri = Rect.MinMaxRect(0.364f, 0.321f, 0.937f, 0.995f),
-        HubTL = Rect.MinMaxRect(0.006f, 0.730f, 0.268f, 0.992f), HubR = Rect.MinMaxRect(0.768f, 0.546f, 0.988f, 0.801f), Threads = Rect.MinMaxRect(0.01f, 0.6f, 0.22f, 0.68f);
+        HubTL = Rect.MinMaxRect(0.006f, 0.730f, 0.268f, 0.992f), HubR = Rect.MinMaxRect(0.768f, 0.546f, 0.988f, 0.801f), Threads = Rect.MinMaxRect(0.01f, 0.6f, 0.22f, 0.68f), Net = Rect.MinMaxRect(0.725f, 0.018f, 0.974f, 0.232f);
     static readonly (Rect Uv, bool Fan, bool Flip, float Z, float T0, float T1, float W0, float W1)[] SheetCards =
     {
         (BigTri, true, false, -0.12f, 0f, 0.8f, 0.25f, 2f), (BigTri, true, true, 0.12f, 0.2f, 1f, 0.25f, 2f), // start over the ground: in-game the low tier read as one white mass
@@ -276,27 +276,59 @@ public static class RenderWeb
         // Skirt (trunk → ground, user 2026-11-11): two vanilla triangles fanning from the trunk at Height down to the splayed ground feet
         // + one long guy thread, over a vanilla hub mat around the trunk base. Yaw = splay of each card around the foot direction,
         // Top = its attach height x Height.
-        internal const float SkirtMat = 1.3f; // mat radius around the trunk base (also the grass footprint, WebGrass)
-        private static readonly (float Yaw, float Top, Rect Uv)[] SkirtVeils = { (-22f, 1f, BigTri), (24f, 0.75f, BigTri), (3f, 1.2f, Threads) };
+        internal const float SkirtMat = 1.7f; // bound of the mats around the trunk base (hit box, trigger, burn extent)
+        internal static readonly (float Yaw, float Top, Rect Uv)[] SkirtVeils = { (-22f, 1f, BigTri), (24f, 0.75f, BigTri), (3f, 1.2f, Threads) };
 
         private static Vector3 SkirtTop(float height, float yaw) => Quaternion.Euler(0f, yaw, 0f) * new Vector3(0f, height, 0.25f); // the trunk's surface
 
-        /// <summary>Skirt card mesh in its Frame (origin = trunk base, z = toward <paramref name="foot"/>); UV1 = (0, x, z) like a carpet.</summary>
-        internal static Mesh Skirt(float height, Vector3 foot, float halfWidth, int id)
+        /// <summary>The skirt's ground mats (Codex: no repeated radial wreath): a main hub off-centre around the trunk base, a smaller
+        /// hub beside it, a net patch toward the foot; frame-local centre (x, z), radius, turn, vanilla piece. Same on every peer (id).</summary>
+        internal static (Vector2 At, float R, float Turn, Rect Uv)[] SkirtMats(int id)
+        {
+            var rng = new System.Random(id * 7919 + 17);
+            float R(float a, float b) => a + (float)rng.NextDouble() * (b - a);
+            var side = R(-2.2f, 2.2f);
+            return new[]
+            {
+                (new Vector2(R(-0.2f, 0.2f), R(0.1f, 0.5f)), R(0.9f, 1.25f), R(0f, 360f), HubTL),
+                (new Vector2(Mathf.Sin(side), Mathf.Cos(side)) * R(0.7f, 1.1f), R(0.5f, 0.8f), R(0f, 360f), HubR),
+                (new Vector2(R(-0.4f, 0.4f), R(1.2f, 1.8f)), R(0.4f, 0.7f), R(0f, 360f), Net),
+            };
+        }
+
+        /// <summary>Skirt card mesh in its Frame (origin = trunk base, z = toward <paramref name="foot"/>); UV1 = (0, x, z) like a carpet.
+        /// <paramref name="ground"/>(x, z) = frame-local ground height: mats and veil feet lie on the real terrain.</summary>
+        internal static Mesh Skirt(float height, Vector3 foot, float halfWidth, int id, System.Func<float, float, float> ground)
         {
             var (verts, uv0, uv1, colors, tris) = (new List<Vector3>(), new List<Vector4>(), new List<Vector3>(), new List<Color>(), new List<int>());
-            var mat = CarpetMesh(SkirtMat * 2f);
-            var turn = Quaternion.Euler(0f, id * 53f % 360f, 0f);
-            foreach (var v in mat.vertices) verts.Add(turn * v);
-            mat.GetUVs(0, uv0);
-            foreach (var v in verts) uv1.Add(new Vector3(0f, v.x, v.z));
-            colors.AddRange(mat.colors);
-            tris.AddRange(mat.triangles);
-            UnityEngine.Object.DestroyImmediate(mat);
+            const int grid = 4;
+            var layer = 0;
+            foreach (var (at, r, turnDeg, uv) in SkirtMats(id))
+            {
+                var turn = Quaternion.Euler(0f, turnDeg, 0f);
+                var k0 = verts.Count;
+                for (var i = 0; i <= grid; i++)
+                    for (var j = 0; j <= grid; j++)
+                    {
+                        var (a, b) = ((float)i / grid, (float)j / grid);
+                        var p = turn * new Vector3((a * 2f - 1f) * r, 0f, (b * 2f - 1f) * r) + new Vector3(at.x, 0f, at.y);
+                        p.y = ground(p.x, p.z) + 0.04f + 0.004f * layer; // hugs the terrain; layers apart (no z-fight)
+                        verts.Add(p);
+                        var rim = i == 0 || j == 0 || i == grid || j == grid;
+                        uv0.Add(new Vector4(Mathf.Lerp(uv.xMin, uv.xMax, a), Mathf.Lerp(uv.yMin, uv.yMax, b), TileVanilla, uv == Net && rim ? 0f : 1f)); // hubs fade by themselves, the net tapers
+                        uv1.Add(new Vector3(0f, p.x, p.z));
+                        colors.Add(new Color(1f, 1f, 1f, 0.1f));
+                        if (i == 0 || j == 0) continue;
+                        int q = k0 + i * (grid + 1) + j, pp = q - (grid + 1);
+                        tris.AddRange(new[] { pp - 1, q - 1, pp, pp, q - 1, q });
+                    }
+                layer++;
+            }
             const int segs = 6, rows = 3;
             foreach (var (yaw, top, uv) in SkirtVeils)
             {
-                var (from, to) = (SkirtTop(height * top, yaw), Quaternion.Euler(0f, yaw, 0f) * foot + Vector3.up * 0.05f);
+                var (from, to) = (SkirtTop(height * top, yaw), Quaternion.Euler(0f, yaw, 0f) * foot);
+                to.y = ground(to.x, to.z) + 0.04f;
                 var side = Vector3.Cross(Vector3.up, to - from).normalized;
                 var thread = uv == Threads;
                 var sag = 0.12f * (to - from).magnitude;
@@ -310,7 +342,7 @@ public static class RenderWeb
                     {
                         var w = (float)j / rows;
                         var p = spine + side * (half * (w * 2f - 1f));
-                        p.y = Mathf.Max(p.y, foot.y * s + 0.04f); // never under the ground (linear between trunk base and foot)
+                        p.y = Mathf.Max(p.y, ground(p.x, p.z) + 0.04f); // never under the ground; the foot rests on it
                         verts.Add(p);
                         var (u, v) = thread ? (Mathf.Lerp(uv.xMin, uv.xMax, s), Mathf.Lerp(uv.yMin, uv.yMax, w)) : (Mathf.Lerp(uv.xMin, uv.xMax, w), Mathf.Lerp(uv.yMax, uv.yMin, s));
                         uv0.Add(new Vector4(u, v, TileVanilla, j == 0 || j == rows || i == segs ? 0f : 1f)); // rims + the ground end taper, the trunk end stays
@@ -481,6 +513,13 @@ public static class RenderWeb
             foreach (var l in legs)
                 for (var b = 0; b < 20 / legs.Length; b++)
                     Bundle((y, a, lift) => OneLeg(l, y, a, lift), R(groundY + 0.04f, ankle + 0.15f), R(knee - 0.1f, l.Hip.y), R(0f, 6.3f), (b % 2 == 0 ? dir : -dir) * R(0.7f, 1.6f), 12);
+            // Crossing bundles on each shin (ankle .. knee, both directions: the lower legs read wrapped, Codex 2026-11-11 score 6).
+            foreach (var l in legs)
+                for (var b = 0; b < 12 / legs.Length; b++)
+                    Bundle((y, a, lift) => OneLeg(l, y, a, lift), R(groundY + 0.04f, l.Ankle.y + 0.12f), R(l.Knee.y - 0.05f, l.Knee.y + 0.15f), R(0f, 6.3f), (b % 2 == 0 ? dir : -dir) * R(0.8f, 1.6f), 12);
+            // Long diagonals around both legs, shin to thigh, alternating hand: the criss-cross of the ref.
+            for (var b = 0; b < 8; b++)
+                Bundle((y, a, lift) => BothLegs(y, a, lift), R(ankle + 0.1f, knee), R(knee + 0.1f, top - 0.1f), R(0f, 6.3f), (b % 2 == 0 ? dir : -dir) * R(0.45f, 0.9f), 14);
             // Loose fibres hanging from the waist line.
             for (var b = 0; b < 4; b++)
             {
@@ -510,21 +549,23 @@ public static class RenderWeb
                 var len = Vector3.Distance(from, e);
                 var sag = R(0.03f, 0.06f) * len;
                 var side = Vector3.Cross(Vector3.up, outDir);
-                var width = R(0.012f, 0.022f);
+                var width = R(0.018f, 0.03f);
+                var cuffY = from.y;
+                Bundle((y, a2, lift) => OneLeg(leg, y, a2, lift), cuffY - 0.06f, cuffY + 0.06f, a - 1.2f, 1.1f * dir, 10); // the cord's cuff on the leg: a readable attachment
                 for (var k = 0; k < 3; k++)
                 {
                     var (spread, rise) = ((k - 1) * R(0.03f, 0.06f), R(-0.03f, 0.03f));
                     Strip(t =>
                     {
                         var s = Mathf.Sin(t * Mathf.PI);
-                        var p = Vector3.Lerp(from, e, t) + Vector3.down * (sag * s) + side * (spread * s) + Vector3.up * (rise * s);
+                        var p = Vector3.Lerp(from, e, t) + Vector3.down * (sag * s) + side * (spread * (s + 2.5f * Mathf.Max(0f, t - 0.75f))) + Vector3.up * (rise * s); // fans out at the anchor
                         return (p, Vector3.Cross(side, (e - from).normalized).normalized);
                     }, 10, width * (k == 1 ? 1f : 0.7f), 1);
                 }
                 for (var k = 0; k < 5; k++)
                 {
                     var d = Quaternion.Euler(0f, R(-50f, 50f), 0f) * outDir;
-                    var end = e + d * R(0.3f, 0.5f);
+                    var end = e + d * R(0.4f, 0.8f);
                     end.y = e.y - 0.02f;
                     Strip(t => (Vector3.Lerp(e, end, t), Vector3.up), 4, R(0.008f, 0.016f), 2);
                 }
@@ -537,7 +578,7 @@ public static class RenderWeb
             foreach (var _ in sink.Verts)
             {
                 uv1.Add(Vector3.zero);
-                colors.Add(new Color(1f, 1f, 1f, 0f)); // no wind sway on the body
+                colors.Add(Color.white); // alpha 1: the additive fallback reads it; Morgott/Web sway is off by _WindAmp 0 (WebCocoon)
             }
             mesh.SetUVs(1, uv1);
             mesh.SetColors(colors);
