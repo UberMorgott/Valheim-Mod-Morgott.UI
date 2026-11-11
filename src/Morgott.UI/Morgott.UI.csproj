@@ -18,6 +18,8 @@
 
 <ItemGroup>
     <EmbeddedResource Include="Theme\default-theme.json" LogicalName="Morgott.UI.default-theme.json" />
+    <!-- Vanilla location / room scan table for the item browser "Found in" line (dumped by autotest check item-browser-found-in). -->
+    <EmbeddedResource Include="ItemBrowser\FoundInTable.txt" LogicalName="Morgott.UI.FoundInTable.txt" Condition="Exists('ItemBrowser\FoundInTable.txt')" />
     <EmbeddedResource Include="Translations\*.json" LogicalName="Morgott.UI.Translations.%(Filename).json" />
     <!-- Icons for other mods' icon-less statuses, loaded by Icons\ModStatusIcons. -->
     <EmbeddedResource Include="Assets\StatusIcons.png" LogicalName="Morgott.UI.StatusIcons.png" />

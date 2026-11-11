@@ -1,6 +1,8 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
+using System.Security.Cryptography;
 using Morgott.Core;
 using SoftReferenceableAssets;
 using UnityEngine;
@@ -8,11 +10,12 @@ using UnityEngine;
 namespace Morgott.UI.ItemBrowser
 {
     /// <summary>
-    /// Fills <see cref="FoundIn"/> once per index generation: world spawn lists (live SpawnSystem lists include every
-    /// mod's: Jotunn, Morgott.Creatures roster), vegetation (nests), random events, location + dungeon room prefabs
-    /// (CreatureSpawner / SpawnArea / OfferingBowl), index relations (Spawn / Grow / Tree with a creature output, Core
-    /// Relation.Biomes) and item summons. Location / room prefabs are soft references: each is loaded, read and released
-    /// one per frame (ZoneSystem.cs:930 / DungeonGenerator.cs:202 load them the same way).
+    /// Fills <see cref="FoundIn"/> once per index generation, at most <see cref="BudgetMs"/> of main thread per frame:
+    /// world spawn lists (live SpawnSystem lists include every mod's: Jotunn, Morgott.Creatures roster), random events,
+    /// vegetation (nests), index relations (Spawn / Grow / Tree with a creature output, Core Relation.Biomes), item
+    /// summons, and what each location / dungeon room prefab places. Those prefabs are soft references: vanilla ones come
+    /// from the embedded table (FoundInTable.txt, this game build only); the rest are loaded async, walked time-sliced,
+    /// released, and cached under BepInEx\cache\Morgott.UI keyed by prefab + owner mod DLL hash (game build for vanilla).
     /// </summary>
     internal static class FoundInScan
     {
@@ -21,12 +24,21 @@ namespace Morgott.UI.ItemBrowser
         public static int Revision { get; private set; }
         /// <summary>The current generation's scan finished (autotest waits on it).</summary>
         public static bool Done { get; private set; }
-        /// <summary>Last finished scan: wall time, worst main-thread slice, memory delta (log + autotest).</summary>
+        /// <summary>Last finished scan: wall time, worst main-thread slice, loads, memory (log + autotest).</summary>
         public static string Stats { get; private set; }
         public static double WorstMs { get; private set; }
-        public static double NativeDeltaMb { get; private set; }
+        /// <summary>Prefabs the last scan loaded (0 = table + cache covered everything).</summary>
+        public static int Loaded { get; private set; }
+        /// <summary>Autotest: ignore table and cache (full lazy scan: table dump, perf / memory A/B).</summary>
+        public static bool ForceLazy;
+        /// <summary>The embedded table matches this game build.</summary>
+        public static bool TableCurrent => Table() != null;
+
+        private const double BudgetMs = 3.0;
         private static int _gen = -1;
         private static MonoBehaviour _host;
+        private static readonly System.Diagnostics.Stopwatch _slice = new System.Diagnostics.Stopwatch();
+        private static readonly Dictionary<string, Scanned> _vanilla = new Dictionary<string, Scanned>(StringComparer.Ordinal); // last lazy scans of vanilla prefabs (dump)
 
         /// <summary>Starts the scan of <paramref name="generation"/> on <paramref name="host"/> unless it ran or runs.</summary>
         public static void Ensure(MonoBehaviour host, int generation)
@@ -38,26 +50,61 @@ namespace Morgott.UI.ItemBrowser
             host.StartCoroutine(Run(Browser.Index, generation));
         }
 
+        /// <summary>Autotest: the next <see cref="Ensure"/> scans again.</summary>
+        public static void Rescan() => _gen = -1;
+
+        /// <summary>Autotest: the vanilla prefabs the last lazy scan read, as an embeddable table.</summary>
+        public static string TableText() => FoundInTable.Write(GameVersion(), _vanilla);
+
         public static string Line(string prefab, Func<Heightmap.Biome, string> biome) =>
             Data != null && Data.ByPrefab.TryGetValue(prefab, out var o) ? FoundIn.Text(o, Browser.Localize, biome) : null;
+
+        private static bool Over => _slice.Elapsed.TotalMilliseconds > BudgetMs;
 
         private static IEnumerator Run(BrowserIndex ix, int generation)
         {
             var d = new FoundIn();
             var zs = ZoneSystem.instance;
             var wall = System.Diagnostics.Stopwatch.StartNew();
-            var slice = System.Diagnostics.Stopwatch.StartNew();
             var worst = 0.0;
-            var worstAt = "quick";
-            void Slice(string at)
+            var worstAt = "";
+            var loads = 0;
+            var at = "quick";
+            _slice.Restart();
+            // Called right before every yield of this scan: the slice that ends there counts (restarted after it).
+            void Tick()
             {
-                if (slice.Elapsed.TotalMilliseconds > worst) { worst = slice.Elapsed.TotalMilliseconds; worstAt = at; }
+                if (_slice.Elapsed.TotalMilliseconds > worst) { worst = _slice.Elapsed.TotalMilliseconds; worstAt = at; }
             }
-            long native0 = UnityEngine.Profiling.Profiler.GetTotalAllocatedMemoryLong(), managed0 = GC.GetTotalMemory(false);
-            try { Quick(ix, d, zs); }
-            catch (Exception e) { Plugin.Log.LogWarning($"[Morgott.UI] item browser found-in: {e}"); }
+
+            foreach (var _ in Quick(ix, d, zs)) { Tick(); yield return null; _slice.Restart(); }
             Publish(d);
-            Slice("quick");
+
+            var table = ForceLazy ? null : Table();
+            var cache = ForceLazy ? new Dictionary<string, Scanned>(StringComparer.Ordinal) : Cache();
+            var cacheDirty = false;
+            var version = GameVersion();
+            if (ForceLazy) _vanilla.Clear();
+
+            // One scan per prefab key: from the table (vanilla, this build), the cache, or a lazy load.
+            IEnumerable<object> Lookup(string key, SoftReference<GameObject> r, string owner, Action<Scanned> got)
+            {
+                Scanned s = null;
+                if (owner == null) table?.TryGetValue(key, out s);
+                var ckey = key + "@" + (owner ?? version);
+                if (s == null) cache.TryGetValue(ckey, out s);
+                if (s == null)
+                {
+                    at = key;
+                    loads++;
+                    foreach (var y in Lazy(r, x => s = x)) yield return y;
+                    if (s == null) yield break;
+                    cache[ckey] = s;
+                    cacheDirty = true;
+                    if (owner == null) _vanilla[key] = s;
+                }
+                got(s);
+            }
 
             // Locations, one prefab each (duplicate entries of one prefab merged, biomes OR-ed).
             var locs = new Dictionary<string, (ZoneSystem.ZoneLocation Loc, Heightmap.Biome Biome)>(StringComparer.Ordinal);
@@ -69,27 +116,18 @@ namespace Morgott.UI.ItemBrowser
                 locs[name] = (locs.TryGetValue(name, out var had) ? had.Loc : loc, had.Biome | loc.m_biome);
             }
             var themes = new List<(Room.Theme Themes, Heightmap.Biome Biome, bool Interior)>();
-            foreach (var (loc, biome) in locs.Values)
+            foreach (var pair in locs)
             {
                 if (generation != _gen) yield break;
-                var r = loc.m_prefab;
-                if (!BeginLoad(r)) continue;
-                Slice("load " + loc.m_name);
-                while (r.IsLoading) yield return null; // async: the bundle read never stalls a frame
-                slice.Restart();
-                var asset = r.IsLoaded ? r.Asset : null;
-                if (asset == null) { r.Release(); continue; }
-                try
-                {
-                    var interior = asset.TryGetComponent<Location>(out var l) && l.m_hasInterior;
-                    Prefab(d, asset, biome, interior ? Origin.Dungeon : Origin.Location);
-                    foreach (var g in asset.GetComponentsInChildren<DungeonGenerator>(true)) themes.Add((g.m_themes, biome, interior));
-                }
-                catch (Exception e) { Plugin.Log.LogWarning($"[Morgott.UI] item browser found-in: location {asset.name}: {e.Message}"); }
-                finally { loc.m_prefab.Release(); }
-                Slice(asset.name);
-                yield return null;
-                slice.Restart();
+                var (loc, biome) = pair.Value;
+                foreach (var _ in Lookup("L:" + pair.Key, loc.m_prefab, Owner(pair.Key), s =>
+                         {
+                             var plain = s.Interior ? Origin.Dungeon : Origin.Location;
+                             foreach (var (c, k) in s.Creatures) d.Add(c, biome, k == Origin.World ? plain : k);
+                             if (s.Themes != 0) themes.Add(((Room.Theme)s.Themes, biome, s.Interior));
+                         }))
+                { Tick(); yield return null; _slice.Restart(); }
+                if (Over) { Tick(); yield return null; _slice.Restart(); }
             }
             Publish(d);
 
@@ -106,48 +144,76 @@ namespace Morgott.UI.ItemBrowser
                         else outside |= t.Biome;
                     }
                 if (inside == 0 && outside == 0) continue;
-                var r = room.m_prefab;
-                if (!BeginLoad(r)) continue;
-                Slice("load room");
-                while (r.IsLoading) yield return null;
-                slice.Restart();
-                var asset = r.IsLoaded ? r.Asset : null;
-                if (asset == null) { r.Release(); continue; }
-                try
-                {
-                    if (inside != 0) Prefab(d, asset, inside, Origin.Dungeon);
-                    if (outside != 0) Prefab(d, asset, outside, Origin.Location);
-                }
-                finally { room.m_prefab.Release(); }
-                Slice(asset.name);
-                yield return null;
-                slice.Restart();
+                string name;
+                try { name = room.m_prefab.Name; } catch (Exception) { continue; }
+                // shortcut: rooms are keyed by game build only (no owner lookup); a mod changing its rooms keeps the old cache entry until the game updates.
+                foreach (var _ in Lookup("R:" + name, room.m_prefab, null, s =>
+                         {
+                             foreach (var (c, k) in s.Creatures)
+                             {
+                                 if (inside != 0) d.Add(c, inside, k == Origin.World ? Origin.Dungeon : k);
+                                 if (outside != 0) d.Add(c, outside, k == Origin.World ? Origin.Location : k);
+                             }
+                         }))
+                { Tick(); yield return null; _slice.Restart(); }
+                if (Over) { Tick(); yield return null; _slice.Restart(); }
             }
             Publish(d);
+            if (cacheDirty) SaveCache(cache); // a forced scan rewrites the cache whole
 
             var none = new List<string>();
             foreach (var e in ix.Entries.Values)
                 if (e.Type == EntryType.Creature && e.Hidden == null && !d.ByPrefab.ContainsKey(e.Id)) none.Add(e.Id);
             none.Sort(StringComparer.Ordinal);
-            for (var i = 0; i < 120; i++) yield return null; // Release unloads async (AssetLoader.UnloadAsync): settle before the memory sample
             WorstMs = worst;
-            NativeDeltaMb = (UnityEngine.Profiling.Profiler.GetTotalAllocatedMemoryLong() - native0) / 1048576.0;
-            Stats = FormattableString.Invariant($"{wall.Elapsed.TotalSeconds:F1} s, worst slice {worst:F1} ms ({worstAt}), memory delta native {NativeDeltaMb:F1} MB managed {(GC.GetTotalMemory(false) - managed0) / 1048576.0:F1} MB");
+            Loaded = loads;
+            Stats = FormattableString.Invariant($"{wall.Elapsed.TotalSeconds:F1} s, worst slice {worst:F1} ms ({worstAt}), loaded {loads}, table {(table != null ? "current" : "off")}");
             Done = true;
             Plugin.Log.LogInfo($"[Morgott.UI] item browser found-in: {d.ByPrefab.Count} prefabs, {locs.Count} locations, {Stats}; " +
                                $"creatures without a source ({none.Count}): {string.Join(", ", none)}");
         }
 
-        // LoadAsync holds a reference (AssetBundleLoader.LoadAsync -> HoldReference): true = the caller releases it.
-        private static bool BeginLoad(SoftReference<GameObject> r)
+
+        // Async load, time-sliced walk of every transform, release (also when the scan is abandoned: finally).
+        private static IEnumerable<object> Lazy(SoftReference<GameObject> r, Action<Scanned> done)
         {
-            try { r.LoadAsync(); }
+            try { r.LoadAsync(); } // holds a reference (AssetBundleLoader.LoadAsync -> HoldReference)
             catch (Exception e)
             {
                 Plugin.Log.LogWarning($"[Morgott.UI] item browser found-in: load failed: {e.Message}");
-                return false;
+                yield break;
             }
-            return true;
+            try
+            {
+                while (r.IsLoading) yield return null;
+                var asset = r.IsLoaded ? r.Asset : null;
+                if (asset == null) yield break;
+                var s = new Scanned { Interior = asset.TryGetComponent<Location>(out var l) && l.m_hasInterior };
+                var stack = new Stack<Transform>();
+                stack.Push(asset.transform);
+                while (stack.Count > 0)
+                {
+                    var t = stack.Pop();
+                    Read(s, t.gameObject);
+                    for (var i = 0; i < t.childCount; i++) stack.Push(t.GetChild(i));
+                    if (Over) yield return null;
+                }
+                done(s);
+            }
+            finally { r.Release(); }
+        }
+
+        // What one object of a location / room places: a creature standing there (sleeping draugr, hives), a spawner
+        // point, a nest, a boss altar; dungeon generators' themes.
+        private static void Read(Scanned s, GameObject go)
+        {
+            if (go.TryGetComponent<Character>(out _)) s.Add(Utils.GetPrefabName(go), Origin.World);
+            if (go.TryGetComponent<CreatureSpawner>(out var cs) && cs.m_creaturePrefab) s.Add(cs.m_creaturePrefab.name, Origin.World);
+            if (go.TryGetComponent<SpawnArea>(out var sa))
+                foreach (var p in sa.m_prefabs)
+                    if (p?.m_prefab) s.Add(p.m_prefab.name, Origin.Nest);
+            if (go.TryGetComponent<OfferingBowl>(out var bowl) && bowl.m_bossPrefab) s.Add(bowl.m_bossPrefab.name, Origin.Boss);
+            if (go.TryGetComponent<DungeonGenerator>(out var g)) s.Themes |= (int)g.m_themes;
         }
 
         private static void Publish(FoundIn d)
@@ -156,8 +222,8 @@ namespace Morgott.UI.ItemBrowser
             Revision++;
         }
 
-        // Everything already in memory: spawn lists, events, vegetation, index relations, summons.
-        private static void Quick(BrowserIndex ix, FoundIn d, ZoneSystem zs)
+        // Everything already in memory: spawn lists, events, vegetation, index relations, summons. Yields when over budget.
+        private static IEnumerable<object> Quick(BrowserIndex ix, FoundIn d, ZoneSystem zs)
         {
             var lists = new HashSet<SpawnSystemList>();
             foreach (var s in SpawnSystem.m_instances) if (s) lists.UnionWith(s.m_spawnLists);
@@ -172,9 +238,17 @@ namespace Morgott.UI.ItemBrowser
                     if (ev != null && ev.m_enabled && !ev.m_devDisabled)
                         foreach (var sd in ev.m_spawn)
                             if (sd?.m_prefab) d.Add(sd.m_prefab.name, 0, Origin.Event); // tag only: m_biome = where the raided base may stand (run 20261111-161053: Skeleton read "anywhere")
+            if (Over) yield return null;
 
+            var veg = new Scanned();
             foreach (var v in zs.m_vegetation)
-                if (v != null && v.m_enable && v.m_prefab) Prefab(d, v.m_prefab, v.m_biome, Origin.World);
+            {
+                if (v == null || !v.m_enable || !v.m_prefab) continue;
+                veg.Creatures.Clear();
+                foreach (var t in v.m_prefab.GetComponentsInChildren<Transform>(true)) Read(veg, t.gameObject);
+                foreach (var (c, k) in veg.Creatures) d.Add(c, v.m_biome, k);
+                if (Over) yield return null;
+            }
 
             foreach (var r in ix.Relations)
             {
@@ -189,17 +263,64 @@ namespace Morgott.UI.ItemBrowser
             foreach (var go in Browser.Summoned()) if (go) d.Add(go.name, 0, Origin.Summon);
         }
 
-        // Creatures a prefab places: spawner points, nests, boss altars.
-        private static void Prefab(FoundIn d, GameObject root, Heightmap.Biome biome, Origin plain)
+        // ---------------------------------------------------------------- table, cache, owners
+
+        private static string GameVersion() => global::Version.GetVersionString(true);
+
+        private static bool _tableRead;
+        private static Dictionary<string, Scanned> _table;
+
+        // The embedded vanilla table, null (one Warning) when it was dumped from another game build.
+        private static Dictionary<string, Scanned> Table()
         {
-            foreach (var c in root.GetComponentsInChildren<Character>(true)) d.Add(Utils.GetPrefabName(c.gameObject), biome, plain); // placed as is (sleeping draugr, hives)
-            foreach (var cs in root.GetComponentsInChildren<CreatureSpawner>(true))
-                if (cs.m_creaturePrefab) d.Add(cs.m_creaturePrefab.name, biome, plain);
-            foreach (var sa in root.GetComponentsInChildren<SpawnArea>(true))
-                foreach (var s in sa.m_prefabs)
-                    if (s?.m_prefab) d.Add(s.m_prefab.name, biome, Origin.Nest);
-            foreach (var bowl in root.GetComponentsInChildren<OfferingBowl>(true))
-                if (bowl.m_bossPrefab) d.Add(bowl.m_bossPrefab.name, biome, Origin.Boss);
+            if (_tableRead) return _table;
+            _tableRead = true;
+            string text = null;
+            using (var stream = typeof(FoundInScan).Assembly.GetManifestResourceStream("Morgott.UI.FoundInTable.txt"))
+                if (stream != null) using (var reader = new StreamReader(stream)) text = reader.ReadToEnd();
+            var map = FoundInTable.Parse(text, out var dumped, out _);
+            if (dumped == GameVersion()) _table = map;
+            else Plugin.Log.LogWarning($"[Morgott.UI] item browser found-in: table is from game '{dumped}', this is '{GameVersion()}': every location is scanned (cached after the first time); regenerate FoundInTable.txt");
+            return _table;
+        }
+
+        private static string CachePath => Path.Combine(BepInEx.Paths.CachePath, "Morgott.UI", "found-in.txt");
+
+        private static Dictionary<string, Scanned> Cache()
+        {
+            try { return File.Exists(CachePath) ? FoundInTable.Parse(File.ReadAllText(CachePath), out _, out _) : new Dictionary<string, Scanned>(StringComparer.Ordinal); }
+            catch (Exception e)
+            {
+                Plugin.Log.LogWarning($"[Morgott.UI] item browser found-in: cache unreadable, rescanning: {e.Message}");
+                return new Dictionary<string, Scanned>(StringComparer.Ordinal);
+            }
+        }
+
+        private static void SaveCache(Dictionary<string, Scanned> cache)
+        {
+            try
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(CachePath));
+                File.WriteAllText(CachePath, FoundInTable.Write(GameVersion(), cache));
+            }
+            catch (Exception e) { Plugin.Log.LogWarning($"[Morgott.UI] item browser found-in: cache not saved: {e.Message}"); }
+        }
+
+        private static readonly Dictionary<string, string> _dllHash = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        // Mod that added the location (Jotunn ZoneManager) as "guid#dllhash"; null = vanilla (or added outside Jotunn).
+        private static string Owner(string location)
+        {
+            try
+            {
+                var guid = Jotunn.Managers.ZoneManager.Instance.GetCustomLocation(location)?.SourceMod?.GUID;
+                if (guid == null || !BepInEx.Bootstrap.Chainloader.PluginInfos.TryGetValue(guid, out var info)) return null;
+                if (!_dllHash.TryGetValue(info.Location, out var hash))
+                    using (var sha = SHA256.Create())
+                        _dllHash[info.Location] = hash = BitConverter.ToString(sha.ComputeHash(File.ReadAllBytes(info.Location)), 0, 8).Replace("-", "");
+                return guid + "#" + hash;
+            }
+            catch (Exception) { return null; } // shortcut: a location another mod adds without Jotunn counts as vanilla (cache keyed by game build)
         }
     }
 }
