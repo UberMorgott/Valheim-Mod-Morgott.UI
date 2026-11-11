@@ -9,7 +9,8 @@
 //           coords, no UVs / sway; burns from world _BurnOrigin.
 // Burn: one ignition per patch, set once. A fragment ignites at _BurnStart + delay + dist / _SweepSpeed and is gone
 // _BurnEdge seconds later (Core WebBurn.GoneAt), clipped at a per-fragment noise threshold < 1 (ragged ember front).
-// Premultiplied alpha, double-sided, no depth write, no shadow caster. Everything animated runs on the shader clock.
+// Premultiplied alpha, double-sided, no depth write, no shadow caster; lit diffuse like the vanilla webs (no glow by day).
+// Everything animated runs on the shader clock.
 Shader "Morgott/Web"
 {
     Properties
@@ -230,9 +231,13 @@ Shader "Morgott/Web"
                 // ---- light -----------------------------------------------------------------------------------------
                 float3 L = normalize(_WorldSpaceLightPos0.xyz);
                 float3 amb = max(0.0, ShadeSH9(float4(N, 1.0))) + 0.04;
-                float3 sun = _LightColor0.rgb * (0.2 + 0.4 * abs(dot(N, L)) + 0.5 * pow(saturate(dot(-V, L)), 6.0)); // + back-lit scatter
-                float3 silk = lerp(_Color.rgb, float3(0.86, 0.93, 1.0), _Rime * 0.7) * i.color.rgb;
-                float3 col = min(silk * (amb + sun) + silk * _Glow, 0.9); // LDR: stacked layers in noon sun bloomed to white glare (run 20261111-004927)
+                // Lit like the vanilla Mistlands webs (Particles/Standard Surface2: alpha blend, albedo _Color 0.75-1 x the art): diffuse
+                // albedo x (ambient + sun), two-sided for thin silk, no back-lit boost, no day emission (run 20261111-103356: the
+                // old back-scatter + base sun term read as an emissive glow at noon). Readability comes from coverage (alpha), not light.
+                float wrapL = abs(dot(N, L)); // thin silk: lit through from either side (vanilla cards are two-sided)
+                float3 silk = min(lerp(_Color.rgb, float3(0.86, 0.93, 1.0), _Rime * 0.7) * i.color.rgb, 0.75);
+                float night = saturate(1.0 - Luminance(_LightColor0.rgb));
+                float3 col = min(silk * (amb + _LightColor0.rgb * wrapL) + silk * _Glow * night, 0.85); // below the bloom threshold
 
                 // ---- dew: sparse jittered drops on the strands, view-dependent glint -----------------------------------
                 if (!cocoon && _DewSparkle > 0.0)
@@ -243,7 +248,7 @@ Shader "Morgott/Web"
                     float drop = (1.0 - smoothstep(0.06, 0.16, length(frac(g) - c))) * step(0.4, Hash(id + 2.1)) * smoothstep(0.25, 0.6, strand);
                     float3 dn = normalize(N + (float3(Hash(id + 1.7), Hash(id + 3.9), Hash(id + 8.1)) - 0.5) * 1.6);
                     float spec = pow(saturate(dot(dn, normalize(L + V))), 48.0);
-                    float3 glint = _DewColor.rgb * drop * _DewSparkle * (spec * _LightColor0.rgb * 3.0 + amb + 0.12);
+                    float3 glint = _DewColor.rgb * drop * _DewSparkle * (spec * _LightColor0.rgb + amb * 0.3); // a small lit drop, no bloom
                     col += glint;
                     strand = max(strand, drop * 0.8);
                 }

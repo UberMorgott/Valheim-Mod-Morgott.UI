@@ -90,7 +90,7 @@ public static class RenderWeb
             var look = new GameObject("cocoon");
             look.AddComponent<MeshFilter>().sharedMesh = CocoonLook(legs, 0, 0f, ends.ConvertAll(e => feet + e), 7, 12345);
             var lr = look.AddComponent<MeshRenderer>();
-            lr.sharedMaterial = Copy(m => { m.SetFloat("_WebGain", 7f); m.SetFloat("_Opacity", 0.95f); m.SetFloat("_DewSparkle", 0f); });
+            lr.sharedMaterial = Copy(m => { m.SetFloat("_WebGain", 6f); m.SetFloat("_Opacity", 0.9f); m.SetFloat("_DewSparkle", 0f); });
             lr.shadowCastingMode = ShadowCastingMode.Off;
             Shot(cam, feet + new Vector3(0.6f, 2.3f, -2.6f), feet + new Vector3(0f, 0.5f, 0.3f), Path.Combine(outDir, "cocoon.png"));
             Shot(cam, feet + new Vector3(2.2f, 1.2f, -0.6f), feet + new Vector3(0f, 0.55f, 0f), Path.Combine(outDir, "cocoon-side.png"));
@@ -103,7 +103,7 @@ public static class RenderWeb
             sk.transform.rotation = Quaternion.LookRotation(new Vector3(0.6f, 0f, -1f).normalized);
             sk.AddComponent<MeshFilter>().sharedMesh = Skirt(2.2f, new Vector3(0f, 0f, 2.8f), 1.1f, 7, (x, z) => 0.12f * Mathf.Sin(x * 1.3f) + 0.08f * z);
             var sr = sk.AddComponent<MeshRenderer>();
-            sr.sharedMaterial = Copy(m => { m.SetFloat("_WebGain", 9f); m.SetFloat("_Opacity", 1f); }); // = WebNest ground groups
+            sr.sharedMaterial = Copy(m => { m.SetFloat("_WebGain", 6f); m.SetFloat("_Opacity", 0.85f); }); // = WebNest ground groups
             sr.shadowCastingMode = ShadowCastingMode.Off;
             Shot(cam, trunkAt + new Vector3(3.5f, 2.2f, -5f), trunkAt + new Vector3(0.3f, 0.8f, -1.2f), Path.Combine(outDir, "skirt.png"));
             Debug.Log("RenderWeb: OK " + outDir);
@@ -247,7 +247,8 @@ public static class RenderWeb
             mesh.SetUVs(0, uv0);
             mesh.SetUVs(1, uv1);
             mesh.SetColors(colors);
-            mesh.SetTriangles(tris, 0); // double-sided shader: one face
+            mesh.SetTriangles(tris, 0); // double-sided shader: one face (it flips the normal to the viewer)
+            mesh.RecalculateNormals(); // Morgott/Web is lit like the vanilla webs
             mesh.RecalculateBounds();
             return mesh;
         }
@@ -336,7 +337,8 @@ public static class RenderWeb
                         tris.AddRange(new[] { pp - 1, q - 1, pp, pp, q - 1, q });
                     }
                 layer++;
-            }            const int segs = 6, rows = 3;
+            }
+            const int segs = 6, rows = 3;
             foreach (var (yaw, top, uv) in SkirtVeils)
             {
                 var (from, to) = (SkirtTop(height * top, yaw), Quaternion.Euler(0f, yaw, 0f) * foot);
