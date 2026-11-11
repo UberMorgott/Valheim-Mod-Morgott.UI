@@ -69,6 +69,10 @@ namespace Morgott.UI.MapScreen
             return current >= 0 && current < rows.Count && !rows[current].Here ? current : -1;
         }
 
+        // Centre of the map part the list leaves visible (screen px): the list covers [mapLeft, left), the map ends at right.
+        public static Vector2 VisibleCenter(float left, float right, float bottom, float top) =>
+            new Vector2((left + Math.Max(left, right)) * 0.5f, (bottom + top) * 0.5f);
+
         public static int IndexOf(List<PortalRow> rows, ZDOID id)
         {
             for (var i = 0; i < rows.Count; i++)

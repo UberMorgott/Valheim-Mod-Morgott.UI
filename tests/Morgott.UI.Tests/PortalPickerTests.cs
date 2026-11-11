@@ -81,6 +81,16 @@ namespace Morgott.UI.Tests
         }
 
         [Fact]
+        public void VisibleCenterIsBetweenTheListAndTheMapEdge()
+        {
+            // Run 20261111-152231: list right edge ~420, map image right edge ~1485 at 1920x1080 -> centre ~952.
+            var c = PortalPickerMath.VisibleCenter(420f, 1485f, 33f, 1047f);
+            Assert.Equal(952.5f, c.x, 2);
+            Assert.Equal(540f, c.y, 2);
+            Assert.Equal(500f, PortalPickerMath.VisibleCenter(500f, 400f, 0f, 0f).x, 2); // degenerate: never left of the list
+        }
+
+        [Fact]
         public void DoubleClickOnlyOnTheSamePortalInTime()
         {
             var c = new PortalClicks();

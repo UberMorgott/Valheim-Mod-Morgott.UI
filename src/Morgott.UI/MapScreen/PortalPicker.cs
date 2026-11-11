@@ -128,12 +128,10 @@ namespace Morgott.UI.MapScreen
             _ppRename.onSubmit.AddListener(SubmitRename);
             _ppRename.onDeselect.AddListener(_ => EndRename());
             renameBack.gameObject.SetActive(false);
-            if (_footer)
-            {
-                _ppHint = _art.Text("RuneSkin_PortalHint", _footer, "font.body", "color.text.body", ThemeTokens.GetFloat("size.map.hint.font", 18f), TextAlignmentOptions.Center);
-                Stretch(_ppHint.rectTransform);
-                _ppHint.gameObject.SetActive(false);
-            }
+            // Key hint at the panel bottom (mockup), not in the map's KeyHints band: vanilla hides that band with the game's
+            // KeyHints setting off (Minimap.cs:1238-1242, HintBand() = 0; run 20261111-152231 showed no hint at all).
+            _ppHint = _art.Text("Hint", _pp, "font.body", "color.text.body", ThemeTokens.GetFloat("size.map.biome.font", 15f), TextAlignmentOptions.Center);
+            _ppHint.textWrappingMode = TextWrappingModes.Normal;
             _pp.gameObject.SetActive(false);
         }
 
@@ -201,8 +199,44 @@ namespace Morgott.UI.MapScreen
             _ppSel = id;
             _ppRingVersion = -1;
             // Minimap.UpdateMap centres the large map on player position + m_mapOffset (Minimap.cs:1118-1165).
-            if (Player.m_localPlayer) _map.m_mapOffset = _ppRows[i].Portal.Position - Player.m_localPlayer.transform.position;
+            // The list covers the map image's left part: shift by the world distance from the image centre to the centre of
+            // the visible part (ScreenToWorldPoint is linear in screen space at the current zoom, Minimap.cs:2371).
+            if (Player.m_localPlayer) _map.m_mapOffset = _ppRows[i].Portal.Position - Player.m_localPlayer.transform.position - VisibleCenterShift();
             KeepVisible(i);
+        }
+
+        // Screen centre of the visible map area: from the list's right edge to the map image's right edge.
+        public Vector2 PortalVisibleCenter()
+        {
+            var map = _map.m_mapImageLarge.rectTransform;
+            var cam = UiCamera(map);
+            var m = new Vector3[4];
+            map.GetWorldCorners(m);
+            var bl = RectTransformUtility.WorldToScreenPoint(cam, m[0]);
+            var tr = RectTransformUtility.WorldToScreenPoint(cam, m[2]);
+            var left = bl.x;
+            if (_pp && _pp.gameObject.activeInHierarchy)
+            {
+                var p = new Vector3[4];
+                _pp.GetWorldCorners(p);
+                left = Mathf.Max(left, RectTransformUtility.WorldToScreenPoint(cam, p[2]).x);
+            }
+            return PortalPickerMath.VisibleCenter(left, tr.x, bl.y, tr.y);
+        }
+
+        private static Camera UiCamera(Transform t)
+        {
+            var canvas = t.GetComponentInParent<Canvas>();
+            return canvas && canvas.renderMode != RenderMode.ScreenSpaceOverlay ? canvas.worldCamera : null;
+        }
+
+        private Vector3 VisibleCenterShift()
+        {
+            var map = _map.m_mapImageLarge.rectTransform;
+            var mid = RectTransformUtility.WorldToScreenPoint(UiCamera(map), map.TransformPoint(map.rect.center));
+            var shift = _map.ScreenToWorldPoint(PortalVisibleCenter()) - _map.ScreenToWorldPoint(mid);
+            shift.y = 0f;
+            return shift;
         }
 
         private void StartRename()
@@ -252,7 +286,6 @@ namespace Morgott.UI.MapScreen
             _ppShown = active;
             _pp.gameObject.SetActive(active);
             if (_keyRow) _keyRow.gameObject.SetActive(!active);
-            if (_ppHint) _ppHint.gameObject.SetActive(active);
             _ppSel = ZDOID.None;
             _ppRingPin = null;
             _ppScrollPx = 0f;
@@ -361,7 +394,9 @@ namespace Morgott.UI.MapScreen
             if (_ppSearchHint.gameObject.activeSelf != showHint) _ppSearchHint.gameObject.SetActive(showHint);
             y += searchH + 8f;
 
-            var view = Mathf.Max(PortalRowH, h - y - pad);
+            var hintH = ThemeTokens.GetFloat("size.map.portal.hint.h", 66f);
+            Place(_ppHint.rectTransform, pad, h - pad - hintH, rowW, hintH);
+            var view = Mathf.Max(PortalRowH, h - y - pad - hintH - 6f);
             Place(_ppList, pad, y, rowW, view);
             var rowH = PortalRowH;
             var content = PortalRowY(_ppRows.Count);
@@ -440,9 +475,15 @@ namespace Morgott.UI.MapScreen
             r.Swatch.color = view.BiomeColor;
             Place(r.Biome.rectTransform, x + sw + 8f, half, w - x - sw - 8f - distW, half);
             if (r.Biome.text != view.Biome) r.Biome.text = view.Biome;
+            // Stone-portal mark right after the name, centred on the name line.
             var stone = row.Portal.Stone;
             if (r.Stone.enabled != stone) r.Stone.enabled = stone;
-            Place(r.Stone.rectTransform, w - distW - sw - 4f, half + (half - sw) * 0.5f, sw * 1.4f, sw * 1.4f);
+            if (stone)
+            {
+                var gs = half * 0.7f;
+                var nameW = Mathf.Min(r.Name.GetPreferredValues(r.Name.text).x, w - x - distW - gs - 6f);
+                Place(r.Stone.rectTransform, x + nameW + 6f, 2f + (half - gs) * 0.5f, gs, gs);
+            }
             Place(r.Distance.rectTransform, w - distW, half, distW - 4f, half);
             if (r.Distance.text != view.Distance) r.Distance.text = view.Distance;
             var dim = ThemeTokens.GetColor(row.Here ? "color.state.disabled" : "color.text.body", Color.white);
