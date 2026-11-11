@@ -23,6 +23,8 @@ namespace Morgott.UI.ItemBrowser
         public static bool Done { get; private set; }
         /// <summary>Last finished scan: wall time, worst main-thread slice, memory delta (log + autotest).</summary>
         public static string Stats { get; private set; }
+        public static double WorstMs { get; private set; }
+        public static double NativeDeltaMb { get; private set; }
         private static int _gen = -1;
         private static MonoBehaviour _host;
 
@@ -70,8 +72,13 @@ namespace Morgott.UI.ItemBrowser
             foreach (var (loc, biome) in locs.Values)
             {
                 if (generation != _gen) yield break;
-                var asset = Load(loc.m_prefab);
-                if (asset == null) continue;
+                var r = loc.m_prefab;
+                if (!BeginLoad(r)) continue;
+                Slice("load " + loc.m_name);
+                while (r.IsLoading) yield return null; // async: the bundle read never stalls a frame
+                slice.Restart();
+                var asset = r.IsLoaded ? r.Asset : null;
+                if (asset == null) { r.Release(); continue; }
                 try
                 {
                     var interior = asset.TryGetComponent<Location>(out var l) && l.m_hasInterior;
@@ -99,8 +106,13 @@ namespace Morgott.UI.ItemBrowser
                         else outside |= t.Biome;
                     }
                 if (inside == 0 && outside == 0) continue;
-                var asset = Load(room.m_prefab);
-                if (asset == null) continue;
+                var r = room.m_prefab;
+                if (!BeginLoad(r)) continue;
+                Slice("load room");
+                while (r.IsLoading) yield return null;
+                slice.Restart();
+                var asset = r.IsLoaded ? r.Asset : null;
+                if (asset == null) { r.Release(); continue; }
                 try
                 {
                     if (inside != 0) Prefab(d, asset, inside, Origin.Dungeon);
@@ -117,25 +129,25 @@ namespace Morgott.UI.ItemBrowser
             foreach (var e in ix.Entries.Values)
                 if (e.Type == EntryType.Creature && e.Hidden == null && !d.ByPrefab.ContainsKey(e.Id)) none.Add(e.Id);
             none.Sort(StringComparer.Ordinal);
-            yield return null; // released bundles unload before the memory sample
-            Stats = FormattableString.Invariant($"{wall.Elapsed.TotalSeconds:F1} s, worst slice {worst:F1} ms ({worstAt}), memory delta native {(UnityEngine.Profiling.Profiler.GetTotalAllocatedMemoryLong() - native0) / 1048576.0:F1} MB managed {(GC.GetTotalMemory(false) - managed0) / 1048576.0:F1} MB");
+            for (var i = 0; i < 120; i++) yield return null; // Release unloads async (AssetLoader.UnloadAsync): settle before the memory sample
+            WorstMs = worst;
+            NativeDeltaMb = (UnityEngine.Profiling.Profiler.GetTotalAllocatedMemoryLong() - native0) / 1048576.0;
+            Stats = FormattableString.Invariant($"{wall.Elapsed.TotalSeconds:F1} s, worst slice {worst:F1} ms ({worstAt}), memory delta native {NativeDeltaMb:F1} MB managed {(GC.GetTotalMemory(false) - managed0) / 1048576.0:F1} MB");
             Done = true;
             Plugin.Log.LogInfo($"[Morgott.UI] item browser found-in: {d.ByPrefab.Count} prefabs, {locs.Count} locations, {Stats}; " +
                                $"creatures without a source ({none.Count}): {string.Join(", ", none)}");
         }
 
-        // Returns the asset after a successful Load (caller releases), null when it failed (nothing to release).
-        private static GameObject Load(SoftReference<GameObject> r)
+        // LoadAsync holds a reference (AssetBundleLoader.LoadAsync -> HoldReference): true = the caller releases it.
+        private static bool BeginLoad(SoftReference<GameObject> r)
         {
-            try { r.Load(); }
+            try { r.LoadAsync(); }
             catch (Exception e)
             {
                 Plugin.Log.LogWarning($"[Morgott.UI] item browser found-in: load failed: {e.Message}");
-                return null;
+                return false;
             }
-            if (r.Asset) return r.Asset;
-            r.Release();
-            return null;
+            return true;
         }
 
         private static void Publish(FoundIn d)
