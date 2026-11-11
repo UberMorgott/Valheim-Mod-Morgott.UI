@@ -60,7 +60,7 @@ namespace Morgott.UI.ItemBrowser
             if (!_unloadPending || browserOpen || !Done || !p || BaseAI.HaveEnemyInRange(p, p.transform.position, 30f)) return;
             _unloadPending = false;
             var sw = System.Diagnostics.Stopwatch.StartNew();
-            Resources.UnloadUnusedAssets();
+            _ = Resources.UnloadUnusedAssets(); // completes on its own; nothing waits for it
             Plugin.Log.LogInfo(FormattableString.Invariant($"[Morgott.UI] item browser found-in: Resources.UnloadUnusedAssets after the fallback scan ({sw.Elapsed.TotalMilliseconds:F0} ms to start)"));
         }
 
@@ -154,14 +154,14 @@ namespace Morgott.UI.ItemBrowser
             {
                 if (generation != _gen) yield break;
                 if (room == null || !room.m_enabled || !room.m_prefab.IsValid) continue;
-                Heightmap.Biome inside = 0, outside = 0;
+                Heightmap.Biome inside = Heightmap.Biome.None, outside = Heightmap.Biome.None;
                 foreach (var t in themes)
-                    if ((room.m_theme & t.Themes) != 0)
+                    if ((room.m_theme & t.Themes) != Room.Theme.None)
                     {
                         if (t.Interior) inside |= t.Biome;
                         else outside |= t.Biome;
                     }
-                if (inside == 0 && outside == 0) continue;
+                if (inside == Heightmap.Biome.None && outside == Heightmap.Biome.None) continue;
                 string name;
                 try { name = room.m_prefab.Name; } catch (Exception) { continue; }
                 // shortcut: rooms are keyed by game build only (no owner lookup); a mod changing its rooms keeps the old cache entry until the game updates.
@@ -169,8 +169,8 @@ namespace Morgott.UI.ItemBrowser
                          {
                              foreach (var (c, k) in s.Creatures)
                              {
-                                 if (inside != 0) d.Add(c, inside, k == Origin.World ? Origin.Dungeon : k);
-                                 if (outside != 0) d.Add(c, outside, k == Origin.World ? Origin.Location : k);
+                                 if (inside != Heightmap.Biome.None) d.Add(c, inside, k == Origin.World ? Origin.Dungeon : k);
+                                 if (outside != Heightmap.Biome.None) d.Add(c, outside, k == Origin.World ? Origin.Location : k);
                              }
                          }))
                 { Tick(); yield return null; _slice.Restart(); }
@@ -263,7 +263,7 @@ namespace Morgott.UI.ItemBrowser
                 foreach (var ev in RandEventSystem.instance.m_events)
                     if (ev != null && ev.m_enabled && !ev.m_devDisabled)
                         foreach (var sd in ev.m_spawn)
-                            if (sd?.m_prefab) d.Add(sd.m_prefab.name, 0, Origin.Event); // tag only: m_biome = where the raided base may stand (run 20261111-161053: Skeleton read "anywhere")
+                            if (sd?.m_prefab) d.Add(sd.m_prefab.name, Heightmap.Biome.None, Origin.Event); // tag only: m_biome = where the raided base may stand (run 20261111-161053: Skeleton read "anywhere")
             yield return null; // every section in its own frame: first-call costs (JIT, Summoned) spread (run 20261111-174554: 18.7 ms in one)
 
             yield return null;
@@ -289,7 +289,7 @@ namespace Morgott.UI.ItemBrowser
             }
             yield return null;
 
-            foreach (var go in Browser.Summoned()) if (go) d.Add(go.name, 0, Origin.Summon);
+            foreach (var go in Browser.Summoned()) if (go) d.Add(go.name, Heightmap.Biome.None, Origin.Summon);
         }
 
         // ---------------------------------------------------------------- table, cache, owners

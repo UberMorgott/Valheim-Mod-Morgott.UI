@@ -38,14 +38,14 @@ namespace Morgott.UI.ItemBrowser
         public static List<Heightmap.Biome> Biomes(Heightmap.Biome mask)
         {
             var list = new List<Heightmap.Biome>();
-            foreach (var b in Order) if ((mask & b) != 0) list.Add(b);
+            foreach (var b in Order) if ((mask & b) != Heightmap.Biome.None) list.Add(b);
             return list;
         }
 
         public static List<string> Tags(Origin kinds)
         {
             var list = new List<string>();
-            foreach (var (k, t) in TagTokens) if ((kinds & k) != 0) list.Add(t);
+            foreach (var (k, t) in TagTokens) if ((kinds & k) != Origin.None) list.Add(t);
             return list;
         }
 
@@ -57,7 +57,7 @@ namespace Morgott.UI.ItemBrowser
             if ((o.Biomes & Heightmap.Biome.Land) == Heightmap.Biome.Land)
             {
                 parts.Add(localize("$ib_anywhere"));
-                if ((o.Biomes & Heightmap.Biome.Ocean) != 0) parts.Add(biome(Heightmap.Biome.Ocean));
+                if ((o.Biomes & Heightmap.Biome.Ocean) != Heightmap.Biome.None) parts.Add(biome(Heightmap.Biome.Ocean));
             }
             else foreach (var b in Biomes(o.Biomes)) parts.Add(biome(b));
             var tags = new List<string>();

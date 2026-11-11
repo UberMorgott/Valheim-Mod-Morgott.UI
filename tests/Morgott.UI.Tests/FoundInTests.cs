@@ -40,9 +40,9 @@ namespace Morgott.UI.Tests
         public void Tags_only_and_unknown()
         {
             var d = new FoundIn();
-            d.Add("Hen", 0, Origin.Egg);
-            d.Add("Hen", 0, Origin.Summon);
-            d.Add("Ghost", 0, Origin.World); // a spawn list without biome: no word to show
+            d.Add("Hen", B.None, Origin.Egg);
+            d.Add("Hen", B.None, Origin.Summon);
+            d.Add("Ghost", B.None, Origin.World); // a spawn list without biome: no word to show
             d.Add("", B.Meadows, Origin.World);
             d.Add("Nothing", B.Meadows, Origin.None);
             Assert.Equal("ib_from_egg, ib_from_summon", Line(d, "Hen"));

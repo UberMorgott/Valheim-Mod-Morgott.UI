@@ -633,8 +633,8 @@ namespace Morgott.UI.ItemBrowser
         // Ocean has no legend colour: plain body text.
         private static string BiomeWord(Heightmap.Biome b)
         {
-            var name = L(Morgott.UI.MapScreen.MapFilterMath.NameKey(b));
-            return b == Heightmap.Biome.Ocean ? name : $"<color=#{ColorUtility.ToHtmlStringRGB(Morgott.UI.MapScreen.BiomeOverlay.BiomeColor(b))}>{name}</color>";
+            var word = L(Morgott.UI.MapScreen.MapFilterMath.NameKey(b));
+            return b == Heightmap.Biome.Ocean ? word : $"<color=#{ColorUtility.ToHtmlStringRGB(Morgott.UI.MapScreen.BiomeOverlay.BiomeColor(b))}>{word}</color>";
         }
         private static string NameOf(string id) => Browser.Index != null && Browser.Index.Entries.TryGetValue(id, out var e) ? L(e.Name) : id;
         private static string CatName(ItemCategory c) => L("$ib_cat_" + CatKeys[(int)c]);
