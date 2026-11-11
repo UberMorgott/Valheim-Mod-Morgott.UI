@@ -179,6 +179,7 @@ namespace Morgott.UI.MapScreen
             }
             var largeOn = _large && _large.gameObject.activeInHierarchy;
             if (largeOn) LargeLateUpdate();
+            else if (_ppShown) PortalSession(false); // session closed with the map: picker off, vanilla key row back
             HideHudCluster(largeOn);
         }
 
