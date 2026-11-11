@@ -291,6 +291,7 @@ namespace Morgott.UI.MapScreen
             _ppScrollPx = 0f;
             EndRename();
             if (_ppRing) _ppRing.gameObject.SetActive(false);
+            Plugin.Log.LogInfo($"[Morgott.UI] portal picker {(active ? "open" : "closed")}: panel={_pp.gameObject.activeSelf} vanillaKeyRow={(_keyRow ? _keyRow.gameObject.activeSelf.ToString() : "none")}");
             if (!active) return;
             if (_ppSearch.text.Length > 0) _ppSearch.text = "";
             PortalPickerService.Dirty = true;
