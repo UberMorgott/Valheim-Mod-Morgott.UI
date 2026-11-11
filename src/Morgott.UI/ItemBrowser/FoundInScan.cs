@@ -34,7 +34,7 @@ namespace Morgott.UI.ItemBrowser
         /// <summary>The embedded table matches this game build.</summary>
         public static bool TableCurrent => Table() != null;
 
-        private const double BudgetMs = 3.0;
+        private const double BudgetMs = 2.0; // + one engine call over it stays under the 5 ms gate (run 20261111-171917-2: 6.0 ms at 3)
         private static int _gen = -1;
         private static MonoBehaviour _host;
         private static readonly System.Diagnostics.Stopwatch _slice = new System.Diagnostics.Stopwatch();
@@ -185,9 +185,11 @@ namespace Morgott.UI.ItemBrowser
             }
             try
             {
+                yield return null; // LoadAsync's own cost ends this slice
                 while (r.IsLoading) yield return null;
                 var asset = r.IsLoaded ? r.Asset : null;
                 if (asset == null) yield break;
+                yield return null; // so does the Asset fetch
                 var s = new Scanned { Interior = asset.TryGetComponent<Location>(out var l) && l.m_hasInterior };
                 var stack = new Stack<Transform>();
                 stack.Push(asset.transform);

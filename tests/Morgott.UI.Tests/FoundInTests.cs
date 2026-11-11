@@ -68,5 +68,19 @@ namespace Morgott.UI.Tests
             Assert.Equal(new[] { ("Draugr", Origin.World), ("Skeleton", Origin.Nest), ("Eikthyr", Origin.Boss) }, map["L:Crypt2"].Creatures);
             Assert.Empty(map["R:empty"].Creatures);
         }
+
+        // The embedded vanilla table (dumped by autotest item-browser-found-in): parses whole, every dumped prefab kept.
+        [Fact]
+        public void Embedded_table_covers_every_dumped_location()
+        {
+            var path = System.IO.Path.Combine(System.AppContext.BaseDirectory, "..", "..", "..", "..", "..", "src", "Morgott.UI", "ItemBrowser", "FoundInTable.txt");
+            var map = FoundInTable.Parse(System.IO.File.ReadAllText(path), out var version, out var count);
+            Assert.False(string.IsNullOrEmpty(version));
+            Assert.True(count > 300, $"count {count}");
+            Assert.Equal(count, map.Count);
+            Assert.Contains(("Eikthyr", Origin.Boss), map["L:Eikthyrnir"].Creatures);
+            Assert.True(map["L:Crypt2"].Interior);
+            Assert.Contains(("Skeleton", Origin.World), map["L:Crypt2"].Creatures);
+        }
     }
 }

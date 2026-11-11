@@ -1,0 +1,547 @@
+# game 1.0.21	546
+L:AbandonedLogCabin02	0	0	StoneGolem:w
+L:AbandonedLogCabin03	0	0	StoneGolem:w,Skeleton_Mountains:w
+L:AbandonedLogCabin04	0	0	StoneGolem:w,Skeleton_Mountains:w
+L:AncientUpgradeStation	0	0	
+L:AshlandRuins	4096	0	
+L:BOM_BlackMetalMine01	0	1	GoblinBrute:w,Goblin:w
+L:BOM_BlackMetalMine02	0	1	GoblinShaman:w,Goblin:w
+L:BOM_CoalMine01	0	1	Skeleton:w
+L:BOM_CoalMine02	0	1	Skeleton:w
+L:BOM_CopperMine01	0	1	Skeleton:w
+L:BOM_CopperMine02	0	1	Skeleton:w
+L:BOM_FlametalMine01	0	1	Charred_Archer:w,Charred_Melee:w
+L:BOM_FlametalMine02	0	1	Charred_Mage:w,Charred_Melee:w
+L:BOM_FlintMine01	0	1	Neck:w
+L:BOM_FlintMine02	0	1	Boar:w,Neck:w
+L:BOM_SilverMine01	0	1	Wolf:w,Fenring:w
+L:BOM_SilverMine02	0	1	Wolf:w,Fenring:w
+L:BOM_TinMine01	0	1	Greydwarf_Elite:w,Greydwarf:w,Skeleton:w
+L:BOM_TinMine02	0	1	Greydwarf_Shaman:w,Greydwarf:w,Skeleton:w
+L:BearCave	0	1	Bjorn_sleeping:w
+L:BigRockClearing	0	0	
+L:BogWitch_Camp	0	0	BogWitchKvastur:n,BogWitchKvastur:w
+L:Bonemass	0	0	Bonemass:b
+L:CharredFortress	0	0	piece_Charred_Balista:w,Charred_Mage:w,Charred_Archer:w,Charred_Melee:n,Charred_Archer:n,Charred_Mage:n
+L:CharredRuins1	0	0	
+L:CharredRuins2	0	0	
+L:CharredRuins3	0	0	
+L:CharredRuins4	0	0	
+L:CharredStone_Spawner	0	0	Charred_Twitcher:n,Charred_Melee:n
+L:CharredTowerRuins1	0	0	
+L:CharredTowerRuins1_dvergr	0	0	DvergerAshlands:w
+L:CharredTowerRuins2	0	0	
+L:CharredTowerRuins3	0	0	Charred_Twitcher:n,Charred_Melee:n
+L:CombatRuin01	0	0	Skeleton:n
+L:Crypt2	8	1	Skeleton:w
+L:Crypt3	8	1	Skeleton:w
+L:Crypt4	8	1	Skeleton:w
+L:DN_Bossroom	0	1	vfx_LastBossGate_destroyed:b,FrozenKing:w,FrozenKing:b
+L:DN_gammeltrollFrac01	0	0	
+L:DN_gammeltrollFrac02	0	0	
+L:DN_hut01	0	0	
+L:Dolmen01	0	0	Skeleton_Meadows_noarcher:w
+L:Dolmen02	0	0	Skeleton_Meadows_noarcher:w
+L:Dolmen03	0	0	Skeleton_Meadows_noarcher:w
+L:Dragonqueen	0	0	Dragon:b
+L:DrakeLorestone	0	0	
+L:DrakeNest01	0	0	Hatchling:w
+L:Eikthyrnir	0	0	Eikthyr:b
+L:FaderLocation	0	0	Fader:b
+L:FireHole	0	0	Surtling:w
+L:FortressRuins	8192	0	
+L:FrozenShip01_DN	0	0	
+L:FrozenShip02_DN	0	0	
+L:FrozenShip03_DN	0	0	
+L:GDKing	0	0	gd_king:b
+L:GoblinCamp2	16	0	
+L:GoblinCamp2_1	16	0	
+L:GoblinHut01	0	0	Goblin:w
+L:GoblinHut02	0	0	GoblinShaman:w,Goblin:w,GoblinBrute:w
+L:GoblinHut03	0	0	Goblin:w,GoblinShaman:w,GoblinBrute:w,GoblinArcher:w
+L:GoblinKing	0	0	GoblinKing:b
+L:Grave1	0	0	Draugr:n,Draugr_Elite:n,Draugr_Ranged:n,Draugr:w,Skeleton_Swamps:n
+L:Greydwarf_camp1	0	0	Greydwarf:n,Greydwarf_Elite:n,Greydwarf_Shaman:n
+L:Hildir_camp	0	0	
+L:Hildir_cave	1024	1	
+L:Hildir_crypt	512	1	Skeleton:w
+L:Hildir_plainsfortress	2048	0	
+L:IcePond1	0	0	
+L:InfestedTree01	0	0	
+L:LeviathanLava	0	0	
+L:LumberCamp	0	0	
+L:Mistlands_DvergrBossEntrance1	256	1	Seeker:w
+L:Mistlands_DvergrTownEntrance1	128	1	Seeker:w
+L:Mistlands_DvergrTownEntrance2	128	1	Seeker:w
+L:Mistlands_Excavation1	0	0	Dverger:w,DvergerMage:w
+L:Mistlands_Excavation2	0	0	Dverger:w,DvergerMage:w
+L:Mistlands_Excavation3	0	0	Seeker:w
+L:Mistlands_Giant1	0	0	Tick:w
+L:Mistlands_Giant2	0	0	
+L:Mistlands_GuardTower1_new	0	0	Dverger:w,DvergerMage:w
+L:Mistlands_GuardTower1_ruined_new	0	0	Seeker:w
+L:Mistlands_GuardTower1_ruined_new2	0	0	Seeker:w
+L:Mistlands_GuardTower2_new	0	0	DvergerMage:w,Dverger:w
+L:Mistlands_GuardTower3_new	0	0	Dverger:w,DvergerMage:w
+L:Mistlands_GuardTower3_ruined_new	0	0	Seeker:w
+L:Mistlands_Harbour1	0	0	Dverger:w,DvergerMage:w
+L:Mistlands_Lighthouse1_new	0	0	DvergerMage:w,Dverger:w
+L:Mistlands_RoadPost1	0	0	Dverger:w,DvergerMage:w
+L:Mistlands_RockSpire1	0	0	Seeker:w
+L:Mistlands_Statue1	0	0	
+L:Mistlands_Statue2	0	0	
+L:Mistlands_StatueGroup1	0	0	
+L:Mistlands_Swords1	0	0	
+L:Mistlands_Swords2	0	0	
+L:Mistlands_Swords3	0	0	
+L:Mistlands_Viaduct1	0	0	
+L:Mistlands_Viaduct2	0	0	
+L:MorgenHole1	0	1	Morgen:w
+L:MorgenHole2	0	1	Morgen:w
+L:MorgenHole3	0	1	Morgen:w
+L:MorkBorg	131072	1	BlobMork:n
+L:MountainCave02	4	1	
+L:MountainGrave01	0	0	
+L:MountainWell1	0	0	
+L:NorthMemorialPlace	0	0	memorialsite_offering:b
+L:NorthVillage	65536	0	
+L:PlaceofMystery1	0	0	Charred_Twitcher:n,Charred_Melee:n,Charred_Archer:n,Charred_Mage:n
+L:PlaceofMystery2	0	0	Charred_Twitcher:n,Charred_Melee:n,Charred_Archer:n,Charred_Mage:n
+L:PlaceofMystery3	0	1	Charred_Twitcher:n,Charred_Melee:n,Charred_Archer:n,Charred_Mage:n,Charred_Melee_Dyrnwyn:w
+L:Ruin1	0	0	Greydwarf:w,Greydwarf_Shaman:w
+L:Ruin2	0	0	Greydwarf:w,Greydwarf_Elite:w
+L:Ruin3	0	0	Goblin:w
+L:Runestone_Ashlands	0	0	
+L:Runestone_BlackForest	0	0	
+L:Runestone_Boars	0	0	Boar:w
+L:Runestone_DeepNorth	0	0	
+L:Runestone_Draugr	0	0	Draugr:w
+L:Runestone_Greydwarfs	0	0	Greydwarf:w
+L:Runestone_Meadows	0	0	
+L:Runestone_Mistlands	0	0	
+L:Runestone_Mountains	0	0	
+L:Runestone_Plains	0	0	
+L:Runestone_Swamps	0	0	
+L:ShipSetting01	0	0	Skeleton_Meadows_noarcher:w
+L:ShipSetting02	0	0	
+L:ShipSetting03	0	0	
+L:ShipWreck01	0	0	
+L:ShipWreck01_DN	0	0	
+L:ShipWreck02	0	0	
+L:ShipWreck02_DN	0	0	
+L:ShipWreck03	0	0	
+L:ShipWreck04	0	0	
+L:StartTemple	0	0	
+L:StoneCircle	0	0	
+L:StoneHenge1	0	0	GoblinBrute:w
+L:StoneHenge2	0	0	GoblinBrute:w
+L:StoneHenge3	0	0	GoblinBrute:w
+L:StoneHenge4	0	0	GoblinBrute:w
+L:StoneHenge5	0	0	Goblin:w
+L:StoneHenge6	0	0	
+L:StoneHouse1_heath	0	0	Goblin:w
+L:StoneHouse2_heath	0	0	Goblin:w
+L:StoneHouse3	0	0	Greydwarf:w
+L:StoneHouse4	0	0	Greydwarf:w
+L:StoneHouse5_heath	0	0	
+L:StoneTower1	0	0	Goblin:w
+L:StoneTower3	0	0	Goblin:w
+L:StoneTowerRuins03	0	0	Skeleton:w,Greydwarf:w,Greydwarf_Elite:w
+L:StoneTowerRuins04	0	0	Skeleton_Mountains:w
+L:StoneTowerRuins05	0	0	Skeleton:n,Skeleton_Mountains:w
+L:StoneTowerRuins05_leet	0	0	Skeleton:n,Skeleton_Mountains:w
+L:StoneTowerRuins07	0	0	Skeleton:w
+L:StoneTowerRuins07_sunk	0	0	
+L:StoneTowerRuins08	0	0	Skeleton:w
+L:StoneTowerRuins08_sunk	0	0	
+L:StoneTowerRuins09	0	0	Skeleton:w
+L:StoneTowerRuins09_sunk	0	0	Skeleton:w
+L:StoneTowerRuins10	0	0	Skeleton:w
+L:StoneTowerRuins10_sunk	0	0	Skeleton:w
+L:SulfurArch	0	0	
+L:SunkenCrypt4	2	1	BlobElite:w,Draugr:w
+L:SwampHut1	0	0	Wraith:w
+L:SwampHut1_1	0	0	Wraith:w
+L:SwampHut2	0	0	Wraith:w
+L:SwampHut2_1	0	0	Wraith:w
+L:SwampHut3	0	0	Wraith:w
+L:SwampHut3_1	0	0	Wraith:w
+L:SwampHut4	0	0	Draugr_Ranged:w,Draugr:w
+L:SwampHut5	0	0	Wraith:w
+L:SwampRuin1	0	0	Draugr:n,Draugr_Elite:n,Draugr_Ranged:n,Draugr:w,Draugr_Elite:w
+L:SwampRuin2	0	0	Draugr:w,Draugr_Elite:w,Draugr:n,Draugr_Elite:n,Draugr_Ranged:n
+L:SwampWell1	0	0	Draugr_Elite:w
+L:TarPit1	0	0	BlobTar:w
+L:TarPit1_1	0	0	BlobTar:w
+L:TarPit2	0	0	BlobTar:w
+L:TarPit2_1	0	0	BlobTar:w
+L:TarPit3	0	0	BlobTar:w
+L:TarPit3_1	0	0	BlobTar:w
+L:TheHole01	16384	1	ShadowPerson:w
+L:TrollCave02	0	1	Troll:w
+L:Vendor_BlackForest	0	0	
+L:VoltureNest	0	0	Volture:w
+L:Waymarker01	0	0	
+L:Waymarker02	0	0	
+L:WoodFarm1	64	0	
+L:WoodHouse1	0	0	
+L:WoodHouse10	0	0	
+L:WoodHouse11	0	0	Greydwarf:w
+L:WoodHouse12	0	0	
+L:WoodHouse13	0	0	Greydwarf:w
+L:WoodHouse2	0	0	
+L:WoodHouse3	0	0	
+L:WoodHouse4	0	0	
+L:WoodHouse5	0	0	
+L:WoodHouse6	0	0	Greydwarf:w
+L:WoodHouse7	0	0	
+L:WoodHouse8	0	0	
+L:WoodHouse9	0	0	
+L:WoodVillage1	32	0	
+L:WoodVillage2	32	0	
+R:CharredRuins12	0	0	
+R:CharredRuins13	0	0	
+R:CharredRuins14	0	0	
+R:CharredRuins15	0	0	
+R:CharredRuins16	0	0	
+R:CharredRuins17	0	0	
+R:CharredRuins23	0	0	Morgen:w
+R:CharredRuins24	0	0	
+R:CharredRuins25	0	0	
+R:CharredRuins9	0	0	
+R:CharredRuins_new01	0	0	
+R:CharredRuins_new02	0	0	
+R:CharredRuins_new03	0	0	
+R:CharredRuins_new04	0	0	
+R:CharredRuins_new05	0	0	
+R:FortressRuins23	0	0	Charred_Twitcher:w
+R:FortressRuins_new01	0	0	Charred_Twitcher:w
+R:FortressRuins_shieldgen	0	0	Morgen:w,Charred_Twitcher:w
+R:cave_divider	0	0	
+R:cave_divider02	0	0	
+R:cave_dome_bottom_endcap	0	0	
+R:cave_dome_bottom_lake	0	0	StoneGolem:w
+R:cave_dome_middle	0	0	Bat:w
+R:cave_dome_roof	0	0	Bat:w
+R:cave_dome_roof_from_deeproom_corner1	0	0	Bat:w
+R:cave_dome_roof_from_deeproom_corner2	0	0	Bat:w
+R:cave_dome_roof_from_deeproom_corner3	0	0	Bat:w
+R:cave_dome_roof_from_deeproom_corner4	0	0	Bat:w
+R:cave_new_corridor01	0	0	
+R:cave_new_corridor03	0	0	
+R:cave_new_corridor05	0	0	
+R:cave_new_corridor06	0	0	Ulv:w
+R:cave_new_corridor07	0	0	
+R:cave_new_corridor08	0	0	
+R:cave_new_corridor09	0	0	Ulv:w
+R:cave_new_crossroads01	0	0	
+R:cave_new_crossroads01_hole	0	0	Bat:w
+R:cave_new_crossroads01_hole_ice	0	0	Bat:w
+R:cave_new_crossroads01_hole_long	0	0	Bat:w
+R:cave_new_crossroads01_hole_shrine	0	0	Bat:w,Ulv:w
+R:cave_new_crossroads01_hole_to_deeproom	0	0	Bat:w
+R:cave_new_crossroads01_ice	0	0	
+R:cave_new_crossroads02	0	0	
+R:cave_new_crossroads03	0	0	Ulv:w
+R:cave_new_deeproom_bottom	0	0	Ulv:w
+R:cave_new_deeproom_bottom_ice	0	0	Ulv:w
+R:cave_new_deeproom_bottom_lake	0	0	Fish4_cave:w
+R:cave_new_deeproom_bottom_shrine	0	0	Ulv:w
+R:cave_new_deeproom_endcap	0	0	
+R:cave_new_deeproom_middle	0	0	Bat:w
+R:cave_new_deeproom_roof	0	0	Bat:w
+R:cave_new_deeproom_top	0	0	Bat:w
+R:cave_new_endcap02	0	0	Fenring_Cultist_Hildir:w
+R:cave_new_endcap02_crystal	0	0	Fenring_Cultist_Hildir:w
+R:cave_new_endcap_moderstone	0	0	Fenring_Cultist_Hildir:w
+R:cave_new_endcap_painting01	0	0	Fenring_Cultist_Hildir:w
+R:cave_new_endcap_painting02	0	0	Fenring_Cultist_Hildir:w
+R:cave_new_endcap_painting03	0	0	Fenring_Cultist_Hildir:w
+R:cave_new_endcap_painting04	0	0	Fenring_Cultist_Hildir:w
+R:cave_new_entrance02	0	0	
+R:cave_new_icecorridor01	0	0	
+R:cave_new_icecorridor02	0	0	Ulv:w
+R:cave_new_icecorridor03	0	0	
+R:cave_new_icecorridor04	0	0	
+R:cave_new_icecorridor05	0	0	Ulv:w
+R:cave_new_icecorridor06	0	0	
+R:cave_new_icecorridor07	0	0	
+R:cave_new_iceendcap02	0	0	Fenring_Cultist_Hildir:w
+R:cave_new_iceendcap02_crystal	0	0	Fenring_Cultist_Hildir:w
+R:cave_new_iceendcap_moderstone	0	0	Fenring_Cultist_Hildir:w
+R:cave_new_iceendcap_painting01	0	0	Fenring_Cultist_Hildir:w
+R:cave_new_iceendcap_painting02	0	0	Fenring_Cultist_Hildir:w
+R:cave_new_iceendcap_painting03	0	0	Fenring_Cultist_Hildir:w
+R:cave_new_iceendcap_painting04	0	0	Fenring_Cultist_Hildir:w
+R:cave_new_slope_endcap01	0	0	
+R:cave_new_sloperoom01	0	0	Ulv:w,Bat:w
+R:cave_new_sloperoom02	0	0	Ulv:w,Bat:w
+R:cave_new_sloperoom03	0	0	Bat:w
+R:cave_new_sloperoom04	0	0	Bat:w
+R:cave_new_sloperoom05	0	0	Bat:w
+R:cave_new_sloperoom_w_hole	0	0	Ulv:w,Bat:w,Fish4_cave:w
+R:cave_shrine_corridor01	0	0	Ulv:w
+R:cave_shrine_corridor02	0	0	Ulv:w
+R:cave_shrine_corridor03	0	0	Ulv:w
+R:cave_shrine_corridor04	0	0	Ulv:w
+R:cave_shrine_corridor05	0	0	Ulv:w
+R:cave_shrine_corridor06	0	0	Ulv:w
+R:cave_shrine_corridor07	0	0	Ulv:w
+R:cave_shrine_endcap	0	0	Fenring_Cultist_Hildir:w
+R:cave_shrine_endcap01	0	0	Fenring_Cultist_Hildir:w
+R:cave_shrine_endcap02	0	0	Fenring_Cultist_Hildir:w
+R:cave_shrine_endcap03	0	0	Fenring_Cultist_Hildir:w
+R:cave_shrine_endcap04	0	0	Fenring_Cultist_Hildir:w
+R:cave_shrine_endcap05	0	0	Fenring_Cultist_Hildir:w
+R:cave_shrine_endcap_noshrine	0	0	
+R:cave_shrine_endcap_noshrine02	0	0	
+R:cave_shrine_hole01	0	0	Ulv:w
+R:cave_shrine_lootencap01	0	0	
+R:cave_shrine_lootencap02	0	0	
+R:cave_shrine_lootencap03	0	0	
+R:cave_shrine_lootencap04	0	0	
+R:cave_shrine_lootencap05	0	0	
+R:cave_shrine_lootencap06	0	0	
+R:cave_shrine_room01	0	0	Ulv:w
+R:cave_shrine_room02	0	0	Ulv:w
+R:cave_shrine_shrine01	0	0	Fenring_Cultist_Hildir:w,Fenring_Cultist:w
+R:cave_shrine_shrine02	0	0	Fenring_Cultist_Hildir:w,Fenring_Cultist:w
+R:cave_shrine_shrine03	0	0	Fenring_Cultist_Hildir:w,Fenring_Cultist:w
+R:cave_shrine_shrine03_HILDIR	0	0	Fenring_Cultist_Hildir:w
+R:cave_shrine_start02	0	0	
+R:cave_shrine_start02_corridor	0	0	
+R:cave_shrine_start02_ice	0	0	
+R:cave_shrine_start02_ice_corridor	0	0	
+R:dvergr_bossroom_middle_endcap01	0	0	
+R:dvergr_bossroom_middle_endcap02	0	0	
+R:dvergr_bossroom_middle_endcap03	0	0	
+R:dvergr_bossroom_roof_endcap01	0	0	
+R:dvergr_bossroom_roof_endcap02	0	0	
+R:dvergr_bossroom_roof_endcap03	0	0	
+R:dvergr_bossroom_top_endcap01	0	0	
+R:dvergr_bossroom_top_endcap02	0	0	
+R:dvergr_bossroom_top_endcap03	0	0	
+R:dvergr_corridor01	0	0	
+R:dvergr_corridor02	0	0	
+R:dvergr_divider01	0	0	
+R:dvergr_divider02	0	0	
+R:dvergr_divider03	0	0	
+R:dvergr_entrance01	0	0	
+R:dvergr_entrance02	0	0	
+R:dvergr_new_bossroom_ENTRANCE02	0	0	SeekerQueen:w,SeekerQueen:b
+R:dvergr_new_bossroom_bottom_endcap_stair01	0	0	
+R:dvergr_new_bossroom_bottom_endcap_stair02	0	0	
+R:dvergr_new_bossroom_bottom_endcap_stair03	0	0	
+R:dvergr_new_bossroom_bottom_endcap_stair04	0	0	
+R:dvergr_new_bossroom_bottom_endcap_stair05	0	0	
+R:dvergr_new_bossroom_bottom_endcap_stair06	0	0	
+R:dvergr_new_bossroom_bottom_endcap_stair07	0	0	
+R:dvergr_new_bossroom_bottom_endcap_stair08	0	0	
+R:dvergr_room01	0	0	Tick:w
+R:dvergr_room02	0	0	Tick:w
+R:dvergr_room03	0	0	Tick:w
+R:dvergr_room04	0	0	Tick:w
+R:dvergr_room_TREASURE	0	0	
+R:dvergr_room_TREASURE2	0	0	
+R:dvergr_room_endcap01	0	0	
+R:dvergr_room_endcap02	0	0	
+R:dvergr_room_endcap03	0	0	Tick:w
+R:dvergr_room_fence01	0	0	Seeker:w
+R:dvergr_room_open01	0	0	Seeker:w
+R:dvergr_room_open02	0	0	Seeker:w
+R:dvergr_room_open03	0	0	Seeker:w
+R:dvergr_room_open04	0	0	SeekerBrute:w,Seeker:w
+R:dvergr_roombig_corner01	0	0	SeekerBrute:w,Seeker:w
+R:dvergr_roombig_corridor01	0	0	SeekerBrute:w,Seeker:w
+R:dvergr_roombig_corridor02	0	0	SeekerBrute:w,Seeker:w
+R:dvergr_roombig_endcap02	0	0	Tick:w
+R:dvergr_roombig_open01	0	0	SeekerBrute:w,Seeker:w
+R:dvergr_roombig_open02	0	0	SeekerBrute:w,Seeker:w
+R:dvergr_roombig_side01	0	0	SeekerBrute:w,Seeker:w
+R:dvergr_roombig_side02	0	0	SeekerBrute:w,Seeker:w
+R:dvergr_roombig_toStone01	0	0	
+R:dvergr_roombig_toStone02	0	0	
+R:dvergr_roombig_windows01	0	0	Tick:w,SeekerBrute:w
+R:dvergr_stair01	0	0	
+R:dvergr_stair02	0	0	Seeker:w
+R:dvergr_stair03	0	0	
+R:dvergr_stone_corridor01	0	0	
+R:dvergr_stone_corridor02	0	0	
+R:dvergr_stone_corridor03	0	0	
+R:dvergr_stone_endcap01	0	0	
+R:dvergr_stone_endcap02	0	0	Tick:w
+R:dvergr_stone_endcap03	0	0	Tick:w
+R:dvergr_stone_open01	0	0	Seeker:w
+R:dvergr_stone_room01	0	0	Seeker:w
+R:dvergr_stone_room02	0	0	Seeker:w
+R:dvergr_stone_room03	0	0	Seeker:w
+R:dvergr_stone_room04	0	0	Tick:w
+R:dvergr_stone_stair01	0	0	
+R:dvergr_stone_turn01	0	0	Seeker:w
+R:forestcrypt_Bend1	0	0	
+R:forestcrypt_Bend2	0	0	Skeleton:w
+R:forestcrypt_Chasm01	0	0	Ghost:w,Skeleton:w
+R:forestcrypt_Corridor1	0	0	Skeleton:w
+R:forestcrypt_Corridor2	0	0	Skeleton:w
+R:forestcrypt_Corridor3	0	0	Skeleton:w
+R:forestcrypt_EndCap	0	0	
+R:forestcrypt_EndCap2	0	0	
+R:forestcrypt_EndCap2_hildir	0	0	Skeleton_Hildir:w
+R:forestcrypt_EndCap3	0	0	
+R:forestcrypt_EndCap3_hildir	0	0	Skeleton_Hildir:w
+R:forestcrypt_Stairs1	0	0	
+R:forestcrypt_chamber_hildir	0	0	Skeleton_Hildir:w
+R:forestcrypt_entrance_large	0	0	
+R:forestcrypt_new_BurialChamber01	0	0	Skeleton:w,Ghost:w
+R:forestcrypt_new_BurialChamber02	0	0	Skeleton_Poison:w,Skeleton:w,Skeleton:n
+R:forestcrypt_new_Burialchamber03	0	0	Skeleton_Poison:w,Skeleton:w,Skeleton:n
+R:forestcrypt_new_Burialchamber04	0	0	Skeleton_Poison:w,Skeleton:w,Skeleton:n
+R:forestcrypt_new_Burialchamber05	0	0	Skeleton:n,Skeleton:w,Skeleton_Poison:w
+R:forestcrypt_room1	0	0	Skeleton:w
+R:forestcrypt_room_16	0	0	Skeleton:n,Skeleton:w
+R:gobvill_barley	0	0	Goblin:w
+R:gobvill_bonfire	0	0	GoblinShaman:w,GoblinBrute:w,Goblin:w
+R:gobvill_campfire	0	0	GoblinShaman:w,GoblinBrute:w,Goblin:w
+R:gobvill_crafting	0	0	Goblin:w
+R:gobvill_flax	0	0	Goblin:w
+R:gobvill_guardplatform	0	0	GoblinArcher:w,Goblin:w
+R:gobvill_guardtower	0	0	Goblin:w,GoblinArcher:w
+R:gobvill_hut02	0	0	GoblinShaman:w,Goblin:w,GoblinBrute:w
+R:gobvill_hut03	0	0	Goblin:w,GoblinShaman:w,GoblinBrute:w,GoblinArcher:w
+R:gobvill_hut1	0	0	Goblin:w
+R:gobvill_platform	0	0	GoblinArcher:w,Goblin:w
+R:gobvill_refusepit	0	0	Goblin:w
+R:gobvill_stakes	0	0	Goblin:w,GoblinArcher:w
+R:gobvill_tent02	0	0	Goblin:w
+R:gobvill_tent1	0	0	GoblinShaman:w,Goblin:w
+R:gobvill_woodwall	0	0	
+R:gobvill_woodwall2	0	0	
+R:hole_corridors01	0	0	ElakingMole:w
+R:hole_corridors01_alt2	0	0	ElakingMole:w
+R:hole_corridors01_alt3	0	0	ElakingMole:w
+R:hole_corridors01_alt4	0	0	ElakingMole:w
+R:hole_corridors02	0	0	
+R:hole_corridors02_alt1	0	0	ElakingMole:w
+R:hole_corridors02_alt2	0	0	ElakingMole:w
+R:hole_corridors02_alt3	0	0	
+R:hole_corridors02_alt4	0	0	
+R:hole_corridors03	0	0	ElakingMole:w
+R:hole_corridors03_alt1	0	0	ElakingMole:w
+R:hole_corridors03_alt2	0	0	ElakingMole:w
+R:hole_corridors04	0	0	
+R:hole_corridors04_alt1	0	0	
+R:hole_corridors04_alt2	0	0	
+R:hole_corridors04_alt3	0	0	
+R:hole_corridors04_alt4	0	0	ElakingMole:w
+R:hole_corridors04_alt5	0	0	
+R:hole_corridors04_alt6	0	0	
+R:hole_divider1	0	0	
+R:hole_endcap1	0	0	
+R:hole_endcap2	0	0	Elaking:n,ElakingLantern:n
+R:hole_endcap3	0	0	
+R:hole_endcap4	0	0	Elaking:n,ElakingLantern:n
+R:hole_endcap5	0	0	ElakingMole:w
+R:hole_endcap6	0	0	ElakingMole:w
+R:hole_endcap7	0	0	ElakingMole:w
+R:hole_endcap8	0	0	ElakingMole:w
+R:hole_endcap9	0	0	
+R:hole_room01	0	0	ElakingMole:w,Elaking:n,ElakingLantern:n
+R:hole_room02	0	0	ElakingMole:w,Elaking:n,ElakingLantern:n
+R:hole_room03	0	0	ElakingMole:w,Elaking:n,ElakingLantern:n
+R:meadowsvillage_greathall	0	0	Draugr_Elite:w,Draugr_Ranged:w,Draugr:w,Draugr:n,Draugr_Elite:n,Draugr_Ranged:n
+R:meadowsvillage_greathallruin	0	0	Draugr:n,Draugr_Elite:n,Draugr_Ranged:n,Draugr_Ranged:w,Draugr:w
+R:meadowsvillage_house1	0	0	Draugr:w,Draugr_Ranged:w
+R:meadowsvillage_house2	0	0	Draugr:w,Draugr_Ranged:w
+R:meadowsvillage_longhouse	0	0	Draugr_Elite:w,Draugr_Ranged:w,Draugr:w,Draugr:n,Draugr_Elite:n,Draugr_Ranged:n
+R:meadowsvillage_longhouseruin	0	0	Draugr:n,Draugr_Elite:n,Draugr_Ranged:n,Draugr:w,Draugr_Ranged:w
+R:meadowsvillage_road1	0	0	
+R:meadowsvillage_stakewall3	0	0	
+R:meadowsvillage_tower	0	0	Draugr_Ranged:w,Draugr:w
+R:meadowsvillage_towerruin	0	0	Draugr:w
+R:morkhalla_endcap01	0	0	JotunWarriorDualWield:w,JotunWitch:w,JotunWarrior:w,BlobMork:n
+R:morkhalla_endcap02	0	0	JotunWarriorDualWield:w,JotunWarrior:w,JotunWitch:w,BlobMork:n
+R:morkhalla_entrance01	0	0	BlobMork:n,JotunWitch:w
+R:morkhalla_entrance02	0	0	BlobMork:n,JotunWitch:w
+R:morkhalla_floor01	0	0	GoblinDeepNorth:w,DvergerDeepNorth:w,JotunWarrior:w,JotunWitch:w,BlobMork:n
+R:morkhalla_floor01_tall	0	0	GoblinDeepNorth:w,DvergerDeepNorth:w,BlobMork:n,JotunWarrior:w,JotunWitch:w
+R:morkhalla_floor02	0	0	GoblinDeepNorth:w,DvergerDeepNorth:w,JotunWarrior:w,BlobMork:n
+R:morkhalla_floor02_tall	0	0	BlobMork:n,JotunWarrior:w
+R:morkhalla_floor03	0	0	GoblinDeepNorth:w,DvergerDeepNorth:w,JotunWarrior:w,BlobMork:n,JotunWitch:w
+R:morkhalla_floor03_tall	0	0	GoblinDeepNorth:w,DvergerDeepNorth:w,BlobMork:n,JotunWarrior:w,JotunWitch:w
+R:morkhalla_floor04	0	0	GoblinDeepNorth:w,DvergerDeepNorth:w,JotunWarrior:w,BlobMork:n,JotunWitch:w
+R:morkhalla_floor04_tall	0	0	GoblinDeepNorth:w,DvergerDeepNorth:w,BlobMork:n,JotunWarrior:w,JotunWitch:w
+R:morkhalla_floor05	0	0	GoblinDeepNorth:w,DvergerDeepNorth:w,JotunWarrior:w,JotunWitch:w,BlobMork:n
+R:morkhalla_floor05_tall	0	0	GoblinDeepNorth:w,DvergerDeepNorth:w,JotunWarrior:w,BlobMork:n,JotunWitch:w
+R:morkhalla_floor06	0	0	GoblinDeepNorth:w,DvergerDeepNorth:w,BlobMork:n,JotunWarrior:w,JotunWitch:w
+R:morkhalla_floor06_tall	0	0	GoblinDeepNorth:w,DvergerDeepNorth:w,BlobMork:n,JotunWarrior:w,JotunWitch:w
+R:northvillage_fence1	0	0	ShadowPerson:w
+R:northvillage_fence2	0	0	
+R:northvillage_granary	0	0	
+R:northvillage_house1	0	0	ShadowPerson:w
+R:northvillage_house2	0	0	ShadowPerson:w
+R:northvillage_stable	0	0	
+R:northvillage_tower	0	0	
+R:northvillage_turnipfield	0	0	ShadowPerson:w
+R:northvillage_woodpile	0	0	
+R:plainsfortress_Hildir_Endcap	0	0	GoblinArcher:w
+R:plainsfortress_Hildir_Floor0	0	0	GoblinShaman:w,GoblinArcher:w,Goblin:w
+R:plainsfortress_Hildir_Floor1	0	0	GoblinShaman:w,GoblinArcher:w,Goblin:w
+R:plainsfortress_Hildir_Floor2	0	0	Goblin:w
+R:plainsfortress_Hildir_Floor2_1	0	0	
+R:plainsfortress_Hildir_Floor2_2	0	0	GoblinShaman:w,GoblinArcher:w,Goblin:w
+R:plainsfortress_Hildir_Floor2_3	0	0	GoblinShaman:w,GoblinArcher:w,Goblin:w
+R:plainsfortress_Hildir_Floor2_4	0	0	GoblinShaman:w,GoblinArcher:w
+R:plainsfortress_Hildir_Start	0	0	GoblinShaman:w,GoblinArcher:w,Goblin:w,GoblinBruteBros:w
+R:plainsfortress_Hildir_endcap_balcony	0	0	GoblinArcher:w
+R:plainsfortress_Hildir_endcap_balcony1	0	0	
+R:plainsfortress_Hildir_endcap_balcony_wall	0	0	
+R:plainsfortress_Hildir_endcap_barred	0	0	
+R:plainsfortress_Hildir_endcap_goblinbalcony	0	0	GoblinArcher:w
+R:plainsfortress_Hildir_endcap_goblinbalcony1	0	0	GoblinArcher:w
+R:plainsfortress_Hildir_endcap_hole	0	0	
+R:plainsfortress_Hildir_endcap_hole1	0	0	
+R:plainsfortress_Hildir_endcap_hole2	0	0	
+R:plainsfortress_Hildir_endcap_hole3	0	0	
+R:plainsfortress_Hildir_endcap_hole4	0	0	
+R:plainsfortress_Hildir_endcap_middlewall01	0	0	
+R:plainsfortress_Hildir_endcap_middlewall02	0	0	
+R:plainsfortress_Hildir_endcap_middlewall03	0	0	
+R:plainsfortress_Hildir_endcap_middlewall04	0	0	
+R:plainsfortress_Hildir_endcap_middlewall05	0	0	
+R:plainsfortress_Hildir_endcap_middlewall06	0	0	
+R:plainsfortress_Hildir_endcap_middlewall07	0	0	
+R:plainsfortress_Hildir_endcap_middlewall08	0	0	
+R:plainsfortress_Hildir_endcap_wall	0	0	
+R:plainsfortress_Hildir_endcap_wall1	0	0	
+R:plainsfortress_Hildir_endcap_window_barred	0	0	
+R:plainsfortress_Hildir_endcap_window_hole	0	0	
+R:plainsfortress_Hildir_endcap_window_hole1	0	0	
+R:sunkencrypt_new_Corridor1	0	0	
+R:sunkencrypt_new_Corridor2	0	0	Draugr:w
+R:sunkencrypt_new_Corridor3	0	0	
+R:sunkencrypt_new_Corridor4	0	0	Blob:w,Draugr:w
+R:sunkencrypt_new_Corridor5	0	0	Blob:w
+R:sunkencrypt_new_Endcap1	0	0	
+R:sunkencrypt_new_Endcap2	0	0	
+R:sunkencrypt_new_Endcap3	0	0	
+R:sunkencrypt_new_EndcapWater1	0	0	
+R:sunkencrypt_new_EndcapWater2	0	0	
+R:sunkencrypt_new_Room1	0	0	Blob:w,Draugr_Elite:w,Draugr:w
+R:sunkencrypt_new_Room2	0	0	Draugr:n,Draugr_Elite:n,Draugr_Ranged:n,Blob:w,Draugr_Elite:w,Draugr:w
+R:sunkencrypt_new_Room3	0	0	Draugr:n,Draugr_Elite:n,Draugr_Ranged:n,Blob:w,Draugr:w,Draugr_Elite:w
+R:sunkencrypt_new_Room4	0	0	Blob:w,Draugr:w,Draugr_Elite:w
+R:sunkencrypt_new_Stair1	0	0	
+R:sunkencrypt_new_Start1	0	0	
+R:woodfarm_farmhouse1	0	0	
+R:woodfarm_farmhouse2	0	0	
+R:woodfarm_farmhouse3	0	0	
+R:woodfarm_fence1	0	0	
+R:woodfarm_fence2	0	0	
+R:woodfarm_henpen	0	0	Boar:w
+R:woodfarm_outhouse	0	0	
+R:woodfarm_road1	0	0	
+R:woodfarm_signpost	0	0	
+R:woodfarm_tower	0	0	
+R:woodfarm_turnipfield	0	0	Boar:w
+R:woodfarm_woodpile	0	0	
+R:woodfarm_yard	0	0	Boar:w
