@@ -64,6 +64,11 @@
       <Private>false</Private>
     </Reference>
     <!-- Location / dungeon room prefabs are SoftReference<GameObject> (item browser "Found in" scan). -->
+    <!-- Steam build id for the Found in table guard (SteamApps.GetAppBuildId). -->
+    <Reference Include="com.rlabrecque.steamworks.net">
+      <HintPath>$(ManagedDir)\com.rlabrecque.steamworks.net.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
     <Reference Include="SoftReferenceableAssets">
       <HintPath>$(ManagedDir)\SoftReferenceableAssets.dll</HintPath>
       <Private>false</Private>

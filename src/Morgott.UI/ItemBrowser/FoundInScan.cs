@@ -267,7 +267,16 @@ namespace Morgott.UI.ItemBrowser
 
         // ---------------------------------------------------------------- table, cache, owners
 
-        private static string GameVersion() => global::Version.GetVersionString(true);
+        // Game version + Steam build id: a patch that keeps the version string still misses the table. No Steam client
+        // (crossplay / not initialised): version only, which never matches a table dumped with a build id (lazy fallback).
+        private static string _gameVersion;
+        private static string GameVersion()
+        {
+            if (_gameVersion != null) return _gameVersion;
+            uint build = 0;
+            try { build = (uint)Steamworks.SteamApps.GetAppBuildId(); } catch (Exception) { }
+            return _gameVersion = global::Version.GetVersionString(true) + (build > 0 ? " b" + build : "");
+        }
 
         private static bool _tableRead;
         private static Dictionary<string, Scanned> _table;

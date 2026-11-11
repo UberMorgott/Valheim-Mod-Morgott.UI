@@ -1,4 +1,4 @@
-# game 1.0.21	546
+# game 1.0.21 b26249040	546
 L:AbandonedLogCabin02	0	0	StoneGolem:w
 L:AbandonedLogCabin03	0	0	StoneGolem:w,Skeleton_Mountains:w
 L:AbandonedLogCabin04	0	0	StoneGolem:w,Skeleton_Mountains:w
