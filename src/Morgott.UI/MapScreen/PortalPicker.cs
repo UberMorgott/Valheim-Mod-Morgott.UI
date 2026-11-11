@@ -242,7 +242,6 @@ namespace Morgott.UI.MapScreen
             if (active != _ppShown) PortalSession(active);
             if (!active) return;
             if (PortalPickerService.Dirty) PortalRebuild(travel);
-            if (ConnectPanel.instance && ConnectPanel.IsVisible()) ConnectPanel.instance.m_root.gameObject.SetActive(false); // F2 player list (top left)
             PortalGamepad();
             PortalLayout(inset, top, band);
             PortalRingUpdate();
