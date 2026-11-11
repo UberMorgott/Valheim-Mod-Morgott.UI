@@ -15,6 +15,7 @@ namespace Morgott.UI.MapScreen
         public static ConfigEntry<float> FillAlpha { get; private set; }
         public static ConfigEntry<float> OutlineAlpha { get; private set; }
         public static ConfigEntry<bool> FogTint { get; private set; }
+        public static ConfigEntry<bool> PortalPicker { get; private set; }
         public static readonly Dictionary<string, ConfigEntry<bool>> Filters = new Dictionary<string, ConfigEntry<bool>>();
 
         public static void Bind(ConfigFile config)
@@ -27,6 +28,8 @@ namespace Morgott.UI.MapScreen
                 "Opacity of the biome border line.", new AcceptableValueRange<float>(0f, 1f)));
             FogTint = config.Bind(MapSection, "FogTint", true,
                 "Large map: tint the unexplored fog toward a cold grey (theme colour color.map.fog).");
+            PortalPicker = config.Bind(MapSection, "PortalPicker", true,
+                "Walking into a portal opens the large map with a portal list to travel to any portal (Morgott.Patcher portals). Off = vanilla paired portals. Read once at startup (restart to change).");
             Filters.Clear();
             foreach (var row in MapFilterMath.Rows)
                 Filters[row.Key] = config.Bind(FilterSection, row.Key, true,

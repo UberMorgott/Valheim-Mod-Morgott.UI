@@ -552,5 +552,13 @@
   "ui_tip_type_twohandedweaponleft": "Двуручное оружие",
   "ui_tip_type_ammononequipable": "Боеприпасы",
   "ui_tip_type_trinket": "Амулет",
-  "ui_tip_type_none": "Предмет"
+  "ui_tip_type_none": "Предмет",
+  "ui_portal_title": "Порталы",
+  "ui_portal_search": "Поиск…",
+  "ui_portal_favorites": "Избранное",
+  "ui_portal_all": "Все порталы",
+  "ui_portal_here": "вы здесь",
+  "ui_portal_meters": "$1 м",
+  "ui_portal_hint": "$1 — показать · 2×$1 — телепорт · $2 — избранное · $3 — закрыть",
+  "ui_portal_hint_pad": "D-pad — выбрать · A — телепорт · Y — избранное · B — закрыть"
 }

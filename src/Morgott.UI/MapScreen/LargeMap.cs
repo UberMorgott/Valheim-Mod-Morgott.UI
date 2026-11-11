@@ -59,6 +59,7 @@ namespace Morgott.UI.MapScreen
                 foreach (Transform child in shared) child.gameObject.SetActive(false);
             }
             BuildLegendRows();
+            BuildPortalPanel();
 
             // The map window's one header (RuneWindowHeader, user 2026-10-26): title = the cursor / player biome text
             // (m_biomeNameLarge, rewritten by vanilla each frame, Minimap.cs:2646, mirrored). The window is always full
@@ -143,6 +144,7 @@ namespace Morgott.UI.MapScreen
             RefitMapView();
             BiomeOverlay.Instance?.LateUpdate();
             LegendRows(inset);
+            PortalLateUpdate(inset, top, band);
             HidePlayers();
             // Every frame while open: a label vanilla activates late (DelayActivation 1 s, Minimap.cs:883-890) or a zoom /
             // pan re-place (UpdatePins) is hung under its pin and decluttered before the canvas draws (PinLabels.cs).
@@ -206,6 +208,7 @@ namespace Morgott.UI.MapScreen
 
             if (_rows) ctx.Exclude(_rows, "RuneSkin legend rows (own sockets, names, checkboxes, players, zoom)");
             if (_footer) ctx.Exclude(_footer, "RuneSkin map key hint line");
+            if (_pp) ctx.Exclude(_pp, "RuneSkin portal picker (own title, search, rows)");
             if (_legendImage) ctx.Role(_legendImage, "craft.well", "map legend column");
             var mapImage = _map.m_mapImageLarge ? _map.m_mapImageLarge.transform : null;
             foreach (var g in root.GetComponentsInChildren<Graphic>(true))

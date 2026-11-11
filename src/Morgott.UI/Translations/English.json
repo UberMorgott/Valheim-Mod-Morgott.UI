@@ -473,5 +473,13 @@
   "ui_tip_type_twohandedweaponleft": "Two-handed weapon",
   "ui_tip_type_ammononequipable": "Ammunition",
   "ui_tip_type_trinket": "Trinket",
-  "ui_tip_type_none": "Item"
+  "ui_tip_type_none": "Item",
+  "ui_portal_title": "Portals",
+  "ui_portal_search": "Search…",
+  "ui_portal_favorites": "Favorites",
+  "ui_portal_all": "All portals",
+  "ui_portal_here": "you are here",
+  "ui_portal_meters": "$1 m",
+  "ui_portal_hint": "$1 — show · 2×$1 — travel · $2 — favorite · $3 — close",
+  "ui_portal_hint_pad": "D-pad — select · A — travel · Y — favorite · B — close"
 }

@@ -57,7 +57,7 @@ namespace Morgott.UI.MapScreen
             private void OnDisable() => Over = false;
         }
 
-        internal static bool LegendHover => Instance && Instance._scroll && Instance._scroll.Over && Instance._large && Instance._large.gameObject.activeInHierarchy;
+        internal static bool LegendHover => Instance && (Instance._scroll && Instance._scroll.Over || PortalHover) && Instance._large && Instance._large.gameObject.activeInHierarchy;
 
         private RectTransform _rows, _footer;
         private readonly List<PinRow> _pinRows = new List<PinRow>();
