@@ -90,7 +90,7 @@ public static class RenderWeb
             var look = new GameObject("cocoon");
             look.AddComponent<MeshFilter>().sharedMesh = CocoonLook(legs, 0, 0f, ends.ConvertAll(e => feet + e), 7, 12345);
             var lr = look.AddComponent<MeshRenderer>();
-            lr.sharedMaterial = Copy(m => { m.SetFloat("_WebGain", 3f); m.SetFloat("_Opacity", 0.6f); m.SetFloat("_DewSparkle", 0f); });
+            lr.sharedMaterial = Copy(m => { m.SetFloat("_WebGain", 7f); m.SetFloat("_Opacity", 0.95f); m.SetFloat("_DewSparkle", 0f); });
             lr.shadowCastingMode = ShadowCastingMode.Off;
             Shot(cam, feet + new Vector3(0.6f, 2.3f, -2.6f), feet + new Vector3(0f, 0.5f, 0.3f), Path.Combine(outDir, "cocoon.png"));
             Shot(cam, feet + new Vector3(2.2f, 1.2f, -0.6f), feet + new Vector3(0f, 0.55f, 0f), Path.Combine(outDir, "cocoon-side.png"));
@@ -101,9 +101,9 @@ public static class RenderWeb
             var sk = new GameObject("skirt");
             sk.transform.position = trunkAt;
             sk.transform.rotation = Quaternion.LookRotation(new Vector3(0.6f, 0f, -1f).normalized);
-            sk.AddComponent<MeshFilter>().sharedMesh = Skirt(2.2f, new Vector3(0f, 0f, 2.8f), 1.1f, 7, (x, z) => 0f);
+            sk.AddComponent<MeshFilter>().sharedMesh = Skirt(2.2f, new Vector3(0f, 0f, 2.8f), 1.1f, 7, (x, z) => 0.12f * Mathf.Sin(x * 1.3f) + 0.08f * z);
             var sr = sk.AddComponent<MeshRenderer>();
-            sr.sharedMaterial = plain;
+            sr.sharedMaterial = Copy(m => { m.SetFloat("_WebGain", 9f); m.SetFloat("_Opacity", 1f); }); // = WebNest ground groups
             sr.shadowCastingMode = ShadowCastingMode.Off;
             Shot(cam, trunkAt + new Vector3(3.5f, 2.2f, -5f), trunkAt + new Vector3(0.3f, 0.8f, -1.2f), Path.Combine(outDir, "skirt.png"));
             Debug.Log("RenderWeb: OK " + outDir);
@@ -255,8 +255,8 @@ public static class RenderWeb
         internal static Mesh CarpetMesh(float size)
         {
             var (verts, uv0, uv1, colors, tris) = (new List<Vector3>(), new List<Vector4>(), new List<Vector3>(), new List<Color>(), new List<int>());
-            // The vanilla hub (horizontal_web's rect) alone: a radial ground mat (a second hub made the low tier one white mass in-game).
-            foreach (var (uv, turn, scale) in new[] { (HubTL, 0f, 1f) })
+            // Stacked vanilla hubs (user 2026-11-11: the ground must read covered in web; one hub was a few faint strands in-game).
+            foreach (var (uv, turn, scale) in new[] { (HubTL, 0f, 1f), (HubR, 47f, 0.75f), (HubTL, 115f, 0.6f) })
             {
                 var rot = Quaternion.Euler(0f, turn, 0f);
                 var k = verts.Count;
@@ -276,24 +276,36 @@ public static class RenderWeb
         // Skirt (trunk → ground, user 2026-11-11): two vanilla triangles fanning from the trunk at Height down to the splayed ground feet
         // + one long guy thread, over a vanilla hub mat around the trunk base. Yaw = splay of each card around the foot direction,
         // Top = its attach height x Height.
-        internal const float SkirtMat = 1.7f; // bound of the mats around the trunk base (hit box, trigger, burn extent)
+        internal const float SkirtMat = 2.6f; // bound of the mats around the trunk base (hit box, trigger, burn extent)
         internal static readonly (float Yaw, float Top, Rect Uv)[] SkirtVeils = { (-22f, 1f, BigTri), (24f, 0.75f, BigTri), (3f, 1.2f, Threads) };
 
         private static Vector3 SkirtTop(float height, float yaw) => Quaternion.Euler(0f, yaw, 0f) * new Vector3(0f, height, 0.25f); // the trunk's surface
 
-        /// <summary>The skirt's ground mats (Codex: no repeated radial wreath): a main hub off-centre around the trunk base, a smaller
-        /// hub beside it, a net patch toward the foot; frame-local centre (x, z), radius, turn, vanilla piece. Same on every peer (id).</summary>
-        internal static (Vector2 At, float R, float Turn, Rect Uv)[] SkirtMats(int id)
+        /// <summary>The skirt's ground carpet (user 2026-11-11: the ground must read covered in web): vanilla sheets laid flat and
+        /// stacked - a main hub off-centre on the trunk base, a second hub, three triangle fans from the trunk outward (apex at the
+        /// trunk, around the foot direction), a net patch toward the foot. Frame-local centre (x, z), half width / length, turn (deg),
+        /// piece, fan. Same on every peer (id).</summary>
+        internal static (Vector2 At, float HalfW, float HalfL, float Turn, Rect Uv, bool Fan)[] SkirtMats(int id)
         {
             var rng = new System.Random(id * 7919 + 17);
             float R(float a, float b) => a + (float)rng.NextDouble() * (b - a);
             var side = R(-2.2f, 2.2f);
-            return new[]
+            var (hub, hub2) = (R(1f, 1.3f), R(0.6f, 0.9f));
+            var mats = new List<(Vector2, float, float, float, Rect, bool)>
             {
-                (new Vector2(R(-0.2f, 0.2f), R(0.1f, 0.5f)), R(0.9f, 1.25f), R(0f, 360f), HubTL),
-                (new Vector2(Mathf.Sin(side), Mathf.Cos(side)) * R(0.7f, 1.1f), R(0.5f, 0.8f), R(0f, 360f), HubR),
-                (new Vector2(R(-0.4f, 0.4f), R(1.2f, 1.8f)), R(0.4f, 0.7f), R(0f, 360f), Net),
+                (new Vector2(R(-0.2f, 0.2f), R(0.1f, 0.4f)), hub, hub, R(0f, 360f), HubTL, false),
+                (new Vector2(Mathf.Sin(side), Mathf.Cos(side)) * R(0.6f, 1f), hub2, hub2, R(0f, 360f), HubR, false),
             };
+            foreach (var spread in new[] { R(-80f, -50f), R(-40f, -15f), R(-8f, 8f), R(15f, 40f), R(50f, 80f) })
+            {
+                var (halfL, rad) = (R(0.9f, 1.3f), spread * Mathf.Deg2Rad);
+                mats.Add((new Vector2(Mathf.Sin(rad), Mathf.Cos(rad)) * (halfL + 0.15f), R(0.6f, 0.9f), halfL, spread, BigTri, true));
+            }
+            mats.Add((new Vector2(R(-0.4f, 0.4f), R(1.3f, 1.9f)), R(0.5f, 0.8f), R(0.5f, 0.8f), R(0f, 360f), Net, false));
+            // Each hub twice more, turned and shrunk: stacked layers fill the gaps of the sparse art into a white carpet.
+            foreach (var (at, hw, hl, turn, uv, fan) in mats.FindAll(m => !m.Item6 && m.Item5 != Net))
+                foreach (var k in new[] { 0.85f, 0.65f }) mats.Add((at, hw * k, hl * k, turn + 360f * k, uv, false));
+            return mats.ToArray();
         }
 
         /// <summary>Skirt card mesh in its Frame (origin = trunk base, z = toward <paramref name="foot"/>); UV1 = (0, x, z) like a carpet.
@@ -303,19 +315,20 @@ public static class RenderWeb
             var (verts, uv0, uv1, colors, tris) = (new List<Vector3>(), new List<Vector4>(), new List<Vector3>(), new List<Color>(), new List<int>());
             const int grid = 4;
             var layer = 0;
-            foreach (var (at, r, turnDeg, uv) in SkirtMats(id))
+            foreach (var (at, hw, hl, turnDeg, uv, fan) in SkirtMats(id))
             {
                 var turn = Quaternion.Euler(0f, turnDeg, 0f);
                 var k0 = verts.Count;
                 for (var i = 0; i <= grid; i++)
                     for (var j = 0; j <= grid; j++)
                     {
-                        var (a, b) = ((float)i / grid, (float)j / grid);
-                        var p = turn * new Vector3((a * 2f - 1f) * r, 0f, (b * 2f - 1f) * r) + new Vector3(at.x, 0f, at.y);
+                        var (a, b) = ((float)i / grid, (float)j / grid); // a across, b along (a fan's apex at b = 0, the trunk side)
+                        var p = turn * new Vector3((a * 2f - 1f) * hw, 0f, (b * 2f - 1f) * hl) + new Vector3(at.x, 0f, at.y);
                         p.y = ground(p.x, p.z) + 0.04f + 0.004f * layer; // hugs the terrain; layers apart (no z-fight)
                         verts.Add(p);
                         var rim = i == 0 || j == 0 || i == grid || j == grid;
-                        uv0.Add(new Vector4(Mathf.Lerp(uv.xMin, uv.xMax, a), Mathf.Lerp(uv.yMin, uv.yMax, b), TileVanilla, uv == Net && rim ? 0f : 1f)); // hubs fade by themselves, the net tapers
+                        var (u, v) = fan ? (Mathf.Lerp(uv.xMin, uv.xMax, a), Mathf.Lerp(uv.yMax, uv.yMin, b)) : (Mathf.Lerp(uv.xMin, uv.xMax, a), Mathf.Lerp(uv.yMin, uv.yMax, b));
+                        uv0.Add(new Vector4(u, v, TileVanilla, (uv == Net || fan) && rim && !(fan && j == 0) ? 0f : 1f)); // hubs fade by themselves, nets / fans taper
                         uv1.Add(new Vector3(0f, p.x, p.z));
                         colors.Add(new Color(1f, 1f, 1f, 0.1f));
                         if (i == 0 || j == 0) continue;
@@ -323,8 +336,7 @@ public static class RenderWeb
                         tris.AddRange(new[] { pp - 1, q - 1, pp, pp, q - 1, q });
                     }
                 layer++;
-            }
-            const int segs = 6, rows = 3;
+            }            const int segs = 6, rows = 3;
             foreach (var (yaw, top, uv) in SkirtVeils)
             {
                 var (from, to) = (SkirtTop(height * top, yaw), Quaternion.Euler(0f, yaw, 0f) * foot);
@@ -401,7 +413,10 @@ public static class RenderWeb
                 if (y >= l.Ankle.y) { var t = Mathf.InverseLerp(l.Ankle.y, l.Knee.y, y); return (Vector3.Lerp(l.Ankle, l.Knee, t), Mathf.Lerp(0.055f, 0.065f, t) * scale); }
                 return (new Vector3(l.Ankle.x, y, l.Ankle.z), 0.06f * scale);
             }
-            const float off = 0.03f; // strands sit 2-5 cm off the flesh (Codex), not hanging around the legs
+            const float off = 0.02f;
+            // Bulk (user 2026-11-11: "no cocoon visible", ref = a bulky white mass): layers stand off the legs 2 cm at the waist .. 15 cm at
+            // the feet, so the wrap swells toward the knees and feet.
+            float Bulge(float y) => Mathf.Lerp(0.15f, 0.03f, Mathf.InverseLerp(groundY, top, y)) * scale;
 
             // Weights: the two nearest bone segments (smooth at the knees), inverse square distance.
             var segs = new List<(Vector3 A, Vector3 B, int Bone)> { (hipMid, hipMid + Vector3.up * 0.15f, hipsBone) };
@@ -432,7 +447,7 @@ public static class RenderWeb
             {
                 var k0 = sink.Verts.Count;
                 var wob = R(0f, 6.3f);
-                var band = R(Threads.yMin, Threads.yMax - 0.03f); // a thin slice of the vanilla threads: 2-5 fibres along the strip, a bundle
+                var band = R(Threads.yMin, Threads.yMax - 0.06f); // a slice of the vanilla threads: many fibres along the strip, a bundle
                 for (var i = 0; i <= n; i++)
                 {
                     var t = (float)i / n;
@@ -444,7 +459,7 @@ public static class RenderWeb
                     for (var j = 0; j < 3; j++)
                     {
                         sink.Verts.Add(p + side * (w * (j - 1)));
-                        sink.Uv0.Add(new Vector4(Mathf.Lerp(Threads.xMin, Threads.xMax, t), band + 0.03f * j * 0.5f, TileVanilla,
+                        sink.Uv0.Add(new Vector4(Mathf.Lerp(Threads.xMin, Threads.xMax, t), band + 0.06f * j * 0.5f, TileVanilla,
                             j == 1 && i > 0 && i < n ? 1f : 0f));
                         sink.Weights.Add(weight);
                     }
@@ -461,17 +476,17 @@ public static class RenderWeb
             void Bundle(System.Func<float, float, float, (Vector3 P, Vector3 N)> wrap, float y0, float y1, float a0, float turns, int n)
             {
                 var count = rng.NextDouble() < 0.15 ? 1 : rng.NextDouble() < 0.5 ? 2 : 3;
-                var wide = rng.NextDouble() < 0.15; // a rare thick cord
+                var wide = rng.NextDouble() < 0.2; // thick cords
                 var ph = R(0f, 6.3f);
                 for (var k = 0; k < count; k++)
                 {
-                    var (da, dy, lift) = (R(-0.07f, 0.07f), R(-0.02f, 0.02f), R(0f, 0.012f));
+                    var (da, dy, lift) = (R(-0.07f, 0.07f), R(-0.02f, 0.02f), R(0f, 1f)); // lift = share of the bulge: layers at depth
                     Strip(t =>
                     {
                         var y = Mathf.Lerp(y0, y1, t) + dy * (0.5f + t) + 0.03f * Mathf.Sin(t * 7f + ph);
-                        var (p, nrm) = wrap(y, a0 + da + turns * Mathf.PI * 2f * t, lift);
+                        var (p, nrm) = wrap(y, a0 + da + turns * Mathf.PI * 2f * t, lift * Bulge(y));
                         return (p, nrm);
-                    }, n, wide ? R(0.035f, 0.05f) : R(0.015f, 0.038f), 0);
+                    }, n, wide ? R(0.07f, 0.1f) : R(0.03f, 0.06f), 0); // several cm: a mass, not stripes
                 }
             }
 
@@ -502,29 +517,41 @@ public static class RenderWeb
             foreach (var l in legs) ankle += l.Ankle.y / legs.Length;
             var dir = rng.NextDouble() < 0.5 ? 1f : -1f;
             // ~60 %: around both legs, most of them in the thigh / hip zone, the top ends ragged around the waist.
-            for (var b = 0; b < 26; b++)
+            for (var b = 0; b < 34; b++)
             {
-                var high = b < 15;
+                var high = b < 18;
                 var y0 = high ? R(knee - 0.1f, top - 0.35f) : R(groundY + 0.06f, knee);
                 var y1 = high ? top + R(-0.1f, 0.06f) : R(knee, top - 0.1f);
                 Bundle((y, a, lift) => BothLegs(y, a, lift), y0, y1, R(0f, 6.3f), (b % 3 == 0 ? -dir : dir) * R(0.6f, 1.5f), 16);
             }
             // ~40 %: each leg alone (dark gaps between the legs show), ankle to thigh.
             foreach (var l in legs)
-                for (var b = 0; b < 20 / legs.Length; b++)
+                for (var b = 0; b < 24 / legs.Length; b++)
                     Bundle((y, a, lift) => OneLeg(l, y, a, lift), R(groundY + 0.04f, ankle + 0.15f), R(knee - 0.1f, l.Hip.y), R(0f, 6.3f), (b % 2 == 0 ? dir : -dir) * R(0.7f, 1.6f), 12);
             // Crossing bundles on each shin (ankle .. knee, both directions: the lower legs read wrapped, Codex 2026-11-11 score 6).
             foreach (var l in legs)
-                for (var b = 0; b < 12 / legs.Length; b++)
+                for (var b = 0; b < 24 / legs.Length; b++)
                     Bundle((y, a, lift) => OneLeg(l, y, a, lift), R(groundY + 0.04f, l.Ankle.y + 0.12f), R(l.Knee.y - 0.05f, l.Knee.y + 0.15f), R(0f, 6.3f), (b % 2 == 0 ? dir : -dir) * R(0.8f, 1.6f), 12);
             // Long diagonals around both legs, shin to thigh, alternating hand: the criss-cross of the ref.
-            for (var b = 0; b < 8; b++)
+            for (var b = 0; b < 12; b++)
                 Bundle((y, a, lift) => BothLegs(y, a, lift), R(ankle + 0.1f, knee), R(knee + 0.1f, top - 0.1f), R(0f, 6.3f), (b % 2 == 0 ? dir : -dir) * R(0.45f, 0.9f), 14);
             // Loose fibres hanging from the waist line.
             for (var b = 0; b < 4; b++)
             {
                 var (a0, y0, y1) = (R(0f, 6.3f), top + R(-0.05f, 0.05f), top - R(0.15f, 0.35f));
                 Strip(t => BothLegs(Mathf.Lerp(y0, y1, t), a0 + 0.3f * t, 0.01f + 0.04f * t), 6, R(0.006f, 0.012f), 0);
+            }
+            // Silk pooling on the ground around the feet: flat arcs 0.2-0.55 m out (normal up), widest bands of the cocoon.
+            for (var b = 0; b < 18; b++)
+            {
+                var (a0, arc, r0, r1) = (R(0f, 6.3f), R(0.6f, 1.8f), R(0.18f, 0.4f) * scale, R(0.25f, 0.55f) * scale);
+                var c = new Vector3(hipMid.x, groundY, hipMid.z);
+                Strip(t =>
+                {
+                    var a = a0 + arc * t;
+                    var r = Mathf.Lerp(r0, r1, t);
+                    return (c + new Vector3(Mathf.Cos(a) * r, 0.03f + 0.04f * Mathf.Sin(t * Mathf.PI), Mathf.Sin(a) * r), Vector3.up);
+                }, 8, R(0.05f, 0.11f), 0);
             }
             // Fibres from the ankles flaring onto the ground.
             foreach (var l in legs)
@@ -549,25 +576,25 @@ public static class RenderWeb
                 var len = Vector3.Distance(from, e);
                 var sag = R(0.03f, 0.06f) * len;
                 var side = Vector3.Cross(Vector3.up, outDir);
-                var width = R(0.018f, 0.03f);
+                var width = R(0.035f, 0.055f); // ropes
                 var cuffY = from.y;
                 Bundle((y, a2, lift) => OneLeg(leg, y, a2, lift), cuffY - 0.06f, cuffY + 0.06f, a - 1.2f, 1.1f * dir, 10); // the cord's cuff on the leg: a readable attachment
-                for (var k = 0; k < 3; k++)
+                for (var k = 0; k < 4; k++)
                 {
-                    var (spread, rise) = ((k - 1) * R(0.03f, 0.06f), R(-0.03f, 0.03f));
+                    var (spread, rise) = ((k - 1.5f) * R(0.01f, 0.025f), R(-0.015f, 0.015f)); // tight: one rope of 4 strands
                     Strip(t =>
                     {
                         var s = Mathf.Sin(t * Mathf.PI);
                         var p = Vector3.Lerp(from, e, t) + Vector3.down * (sag * s) + side * (spread * (s + 2.5f * Mathf.Max(0f, t - 0.75f))) + Vector3.up * (rise * s); // fans out at the anchor
                         return (p, Vector3.Cross(side, (e - from).normalized).normalized);
-                    }, 10, width * (k == 1 ? 1f : 0.7f), 1);
+                    }, 10, width * (k == 1 ? 1f : 0.75f), 1);
                 }
                 for (var k = 0; k < 5; k++)
                 {
                     var d = Quaternion.Euler(0f, R(-50f, 50f), 0f) * outDir;
                     var end = e + d * R(0.4f, 0.8f);
                     end.y = e.y - 0.02f;
-                    Strip(t => (Vector3.Lerp(e, end, t), Vector3.up), 4, R(0.008f, 0.016f), 2);
+                    Strip(t => (Vector3.Lerp(e, end, t), Vector3.up), 4, R(0.02f, 0.04f), 2);
                 }
             }
 
