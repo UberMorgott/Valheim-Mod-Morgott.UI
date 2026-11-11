@@ -27,6 +27,7 @@ Shader "Morgott/Web"
         _DewSparkle ("Dew sparkle", Float) = 1
         _Rime ("Rime / frost", Range(0, 1)) = 0
         _Glow ("Self glow", Float) = 0
+        _TwoSided ("Two-sided light (1 thin sheets, 0 volume: cocoon)", Float) = 1
         _WindAmp ("Wind sway (m)", Float) = 0.06
         _WindFreq ("Wind frequency (Hz)", Float) = 0.3
         _FadeNear ("Fade start (m)", Float) = 90
@@ -65,7 +66,7 @@ Shader "Morgott/Web"
             sampler2D _WebTex;
             sampler2D _WrapTex;
             float4 _Color, _DewColor, _BurnColor, _CharColor, _BurnOrigin;
-            float _WebGain, _Mode, _Opacity, _DewDensity, _DewSparkle, _Rime, _Glow, _WindAmp, _WindFreq, _FadeNear, _FadeFar, _Tear,
+            float _WebGain, _Mode, _Opacity, _DewDensity, _DewSparkle, _Rime, _Glow, _TwoSided, _WindAmp, _WindFreq, _FadeNear, _FadeFar, _Tear,
                 _TriScale, _BurnStart, _Clock, _SweepSpeed, _BurnEdge;
             float4 _SheetState[32]; // x cut (1 = hidden), y graph delay s, zw burn entry point (sheet-local m)
 
@@ -234,10 +235,12 @@ Shader "Morgott/Web"
                 // Lit like the vanilla Mistlands webs (Particles/Standard Surface2: alpha blend, albedo _Color 0.75-1 x the grey art): diffuse
                 // albedo x (ambient + sun), two-sided for thin silk, no back-lit boost, no day emission (run 20261111-103356: the
                 // old back-scatter + base sun term read as an emissive glow at noon). Readability comes from coverage (alpha), not light.
-                float wrapL = abs(dot(N, L)); // thin silk: lit through from either side (vanilla cards are two-sided)
+                float ndl = dot(N, L);
+                float wrapL = _TwoSided > 0.5 ? abs(ndl) : saturate(ndl * 0.75 + 0.25); // thin sheets lit through; a volume (cocoon) keeps a shadow side
                 float3 silk = min(lerp(_Color.rgb, float3(0.86, 0.93, 1.0), _Rime * 0.7) * i.color.rgb, 0.6);
                 float night = saturate(1.0 - Luminance(_LightColor0.rgb));
-                float3 col = min(silk * (amb + _LightColor0.rgb * wrapL) + silk * _Glow * night, 0.75); // below the bloom threshold (run 20261111-120331: 0.85 still blew out dense crossings at noon)
+                float3 lit = silk * (amb + _LightColor0.rgb * wrapL) + silk * _Glow * night;
+                float3 col = 0.85 * lit / (lit + 0.3); // soft shoulder <= 0.85, keeps the shading (run 20261111-120331: a hard 0.75 cap flattened the noon cocoon into a lamp)
 
                 // ---- dew: sparse jittered drops on the strands, view-dependent glint -----------------------------------
                 if (!cocoon && _DewSparkle > 0.0)
