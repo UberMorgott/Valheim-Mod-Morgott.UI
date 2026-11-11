@@ -21,6 +21,8 @@ namespace Morgott.UI.ItemBrowser
         public static int Revision { get; private set; }
         /// <summary>The current generation's scan finished (autotest waits on it).</summary>
         public static bool Done { get; private set; }
+        /// <summary>Last finished scan: wall time, worst main-thread slice, memory delta (log + autotest).</summary>
+        public static string Stats { get; private set; }
         private static int _gen = -1;
         private static MonoBehaviour _host;
 
@@ -41,9 +43,19 @@ namespace Morgott.UI.ItemBrowser
         {
             var d = new FoundIn();
             var zs = ZoneSystem.instance;
+            var wall = System.Diagnostics.Stopwatch.StartNew();
+            var slice = System.Diagnostics.Stopwatch.StartNew();
+            var worst = 0.0;
+            var worstAt = "quick";
+            void Slice(string at)
+            {
+                if (slice.Elapsed.TotalMilliseconds > worst) { worst = slice.Elapsed.TotalMilliseconds; worstAt = at; }
+            }
+            long native0 = UnityEngine.Profiling.Profiler.GetTotalAllocatedMemoryLong(), managed0 = GC.GetTotalMemory(false);
             try { Quick(ix, d, zs); }
             catch (Exception e) { Plugin.Log.LogWarning($"[Morgott.UI] item browser found-in: {e}"); }
             Publish(d);
+            Slice("quick");
 
             // Locations, one prefab each (duplicate entries of one prefab merged, biomes OR-ed).
             var locs = new Dictionary<string, (ZoneSystem.ZoneLocation Loc, Heightmap.Biome Biome)>(StringComparer.Ordinal);
@@ -68,7 +80,9 @@ namespace Morgott.UI.ItemBrowser
                 }
                 catch (Exception e) { Plugin.Log.LogWarning($"[Morgott.UI] item browser found-in: location {asset.name}: {e.Message}"); }
                 finally { loc.m_prefab.Release(); }
+                Slice(asset.name);
                 yield return null;
+                slice.Restart();
             }
             Publish(d);
 
@@ -93,7 +107,9 @@ namespace Morgott.UI.ItemBrowser
                     if (outside != 0) Prefab(d, asset, outside, Origin.Location);
                 }
                 finally { room.m_prefab.Release(); }
+                Slice(asset.name);
                 yield return null;
+                slice.Restart();
             }
             Publish(d);
 
@@ -101,8 +117,10 @@ namespace Morgott.UI.ItemBrowser
             foreach (var e in ix.Entries.Values)
                 if (e.Type == EntryType.Creature && e.Hidden == null && !d.ByPrefab.ContainsKey(e.Id)) none.Add(e.Id);
             none.Sort(StringComparer.Ordinal);
+            yield return null; // released bundles unload before the memory sample
+            Stats = FormattableString.Invariant($"{wall.Elapsed.TotalSeconds:F1} s, worst slice {worst:F1} ms ({worstAt}), memory delta native {(UnityEngine.Profiling.Profiler.GetTotalAllocatedMemoryLong() - native0) / 1048576.0:F1} MB managed {(GC.GetTotalMemory(false) - managed0) / 1048576.0:F1} MB");
             Done = true;
-            Plugin.Log.LogInfo($"[Morgott.UI] item browser found-in: {d.ByPrefab.Count} prefabs, {locs.Count} locations; " +
+            Plugin.Log.LogInfo($"[Morgott.UI] item browser found-in: {d.ByPrefab.Count} prefabs, {locs.Count} locations, {Stats}; " +
                                $"creatures without a source ({none.Count}): {string.Join(", ", none)}");
         }
 
@@ -141,7 +159,7 @@ namespace Morgott.UI.ItemBrowser
                 foreach (var ev in RandEventSystem.instance.m_events)
                     if (ev != null && ev.m_enabled && !ev.m_devDisabled)
                         foreach (var sd in ev.m_spawn)
-                            if (sd?.m_prefab) d.Add(sd.m_prefab.name, ev.m_biome, Origin.Event);
+                            if (sd?.m_prefab) d.Add(sd.m_prefab.name, 0, Origin.Event); // tag only: m_biome = where the raided base may stand (run 20261111-161053: Skeleton read "anywhere")
 
             foreach (var v in zs.m_vegetation)
                 if (v != null && v.m_enable && v.m_prefab) Prefab(d, v.m_prefab, v.m_biome, Origin.World);
@@ -162,6 +180,7 @@ namespace Morgott.UI.ItemBrowser
         // Creatures a prefab places: spawner points, nests, boss altars.
         private static void Prefab(FoundIn d, GameObject root, Heightmap.Biome biome, Origin plain)
         {
+            foreach (var c in root.GetComponentsInChildren<Character>(true)) d.Add(Utils.GetPrefabName(c.gameObject), biome, plain); // placed as is (sleeping draugr, hives)
             foreach (var cs in root.GetComponentsInChildren<CreatureSpawner>(true))
                 if (cs.m_creaturePrefab) d.Add(cs.m_creaturePrefab.name, biome, plain);
             foreach (var sa in root.GetComponentsInChildren<SpawnArea>(true))
