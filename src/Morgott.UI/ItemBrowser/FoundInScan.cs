@@ -59,6 +59,10 @@ namespace Morgott.UI.ItemBrowser
         public static string Line(string prefab, Func<Heightmap.Biome, string> biome) =>
             Data != null && Data.ByPrefab.TryGetValue(prefab, out var o) ? FoundIn.Text(o, Browser.Localize, biome) : null;
 
+        private static readonly List<SoftReference<GameObject>> _loadedRefs = new List<SoftReference<GameObject>>();
+        /// <summary>Prefabs this scan loaded that are still loaded 2 s after it (ours released; the game may hold some).</summary>
+        public static int StillLoaded { get; private set; }
+
         private static bool Over => _slice.Elapsed.TotalMilliseconds > BudgetMs;
 
         private static IEnumerator Run(BrowserIndex ix, int generation)
@@ -165,9 +169,13 @@ namespace Morgott.UI.ItemBrowser
             foreach (var e in ix.Entries.Values)
                 if (e.Type == EntryType.Creature && e.Hidden == null && !d.ByPrefab.ContainsKey(e.Id)) none.Add(e.Id);
             none.Sort(StringComparer.Ordinal);
+            for (var t0 = Time.realtimeSinceStartup; Time.realtimeSinceStartup - t0 < 2f;) yield return null; // async unloads settle
+            StillLoaded = 0;
+            foreach (var lr in _loadedRefs) if (lr.IsLoaded) StillLoaded++;
+            _loadedRefs.Clear();
             WorstMs = worst;
             Loaded = loads;
-            Stats = FormattableString.Invariant($"{wall.Elapsed.TotalSeconds:F1} s, worst slice {worst:F1} ms ({worstAt}), loaded {loads}, table {(table != null ? "current" : "off")}");
+            Stats = FormattableString.Invariant($"{wall.Elapsed.TotalSeconds:F1} s, worst slice {worst:F1} ms ({worstAt}), loaded {loads} (still loaded {StillLoaded}), table {(table != null ? "current" : "off")}");
             Done = true;
             Plugin.Log.LogInfo($"[Morgott.UI] item browser found-in: {d.ByPrefab.Count} prefabs, {locs.Count} locations, {Stats}; " +
                                $"creatures without a source ({none.Count}): {string.Join(", ", none)}");
@@ -177,6 +185,7 @@ namespace Morgott.UI.ItemBrowser
         // Async load, time-sliced walk of every transform, release (also when the scan is abandoned: finally).
         private static IEnumerable<object> Lazy(SoftReference<GameObject> r, Action<Scanned> done)
         {
+            _loadedRefs.Add(r);
             try { r.LoadAsync(); } // holds a reference (AssetBundleLoader.LoadAsync -> HoldReference)
             catch (Exception e)
             {
@@ -240,8 +249,9 @@ namespace Morgott.UI.ItemBrowser
                     if (ev != null && ev.m_enabled && !ev.m_devDisabled)
                         foreach (var sd in ev.m_spawn)
                             if (sd?.m_prefab) d.Add(sd.m_prefab.name, 0, Origin.Event); // tag only: m_biome = where the raided base may stand (run 20261111-161053: Skeleton read "anywhere")
-            if (Over) yield return null;
+            yield return null; // every section in its own frame: first-call costs (JIT, Summoned) spread (run 20261111-174554: 18.7 ms in one)
 
+            yield return null;
             var veg = new Scanned();
             foreach (var v in zs.m_vegetation)
             {
@@ -260,7 +270,9 @@ namespace Morgott.UI.ItemBrowser
                 var kind = r.Kind == RelationKind.Tree ? Origin.Tree : src?.Type == EntryType.Item ? Origin.Egg : Origin.Nest;
                 foreach (var o in r.Outputs)
                     if (ix.Entries.TryGetValue(o.Prefab, out var e) && e.Type == EntryType.Creature) d.Add(o.Prefab, (Heightmap.Biome)r.Biomes, kind);
+                if (Over) yield return null;
             }
+            yield return null;
 
             foreach (var go in Browser.Summoned()) if (go) d.Add(go.name, 0, Origin.Summon);
         }
