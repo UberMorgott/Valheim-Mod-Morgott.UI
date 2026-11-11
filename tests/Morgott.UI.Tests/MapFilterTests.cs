@@ -27,6 +27,7 @@ namespace Morgott.UI.Tests
             foreach (var t in Enum.GetValues<Minimap.PinType>())
                 Assert.Equal(t != Minimap.PinType.None && t != Minimap.PinType.Player, types.Contains(t));
             Assert.Contains(MapFilterMath.Portal, types);
+            Assert.Contains(MapFilterMath.Pet, types);
             Assert.Equal(Morgott.Core.Contracts.PortalPinType, (int)MapFilterMath.Portal);
         }
 
@@ -38,6 +39,19 @@ namespace Morgott.UI.Tests
             Assert.False(MapFilterMath.Apply(Vanilla(), portal, false));
             var grown = new bool[Morgott.Core.Contracts.PortalPinType + 1];
             Assert.True(MapFilterMath.Present(grown, portal));
+        }
+
+        [Fact]
+        public void PetRowOnlyWithSummonsAndOnByDefault()
+        {
+            // Morgott.Summons grows the array to the companion pin type; without it the row is absent
+            var pet = MapFilterMath.Rows.Single(r => r.Key == "Pet");
+            Assert.Equal(Morgott.Core.Contracts.PetPinType, (int)MapFilterMath.Pet);
+            Assert.False(MapFilterMath.Present(new bool[Morgott.Core.Contracts.PortalPinType + 1], pet));
+            var grown = Enumerable.Repeat(true, Morgott.Core.Contracts.PetPinType + 1).ToArray();
+            Assert.True(MapFilterMath.Present(grown, pet) && MapFilterMath.Shown(grown, pet));
+            Assert.True(MapFilterMath.Apply(grown, pet, false));
+            Assert.False(grown[Morgott.Core.Contracts.PetPinType]);
         }
 
         [Fact]

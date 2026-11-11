@@ -18,12 +18,12 @@ namespace Morgott.UI
     // Morgott.UI (was RuneSkin): clean-room UI skin that restyles live vanilla uGUI from theme tokens (no prefab swaps, no
     // transpilers). Awake: config -> theme + asset bundle -> ownership frozen -> ITheme registered -> Harmony patches of owned families.
     [BepInPlugin(Contracts.UiGuid, "Morgott.UI", Version)]
-    [BepInDependency(Contracts.CoreGuid, "0.11.0")] // IChainCraft (0.5.1: IItemBrowser), ICreatureInfo.IsNemesis (0.7.0), IWebVfx (0.9.0), IPortalPicker (0.11.0)
+    [BepInDependency(Contracts.CoreGuid, "0.12.0")] // IChainCraft (0.5.1: IItemBrowser), ICreatureInfo.IsNemesis (0.7.0), IWebVfx (0.9.0), IPortalPicker (0.11.0), IPetCollar (0.12.0)
     [BepInDependency(Jotunn.Main.ModGuid)]
     [BepInProcess("valheim.exe")]
     public sealed class Plugin : BaseUnityPlugin
     {
-        public const string Version = "0.32.1";
+        public const string Version = "0.32.2";
 
         public static ManualLogSource Log { get; private set; }
         // Our Jotunn localization (Translations\*.json): Compat\ModText re-adds words a mod overwrites in English.

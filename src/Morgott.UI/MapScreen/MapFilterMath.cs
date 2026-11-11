@@ -25,6 +25,9 @@ namespace Morgott.UI.MapScreen
         // Portal pins of Morgott.Patcher (Core contract): their own row, apart from caves (Icon4).
         public const Minimap.PinType Portal = (Minimap.PinType)Morgott.Core.Contracts.PortalPinType;
 
+        // The companion pin of Morgott.Summons (Core contract, Core 0.12.0): its own row, gold paw (MinimapAdapter.PetPaw).
+        public const Minimap.PinType Pet = (Minimap.PinType)Morgott.Core.Contracts.PetPinType;
+
         // Not rows: None (never drawn), Player (ИГРОКИ section). Mod types (Epic Loot) come from their own buttons.
         public static readonly FilterRow[] Rows =
         {
@@ -34,6 +37,7 @@ namespace Morgott.UI.MapScreen
             new FilterRow("Dot", "$ui_pin_icon3", Minimap.PinType.Icon3),
             new FilterRow("Cave", "$ui_pin_icon4", Minimap.PinType.Icon4),
             new FilterRow("Portal", "$ui_pin_portal", Portal),
+            new FilterRow("Pet", "$ui_pin_pet", Pet),
             new FilterRow("Death", "$ui_pin_death", Minimap.PinType.Death),
             new FilterRow("Boss", "$ui_pin_boss", Minimap.PinType.Boss),
             new FilterRow("Bed", "$ui_pin_bed", Minimap.PinType.Bed),

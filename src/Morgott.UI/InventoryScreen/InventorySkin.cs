@@ -1920,6 +1920,7 @@ namespace Morgott.UI.InventoryScreen
                     Geo.SetTopLeft(rt, Geo.World(_canvas, cx, shown ? cy : o.DollCellsY + dy)); // hidden: in the doll, scale 0
                     HideLabel(e);
                     Glyph(e, entry.Glyph);
+                    if (entry.Glyph == "collar") PetCollarButtons.Sync(e, entry.Side, _tooltipPrefab); // Summons pet store / release
                     // Empty cell: its name in the tooltip (vanilla UpdateGui clears unused tooltips, InventoryGrid.cs:401-402).
                     if (!e.m_used && e.m_tooltip && e.m_tooltip.m_topic != entry.Name) e.m_tooltip.m_topic = entry.Name;
                 }

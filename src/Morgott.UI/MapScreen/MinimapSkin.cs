@@ -411,6 +411,19 @@ namespace Morgott.UI.MapScreen
         {
             try { MinimapSkin.Attach(__instance); }
             catch (Exception e) { Plugin.Log.LogError($"[Morgott.UI] minimap restyle failed (vanilla map stays): {e}"); }
+            PetPaw(__instance);
+        }
+
+        // Morgott.Summons' companion pin type (registered by its own Start postfix, Priority.Last runs after it): the item
+        // browser's gold paw instead of its collar fallback icon (user 2026-11-11: reuse the approved paw, no new art).
+        private static void PetPaw(Minimap map)
+        {
+            var i = map.m_icons.FindIndex(s => s.m_name == MapFilterMath.Pet);
+            var paw = i >= 0 ? ItemBrowser.Browser.TameBadge(ItemBrowser.TameKind.Tame) : null;
+            if (!paw) return;
+            var entry = map.m_icons[i]; // SpriteData is a struct: written back
+            entry.m_icon = paw;
+            map.m_icons[i] = entry;
         }
 
         // Pin markers re-placed (Minimap.cs:1601-1655): the small-map cull runs on the next LateUpdate.
