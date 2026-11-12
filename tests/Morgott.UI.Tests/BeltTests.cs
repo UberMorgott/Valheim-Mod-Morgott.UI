@@ -3,16 +3,15 @@ using Xunit;
 
 namespace Morgott.UI.Tests
 {
-    // Belt row rules (BeltMath, MorgottTweaks Belt API v1): wing sources (belt replaces EAQS quick slots), row order
+    // Belt row rules (BeltMath, Morgott.Core IBeltApi): wing sources (belt replaces EAQS quick slots), row order
     // (food index 0 nearest the centre growing left, potions growing right), the gamepad walk and its presses.
     public class BeltTests
     {
         [Fact]
-        public void OnlyApiOneIsRead()
+        public void KindsAreCoreBeltKindValues()
         {
-            Assert.True(BeltMath.ApiUsable(1));
-            Assert.False(BeltMath.ApiUsable(0));
-            Assert.False(BeltMath.ApiUsable(2));
+            Assert.Equal((int)Morgott.Core.BeltKind.Food, BeltMath.Food);
+            Assert.Equal((int)Morgott.Core.BeltKind.Potion, BeltMath.Potion);
         }
 
         [Fact]

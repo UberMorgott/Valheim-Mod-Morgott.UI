@@ -1,36 +1,31 @@
 using System;
 using System.Reflection;
-using HarmonyLib;
+using Morgott.Core;
 
 namespace Morgott.UI.InfoScreens
 {
-    // Soft dependencies of the character stats window, bound once to typed delegates (no reflection per read, no
-    // allocation): Epic Loot's effect sum (EpicLoot.PlayerExtensions.GetTotalActiveMagicEffectValue(Player, string,
-    // float, ItemData), decompiled EL 0.14.13 PlayerExtensions.cs:65) and its incoming-damage steps
-    // (EpicLoot.MagicItemEffects.ModifyResistance.ModifyIncoming / Shards.DamageReductionAtNight.ModifyIncoming,
-    // run by its Character.RPC_Damage prefix), MorgottTweaks' public read APIs (FoodSlots.Max, PotionSlotCount.Max /
-    // Active / Enabled, EnergyShieldInfo.TryGet) and its armor-curve resistance step (ArmorResistance.ApplyResistance).
-    // Every member is null when the mod or the member is missing; callers fall back to vanilla.
+    // Soft dependencies of the character stats window. Epic Loot (third party) is bound once to typed delegates (no
+    // reflection per read, no allocation): its effect sum (EpicLoot.PlayerExtensions.GetTotalActiveMagicEffectValue(Player,
+    // string, float, ItemData), decompiled EL 0.14.13 PlayerExtensions.cs:65) and its incoming-damage steps
+    // (EpicLoot.MagicItemEffects.ModifyResistance.ModifyIncoming / Shards.DamageReductionAtNight.ModifyIncoming, run by its
+    // Character.RPC_Damage prefix). Morgott.Power's reads (food / potion slots, energy shield, armor curve) come only through
+    // its Core provider IPlayerStatsInfo (docs\mod-contracts.md): registered in Power's Awake, so a Power assembly that
+    // BepInEx loaded but never started (missing dependency) is absent, never half-initialized. Null = fall back to vanilla.
     internal static class StatsSources
     {
-        internal delegate bool EnergyShieldGet(Player player, out float current, out float max, out float rate, out float delay, out float breakDelay);
-        internal delegate void ArmorResistanceStep(HitData hit, HitData.DamageModifiers modifiers, out HitData.DamageModifier significant, Character character);
-
         private static Func<Player, string, float, ItemDrop.ItemData, float> _elTotal;
         public static Action<Character, HitData> ElResistance { get; private set; }
         public static Action<Character, HitData> ElNight { get; private set; }
-        public static Func<Player, int> FoodSlots { get; private set; }
-        public static Func<Player, int> PotionSlots { get; private set; }
-        public static Func<Player, int> PotionsActive { get; private set; }
-        public static Func<bool> PotionSlotsEnabled { get; private set; }
-        public static EnergyShieldGet EnergyShield { get; private set; }
-        // EnergyShieldInfo.Parts(player, kind, keys, values): source tokens + additive parts of max / rate / delay.
-        public static Func<Player, int, string[], float[], int> EnergyShieldParts { get; private set; }
-        public static ArmorResistanceStep ArmorResistance { get; private set; }
-        // MorgottTweaks ResourceAffixesModule pays Epic Loot's flat AddStaminaRegen / AddEitrRegen per second.
-        public static bool ResourceAffixes { get; private set; }
         public static bool EpicLoot => _elTotal != null;
-        public static bool MorgottTweaks => FoodSlots != null || PotionSlots != null || EnergyShield != null;
+
+        // Morgott.Power's stats provider, null without it (resolved per read: Core Services rule, never cache "absent").
+        public static IPlayerStatsInfo Power => Services.TryGet(out IPlayerStatsInfo s) ? s : null;
+
+        // Food slot cap: Power's (Alchemist's Gut gem, belt cells), else vanilla Player.m_maxFoods (Player.cs:330).
+        public static int FoodSlots(Player p) => Power?.FoodSlots(p) ?? Morgott.UI.PlayerHud.StripMath.VanillaFoodSlots;
+
+        // Power pays Epic Loot's flat AddStaminaRegen / AddEitrRegen per second.
+        public static bool ResourceAffixes => EpicLoot && Power?.ResourceAffixes == true;
 
         private static bool _bound;
 
@@ -41,18 +36,7 @@ namespace Morgott.UI.InfoScreens
             _elTotal = Make<Func<Player, string, float, ItemDrop.ItemData, float>>("EpicLoot.PlayerExtensions", "GetTotalActiveMagicEffectValue");
             ElResistance = Make<Action<Character, HitData>>("EpicLoot.MagicItemEffects.ModifyResistance", "ModifyIncoming");
             ElNight = Make<Action<Character, HitData>>("EpicLoot.MagicItemEffects.Shards.DamageReductionAtNight", "ModifyIncoming");
-            FoodSlots = Make<Func<Player, int>>("Morgott.Power.FoodSlots", "Max");
-            PotionSlots = Make<Func<Player, int>>("Morgott.Power.PotionSlotCount", "Max");
-            PotionsActive = Make<Func<Player, int>>("Morgott.Power.PotionSlotCount", "Active");
-            var enabled = Morgott.Core.TypeLookup.ByFullName("Morgott.Power.PotionSlotCount")?.GetProperty("Enabled", BindingFlags.Public | BindingFlags.Static)?.GetGetMethod();
-            PotionSlotsEnabled = enabled != null ? (Func<bool>)Delegate.CreateDelegate(typeof(Func<bool>), enabled, false) : null;
-            EnergyShield = Make<EnergyShieldGet>("Morgott.Power.EnergyShieldInfo", "TryGet");
-            EnergyShieldParts = Make<Func<Player, int, string[], float[], int>>("Morgott.Power.EnergyShieldInfo", "Parts");
-            ArmorResistance = Make<ArmorResistanceStep>("Morgott.Power.ArmorResistance", "ApplyResistance");
-            ResourceAffixes = _elTotal != null && Morgott.Core.TypeLookup.ByFullName("Morgott.Power.ResourceAffixesModule") != null;
-            Plugin.Log.LogInfo($"[Morgott.UI] stats sources: EpicLoot={EpicLoot} resist={ElResistance != null} night={ElNight != null} " +
-                               $"foodSlots={FoodSlots != null} potionSlots={PotionSlots != null} potionsActive={PotionsActive != null} " +
-                               $"energyShield={EnergyShield != null} esParts={EnergyShieldParts != null} armorCurve={ArmorResistance != null}");
+            Plugin.Log.LogInfo($"[Morgott.UI] stats sources: EpicLoot={EpicLoot} resist={ElResistance != null} night={ElNight != null}");
         }
 
         // Epic Loot effect total of the local player (EffectValue sum x scale), 0 without Epic Loot.

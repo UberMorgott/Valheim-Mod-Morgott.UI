@@ -9,7 +9,7 @@ namespace Morgott.UI.InfoScreens
     // Fills the stats window cards from the live game objects, the way the game computes each value (decompiled
     // 1.0.20 lines per row; V = assembly_valheim). Status effects and mods that patch those vanilla methods (Epic Loot's
     // SEMan postfixes, MorgottTweaks) are counted through them; Epic Loot effects with no vanilla hook through its own
-    // sum (StatsSources.El); MorgottTweaks slots and energy shield through its public read APIs. Strings: localized
+    // sum (StatsSources.El); Morgott.Power slots and energy shield through its Core provider IPlayerStatsInfo. Strings: localized
     // words cached per language, numbers written as characters (StatsMath), so a refresh allocates nothing.
     internal sealed partial class StatsReader
     {
@@ -297,7 +297,7 @@ namespace Morgott.UI.InfoScreens
                 Plugin.Log.LogWarning($"[Morgott.UI] stats: Epic Loot resistance step failed: {e.Message}");
             }
             var mods = _p.GetDamageModifiers();
-            if (StatsSources.ArmorResistance != null) StatsSources.ArmorResistance(_probe, mods, out _, _p);
+            if (StatsSources.Power is { } power) power.ApplyArmorResistance(_probe, mods, out _, _p);
             else _probe.ApplyResistance(mods, out _);
             _probe.ApplyArmor(_p.GetBodyArmor());
             return 1f - _probe.m_damage.GetTotalDamage() / probe;
@@ -459,15 +459,16 @@ namespace Morgott.UI.InfoScreens
                 }
                 StatsMath.AppendClock(r.V, f.m_time);
             }
-            var foodMax = StatsSources.FoodSlots != null ? StatsSources.FoodSlots(p) : 3;
+            var stats = StatsSources.Power;
+            var foodMax = StatsSources.FoodSlots(p);
             var fs = Row(c, Kind.Pair, "fork", "$ui_stats_food_slots");
             StatsMath.Digits(fs.V, p.m_foods.Count).Append(" / ");
             StatsMath.Digits(fs.V, foodMax);
-            if (StatsSources.PotionSlots != null)
+            if (stats != null)
             {
                 var ps = Row(c, Kind.Pair, "flask", "$ui_stats_potion_slots");
-                if (StatsSources.PotionsActive != null) StatsMath.Digits(ps.V, StatsSources.PotionsActive(p)).Append(" / ");
-                StatsMath.Digits(ps.V, StatsSources.PotionSlots(p));
+                StatsMath.Digits(ps.V, stats.PotionsActive(p)).Append(" / ");
+                StatsMath.Digits(ps.V, stats.PotionSlots(p));
             }
             // Potion strength (Epic Loot "PotionPotency", what MorgottTweaks scales potion effects by): next to the
             // potion slots, as both are about potions.
@@ -706,7 +707,7 @@ namespace Morgott.UI.InfoScreens
         {
             var p = _p;
             float cur = 0f, max = 0f, rate = 0f, delay = 0f, breakDelay = 0f;
-            var es = StatsSources.EnergyShield != null && StatsSources.EnergyShield(p, out cur, out max, out rate, out delay, out breakDelay);
+            var es = StatsSources.Power is { } power && power.TryGetEnergyShield(p, out cur, out max, out rate, out delay, out breakDelay);
             var row = Explained(Row(c, Kind.Pair, "es", "$ui_stats_es"), Explain.ShieldMax);
             var bar = _w.Next(c, Kind.Bar);
             bar.BarToken = "sprite.stats.bar.es";

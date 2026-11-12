@@ -4,9 +4,9 @@ using Xunit;
 
 namespace Morgott.UI.Tests
 {
-    // Ammo plate + crossbow magazine dots (AmmoMath, MagazineContract): vanilla's ammo choice (Attack.FindAmmo /
-    // Inventory.GetAmmoItem), the shot total, the dot rules (<= 7 dots, more = one dot + n/N) at 2560 x 1440 and
-    // 1920 x 1080, and the MorgottTweaks read contract.
+    // Ammo plate + crossbow magazine dots (AmmoMath): vanilla's ammo choice (Attack.FindAmmo /
+    // Inventory.GetAmmoItem), the shot total and the dot rules (<= 7 dots, more = one dot + n/N) at 2560 x 1440 and
+    // 1920 x 1080. The magazine read side (Core IMagazineInfo) is in PowerProviderTests.
     public class AmmoHudTests
     {
         private const string Arrows = "$ammo_arrows", Bolts = "$ammo_bolts";
@@ -155,45 +155,6 @@ namespace Morgott.UI.Tests
             Assert.Equal(min, AmmoMath.PlateWidth(-5f, -5f, pad, min, max), 3);
             Assert.Equal(min, AmmoMath.PlateWidth(500f, 0f, pad, min, 50f), 3);           // max below min: min wins
             Assert.True(AmmoMath.PlateWidth(120f, 40f, pad, min, max) > AmmoMath.PlateWidth(100f, 40f, pad, min, max));
-        }
-
-        // ---- MorgottTweaks read contract
-
-        public static class FakeMagazine
-        {
-            public static int Capacity(string item) => item == "xbow" ? 5 : 0;
-            public static int Loaded(string item) => item == "xbow" ? 3 : 0;
-            public static int Revision() => 42;
-        }
-
-        public static class WrongSignatures
-        {
-            public static float Capacity(string item) => 1f;
-            public static int Loaded(int item) => 1;
-            public static long Revision() => 1;
-        }
-
-        [Fact]
-        public void ContractBindsTheExactSignatures()
-        {
-            var c = MagazineContract.Bind<string>(typeof(FakeMagazine));
-            Assert.True(c.Complete);
-            Assert.Equal(5, c.Capacity("xbow"));
-            Assert.Equal(3, c.Loaded("xbow"));
-            Assert.Equal(0, c.Capacity("bow"));
-            Assert.Equal(42, c.Revision());
-            Assert.Equal("Morgott.Power.CrossbowMagazine", MagazineContract.TypeName);
-        }
-
-        [Fact]
-        public void ContractWithoutMorgottTweaksOrChangedMembersIsOff()
-        {
-            Assert.False(MagazineContract.Bind<string>(null).Complete);
-            var w = MagazineContract.Bind<string>(typeof(WrongSignatures));
-            Assert.False(w.Complete);
-            Assert.Null(w.Capacity);
-            Assert.Null(w.Loaded);
-            Assert.Null(w.Revision);
         }
     }
 }

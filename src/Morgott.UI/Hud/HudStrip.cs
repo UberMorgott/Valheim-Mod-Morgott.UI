@@ -100,10 +100,10 @@ namespace Morgott.UI.PlayerHud
         public void Counts(Player p)
         {
             // One food cell per food SLOT of the current capacity, empty ones as bare sockets (user 2026-10-26 spec
-            // correction: 0 eaten = 3 empty sockets, never a vanished wing). Capacity = the "food" capacity list
-            // (MorgottTweaks FoodSlots.Max: 4th slot gem), else MorgottTweaks FoodSlots.Max read directly, else vanilla
-            // Player.m_maxFoods 3 (Player.cs:330); never fewer cells than eaten foods.
-            // MorgottTweaks belt on (BeltBridge): both wings = its cells (Belt.Capacity, food cells = the food cap, so the
+            // correction: 0 eaten = 3 empty sockets, never a vanished wing). Capacity = the "food" capacity list, else
+            // Morgott.Power's Core IPlayerStatsInfo.FoodSlots (4th slot gem), else vanilla Player.m_maxFoods 3
+            // (Player.cs:330); never fewer cells than eaten foods.
+            // Morgott.Power belt on (BeltBridge): both wings = its cells (IBeltApi.Capacity, food cells = the food cap, so the
             // eaten foods always fit); EAQS quick slots are off then (belt replaces them, Codex 2026-10-29).
             _belt = BeltBridge.On;
             FoodCount = _belt ? StripMath.WingSlots(BeltBridge.Capacity(p, BeltMath.Food), p.GetFoods().Count)
@@ -136,8 +136,7 @@ namespace Morgott.UI.PlayerHud
         private static int FoodCapacity(Player p)
         {
             if (Providers.TryCapacity("food", p, out var c) && c.Valid) return c.Count;
-            InfoScreens.StatsSources.Bind();
-            return InfoScreens.StatsSources.FoodSlots != null ? InfoScreens.StatsSources.FoodSlots(p) : StripMath.VanillaFoodSlots;
+            return InfoScreens.StatsSources.FoodSlots(p);
         }
 
         private int ActiveQuick()
@@ -582,7 +581,7 @@ namespace Morgott.UI.PlayerHud
         // icon alpha 0.45, ring / glow off, pip kept; GearGranted = gem at 12 o'clock; potion key top-left ("Alt+1"). ----
 
         private bool _belt;
-        private BeltCell _cell;
+        private BeltSlotState _cell;
 
         private void BeltPotions(Player p, bool pad)
         {

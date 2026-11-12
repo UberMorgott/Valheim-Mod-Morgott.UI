@@ -2,17 +2,13 @@ using System;
 
 namespace Morgott.UI.PlayerHud
 {
-    // Pure rules of the belt row (MorgottTweaks Belt API v1, MorgottTweaks docs\belt-api.md): which source feeds the
+    // Pure rules of the belt row (Morgott.Power's belt via Core IBeltApi): which source feeds the
     // food / potion wings, the strip row order of the belt cells (food index 0 nearest the centre growing LEFT, potion
     // index 0 nearest the centre growing RIGHT) and the gamepad focus walk over that row. No Unity: unit tested.
     public static class BeltMath
     {
-        public const int SupportedApi = 1;     // Belt.ApiVersion; additive changes keep 1
         public const int LayoutMax = 5;        // Belt.LayoutMax: most cells per kind
-        public const int Food = 0, Potion = 1; // Belt.BeltKind values
-
-        // Contract v1 only: a higher major (other meaning) is not read.
-        public static bool ApiUsable(int version) => version == SupportedApi;
+        public const int Food = 0, Potion = 1; // Morgott.Core.BeltKind values
 
         public enum Source { Vanilla, Belt, EaqsQuick }
 

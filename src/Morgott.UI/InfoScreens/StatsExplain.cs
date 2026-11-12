@@ -118,7 +118,7 @@ namespace Morgott.UI.InfoScreens
         {
             var p = _p;
             float cur = 0f, max = 0f, rate = 0f, delay = 0f, breakDelay = 0f;
-            var es = StatsSources.EnergyShield != null && StatsSources.EnergyShield(p, out cur, out max, out rate, out delay, out breakDelay);
+            var es = StatsSources.Power is { } power && power.TryGetEnergyShield(p, out cur, out max, out rate, out delay, out breakDelay);
             var sec = Loc("$ui_stats_sec");
             if (id == InfoScreens.Explain.ShieldBreak)
             {
@@ -131,7 +131,7 @@ namespace Morgott.UI.InfoScreens
             }
             var isMax = id == InfoScreens.Explain.ShieldMax;
             bd.Clear(Loc(isMax ? "$ui_stats_es" : "$ui_stats_recharge"));
-            if (!es || StatsSources.EnergyShieldParts == null) return;
+            if (!es) return;
             if (isMax)
             {
                 ShieldParts(bd, 0, max, Total, "");
@@ -143,7 +143,7 @@ namespace Morgott.UI.InfoScreens
 
         private void ShieldParts(StatBreakdown bd, int kind, float total, string result, string unit)
         {
-            var n = StatsSources.EnergyShieldParts(_p, kind, _esKeys, _esValues);
+            var n = StatsSources.Power?.EnergyShieldParts(_p, kind, _esKeys, _esValues) ?? 0;
             for (var i = 0; i < n; i++) _esKeys[i] = Loc(_esKeys[i]);
             bd.Parts(_esKeys, _esValues, n, total, Other, result, unit, kind != 2);
         }
@@ -277,7 +277,7 @@ namespace Morgott.UI.InfoScreens
             var mod = mods.GetModifier(type);
             if (mod != HitData.DamageModifier.Normal)
                 bd.Note(Loc("$ui_bd_modifier") + ": " + Loc(ModifierWord(mod)) + Sources(type));
-            if (StatsSources.ArmorResistance != null) StatsSources.ArmorResistance(_probe, mods, out _, p);
+            if (StatsSources.Power is { } power) power.ApplyArmorResistance(_probe, mods, out _, p);
             else _probe.ApplyResistance(mods, out _);
             var afterRes = _probe.m_damage.GetTotalDamage();
             bd.Add(Loc("$ui_bd_resistance"), null, afterRes - afterEl, false);

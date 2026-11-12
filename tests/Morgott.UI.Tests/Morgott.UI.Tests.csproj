@@ -30,7 +30,9 @@
     <Compile Include="..\..\src\Morgott.UI\Hud\DenyFlash.cs" Link="Linked\DenyFlash.cs" />
     <Compile Include="..\..\src\Morgott.UI\Hud\AmmoMath.cs" Link="Linked\AmmoMath.cs" />
     <Compile Include="..\..\src\Morgott.UI\Hud\BeltMath.cs" Link="Linked\BeltMath.cs" />
-    <Compile Include="..\..\src\Morgott.UI\Hud\MagazineContract.cs" Link="Linked\MagazineContract.cs" />
+    <Compile Include="..\..\src\Morgott.UI\Hud\BeltBridge.cs" Link="Linked\BeltBridge.cs" />
+    <Compile Include="..\..\src\Morgott.UI\Hud\MagazineSource.cs" Link="Linked\MagazineSource.cs" />
+    <Compile Include="..\..\src\Morgott.UI\InfoScreens\StatsSources.cs" Link="Linked\StatsSources.cs" />
     <Compile Include="..\..\src\Morgott.UI\Restyle\PanelMath.cs" Link="Linked\PanelMath.cs" />
     <Compile Include="..\..\src\Morgott.UI\Restyle\LabelFit.cs" Link="Linked\LabelFit.cs" />
     <Compile Include="..\..\src\Morgott.UI\Restyle\LayoutMath.cs" Link="Linked\LayoutMath.cs" />
