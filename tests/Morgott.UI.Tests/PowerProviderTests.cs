@@ -100,7 +100,7 @@ namespace Morgott.UI.Tests
                 get
                 {
                     Calls++;
-                    throw new NullReferenceException("config not bound");
+                    throw new InvalidOperationException("config not bound");
                 }
             }
 
