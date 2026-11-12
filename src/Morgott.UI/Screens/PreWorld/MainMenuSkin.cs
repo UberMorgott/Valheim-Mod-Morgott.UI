@@ -270,6 +270,11 @@ namespace Morgott.UI.PreWorld
                 // Not on top: the world modifiers modal opens over the start-game panel and must cover this notice.
                 SidePanel.Ensure(info, () => new[] { LargestPanel(fejd.m_startGamePanel.transform, info) }, onTop: false);
             }
+            // Online-play notice of the server browser (prefab-only JoinPanel/"Server help": TextBackdrop box, topic +
+            // $menu_server_info, no FejdStartup field, shown with JoinPanel): vanilla box sat on the window's right rail.
+            var servers = fejd.m_startGamePanel ? fejd.m_startGamePanel.GetComponentInChildren<ServerListGui>(true) : null;
+            if (servers && servers.transform.Find("Server help") is RectTransform help)
+                SidePanel.Ensure(help, () => new[] { LargestPanel(fejd.m_startGamePanel.transform, help) }, onTop: false);
         }
 
         // Rects of the drawn images under the given roots (plus the roots themselves).
