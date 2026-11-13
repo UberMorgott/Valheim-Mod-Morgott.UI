@@ -337,8 +337,8 @@ namespace Morgott.UI.MapScreen
             var color = ToColor(rgb);
             _edColorPreview.color = color;
             _edPreviewName.color = color;
-            var name = PortalStyle.NormalizeName(_edName.text);
-            _edPreviewName.text = string.IsNullOrEmpty(name) ? Words.Get("$piece_portal") : name;
+            var shown = PortalStyle.NormalizeName(_edName.text);
+            _edPreviewName.text = string.IsNullOrEmpty(shown) ? Words.Get("$piece_portal") : shown;
             var sprite = PortalIcons.Instance.Get(_edIcon);
             _edPreviewIcon.sprite = sprite;
             _edPreviewIcon.enabled = sprite;
