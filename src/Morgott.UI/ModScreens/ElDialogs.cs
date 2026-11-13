@@ -228,22 +228,45 @@ namespace Morgott.UI.ModScreens
             var d = RectIn(desc.rectTransform, frame);
             var left = Mathf.Max(0f, d.xMin - fr.xMin) + desc.margin.x;
             var right = Mathf.Max(0f, fr.xMax - d.xMax) + desc.margin.z;
-            var w = Widen(frame, widest, left, right);
+            var w = Widen(frame, dialog, widest, left, right);
             if (Logged.Add(dialog.GetInstanceID()))
                 Plugin.Log.LogInfo($"[Morgott.UI] el dialog {dialog.name}: widest description line {widest:0.#}, insets {left:0.#}/{right:0.#} -> frame {w:0.#} (scale {frame.lossyScale.x:0.###})");
         }
 
         // The frame at the width its content needs (ElDialogMath.FrameWidth: Epic Loot's 380 up to the safe area minus
         // ElDialogMath.ScreenMargin), moved back inside the safe area when the wider frame runs past it. Returns the width.
-        private static float Widen(RectTransform frame, float content, float left, float right)
+        // The drawn frame counts: the panel stack's edges and corner caps reach past the frame rect (run 20261113-200608,
+        // 760 frame at 1920x1080: right caps and value column cut by the screen edge with only the rect kept inside).
+        private static float Widen(RectTransform frame, Transform dialog, float content, float left, float right)
         {
             SafeX(frame, out var lo, out var hi);
-            var w = ElDialogMath.FrameWidth(content, left, right, hi - lo);
+            Overhang(frame, dialog, out var overL, out var overR);
+            var w = ElDialogMath.FrameWidth(content, left, right, hi - lo - overL - overR);
             if (Mathf.Abs(frame.rect.width - w) > 0.5f) frame.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, w);
             var fr = frame.rect;
-            var dx = ElDialogMath.ShiftInto(fr.xMin, fr.xMax, lo, hi);
+            var dx = ElDialogMath.ShiftInto(fr.xMin - overL, fr.xMax + overR, lo, hi);
             if (Mathf.Abs(dx) > 0.5f) frame.position += frame.TransformVector(new Vector3(dx, 0f, 0f));
             return w;
+        }
+
+        private static readonly List<Graphic> DecorGraphics = new List<Graphic>();
+
+        // How far the frame's panel stack is drawn beyond the frame rect's left / right side (frame units; 0 without one).
+        private static void Overhang(RectTransform frame, Transform dialog, out float left, out float right)
+        {
+            left = right = 0f;
+            var decor = Decor(frame, dialog);
+            if (!decor) return;
+            var fr = frame.rect;
+            decor.GetComponentsInChildren(false, DecorGraphics);
+            foreach (var g in DecorGraphics)
+            {
+                if (!g || !g.enabled) continue;
+                var r = RectIn(g.rectTransform, frame);
+                left = Mathf.Max(left, fr.xMin - r.xMin);
+                right = Mathf.Max(right, r.xMax - fr.xMax);
+            }
+            DecorGraphics.Clear();
         }
 
         // Screen.safeArea's left / right edge in the frame's local units, inset by ElDialogMath.ScreenMargin.
@@ -289,7 +312,7 @@ namespace Morgott.UI.ModScreens
             var body = BodySize(dialog);
             foreach (var rt in Active) need = Mathf.Max(need, LabelWidth(rt, body));
             SideInsets(frame, dialog, out var left, out var right, out var art);
-            Widen(frame, need, left, right);
+            Widen(frame, dialog, need, left, right);
             SideInsets(frame, dialog, out left, out right, out art);
             var fr = frame.rect;
             var col = RectIn(scroll, frame);
