@@ -30,6 +30,8 @@
     <EmbeddedResource Include="Assets\SummonBadge.png" LogicalName="Morgott.UI.SummonBadge.png" />
     <EmbeddedResource Include="Assets\MapLayersIcon.png" LogicalName="Morgott.UI.MapLayersIcon.png" />
     <EmbeddedResource Include="Assets\MapBossIcon.png" LogicalName="Morgott.UI.MapBossIcon.png" />
+    <!-- Portal style icons, Core PortalStyle ids 1..32 (tools\portalatlas packs Assets\PortalIcons\NN_name.png). -->
+    <EmbeddedResource Include="Assets\PortalIcons.png" LogicalName="Morgott.UI.PortalIcons.png" />
   </ItemGroup>
 
   <ItemGroup>
