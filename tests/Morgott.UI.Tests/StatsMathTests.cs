@@ -20,6 +20,19 @@ namespace Morgott.UI.Tests
         }
 
         [Fact]
+        public void ValueColumnKeepsWholeLabelAndValueAboveFloor()
+        {
+            // Both fit: the value gets its own width.
+            Assert.Equal(80f, StatsMath.ValueColumn(340f, 120f, 80f, 6f, 36f, 0.72f, 16f / 22f));
+            // "Перезарядка" (127) + "+15,0/с через 3,0 с" (218) > 340: the label keeps its width, the value takes the rest.
+            Assert.Equal(207f, StatsMath.ValueColumn(340f, 127f, 218f, 6f, 36f, 0.72f, 16f / 22f));
+            // A huge label never squeezes the value below what it needs at the floor font.
+            Assert.Equal(160f, StatsMath.ValueColumn(340f, 330f, 220f, 6f, 36f, 0.72f, 16f / 22f), 3);
+            // Short values keep the minimum, long ones stop at the span share.
+            Assert.Equal(36f, StatsMath.ValueColumn(340f, 50f, 10f, 6f, 36f, 0.72f, 0.7f));
+            Assert.Equal(340f * 0.72f, StatsMath.ValueColumn(340f, 0f, 400f, 6f, 36f, 0.72f, 0.7f), 3);
+        }
+        [Fact]
         public void FoodTooltipStatesHealingPerSecond()
         {
             var culture = System.Globalization.CultureInfo.CurrentCulture;

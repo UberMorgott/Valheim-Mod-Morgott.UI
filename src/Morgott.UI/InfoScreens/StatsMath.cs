@@ -89,6 +89,16 @@ namespace Morgott.UI.InfoScreens
 
         public static float Clamp01(float v) => v < 0f ? 0f : v > 1f ? 1f : v;
 
+        /// <summary>Value column width of a label / value row (design px): the value's own width when the whole label
+        /// still fits beside it; otherwise what the label leaves, but never less than the value needs at the readable
+        /// floor (<paramref name="floorShare"/> = floor / full font size, the value auto-sizes down to it).</summary>
+        public static float ValueColumn(float span, float labelW, float valueW, float gap, float min, float maxShare, float floorShare)
+        {
+            var room = span - labelW - gap;
+            var w = valueW <= room ? valueW : Math.Max(room, valueW * floorShare);
+            return Math.Min(Math.Max(w, min), Math.Max(min, span * maxShare));
+        }
+
         // Skill steps of the stat breakdown (decompiled 1.0.20): Skills.GetRandomSkillFactor :188-195 (Lerp(0.4, 1, skill)
         // +-0.15, clamped), Attack.GetAttackStamina :481 (-33% x skill), Player.CheckRun :2525 / GetDodgeStaminaUse :5796
         // (Lerp(1, 0.5, skill)), Player.OnSwimming :2637 (Lerp(min, max, skill)).

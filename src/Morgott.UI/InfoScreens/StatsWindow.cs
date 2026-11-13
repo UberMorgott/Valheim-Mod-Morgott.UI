@@ -834,20 +834,23 @@ namespace Morgott.UI.InfoScreens
             var iy = shape == Kind.PairSub ? b.Y + (lineH - iw) / 2f : b.Y + (b.H - iw) / 2f;
             Place(r.Icon.rectTransform, D(b.X + 6f, iy, iw, iw));
             // Value column as wide as its text (+ a gap), the label gets the rest: long labels ("Delay after break")
-            // and long values ("+15.0/s after 3.0 s") both fit without shrinking below the readable floor.
+            // and long values ("+15.0/s after 3.0 s") both fit without shrinking below the readable floor. When both
+            // don't fit at full size ("Перезарядка" + "+15,0/с через 3,0 с") the whole label keeps its width and the
+            // value auto-sizes toward the floor (StatsMath.ValueColumn). Fonts are set before measuring: preferred
+            // widths follow the font size, which changes with the resolution (_scale).
             var span = right - textX;
-            var valueW = r.Kind == Kind.Wide ? span * 0.66f : Mathf.Clamp(r.Value.preferredWidth / Mathf.Max(_scale, 0.05f) + 8f, 36f, span * 0.72f);
-            if (r.Kind == Kind.Name) valueW = 1f;
-            Place(r.Label.rectTransform, D(textX, b.Y, right - textX - valueW - 6f, lineH));
-            Place(r.Value.rectTransform, D(right - valueW, b.Y, valueW, lineH));
+            var floor = T("size.stats.font.min", 16f);
             Font(r.Label, r.Kind == Kind.Name ? T("size.stats.font.name", 20f) : label);
             Font(r.Value, value);
-            if (r.Kind == Kind.Wide)
-            {
-                r.Value.enableAutoSizing = true;
-                r.Value.fontSizeMax = value * _scale;
-                r.Value.fontSizeMin = T("size.stats.font.min", 16f) * _scale;
-            }
+            r.Value.fontSizeMax = value * _scale;
+            r.Value.fontSizeMin = floor * _scale;
+            var s = Mathf.Max(_scale, 0.05f);
+            var need = r.Value.preferredWidth / s + 8f;
+            var valueW = r.Kind == Kind.Wide ? span * 0.66f : r.Kind == Kind.Name ? 1f
+                : StatsMath.ValueColumn(span, r.Label.preferredWidth / s, need, 6f, 36f, 0.72f, floor / value);
+            r.Value.enableAutoSizing = r.Kind == Kind.Wide || need > valueW + 0.5f;
+            Place(r.Label.rectTransform, D(textX, b.Y, right - textX - valueW - 6f, lineH));
+            Place(r.Value.rectTransform, D(right - valueW, b.Y, valueW, lineH));
             if (r.Sub)
             {
                 // An empty sub-line takes no space: its row has the one-line shape (Shape) and the sub-line object is off
@@ -877,11 +880,13 @@ namespace Morgott.UI.InfoScreens
             var iw = T("size.stats.icon.cell", 28f);
             Place(icon.rectTransform, D(b.X + 6f, b.Y + (b.H - iw) / 2f, iw, iw));
             var lx = b.X + 6f + iw + T("size.stats.cell.label.gap", 6f);
-            var vw = T("size.stats.cell.value.w", 40f);
-            Place(label.rectTransform, D(lx, b.Y, b.Right - vw - 6f - lx, b.H));
-            Place(value.rectTransform, D(b.Right - vw - 4f, b.Y, vw, b.H));
+            // Value column = the token width or the value's own width if wider ("10%" outgrew the fixed 40 px: "10…");
+            // the label takes the rest, EqualizeCells then fits every label at one size (font set before measuring).
             Font(label, labelSize);
             Font(value, valueSize);
+            var vw = Mathf.Max(T("size.stats.cell.value.w", 40f), value.preferredWidth / Mathf.Max(_scale, 0.05f) + 2f);
+            Place(label.rectTransform, D(lx, b.Y, b.Right - vw - 6f - lx, b.H));
+            Place(value.rectTransform, D(b.Right - vw - 4f, b.Y, vw, b.H));
             label.enableAutoSizing = false;
         }
 
