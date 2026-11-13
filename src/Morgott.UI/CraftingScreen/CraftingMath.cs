@@ -72,30 +72,62 @@ namespace Morgott.UI.CraftingScreen
     }
 
     // Multi-craft (stepper N / Shift x5) as a queue of N single vanilla crafts, each with its own timer, resources,
-    // effects and skill raise. Stops on the first craft that made nothing (resources gone, inventory full) or on cancel.
+    // effects and skill raise. Stops on cancel and on a craft that made nothing (inventory full). Resources missing for
+    // the next unit may be pending (Morgott.Patcher SafeTake counts another player's chest only once our ownership claim
+    // lands, ~2 s): the unit waits up to PendingWait, then the queue ends as a real shortage.
     public sealed class CraftRun
     {
+        public const float PendingWait = 3f;
+
+        private float _waitUntil = float.NaN;
+
         public int Total { get; private set; }
         public int Done { get; private set; }
         public bool Running { get; private set; }
+        // A unit waits for resources; the caller re-checks each tick.
+        public bool Waiting { get; private set; }
 
         public void Start(int total)
         {
             Total = total;
             Done = 0;
             Running = total > 1;
+            Waiting = false;
+            _waitUntil = float.NaN;
         }
 
-        // One craft of the queue ended; true = start the next one.
-        public bool Finished(bool crafted)
+        // One craft of the queue ended; true = start the next one (or retry this one: refused = the craft made nothing
+        // for want of resources, nothing was consumed, InventoryGui.DoCrafting :1805).
+        public bool Finished(bool crafted, bool refused = false)
         {
             if (!Running) return false;
-            if (crafted) Done++;
-            Running = crafted && Done < Total;
+            if (crafted)
+            {
+                Done++;
+                _waitUntil = float.NaN;
+            }
+            Running = (crafted || refused) && Done < Total;
+            Waiting = false;
             return Running;
         }
 
-        public void Stop() => Running = false;
+        // The next unit lacks resources at `now`: true = keep waiting (bounded per unit), false = real shortage (caller stops).
+        public bool Wait(float now)
+        {
+            if (!Running) return false;
+            if (float.IsNaN(_waitUntil)) _waitUntil = now + PendingWait;
+            Waiting = now < _waitUntil;
+            return Waiting;
+        }
+
+        // The next unit was pressed; its wait budget lasts until a unit crafts.
+        public void Pressed() => Waiting = false;
+
+        public void Stop()
+        {
+            Running = false;
+            Waiting = false;
+        }
 
         // "2/5" while the second of five crafts runs.
         public string Step => Math.Min(Done + 1, Total) + "/" + Total;
