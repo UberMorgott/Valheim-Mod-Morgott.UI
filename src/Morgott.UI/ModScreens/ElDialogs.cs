@@ -161,6 +161,24 @@ namespace Morgott.UI.ModScreens
 
         private static readonly List<MonoBehaviour> Behaviours = new List<MonoBehaviour>();
 
+        // `t` is an Epic Loot dialog or lies inside one (its dialog component sits on the clone's root).
+        public static bool Inside(Transform t)
+        {
+            for (var p = t; p; p = p.parent)
+            {
+                Behaviours.Clear();
+                p.GetComponents(Behaviours);
+                foreach (var b in Behaviours)
+                    if (b && IsDialog(b.GetType()))
+                    {
+                        Behaviours.Clear();
+                        return true;
+                    }
+            }
+            Behaviours.Clear();
+            return false;
+        }
+
         private static void Each(Transform root, Action<MonoBehaviour> a)
         {
             Behaviours.Clear();

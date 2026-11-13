@@ -88,9 +88,11 @@ namespace Morgott.UI.ModScreens
         // A mod window (its panel stack on the unit root or a direct child, PanelSwap) gets the one window header
         // (RuneWindowHeader) over the top band of that panel: title = the mod's own title text there (rune face), else the
         // unit's name; the mod keeps placing the unit, the user offset rides on top (MovableWindow, WindowMove).
+        // Epic Loot's modal dialogs are no windows: their cloned VariantFrame (renamed "Frame") became its own fallback unit
+        // and got a band titled "Frame" over the dialog's icon + item name (user 2026-11-13, craft result of a wand).
         public static void Movable(Transform unit, string id)
         {
-            if (!(unit is RectTransform ur) || InCrafting(unit)) return;
+            if (!(unit is RectTransform ur) || InCrafting(unit) || ElDialogs.Inside(unit)) return;
             foreach (var swap in unit.GetComponentsInChildren<PanelSwap>(true))
             {
                 var t = swap.transform;
