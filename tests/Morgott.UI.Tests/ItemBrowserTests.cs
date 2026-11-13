@@ -326,6 +326,20 @@ namespace Morgott.UI.Tests
         }
 
         [Fact]
+        public void GridThumbHasAFloorAndDragsProportionally()
+        {
+            Assert.Equal(PageModel.ThumbMinH, PageModel.ThumbH(448f, 4, 603)); // 3614 entries: share 3 units -> floor
+            Assert.Equal(224f, PageModel.ThumbH(448f, 4, 8));                  // half visible -> half the track
+            Assert.Equal(40f, PageModel.ThumbH(40f, 1, 100));                 // floor never exceeds the track
+            Assert.Equal(0, PageModel.ScrollAt(-30f, 448f, 48f, 599));
+            Assert.Equal(300, PageModel.ScrollAt(200f, 448f, 48f, 599));       // middle of the travel -> ~half
+            Assert.Equal(599, PageModel.ScrollAt(500f, 448f, 48f, 599));
+            Assert.Equal(0, PageModel.ScrollAt(10f, 48f, 48f, 5));             // no travel
+            Assert.Equal(10f, PageModel.GrabOffset(110f, 100f, 48f));          // grabbed inside the thumb
+            Assert.Equal(24f, PageModel.GrabOffset(300f, 100f, 48f));          // track click: thumb centres on the pointer
+        }
+
+        [Fact]
         public void MaxFirstStopsWhenTheTailFits()
         {
             var h = new[] { 44f, 61f, 91f, 44f, 83f };

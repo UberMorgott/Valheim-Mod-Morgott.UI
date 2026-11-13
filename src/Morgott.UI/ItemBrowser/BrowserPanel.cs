@@ -57,7 +57,8 @@ namespace Morgott.UI.ItemBrowser
         // list view
         private GameObject _gridView;
         private TMP_InputField _search;
-        private Image _searchBack, _searchGlyph, _track, _thumb, _typeStar;
+        private Image _searchBack, _searchGlyph, _track, _thumb, _grip, _typeStar;
+        private float _gridViewH, _gridThumbH, _grab; // grid scrollbar geometry (mockup units) for the grip drag
         private TMP_Text _caption, _empty, _hint, _unknownLabel;
         private Button _unknownBox;
         private Image _unknownCheck;
@@ -112,6 +113,23 @@ namespace Morgott.UI.ItemBrowser
             public Func<string> Id; // entry under the pointer (hover keys)
             public void OnPointerClick(PointerEventData e) => Click?.Invoke(e);
             public void OnPointerEnter(PointerEventData e) => Enter?.Invoke();
+        }
+
+        // Grid scrollbar hit area (the drawn track + thumb are 4-6 units wide, no raycast): press on the thumb grabs it, on
+        // the track jumps the thumb under the pointer; dragging moves it. Pointer y comes in as units from the track top.
+        private sealed class Grip : MonoBehaviour, IPointerDownHandler, IInitializePotentialDragHandler, IDragHandler
+        {
+            public Action<float, bool> Move;
+            public void OnInitializePotentialDrag(PointerEventData e) => e.useDragThreshold = false;
+            public void OnPointerDown(PointerEventData e) { if (e.button == PointerEventData.InputButton.Left) Move?.Invoke(Y(e), true); }
+            public void OnDrag(PointerEventData e) { if (e.button == PointerEventData.InputButton.Left) Move?.Invoke(Y(e), false); }
+
+            private float Y(PointerEventData e)
+            {
+                var rt = (RectTransform)transform;
+                RectTransformUtility.ScreenPointToLocalPointInRectangle(rt, e.position, e.pressEventCamera, out var p);
+                return (rt.rect.yMax - p.y) / Mathf.Max(rt.rect.height, 1e-6f);
+            }
         }
 
         // ---------------------------------------------------------------- attach / tab wiring
@@ -411,6 +429,12 @@ namespace Morgott.UI.ItemBrowser
             _empty.textWrappingMode = TextWrappingModes.Normal;
             _track = Img(g, "ScrollTrack", "scrollbar.track");
             _thumb = Img(g, "ScrollThumb", "scrollbar.handle");
+            _grip = new GameObject("ScrollGrip", typeof(RectTransform)).AddComponent<Image>();
+            _grip.rectTransform.SetParent(g, false);
+            _grip.color = Color.clear;
+            _grip.raycastTarget = true;
+            DollCell.Mark(_grip, "content", "item browser scrollbar hit area");
+            _grip.gameObject.AddComponent<Grip>().Move = GripMove;
 
             _pageView = Child("Page").gameObject;
             var p = _pageView.transform;
@@ -742,11 +766,14 @@ namespace Morgott.UI.ItemBrowser
             if (_gridScrollMax > 0)
             {
                 var viewH = rows * CellPitchY - 8f;
-                var thumbH = Mathf.Max(24f, viewH * rows / total);
+                var thumbH = PageModel.ThumbH(viewH, rows, total);
+                _gridViewH = viewH;
+                _gridThumbH = thumbH;
                 Put(_track, UnitW - 5f, top, 4f, viewH);
                 Put(_thumb, UnitW - 6f, top + (viewH - thumbH) * _gridScroll / _gridScrollMax, 6f, thumbH);
+                Put(_grip, UnitW - 18f, top, 18f, viewH); // right of the last cell column (ends at 531.5)
             }
-            else { Off(_track); Off(_thumb); }
+            else { Off(_track); Off(_thumb); Off(_grip); }
             // Undiscovered hidden (checkbox off): an empty list names the checkbox.
             if (list.Count == 0 && Browser.KnownFilter)
             {
@@ -754,6 +781,17 @@ namespace Morgott.UI.ItemBrowser
                 Fit(_empty, L("$ib_empty_known"), 18f);
             }
             else Off(_empty);
+        }
+
+        // Grip press / drag: share of the track height from its top -> grid row, relayout only when it moves.
+        private void GripMove(float share, bool press)
+        {
+            var y = share * _gridViewH;
+            if (press) _grab = PageModel.GrabOffset(y, (_gridViewH - _gridThumbH) * _gridScroll / Math.Max(1, _gridScrollMax), _gridThumbH);
+            var next = PageModel.ScrollAt(y - _grab, _gridViewH, _gridThumbH, _gridScrollMax);
+            if (next == _gridScroll) return;
+            _gridScroll = next;
+            _dirty = true;
         }
 
         private Slot GridCell(int i)
