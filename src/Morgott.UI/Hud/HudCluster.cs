@@ -909,19 +909,20 @@ namespace Morgott.UI.PlayerHud
             if (leftGroup.Root.anchoredPosition != lp) leftGroup.Root.anchoredPosition = lp;
             var rp = new Vector2(SideRight, _statusBase);
             if (rightGroup.Root.anchoredPosition != rp) rightGroup.Root.anchoredPosition = rp;
-            // the bottom key hints clear the groups' rows like the strip top (StripClear)
-            _clear.SetStatus(ScreenBox(leftGroup.Root), ScreenBox(rightGroup.Root));
+            // The bottom key hints clear the groups' whole row budget like the strip top (StripClear): reserved even while
+            // empty, so the hint row stays put when an effect comes or goes (Codex call 2026-11-13: no 60 px jumps).
+            _clear.SetStatus(ScreenBox(leftGroup.Root, budget), ScreenBox(rightGroup.Root, budget));
         }
 
-        // A rect in screen px (bottom-up) through the HUD canvas; empty when it has no height (no status row).
-        private Rect ScreenBox(RectTransform rt)
+        // The group's band in screen px (bottom-up) through the HUD canvas: its row width x `height` units from its bottom.
+        private Rect ScreenBox(RectTransform rt, float height)
         {
             var root = _canvas ? _canvas.rootCanvas : null;
-            if (!root || rt.rect.height < 1f) return default;
+            if (!root || height < 1f) return default;
             var cam = root.renderMode == RenderMode.ScreenSpaceOverlay ? null : root.worldCamera;
-            rt.GetWorldCorners(_corners);
-            var a = RectTransformUtility.WorldToScreenPoint(cam, _corners[0]);
-            var b = RectTransformUtility.WorldToScreenPoint(cam, _corners[2]);
+            var r = rt.rect;
+            var a = RectTransformUtility.WorldToScreenPoint(cam, rt.TransformPoint(new Vector3(r.xMin, r.yMin, 0f)));
+            var b = RectTransformUtility.WorldToScreenPoint(cam, rt.TransformPoint(new Vector3(r.xMax, r.yMin + height, 0f)));
             return Rect.MinMaxRect(a.x, a.y, b.x, b.y);
         }
         // Status side areas (strip units): the left group ends, the right one starts, a gap off the centre's sides.

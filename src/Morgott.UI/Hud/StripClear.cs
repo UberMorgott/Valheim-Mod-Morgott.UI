@@ -35,7 +35,7 @@ namespace Morgott.UI.PlayerHud
         private float _stripTop, _stripLeft, _stripRight, _gap, _nextPoll;
         private Entry _hints;
         private bool _all, _statusMoved;
-        // Status groups above the strip (HudCluster.Status, screen px; empty = no row): the key hints clear them too
+        // Status group bands above the strip (HudCluster.Status, screen px, full row budget; empty = hidden): the key hints clear them too
         // (bug 2026-11-13: lifted only to the strip top, the hint row ran through the debuff group's "Cold" cell).
         private Rect _statusA, _statusB;
 
