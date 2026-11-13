@@ -883,7 +883,12 @@ namespace Morgott.UI.PlayerHud
             var show = !InventoryGui.IsVisible();
             if (_buffs.Root.gameObject.activeSelf != show) _buffs.Root.gameObject.SetActive(show);
             if (_strip.Root.gameObject.activeSelf != show) _strip.Root.gameObject.SetActive(show);
-            if (!show) { _chatTopUnits = _stripTopUnits; return; }
+            if (!show)
+            {
+                _chatTopUnits = _stripTopUnits;
+                _clear.SetStatus(default, default);
+                return;
+            }
             // A row fits between the strip edge and the centre's side: fewer tiles a row, more rows.
             var perRow = StripMath.StatusPerRow(Mathf.Clamp(Plugin.StatusPerRow?.Value ?? 10, 1, 30), tile.W, gap, SideLeft - pad);
             var rows = Mathf.Clamp(Plugin.StatusRows?.Value ?? 2, 1, 6);
@@ -904,6 +909,20 @@ namespace Morgott.UI.PlayerHud
             if (leftGroup.Root.anchoredPosition != lp) leftGroup.Root.anchoredPosition = lp;
             var rp = new Vector2(SideRight, _statusBase);
             if (rightGroup.Root.anchoredPosition != rp) rightGroup.Root.anchoredPosition = rp;
+            // the bottom key hints clear the groups' rows like the strip top (StripClear)
+            _clear.SetStatus(ScreenBox(leftGroup.Root), ScreenBox(rightGroup.Root));
+        }
+
+        // A rect in screen px (bottom-up) through the HUD canvas; empty when it has no height (no status row).
+        private Rect ScreenBox(RectTransform rt)
+        {
+            var root = _canvas ? _canvas.rootCanvas : null;
+            if (!root || rt.rect.height < 1f) return default;
+            var cam = root.renderMode == RenderMode.ScreenSpaceOverlay ? null : root.worldCamera;
+            rt.GetWorldCorners(_corners);
+            var a = RectTransformUtility.WorldToScreenPoint(cam, _corners[0]);
+            var b = RectTransformUtility.WorldToScreenPoint(cam, _corners[2]);
+            return Rect.MinMaxRect(a.x, a.y, b.x, b.y);
         }
         // Status side areas (strip units): the left group ends, the right one starts, a gap off the centre's sides.
         private float SideLeft => _hudStrip.L.StatusL - StatusStrip.StripGap;
