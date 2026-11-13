@@ -59,6 +59,27 @@ namespace Morgott.UI.CraftingScreen
             catch (System.Exception e) { Fault(e); }
         }
 
+        // Which requirement each cell shows (InventoryGui.SetupRequirement, :1744; ValheimPlus replaces its body, postfixes
+        // still run): the cell stock (CraftingSkin.SocketState) reads it.
+        [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.SetupRequirement))]
+        [HarmonyPostfix]
+        private static void SetupRequirement_Postfix(UnityEngine.Transform elementRoot, Piece.Requirement req, bool craft, int quality, int craftMultiplier)
+        {
+            var skin = CraftingSkin.Instance;
+            if (!skin || !craft || !elementRoot || req == null || !req.m_resItem) return;
+            try { skin.Requirement(elementRoot, req, quality, craftMultiplier); }
+            catch (System.Exception e) { Fault(e); }
+        }
+
+        // Any inventory changed (the player's, or a chest CraftFromChest / the station network counts): chain verdicts stale.
+        [HarmonyPatch(typeof(Inventory), nameof(Inventory.Changed))]
+        [HarmonyPostfix]
+        private static void InventoryChanged()
+        {
+            var skin = CraftingSkin.Instance;
+            if (skin) skin.StockChanged();
+        }
+
         // Craft amount stepper: arms vanilla's multi-craft (m_multiCraftAmount + m_touchMultiCrafting) right before the two
         // vanilla readers, UpdateRecipe (InventoryGui.cs:1498, label :1572-1575, requirements :1556) and OnCraftPressed (:2059).
         [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.UpdateRecipe))]

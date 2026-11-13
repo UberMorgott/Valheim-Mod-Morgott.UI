@@ -487,5 +487,21 @@ namespace Morgott.UI.CraftingScreen
         }
 
         private static bool End(string s, int i) => i == s.Length;
+
+        // Craftability, the one rule for recipe rows, requirement cells and the Create button: Have = enough stock now
+        // (vanilla HaveRequirements / the cell's have >= need, free crafting included), Chain = Create crafts it through its
+        // missing intermediates (Core IChainCraft, Morgott.Patcher RecipeChains), Missing = neither.
+        public enum Stock { Have, Chain, Missing }
+
+        public static Stock StockOf(bool enough, bool chain) => enough ? Stock.Have : chain ? Stock.Chain : Stock.Missing;
+
+        // Requirement cell: green count = held, white = craftable through the chain, grey = neither (socket greyed too).
+        public static string CellTextColor(Stock s) =>
+            s == Stock.Have ? "color.text.ok" : s == Stock.Chain ? "color.text.chain" : "color.text.unavailable";
+
+        public static string SocketRole(Stock s) => s == Stock.Missing ? "craft.socket.missing" : "craft.socket";
+
+        // Crafts of a producer yielding `perCraft` each that cover `shortBy` missing units.
+        public static int CraftsFor(int shortBy, int perCraft) => shortBy <= 0 ? 0 : (shortBy + Math.Max(1, perCraft) - 1) / Math.Max(1, perCraft);
     }
 }

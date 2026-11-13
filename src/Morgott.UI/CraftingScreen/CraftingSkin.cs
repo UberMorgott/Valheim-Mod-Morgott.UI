@@ -58,8 +58,7 @@ namespace Morgott.UI.CraftingScreen
         private readonly List<RectTransform> _cats = new List<RectTransform>(16);
         private readonly List<RectTransform> _subs = new List<RectTransform>(16);
         private readonly List<int> _reqActive = new List<int>(8);
-        private readonly Dictionary<GameObject, float> _redAt = new Dictionary<GameObject, float>();
-        private readonly Dictionary<GameObject, bool> _missingShown = new Dictionary<GameObject, bool>();
+        private readonly Dictionary<GameObject, CraftingMath.Stock> _cellShown = new Dictionary<GameObject, CraftingMath.Stock>();
 
         public static void Attach(InventoryGui gui)
         {
@@ -369,7 +368,7 @@ namespace Morgott.UI.CraftingScreen
                     tabTarget ? "crafting tab button (selected = interactable off: sprite disabled state)" : "tab child");
                 else if (t.name == Morgott.Core.Contracts.CraftSearch && image.GetComponent<Selectable>()) ctx.Role(image, "craft.search", "CraftingFilter search field");
                 else if (Row(t, out var row)) RowImage(ctx, image, row);
-                else if (IsRequirementCell(t)) ctx.Role(image, MissingShown(t.gameObject) ? "craft.socket.missing" : "craft.socket", "requirement socket (m_recipeRequirementList cell)");
+                else if (IsRequirementCell(t)) ctx.Role(image, CraftingMath.SocketRole(CellShown(t.gameObject)), "requirement socket (m_recipeRequirementList cell)");
                 else if (_gui.m_minStationLevelIcon && t == _gui.m_minStationLevelIcon.transform.parent && t.parent == Requirements()) ctx.Role(image, "craft.socket", "required station level: its own requirement socket (level, parent of MinLevel)");
                 else if (_gui.m_minStationLevelIcon && t == _gui.m_minStationLevelIcon.transform) ctx.Role(image, "content", "required station level icon (MinLevel, shows the station's icon)");
                 else if (t.name == "res_icon" || t.parent && t.parent.name == "level" || t.name == "MinLevel") ctx.Role(image, "content", "requirement icon / min station level glyph");
@@ -405,7 +404,7 @@ namespace Morgott.UI.CraftingScreen
             var button = image.GetComponentInParent<Button>(true);
             var target = button && button.targetGraphic == image;
             var n = t.name;
-            var canCraft = !child || n != "bkg" || CanCraft(row); // m_availableRecipes scan for the strip only
+            var canCraft = !child || n != "bkg" || RowCraftable(row); // m_availableRecipes scan for the strip only
             ctx.Role(image, CraftingMath.RowImageRole(n, child, target, canCraft), CraftingMath.RowImageReason(n, child, target));
         }
 
@@ -506,21 +505,98 @@ namespace Morgott.UI.CraftingScreen
         // (987 rows under `nocost`). CanCraft is fixed per row instance (InventoryGui.AddRecipeToList, :1385); a row the
         // map lacks (vanilla rebuilt the list) rebuilds it, at most once a frame: rows awaiting their deferred Destroy are
         // in no list (Codex review), each of them rescanning would be O(rows^2) again.
-        private readonly Dictionary<Transform, bool> _canCraft = new Dictionary<Transform, bool>();
+        // Stock per row, fixed per list build like vanilla's CanCraft (the chain verdict is taken at the same moment), so a
+        // row never changes state between rebuilds.
+        private readonly Dictionary<Transform, CraftingMath.Stock> _canCraft = new Dictionary<Transform, CraftingMath.Stock>();
         private int _canCraftFrame = -1, _canCraftFirst;
 
-        private bool CanCraft(Transform row)
+        private CraftingMath.Stock RowStock(Transform row)
         {
             if (_canCraft.TryGetValue(row, out var can)) return can;
             var rows = _gui.m_availableRecipes;
             var first = rows.Count > 0 && rows[0].InterfaceElement ? rows[0].InterfaceElement.GetInstanceID() : 0;
-            if (_canCraftFrame == Time.frameCount && _canCraftFirst == first) return true; // same list, already mapped
+            if (_canCraftFrame == Time.frameCount && _canCraftFirst == first) return CraftingMath.Stock.Have; // same list, already mapped
             _canCraftFrame = Time.frameCount;
             _canCraftFirst = first;
             _canCraft.Clear();
+            var chain = Chain();
             foreach (var r in _gui.m_availableRecipes)
-                if (r.InterfaceElement) _canCraft[r.InterfaceElement.transform] = r.CanCraft;
-            return !_canCraft.TryGetValue(row, out can) || can;
+                if (r.InterfaceElement)
+                    _canCraft[r.InterfaceElement.transform] = CraftingMath.StockOf(r.CanCraft,
+                        !r.CanCraft && r.ItemData == null && chain != null && chain.CanCraft(r.Recipe, 1));
+            return _canCraft.TryGetValue(row, out can) ? can : CraftingMath.Stock.Have;
+        }
+
+        // Bright row (craftable now or through the chain); read by the autotest harness (reflection).
+        public bool RowCraftable(Transform row) => RowStock(row) != CraftingMath.Stock.Missing;
+
+        private static Morgott.Core.IChainCraft Chain() =>
+            Morgott.Core.Services.TryGet<Morgott.Core.IChainCraft>(out var chain) ? chain : null;
+
+        // ---------------------------------------------------------------- requirement stock (cells)
+
+        // Cell -> its requirement as the last SetupRequirement drew it (craft multiplier included, InventoryGui.cs:1760).
+        private readonly Dictionary<GameObject, (string Name, int Need, int Multi)> _cellReq = new Dictionary<GameObject, (string, int, int)>();
+        // Chain verdicts of the selection, recomputed when any inventory changed (player or chest: Inventory.Changed) or
+        // the selection / multiplier changed; never on a timer.
+        private readonly Dictionary<(string, int), bool> _chainCells = new Dictionary<(string, int), bool>();
+        private readonly Dictionary<string, List<Recipe>> _producers = new Dictionary<string, List<Recipe>>();
+        private List<Recipe> _known = new List<Recipe>();
+        private int _stockEpoch, _cellsEpoch = -1, _cellsMulti;
+        private Recipe _cellsRecipe;
+        private CraftingMath.Stock _cellsTarget;
+
+        public void StockChanged() => _stockEpoch++;
+
+        public void Requirement(Transform cell, Piece.Requirement req, int quality, int multi)
+        {
+            if (!IsRequirementCell(cell)) return; // Hud build pieces draw with it too (Hud.cs)
+            _cellReq[cell.gameObject] = (req.m_resItem.m_itemData.m_shared.m_name, req.GetAmount(quality) * multi, multi);
+        }
+
+        // A requirement short by `shortBy`: craftable through the chain when the whole selection is (its plan makes every
+        // missing input), else when a recipe listed here makes it - by hand now, or itself through a chain.
+        private bool CellChain(Player player, string name, int shortBy, int multi)
+        {
+            var chain = Chain();
+            var recipe = _gui.m_selectedRecipe.Recipe;
+            if (chain == null || !recipe || _gui.m_selectedRecipe.ItemData != null) return false; // chains craft q1 only
+            if (_cellsEpoch != _stockEpoch || _cellsRecipe != recipe || _cellsMulti != multi)
+            {
+                _cellsEpoch = _stockEpoch;
+                _cellsRecipe = recipe;
+                _cellsMulti = multi;
+                _chainCells.Clear();
+                _producers.Clear();
+                _cellsTarget = CraftingMath.StockOf(player.HaveRequirements(recipe, false, 1, multi), chain.CanCraft(recipe, multi));
+            }
+            if (_cellsTarget == CraftingMath.Stock.Chain) return true;
+            if (_chainCells.TryGetValue((name, shortBy), out var ok)) return ok;
+            if (_producers.Count == 0) Producers(player);
+            ok = false;
+            if (_producers.TryGetValue(name, out var list))
+                foreach (var r in list)
+                {
+                    var n = CraftingMath.CraftsFor(shortBy, r.m_amount);
+                    if (ok = player.HaveRequirements(r, false, 1, n) || chain.CanCraft(r, n)) break;
+                }
+            return _chainCells[(name, shortBy)] = ok;
+        }
+
+        // Recipes craftable here: vanilla's list source (UpdateCraftingPanel :1138) at this station (:2697), no upgrader.
+        private void Producers(Player player)
+        {
+            var station = player.GetCurrentCraftingStation();
+            if (station && station.m_upgrader) return;
+            _known.Clear();
+            player.GetAvailableRecipes(ref _known);
+            foreach (var r in _known)
+            {
+                if (!r || !r.m_item || r.m_noCraftOnlyUpgrade || !player.RequiredCraftingStation(r, 1, true)) continue;
+                var name = r.m_item.m_itemData.m_shared.m_name;
+                if (!_producers.TryGetValue(name, out var list)) _producers[name] = list = new List<Recipe>();
+                list.Add(r);
+            }
         }
 
         private bool IsRequirementCell(Transform t)
@@ -532,7 +608,7 @@ namespace Morgott.UI.CraftingScreen
             return false;
         }
 
-        private bool MissingShown(GameObject cell) => _missingShown.TryGetValue(cell, out var m) && m;
+        private CraftingMath.Stock CellShown(GameObject cell) => _cellShown.TryGetValue(cell, out var m) ? m : CraftingMath.Stock.Have;
 
         // ---------------------------------------------------------------- requirement cells (no vanilla paging)
 
@@ -1001,7 +1077,11 @@ namespace Morgott.UI.CraftingScreen
             // Per-row role (craftable / unavailable) on the new rows only: vanilla re-instantiates every row on each Show
             // (InventoryGui.UpdateRecipeList), and a full pass over the crafting root (~870 graphics, run 20261027-151010:
             // 22 full passes logged over the open / close cycles) ran in the open frame.
-            if (rebuilt) RestyleRows(rows);
+            if (rebuilt)
+            {
+                RestyleRows(rows);
+                ChainRows(rows);
+            }
             // Content bounds changed after vanilla SetRecipe may have centred the selection: reveal it once more.
             var sel = _gui.GetSelectedRecipeIndex();
             if (_gui.m_recipeEnsureVisible && sel >= 0 && sel < rows.Count && rows[sel].InterfaceElement)
@@ -1015,7 +1095,7 @@ namespace Morgott.UI.CraftingScreen
         // Rows a pool kept (MorgottTweaks [RecipeListReuse]) keep their marks: only rows not styled yet, or styled for the
         // other CanCraft state, are restyled (987 rows under `nocost`: the whole pass took ~250 ms per rebuild, run
         // 20261103-191416-2). A theme change restyles all (StyledRows cleared).
-        private readonly Dictionary<GameObject, bool> _styledRows = new Dictionary<GameObject, bool>();
+        private readonly Dictionary<GameObject, CraftingMath.Stock> _styledRows = new Dictionary<GameObject, CraftingMath.Stock>();
         private readonly List<InventoryGui.RecipeDataPair> _restyle = new List<InventoryGui.RecipeDataPair>();
         private int _styledTheme = -1;
         private bool _rowsRebuilt;
@@ -1036,7 +1116,7 @@ namespace Morgott.UI.CraftingScreen
             }
             _restyle.Clear();
             foreach (var r in rows)
-                if (r.InterfaceElement && (!_styledRows.TryGetValue(r.InterfaceElement, out var can) || can != r.CanCraft))
+                if (r.InterfaceElement && (!_styledRows.TryGetValue(r.InterfaceElement, out var can) || can != RowStock(r.InterfaceElement.transform)))
                     _restyle.Add(r);
             if (_styledRows.Count > 4 * Mathf.Max(64, rows.Count)) // destroyed rows (no pool): drop their keys
             {
@@ -1051,9 +1131,22 @@ namespace Morgott.UI.CraftingScreen
             {
                 if (!r.InterfaceElement) continue;
                 Restyler.RestyleSubtree(r.InterfaceElement.transform, _crafting, ctx);
-                _styledRows[r.InterfaceElement] = r.CanCraft;
+                _styledRows[r.InterfaceElement] = RowStock(r.InterfaceElement.transform);
             }
             _restyle.Clear();
+        }
+
+        // A chain-craftable row gets vanilla's craftable look (AddRecipeToList :1352 icon, :1360 name: white), which every
+        // rebuild resets to the unavailable one on reused rows.
+        private void ChainRows(List<InventoryGui.RecipeDataPair> rows)
+        {
+            foreach (var r in rows)
+            {
+                if (!r.InterfaceElement || RowStock(r.InterfaceElement.transform) != CraftingMath.Stock.Chain) continue;
+                var t = r.InterfaceElement.transform;
+                if (t.Find("icon") is Transform icon && icon.TryGetComponent<Image>(out var image)) image.color = Color.white;
+                if (t.Find("name") is Transform name && name.TryGetComponent<TMP_Text>(out var text)) text.color = Color.white;
+            }
         }
 
         private void StyleRow(RectTransform row, float pitch)
@@ -1397,31 +1490,28 @@ namespace Morgott.UI.CraftingScreen
             if (n.textWrappingMode != wrap) n.textWrappingMode = wrap;
         }
 
-        // Missing material. ValheimPlus' SetupRequirement replacement (CraftFromChest: counts nearby chests) writes
-        // "have/need": parsed. Vanilla writes only "need" and blinks it red while the stock is short
-        // (InventoryGui.cs:1751-1753): the socket keeps the missing state for one blink period after the last red frame,
-        // so the style never flickers. Never recounted here (the player inventory alone would contradict CraftFromChest).
-        // The amount then gets the steady theme colour instead of the blink.
+        // Requirement stock (CraftingMath.Stock). ValheimPlus' SetupRequirement replacement (CraftFromChest: counts nearby
+        // chests) writes "have/need": parsed, so the count is the one its craft uses. Vanilla writes only "need" (:1766)
+        // and counts the player inventory (:1759): the same count here, no reading of its red blink (:1769).
+        // The amount gets the steady theme colour instead of the blink.
         private void SocketState(GameObject cell)
         {
             var amount = cell.transform.Find("res_amount");
-            if (!amount || !amount.TryGetComponent<TMP_Text>(out var text)) return;
-            var c = text.color;
-            var now = Time.unscaledTime;
-            bool missing;
-            if (CraftingMath.TryParseHaveNeed(text.text, out var have, out var need))
-                missing = have < need && !(ZoneSystem.instance && ZoneSystem.instance.GetGlobalKey(GlobalKeys.NoCraftCost));
-            else
+            var player = Player.m_localPlayer;
+            if (!amount || !amount.TryGetComponent<TMP_Text>(out var text) || !player || !_cellReq.TryGetValue(cell, out var req)) return;
+            if (!CraftingMath.TryParseHaveNeed(text.text, out var have, out var need))
             {
-                if (c.r > 0.9f && c.g < 0.2f && c.b < 0.2f) _redAt[cell] = now;
-                missing = _redAt.TryGetValue(cell, out var at) && now - at < 0.7f;
+                have = player.GetInventory().CountItems(req.Name);
+                need = req.Need;
             }
-            var want = ThemeTokens.GetColor(missing ? "color.text.missing" : "color.text.ok", c);
+            var enough = have >= need || ZoneSystem.instance && ZoneSystem.instance.GetGlobalKey(GlobalKeys.NoCraftCost);
+            var stock = CraftingMath.StockOf(enough, !enough && CellChain(player, req.Name, need - have, req.Multi));
+            var want = ThemeTokens.GetColor(CraftingMath.CellTextColor(stock), text.color);
             if (text.color != want) text.color = want;
-            if (MissingShown(cell) == missing) return;
-            _missingShown[cell] = missing;
+            if (CellShown(cell) == stock) return;
+            _cellShown[cell] = stock;
             if (!cell.TryGetComponent<Image>(out var socket)) return;
-            var role = missing ? "craft.socket.missing" : "craft.socket";
+            var role = CraftingMath.SocketRole(stock);
             var mark = socket.GetComponent<SkinMark>();
             if (!mark) return;
             mark.Role = role;
