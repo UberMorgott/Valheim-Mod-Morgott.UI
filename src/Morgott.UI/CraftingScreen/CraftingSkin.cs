@@ -593,8 +593,8 @@ namespace Morgott.UI.CraftingScreen
             foreach (var r in _known)
             {
                 if (!r || !r.m_item || r.m_noCraftOnlyUpgrade || !player.RequiredCraftingStation(r, 1, true)) continue;
-                var name = r.m_item.m_itemData.m_shared.m_name;
-                if (!_producers.TryGetValue(name, out var list)) _producers[name] = list = new List<Recipe>();
+                var itemName = r.m_item.m_itemData.m_shared.m_name;
+                if (!_producers.TryGetValue(itemName, out var list)) _producers[itemName] = list = new List<Recipe>();
                 list.Add(r);
             }
         }
