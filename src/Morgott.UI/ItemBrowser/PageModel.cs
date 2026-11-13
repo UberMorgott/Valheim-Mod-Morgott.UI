@@ -203,6 +203,19 @@ namespace Morgott.UI.ItemBrowser
             return 0;
         }
 
+        /// <summary>Grid scrollbar thumb (mockup units): the visible share of the track, never under ThumbMinH (3614 entries
+        /// gave a 3-unit share, the old 24-unit floor drew a sliver the user could not catch).</summary>
+        public const float ThumbMinH = 48f;
+        public static float ThumbH(float viewH, int rows, int total) => Math.Min(viewH, Math.Max(ThumbMinH, viewH * rows / Math.Max(1, total)));
+
+        /// <summary>Grid row for a thumb whose top sits at thumbTop on the track (drag / track click): proportional, clamped.</summary>
+        public static int ScrollAt(float thumbTop, float viewH, float thumbH, int maxScroll) =>
+            viewH <= thumbH || maxScroll <= 0 ? 0 : Math.Max(0, Math.Min(maxScroll, (int)Math.Round(thumbTop / (viewH - thumbH) * maxScroll)));
+
+        /// <summary>Pointer offset inside the thumb a drag keeps: the grab point on the thumb, its middle on a track click
+        /// (the thumb jumps under the pointer and the drag continues from there).</summary>
+        public static float GrabOffset(float y, float thumbTop, float thumbH) => y >= thumbTop && y <= thumbTop + thumbH ? y - thumbTop : thumbH / 2f;
+
         /// <summary>Amounts a CharacterDrop can roll: GenerateDropList (CharacterDrop.cs:139) takes int Random.Range(min, max),
         /// max exclusive; min when equal.</summary>
         // shortcut: a reversed pair (no vanilla drop has one) shows min only, as before.
