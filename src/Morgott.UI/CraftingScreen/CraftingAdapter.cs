@@ -94,6 +94,10 @@ namespace Morgott.UI.CraftingScreen
         [HarmonyPostfix]
         private static void UpdateRecipe_Postfix() => Queue(s => s.QueueTick());
 
+        [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.Hide))]
+        [HarmonyPostfix]
+        private static void Hide_Postfix() => Queue(s => s.QueueClosed());
+
         private static void Queue(System.Action<CraftingSkin> step)
         {
             var skin = CraftingSkin.Instance;

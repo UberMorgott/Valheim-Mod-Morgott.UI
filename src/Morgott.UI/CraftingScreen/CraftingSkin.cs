@@ -37,7 +37,9 @@ namespace Morgott.UI.CraftingScreen
         private TMP_Text _amountText;
         // Stepper amount (1 = single craft, vanilla Shift still multi-crafts), its max for the selected recipe (cached
         // 0.25 s: HaveRequirements also counts ValheimPlus CraftFromChest chests), vanilla's m_multiCraftAmount to restore.
-        private int _amount = 1, _max = 1, _vanillaMulti;
+        // _want = the player's pick; _amount = _want clamped to the live max each layout. A dip of the max (a chest not
+        // counted for a moment, another recipe) must not overwrite the pick (2026-11-13: amount 2 crafted 1).
+        private int _amount = 1, _want = 1, _max = 1, _vanillaMulti;
         private bool _amountOwned;
         private Recipe _maxRecipe;
         private float _maxAt;
@@ -1633,7 +1635,7 @@ namespace Morgott.UI.CraftingScreen
             ShowAmount(shown);
             if (!shown) return;
             var max = MaxAmount();
-            _amount = CraftingMath.ClampAmount(_amount, max);
+            _amount = CraftingMath.ClampAmount(_want, max);
             Geo.Place(_canvas, (RectTransform)_minus.transform, r.Minus);
             Geo.Place(_canvas, (RectTransform)_plus.transform, r.Plus);
             Geo.Place(_canvas, (RectTransform)_amountField.transform, r.Field);
@@ -1657,7 +1659,7 @@ namespace Morgott.UI.CraftingScreen
 
         private void SetAmount(int n)
         {
-            _amount = CraftingMath.ClampAmount(n, MaxAmount());
+            _want = _amount = CraftingMath.ClampAmount(n, MaxAmount());
             if (_amountField) _amountField.SetTextWithoutNotify(_amount.ToString(System.Globalization.CultureInfo.InvariantCulture));
             Arm();
         }
@@ -1714,7 +1716,7 @@ namespace Morgott.UI.CraftingScreen
         private readonly CraftRun _queue = new CraftRun();
         private Recipe _queueRecipe;
         private int _pressMulti, _before;
-        private bool _restarting, _judged, _crafted;
+        private bool _restarting, _judged, _crafted, _refused;
 
         public CraftRun Queue => _queue;
 
@@ -1755,40 +1757,52 @@ namespace Morgott.UI.CraftingScreen
             if (!_queue.Running || _gui.m_craftRecipe != _queueRecipe || !player) return;
             _before = player.GetInventory().CountItems(_queueRecipe.m_item.m_itemData.m_shared.m_name, -1, matchWorldLevel: false);
             _judged = true;
-            _crafted = false;
+            _crafted = _refused = false;
         }
 
         public void CraftPostfix(Player player)
         {
-            if (_judged && player)
-                _crafted = player.GetInventory().CountItems(_queueRecipe.m_item.m_itemData.m_shared.m_name, -1, matchWorldLevel: false) > _before;
+            if (!_judged || !player) return;
+            _crafted = player.GetInventory().CountItems(_queueRecipe.m_item.m_itemData.m_shared.m_name, -1, matchWorldLevel: false) > _before;
+            _refused = !_crafted && Short(player, _queueRecipe);
         }
 
-        // UpdateRecipe postfix.
+        // UpdateRecipe postfix. A waiting unit (resources pending) is re-checked every frame, the timer is idle meanwhile.
         public void QueueTick()
         {
             if (!_queue.Running) return;
             if (_judged)
             {
                 _judged = false;
-                if (_queue.Finished(_crafted)) NextCraft();
+                if (_queue.Finished(_crafted, _refused)) NextCraft();
                 else Plugin.Log.LogInfo($"[Morgott.UI] craft queue ended: {_queue.Done}/{_queue.Total} crafted");
                 return;
             }
-            if (_gui.m_craftTimer < 0f) StopQueue("cancelled");
+            if (_queue.Waiting) NextCraft();
+            else if (_gui.m_craftTimer < 0f) StopQueue("cancelled");
         }
+
+        // InventoryGui.Hide postfix: a closed panel ends the queue (Hide :1067 resets the timer, but a waiting unit has none).
+        public void QueueClosed() => StopQueue("closed");
+
+        private static bool Short(Player player, Recipe recipe) =>
+            !player.NoCostCheat() && !(ZoneSystem.instance && ZoneSystem.instance.GetGlobalKey(GlobalKeys.NoCraftCost)) &&
+            !player.HaveRequirements(recipe, false, 1);
 
         private void NextCraft()
         {
             var player = Player.m_localPlayer;
             var recipe = _queueRecipe;
             var station = player ? player.GetCurrentCraftingStation() : null;
-            var free = player && (player.NoCostCheat() || ZoneSystem.instance && ZoneSystem.instance.GetGlobalKey(GlobalKeys.NoCraftCost));
             var why = !player ? "no player"
                 : _gui.m_selectedRecipe.Recipe != recipe || _gui.m_selectedRecipe.ItemData != null ? "selection changed"
-                : !free && !player.HaveRequirements(recipe, false, 1) ? "out of resources"
-                : recipe.GetRequiredStation(1) && !(station && station.CheckUsable(player, showMessage: true)) ? "station unusable"
                 : null;
+            if (why == null && Short(player, recipe))
+            {
+                if (_queue.Wait(Time.unscaledTime)) return; // maybe pending (SafeTake claim): QueueTick retries
+                why = "out of resources";
+            }
+            if (why == null && recipe.GetRequiredStation(1) && !(station && station.CheckUsable(player, showMessage: true))) why = "station unusable";
             if (why == "out of resources") player.Message(MessageHud.MessageType.Center, "$msg_missingrequirement");
             if (why != null)
             {
@@ -1797,6 +1811,7 @@ namespace Morgott.UI.CraftingScreen
             }
             // Next single craft at amount 1 for every OnCraftPressed prefix (Morgott.Patcher RecipeChains runs before ours and
             // would read the full N, see the inputs left short and start an N-target chain on top of the queue).
+            _queue.Pressed();
             var multi = _gui.m_multiCraftAmount;
             _restarting = true;
             _gui.m_multiCraftAmount = 1;

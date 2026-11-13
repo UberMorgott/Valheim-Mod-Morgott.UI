@@ -46,6 +46,48 @@ namespace Morgott.UI.Tests
         }
 
         [Fact]
+        public void PendingResourcesWaitThenTheUnitCrafts()
+        {
+            var q = new CraftRun();
+            q.Start(3);
+            q.Finished(true);
+            Assert.True(q.Wait(10f)); // SafeTake claim not landed yet
+            Assert.True(q.Waiting);
+            Assert.True(q.Wait(10f + CraftRun.PendingWait - 0.1f));
+            q.Pressed();
+            Assert.False(q.Waiting);
+            Assert.True(q.Finished(true));
+            Assert.True(q.Wait(20f)); // a crafted unit restarts the wait budget
+            q.Pressed();
+            Assert.False(q.Finished(true));
+            Assert.Equal(3, q.Done);
+        }
+
+        [Fact]
+        public void RealShortageEndsAfterTheBoundedWait()
+        {
+            var q = new CraftRun();
+            q.Start(3);
+            q.Finished(true);
+            Assert.True(q.Wait(5f));
+            Assert.False(q.Wait(5f + CraftRun.PendingWait));
+            Assert.False(q.Waiting);
+            Assert.Equal(1, q.Done);
+        }
+
+        [Fact]
+        public void RefusedCraftRetriesWithinTheSameBudget()
+        {
+            var q = new CraftRun();
+            q.Start(2);
+            Assert.True(q.Wait(0f));
+            q.Pressed();
+            Assert.True(q.Finished(false, refused: true)); // DoCrafting refused for want of resources: retry, not counted
+            Assert.Equal(0, q.Done);
+            Assert.False(q.Wait(CraftRun.PendingWait)); // budget not reset by a refusal
+        }
+
+        [Fact]
         public void SingleCraftIsNoQueue()
         {
             var q = new CraftRun();
