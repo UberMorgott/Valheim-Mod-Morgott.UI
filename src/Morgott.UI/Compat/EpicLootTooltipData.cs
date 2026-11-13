@@ -15,7 +15,8 @@ namespace Morgott.UI.Compat
     {
         internal sealed class Stat { public string Id; public string Variant; }
         internal sealed class Effect { public string Text; }
-        internal sealed class Sockets { public int Count; public int Used; }
+        internal sealed class Socket { public string Text, State, Color; }
+        internal sealed class Sockets { public int Count; public int Used; public List<Socket> Entries = new List<Socket>(); }
         internal sealed class Piece { public string Name; public bool Equipped; }
         internal sealed class Bonus { public int Count; public string Text; public bool Active; }
         internal sealed class Set { public string Name; public int Equipped; public int Full; public List<Piece> Pieces = new List<Piece>(); public List<Bonus> Bonuses = new List<Bonus>(); }
@@ -70,7 +71,13 @@ namespace Morgott.UI.Compat
             foreach (var x in L(src, "Stats")) d.Stats.Add(new Stat { Id = S(x, "Id"), Variant = S(x, "Variant") });
             foreach (var x in L(src, "Effects")) d.Effects.Add(new Effect { Text = S(x, "Text") });
             var sockets = F(src, "Sockets");
-            if (sockets != null) d.Sockets = new Sockets { Count = I(sockets, "Count"), Used = I(sockets, "Used") };
+            if (sockets != null)
+            {
+                d.Sockets = new Sockets { Count = I(sockets, "Count"), Used = I(sockets, "Used") };
+                // TooltipSocket per filled socket: its gem's effect text, state, the gem's rarity (TooltipRenderer colours it so)
+                foreach (var x in L(sockets, "Entries"))
+                    d.Sockets.Entries.Add(new Socket { Text = S(x, "Text"), State = S(x, "State"), Color = RarityColor(I(x, "Rarity")) });
+            }
             foreach (var x in L(src, "Sets"))
             {
                 var set = new Set { Name = S(x, "Name"), Equipped = I(x, "Equipped"), Full = I(x, "Full") };
@@ -104,6 +111,16 @@ namespace Morgott.UI.Compat
             }
             _details = AccessTools.Property(Morgott.Core.TypeLookup.ByFullName("EpicLoot.MagicItem"), "ShowEffectDetails");
         }
+
+        // EpicLoot.EpicLoot.GetRarityColor(ItemRarity) as 8 hex digits; null when unknown.
+        private static string RarityColor(int rarity)
+        {
+            var t = Morgott.Core.TypeLookup.ByFullName("EpicLoot.ItemRarity");
+            _rarity ??= t == null ? null : AccessTools.Method(Morgott.Core.TypeLookup.ByFullName("EpicLoot.EpicLoot"), "GetRarityColor", new[] { t });
+            return _rarity == null ? null : Hex(_rarity.Invoke(null, new[] { Enum.ToObject(t, rarity) }) as string);
+        }
+
+        private static MethodInfo _rarity;
 
         // "#RRGGBB" / "#RRGGBBAA" -> 8 hex digits; anything else (named colours) -> null.
         public static string Hex(string c)

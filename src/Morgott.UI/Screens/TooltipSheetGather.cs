@@ -125,7 +125,15 @@ namespace Morgott.UI.Screens
                 if (!string.IsNullOrEmpty(el.SetLabel)) d.DropLines.Add(el.SetLabel);
                 if (el.Kind != "Shard") d.ElEffectsColor = el.RarityColor;
                 foreach (var e in el.Effects ?? new List<EpicLootTooltipData.Effect>()) d.Effects.Add(new TooltipSheet.Effect { Text = e.Text });
-                if (el.Sockets != null && el.Sockets.Count > 0) d.Sockets = el.Sockets.Used + "/" + el.Sockets.Count;
+                if (el.Sockets != null && el.Sockets.Count > 0)
+                {
+                    d.Sockets = el.Sockets.Used + "/" + el.Sockets.Count;
+                    // as Epic Loot's TooltipRenderer: the gem's effect in its rarity colour, an inert shard / inactive rune dimmed
+                    foreach (var so in el.Sockets.Entries)
+                        d.SocketEffects.Add(so.State == "InertShard" ? new TooltipSheet.Effect { Text = "$mod_epicloot_shard_noeffect", Color = so.Color }
+                            : so.State == "InactiveRune" ? new TooltipSheet.Effect { Text = so.Text + " $mod_epicloot_socket_tip_runeinactive", Color = Style().Dim }
+                            : new TooltipSheet.Effect { Text = so.Text, Color = so.Color });
+                }
             }
             if (el.Sets != null && el.Sets.Count > 0)
             {

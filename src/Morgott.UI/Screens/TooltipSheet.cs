@@ -43,6 +43,7 @@ namespace Morgott.UI.Screens
             public string MagicColor;              // effect bullets / magic label colour (rarity), null = Style.Accent
             public List<Effect> Effects = new List<Effect>();
             public string Sockets;                 // "used/count", null = none
+            public List<Effect> SocketEffects = new List<Effect>(); // one line per filled socket (Epic Loot TooltipSockets.Entries)
             public List<SetSection> Sets = new List<SetSection>();
             public List<string> Hints = new List<string>(); // "[RMB] $ui_tip_equip" (key labels already Latin)
             public List<string> DropLines = new List<string>(); // raw lines containing one of these are shown elsewhere (Epic Loot set label token)
@@ -146,6 +147,8 @@ namespace Morgott.UI.Screens
                 foreach (var e in d.Effects)
                     sb.Append("\n<color=#").Append(e.Color ?? magic).Append(">◆</color> ").Append(e.Text);
                 if (d.Sockets != null) sb.Append("\n<color=#").Append(s.Dim).Append(">$ui_tip_sockets ").Append(d.Sockets).Append("</color>");
+                foreach (var e in d.SocketEffects)
+                    sb.Append("\n  <color=#").Append(e.Color ?? magic).Append(">◇ ").Append(e.Text).Append("</color>");
             }
             foreach (var set in d.Sets)
             {

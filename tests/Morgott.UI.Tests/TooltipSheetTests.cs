@@ -104,6 +104,16 @@ namespace Morgott.UI.Tests
         }
 
         [Fact]
+        public void SocketedGemEffectUnderSocketCount()
+        {
+            var d = new TooltipSheet.SheetData { Name = "Mail", MagicColor = "00ABFFFF", Sockets = "1/1" };
+            d.Effects.Add(new TooltipSheet.Effect { Text = "+1% armor" });
+            d.SocketEffects.Add(new TooltipSheet.Effect { Text = "Eitr shield 8%", Color = "FFB75EFF" });
+            var r = TooltipSheet.Compose("", d, S);
+            Assert.True(At(r, "$ui_tip_sockets 1/1") < At(r, "<color=#FFB75EFF>◇ Eitr shield 8%</color>"));
+        }
+
+        [Fact]
         public void VanillaSetParagraphWithoutEpicLoot()
         {
             var raw = "$d\n\n$item_armor: <color=orange>20</color>\n\n$item_seteffect (<color=orange>3</color> $item_parts):<color=orange>$se_troll</color>\n$se_sneak: +15";
