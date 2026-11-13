@@ -237,7 +237,6 @@ namespace Morgott.UI
             OwnershipRegistry.Freeze(requested, _requireAssets.Value);
 
             if (!CoreApi.Headless) Services.Register<ITheme>(_theme = new ThemeProvider());
-            if (!CoreApi.Headless) Services.Register<IPortalIcons>(MapScreen.PortalIcons.Instance); // pins (Morgott.Patcher), list, arch
             // Portal picker: registered = Morgott.Patcher opens the map on portal entry; needs the large map skin.
             if (!CoreApi.Headless && MapScreen.MapConfig.PortalPicker.Value && OwnershipRegistry.IsOwned(OwnershipRegistry.Minimap))
                 MapScreen.PortalPickerService.Registered = Services.Register<IPortalPicker>(MapScreen.PortalPickerService.Instance);
@@ -288,7 +287,6 @@ namespace Morgott.UI
             }
             Services.Unregister<IItemBrowser>(ItemBrowser.BrowserService.Instance);
             if (MapScreen.PortalPickerService.Registered) Services.Unregister<IPortalPicker>(MapScreen.PortalPickerService.Instance);
-            Services.Unregister<IPortalIcons>(MapScreen.PortalIcons.Instance);
             _harmony?.UnpatchSelf();
         }
 
