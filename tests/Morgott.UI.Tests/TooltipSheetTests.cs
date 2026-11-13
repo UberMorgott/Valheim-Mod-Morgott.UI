@@ -41,6 +41,14 @@ namespace Morgott.UI.Tests
         }
 
         [Fact]
+        public void BackpackContentsWeightIsARow()
+        {
+            var raw = "$d\n\n$item_weight: <color=orange>4.0</color>\n$adventurebackpacks_contents_weight: <color=orange>−50%</color>";
+            var r = TooltipSheet.Compose(raw, Data(), S);
+            Assert.Contains("<color=#" + S.Body + ">$adventurebackpacks_contents_weight</color><line-height=0>\n<align=right><color=#" + S.Value + ">−50%</color>", r);
+        }
+
+        [Fact]
         public void VanillaWeaponSectionsInOrder()
         {
             var r = TooltipSheet.Compose(Axe, Data(), S);

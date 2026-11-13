@@ -71,6 +71,7 @@ namespace Morgott.UI.Screens
             "item_heat_modifier", "se_jumpstamina", "se_attackstamina", "se_blockstamina", "se_dodgestamina", "se_swimstamina",
             "se_sneakstamina", "se_runstamina", "item_maxadrenaline", "item_food_health", "item_food_stamina", "item_food_eitr",
             "item_food_duration", "item_food_regen", "item_crafter",
+            "adventurebackpacks_contents_weight", // AdventureBackpacks fork ItemDataGetTooltipPatch
         };
 
         // Shown from structured data (header / footer): their raw lines are dropped.
