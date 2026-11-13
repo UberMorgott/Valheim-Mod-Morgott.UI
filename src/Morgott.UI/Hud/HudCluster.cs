@@ -883,7 +883,12 @@ namespace Morgott.UI.PlayerHud
             var show = !InventoryGui.IsVisible();
             if (_buffs.Root.gameObject.activeSelf != show) _buffs.Root.gameObject.SetActive(show);
             if (_strip.Root.gameObject.activeSelf != show) _strip.Root.gameObject.SetActive(show);
-            if (!show) { _chatTopUnits = _stripTopUnits; return; }
+            if (!show)
+            {
+                _chatTopUnits = _stripTopUnits;
+                _clear.SetStatus(default, default);
+                return;
+            }
             // A row fits between the strip edge and the centre's side: fewer tiles a row, more rows.
             var perRow = StripMath.StatusPerRow(Mathf.Clamp(Plugin.StatusPerRow?.Value ?? 10, 1, 30), tile.W, gap, SideLeft - pad);
             var rows = Mathf.Clamp(Plugin.StatusRows?.Value ?? 2, 1, 6);
@@ -896,14 +901,32 @@ namespace Morgott.UI.PlayerHud
             leftGroup.AlignRight = true;
             rightGroup.AlignRight = false;
             var budget = rows * (tile.H + gap);
+            // The right group keeps ONE row (more folds into "+N"): the vanilla key hints (bottom right) sit right above it
+            // at a fixed height (user call 2026-11-13).
+            var rightBudget = tile.H + gap;
             leftGroup.Arrange(rowW, budget);
-            var rightH = rightGroup.Arrange(rowW, budget);
+            var rightH = rightGroup.Arrange(rowW, rightBudget);
             // the vanilla chat (bottom right) clears the right group's labelled rows too, not only the strip top
             _chatTopUnits = StripMath.StatusClearTop(_stripTopUnits, _statusBase, rightH);
             var lp = new Vector2(SideLeft - leftGroup.Root.sizeDelta.x, _statusBase);
             if (leftGroup.Root.anchoredPosition != lp) leftGroup.Root.anchoredPosition = lp;
             var rp = new Vector2(SideRight, _statusBase);
             if (rightGroup.Root.anchoredPosition != rp) rightGroup.Root.anchoredPosition = rp;
+            // The bottom key hints clear the groups' whole row budget like the strip top (StripClear): reserved even while
+            // empty, so the hint row stays put when an effect comes or goes (Codex call 2026-11-13: no 60 px jumps).
+            _clear.SetStatus(ScreenBox(leftGroup.Root, budget), ScreenBox(rightGroup.Root, rightBudget));
+        }
+
+        // The group's band in screen px (bottom-up) through the HUD canvas: its row width x `height` units from its bottom.
+        private Rect ScreenBox(RectTransform rt, float height)
+        {
+            var root = _canvas ? _canvas.rootCanvas : null;
+            if (!root || height < 1f) return default;
+            var cam = root.renderMode == RenderMode.ScreenSpaceOverlay ? null : root.worldCamera;
+            var r = rt.rect;
+            var a = RectTransformUtility.WorldToScreenPoint(cam, rt.TransformPoint(new Vector3(r.xMin, r.yMin, 0f)));
+            var b = RectTransformUtility.WorldToScreenPoint(cam, rt.TransformPoint(new Vector3(r.xMax, r.yMin + height, 0f)));
+            return Rect.MinMaxRect(a.x, a.y, b.x, b.y);
         }
         // Status side areas (strip units): the left group ends, the right one starts, a gap off the centre's sides.
         private float SideLeft => _hudStrip.L.StatusL - StatusStrip.StripGap;

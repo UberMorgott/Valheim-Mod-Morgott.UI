@@ -168,7 +168,7 @@ namespace Morgott.UI
             StatusSize = Config.Bind("HudStrip", "StatusIconSize", 0.75f, new ConfigDescription(
                 "Status effect icon side as a share of the hotbar slot; the effect name and remaining time are written under each icon.", new AcceptableValueRange<float>(0.4f, 1f)));
             StatusRows = Config.Bind("HudStrip", "StatusRows", 2, new ConfigDescription(
-                "Rows of status icons per side before the rest folds into \"+N\" (F7 lists all).", new AcceptableValueRange<int>(1, 6)));
+                "Rows of status icons on the left side before the rest folds into \"+N\" (F7 lists all); the right side keeps one row under the key hints.", new AcceptableValueRange<int>(1, 6)));
             BuffSide = Config.Bind("HudStrip", "BuffSide", "Left", new ConfigDescription(
                 "Side of the HUD strip the buffs grow from (debuffs take the other side).", new AcceptableValueList<string>("Left", "Right")));
             CenterGauges = Config.Bind("HudCenter", "Enabled", true,

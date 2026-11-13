@@ -34,7 +34,10 @@ namespace Morgott.UI.PlayerHud
         private readonly Vector3[] _corners = new Vector3[4];
         private float _stripTop, _stripLeft, _stripRight, _gap, _nextPoll;
         private Entry _hints;
-        private bool _all;
+        private bool _all, _statusMoved;
+        // Status group bands above the strip (HudCluster.Status, screen px, full row budget; empty = hidden): the key hints clear them too
+        // (bug 2026-11-13: lifted only to the strip top, the hint row ran through the debuff group's "Cold" cell).
+        private Rect _statusA, _statusB;
 
         // Strip geometry in screen px (bottom-up): top edge, horizontal extent and the keep-out gap. Every element
         // re-measures.
@@ -46,6 +49,18 @@ namespace Morgott.UI.PlayerHud
             _stripRight = right;
             _all = true;
         }
+
+        // Status group boxes, every frame; a change >= 0.5 px re-measures the key hints.
+        public void SetStatus(Rect a, Rect b)
+        {
+            if (Near(a, _statusA) && Near(b, _statusB)) return;
+            _statusA = a;
+            _statusB = b;
+            _statusMoved = true;
+        }
+
+        private static bool Near(Rect a, Rect b) =>
+            Mathf.Abs(a.xMin - b.xMin) < 0.5f && Mathf.Abs(a.xMax - b.xMax) < 0.5f && Mathf.Abs(a.yMin - b.yMin) < 0.5f && Mathf.Abs(a.yMax - b.yMax) < 0.5f;
 
         // The element list (Hud fields and RuneSkin's own bottom widgets); resolved every tick, cheap field reads.
         private void Collect(Hud hud)
@@ -118,19 +133,21 @@ namespace Morgott.UI.PlayerHud
                     e.Pending = true;
                 }
                 var under = e.StacksOnHints && _hints != null && _hints.WasActive && _hints.Boxed ? _hints : null;
-                if (e.Pending || _all || poll || (under != null && hintsMoved)) Measure(e, _gap, under);
-                if (_names[i] == "key hints")
+                var isHints = _names[i] == "key hints";
+                if (e.Pending || _all || poll || (under != null && hintsMoved) || (isHints && _statusMoved)) Measure(e, _gap, under, isHints);
+                if (isHints)
                 {
                     _hints = e;
                     hintsMoved = e.Boxed && Mathf.Abs(e.Top - hintsTop) >= 0.5f;
                 }
             }
             _all = false;
+            _statusMoved = false;
             Order(strip);
         }
 
 
-        private void Measure(Entry e, float gap, Entry under = null)
+        private void Measure(Entry e, float gap, Entry under = null, bool clearStatus = false)
         {
             var rt = e.Rt;
             var canvas = rt.GetComponentInParent<Canvas>();
@@ -141,6 +158,9 @@ namespace Morgott.UI.PlayerHud
             var home = StripClearMath.BottomAtHome(bottom, e.LiftPx);
             var want = StripClearMath.Lift(home, left, right, _stripTop, _stripLeft, _stripRight, gap);
             if (under != null) want = Mathf.Max(want, StripClearMath.Lift(home, left, right, under.Top, under.Left, under.Right, gap));
+            if (clearStatus)
+                foreach (var s in new[] { _statusA, _statusB })
+                    if (s.height >= 1f) want = Mathf.Max(want, StripClearMath.Lift(home, left, right, s.yMax, s.xMin, s.xMax, gap));
             e.Top = StripClearMath.BottomAtHome(top, e.LiftPx) + want;
             e.Left = left;
             e.Right = right;
