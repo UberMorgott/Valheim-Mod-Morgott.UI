@@ -61,14 +61,9 @@ namespace Morgott.UI.ModScreens
         // (twice Epic Loot's frame; the longest augment label needs far less).
         public const float MaxFrameWidth = 2f * ElFrameWidth;
 
-        // Shift (x, frame units) that keeps [xMin, xMax] inside [lo, hi]; centred when it is wider than the room.
-        public static float ShiftInto(float xMin, float xMax, float lo, float hi)
-        {
-            if (xMax - xMin >= hi - lo) return (lo + hi) * 0.5f - (xMin + xMax) * 0.5f;
-            if (xMin < lo) return lo - xMin;
-            if (xMax > hi) return hi - xMax;
-            return 0f;
-        }
+        // Shift (x, frame units) that centres the drawn [xMin, xMax] on [lo, hi], like a vanilla modal: the frame Epic Loot
+        // placed right of centre grew further right when widened (run 20261114-011832: x 1063..1923 at 1920).
+        public static float CentreOn(float xMin, float xMax, float lo, float hi) => (lo + hi) * 0.5f - (xMin + xMax) * 0.5f;
 
         // A label stays on one line (no wrap) when its unwrapped width at the readable floor fits its text width.
         public static bool OneLine(float floorWidth, float textWidth) => floorWidth <= textWidth + 0.5f;

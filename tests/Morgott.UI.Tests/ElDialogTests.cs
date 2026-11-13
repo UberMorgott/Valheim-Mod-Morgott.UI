@@ -86,13 +86,13 @@ namespace Morgott.UI.Tests
         }
 
         [Theory]
-        [InlineData(-249f, 249f, -936f, 936f, 0f)]      // centred, fits
-        [InlineData(-1000f, -500f, -936f, 936f, 64f)]   // past the left edge: moved right
-        [InlineData(700f, 1000f, -936f, 936f, -64f)]    // past the right edge: moved left
-        [InlineData(-1000f, 1000f, -936f, 936f, 0f)]    // wider than the room: centred on it
-        [InlineData(0f, 2000f, -936f, 936f, -1000f)]
-        public void FrameStaysInsideTheSafeArea(float xMin, float xMax, float lo, float hi, float want) =>
-            Assert.Equal(want, ElDialogMath.ShiftInto(xMin, xMax, lo, hi), 3);
+        [InlineData(-249f, 249f, -936f, 936f, 0f)]      // centred already
+        [InlineData(-1000f, -500f, -936f, 936f, 750f)]  // left of centre: moved to the centre
+        [InlineData(103f, 1018f, -936f, 936f, -560.5f)] // run 20261114-011832 (drawn 1063..1923 at 1920, scale 0.94): centred
+        [InlineData(0f, 2000f, -936f, 936f, -1000f)]    // wider than the room: centred on it
+        [InlineData(-900f, 960f, -950f, 910f, -50f)]      // asymmetric safe area: its centre
+        public void FrameCentredOnTheSafeArea(float xMin, float xMax, float lo, float hi, float want) =>
+            Assert.Equal(want, ElDialogMath.CentreOn(xMin, xMax, lo, hi), 3);
 
         [Theory]
         [InlineData(330f, 446f, true)]  // fits one line at the floor

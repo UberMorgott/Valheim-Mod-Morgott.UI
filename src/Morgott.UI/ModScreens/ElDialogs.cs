@@ -40,8 +40,8 @@ namespace Morgott.UI.ModScreens
     //   4. Width (user 2026-10-27 "надо их пошире сделать, но с моим интерфейсом, чтобы всё влезло"): Epic Loot's 380-unit
     //      frame is the real limit (245 px buttons at 720p), so the frame itself widens until the widest choice label
     //      fits one line at the dialog's body size (its description's 18; fixed, no auto-size) plus the drawn side borders (craft result: the tooltip's widest line), at most
-    //      ElDialogMath.MaxFrameWidth and the safe area minus a margin, shifted back inside it (ElDialogMath.FrameWidth /
-    //      ShiftInto); a label still wider wraps. The side borders come from the cloned panel stack's Frame layer, bound
+    //      ElDialogMath.MaxFrameWidth and the safe area minus a margin, centred on it (ElDialogMath.FrameWidth /
+    //      CentreOn); a label still wider wraps. The side borders come from the cloned panel stack's Frame layer, bound
     //      by name on the clone (PanelDecor.Frame: the clone's private reference was null -> "side insets 10/10").
     public static class ElDialogs
     {
@@ -256,7 +256,7 @@ namespace Morgott.UI.ModScreens
         }
 
         // The frame at the width its content needs (ElDialogMath.FrameWidth: Epic Loot's 380 up to the safe area minus
-        // ElDialogMath.ScreenMargin), moved back inside the safe area when the wider frame runs past it. Returns the width.
+        // ElDialogMath.ScreenMargin), centred on the safe area. Returns the width.
         // The drawn frame counts: the panel stack's edges and corner caps reach past the frame rect (run 20261113-200608,
         // 760 frame at 1920x1080: right caps and value column cut by the screen edge with only the rect kept inside).
         private static float Widen(RectTransform frame, Transform dialog, float content, float left, float right)
@@ -266,7 +266,7 @@ namespace Morgott.UI.ModScreens
             var w = ElDialogMath.FrameWidth(content, left, right, hi - lo - overL - overR);
             if (Mathf.Abs(frame.rect.width - w) > 0.5f) frame.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, w);
             var fr = frame.rect;
-            var dx = ElDialogMath.ShiftInto(fr.xMin - overL, fr.xMax + overR, lo, hi);
+            var dx = ElDialogMath.CentreOn(fr.xMin - overL, fr.xMax + overR, lo, hi);
             if (Mathf.Abs(dx) > 0.5f) frame.position += frame.TransformVector(new Vector3(dx, 0f, 0f));
             return w;
         }
@@ -274,6 +274,8 @@ namespace Morgott.UI.ModScreens
         private static readonly List<Graphic> DecorGraphics = new List<Graphic>();
 
         // How far the frame's panel stack is drawn beyond the frame rect's left / right side (frame units; 0 without one).
+        // The corner caps count too: they sit in the sibling RuneSkinPanelCaps, not under the stack (run 20261114-011832:
+        // caps-only overhang ~27 units, the frame drawn 3-4 px past the right screen edge).
         private static void Overhang(RectTransform frame, Transform dialog, out float left, out float right)
         {
             left = right = 0f;
@@ -281,6 +283,8 @@ namespace Morgott.UI.ModScreens
             if (!decor) return;
             var fr = frame.rect;
             decor.GetComponentsInChildren(false, DecorGraphics);
+            foreach (var c in decor.CornerCaps ?? Array.Empty<RectTransform>())
+                if (c && c.gameObject.activeInHierarchy && c.TryGetComponent<Graphic>(out var cap)) DecorGraphics.Add(cap);
             foreach (var g in DecorGraphics)
             {
                 if (!g || !g.enabled) continue;
