@@ -492,5 +492,15 @@
   "ui_portal_here": "you are here",
   "ui_portal_meters": "$1 m",
   "ui_portal_hint": "$1 — show · 2×$1 — travel · $2 — favorite · $3 — close",
-  "ui_portal_hint_pad": "D-pad — select · A — travel · Y — favorite · B — close"
+  "ui_portal_hint_pad": "D-pad — select · A — travel · Y — favorite · B — close",
+  "ui_portal_edit_title": "Portal settings",
+  "ui_portal_edit_name": "Name",
+  "ui_portal_edit_color": "Colour",
+  "ui_portal_edit_icon": "Icon",
+  "ui_portal_edit_reset": "Reset",
+  "ui_portal_edit_cancel": "Cancel",
+  "ui_portal_edit_save": "Save",
+  "ui_portal_edit_saving": "Saving…",
+  "ui_portal_edit_saved": "Saved",
+  "ui_portal_edit_tip": "Customize portal"
 }

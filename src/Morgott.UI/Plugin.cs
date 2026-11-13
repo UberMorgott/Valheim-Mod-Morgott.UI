@@ -18,7 +18,7 @@ namespace Morgott.UI
     // Morgott.UI (was RuneSkin): clean-room UI skin that restyles live vanilla uGUI from theme tokens (no prefab swaps, no
     // transpilers). Awake: config -> theme + asset bundle -> ownership frozen -> ITheme registered -> Harmony patches of owned families.
     [BepInPlugin(Contracts.UiGuid, "Morgott.UI", Version)]
-    [BepInDependency(Contracts.CoreGuid, "0.12.0")] // IChainCraft (0.5.1: IItemBrowser), ICreatureInfo.IsNemesis (0.7.0), IWebVfx (0.9.0), IPortalPicker (0.11.0), IPetCollar (0.12.0)
+    [BepInDependency(Contracts.CoreGuid, "0.14.0")] // IPortalIcons + PortalStyle (0.14.0), IChainCraft (0.5.1: IItemBrowser), ICreatureInfo.IsNemesis (0.7.0), IWebVfx (0.9.0), IPortalPicker (0.11.0), IPetCollar (0.12.0)
     [BepInDependency(Jotunn.Main.ModGuid)]
     [BepInProcess("valheim.exe")]
     public sealed class Plugin : BaseUnityPlugin
@@ -237,6 +237,7 @@ namespace Morgott.UI
             OwnershipRegistry.Freeze(requested, _requireAssets.Value);
 
             if (!CoreApi.Headless) Services.Register<ITheme>(_theme = new ThemeProvider());
+            if (!CoreApi.Headless) Services.Register<IPortalIcons>(MapScreen.PortalIcons.Instance); // pins (Morgott.Patcher), list, arch
             // Portal picker: registered = Morgott.Patcher opens the map on portal entry; needs the large map skin.
             if (!CoreApi.Headless && MapScreen.MapConfig.PortalPicker.Value && OwnershipRegistry.IsOwned(OwnershipRegistry.Minimap))
                 MapScreen.PortalPickerService.Registered = Services.Register<IPortalPicker>(MapScreen.PortalPickerService.Instance);
@@ -287,6 +288,7 @@ namespace Morgott.UI
             }
             Services.Unregister<IItemBrowser>(ItemBrowser.BrowserService.Instance);
             if (MapScreen.PortalPickerService.Registered) Services.Unregister<IPortalPicker>(MapScreen.PortalPickerService.Instance);
+            Services.Unregister<IPortalIcons>(MapScreen.PortalIcons.Instance);
             _harmony?.UnpatchSelf();
         }
 

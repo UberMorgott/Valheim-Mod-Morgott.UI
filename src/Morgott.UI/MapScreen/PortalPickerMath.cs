@@ -79,6 +79,16 @@ namespace Morgott.UI.MapScreen
                 if (rows[i].Portal.Id == id) return i;
             return -1;
         }
+
+        // Pending state goes up before the send: a host's routed RPC to itself acks synchronously inside send,
+        // so the ack must land after "saving", never be overwritten by it. undo runs only when send refuses.
+        public static bool Send(Action begin, Func<bool> send, Action undo)
+        {
+            begin();
+            if (send()) return true;
+            undo();
+            return false;
+        }
     }
 
     // Single vs double click on one portal (a list row or its map pin): the second click on the same portal within

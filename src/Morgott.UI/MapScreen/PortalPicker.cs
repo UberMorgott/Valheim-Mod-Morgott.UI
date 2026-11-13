@@ -30,7 +30,7 @@ namespace Morgott.UI.MapScreen
 
     // Left column during a travel session: ПОРТАЛЫ title, search, ИЗБРАННОЕ / ВСЕ ПОРТАЛЫ rows (PortalPickerMath). Row or
     // pin: click = select (map centred on the portal, ring on its pin), double click = travel, right click = favourite;
-    // pencil on the selected row = rename in place. Gamepad: d-pad select, A travel, Y favourite. The key hint band under
+    // pencil on a row = style editor (PortalEditor.cs). Gamepad: d-pad select, A travel, Y favourite. The key hint band under
     // the map shows the picker keys instead of the pin-edit keys.
     public sealed partial class MinimapSkin
     {
@@ -43,7 +43,7 @@ namespace Morgott.UI.MapScreen
         private sealed class PortalRowUi
         {
             public RectTransform Root;
-            public Image Back, Star, Swatch, Stone;
+            public Image Back, Star, Swatch, Stone, Icon, Pencil, PencilGlyph;
             public TMP_Text Name, Biome, Distance;
             public int Look = -1;
             public int Index = -1;
@@ -51,14 +51,16 @@ namespace Morgott.UI.MapScreen
 
         private struct PortalView
         {
-            public string Biome, Distance;
+            public string Biome, Distance, Denied;
             public Color BiomeColor;
+            public bool CanEdit;
         }
 
         private RectTransform _pp, _ppList;
         private TMP_Text _ppTitle, _ppFavHeader, _ppAllHeader, _ppSearchHint, _ppHint;
-        private Image _ppTitleLine, _ppFavLine, _ppAllLine, _ppSearchBack, _ppSearchGlyph, _ppPencil, _ppRing, _ppTrack, _ppThumb;
-        private TMP_InputField _ppSearch, _ppRename;
+        private Image _ppTitleLine, _ppFavLine, _ppAllLine, _ppSearchBack, _ppSearchGlyph, _ppRing, _ppTrack, _ppThumb;
+        private TMP_InputField _ppSearch;
+        private GameObject _ppTooltip;
         private LegendScroll _ppScroll;
         private readonly List<PortalRowUi> _ppRowUi = new List<PortalRowUi>();
         private readonly List<PortalInfo> _ppPortals = new List<PortalInfo>();
@@ -68,7 +70,7 @@ namespace Morgott.UI.MapScreen
         private int _ppFav;
         private float _ppScrollPx;
         private bool _ppShown;
-        private ZDOID _ppSel = ZDOID.None, _ppRenaming = ZDOID.None;
+        private ZDOID _ppSel = ZDOID.None;
         private Minimap.PinData _ppRingPin;
         private int _ppRingVersion = -1;
 
@@ -89,7 +91,8 @@ namespace Morgott.UI.MapScreen
             return null;
         }
 
-        internal static bool PortalTyping => Instance && (Instance._ppSearch && Instance._ppSearch.isFocused || Instance._ppRename && Instance._ppRename.isFocused);
+        // Also true while the editor is open: Minimap.Update then leaves Esc / map keys alone (Minimap.cs:698-706).
+        internal static bool PortalTyping => Instance && (Instance._ppSearch && Instance._ppSearch.isFocused || Instance.PortalEditorShown);
 
         internal static bool PortalHover => Instance && Instance._ppScroll && Instance._ppScroll.Over && Instance.PortalPanelShown;
 
@@ -119,15 +122,8 @@ namespace Morgott.UI.MapScreen
             _ppAllLine = _art.Image("AllDivider", _ppList, "sprite.divider", "color.frame", Image.Type.Sliced);
             _ppTrack = _art.Image("ScrollTrack", _pp, "sprite.bar.skill.trough", "color.frame", Image.Type.Sliced);
             _ppThumb = _art.Image("ScrollThumb", _ppTrack.transform, "sprite.bar.skill.fill", "color.text.accent", Image.Type.Sliced);
-            // shortcut: no pencil glyph in the theme yet (art = Codex image gen); the name-sort glyph stands in.
-            _ppPencil = _art.Image("Rename", _ppList, "sprite.glyph.sort.name", "color.text.body", Image.Type.Simple, raycast: true);
-            _ppPencil.preserveAspect = true;
-            _ppPencil.gameObject.AddComponent<Button>().onClick.AddListener(StartRename);
-            var renameBack = _art.Image("RenameField", _ppList, "sprite.field.search", "color.frame", Image.Type.Sliced, raycast: true);
-            _ppRename = Field(renameBack, 10); // vanilla tag limit (TeleportWorld.Interact, TeleportWorld.cs:84)
-            _ppRename.onSubmit.AddListener(SubmitRename);
-            _ppRename.onDeselect.AddListener(_ => EndRename());
-            renameBack.gameObject.SetActive(false);
+            foreach (var tip in _map.GetComponentsInChildren<UITooltip>(true))
+                if (tip.m_tooltipPrefab) { _ppTooltip = tip.m_tooltipPrefab; break; }
             // Key hint at the panel bottom (mockup), not in the map's KeyHints band: vanilla hides that band with the game's
             // KeyHints setting off (Minimap.cs:1238-1242, HintBand() = 0; run 20261111-152231 showed no hint at all).
             _ppHint = _art.Text("Hint", _pp, "font.body", "color.text.body", ThemeTokens.GetFloat("size.map.biome.font", 15f), TextAlignmentOptions.Center);
@@ -168,6 +164,26 @@ namespace Morgott.UI.MapScreen
             r.Distance = _art.Text("Distance", r.Root, "font.body", "color.text.body", ThemeTokens.GetFloat("size.map.biome.font", 15f), TextAlignmentOptions.Right);
             r.Stone = _art.Image("Stone", r.Root, "sprite.glyph.teleport.swirl", "color.state.disabled", Image.Type.Simple);
             r.Stone.preserveAspect = true;
+            r.Icon = _art.Image("Icon", r.Root, null, "color.frame", Image.Type.Simple);
+            r.Icon.preserveAspect = true;
+            r.Pencil = _art.Image("Edit", r.Root, "sprite.button.icon.normal", "color.frame", Image.Type.Sliced, raycast: true);
+            r.PencilGlyph = _art.Image("Glyph", r.Pencil.transform, null, "color.text.accent", Image.Type.Simple);
+            r.PencilGlyph.sprite = MapIcons.Pencil;
+            r.PencilGlyph.preserveAspect = true;
+            Stretch(r.PencilGlyph.rectTransform);
+            r.PencilGlyph.rectTransform.offsetMin = new Vector2(5f, 5f);
+            r.PencilGlyph.rectTransform.offsetMax = new Vector2(-5f, -5f);
+            r.Pencil.gameObject.AddComponent<Button>().onClick.AddListener(() =>
+            {
+                if (r.Index >= 0 && r.Index < _ppRows.Count) OpenPortalEditor(_ppRows[r.Index].Portal.Id);
+            });
+            if (_ppTooltip)
+            {
+                var tip = r.Pencil.gameObject.AddComponent<UITooltip>();
+                tip.m_tooltipPrefab = _ppTooltip;
+                tip.m_topic = "";
+                tip.m_text = "";
+            }
             r.Root.gameObject.AddComponent<PortalHit>().Click = e => OnPortalRowClick(r, e);
             return r;
         }
@@ -195,7 +211,6 @@ namespace Morgott.UI.MapScreen
         {
             var i = PortalPickerMath.IndexOf(_ppRows, id);
             if (i < 0 || _ppRows[i].Here) return;
-            if (_ppRenaming != ZDOID.None && _ppRenaming != id) EndRename();
             _ppSel = id;
             _ppRingVersion = -1;
             // Minimap.UpdateMap centres the large map on player position + m_mapOffset (Minimap.cs:1118-1165).
@@ -239,34 +254,6 @@ namespace Morgott.UI.MapScreen
             return shift;
         }
 
-        private void StartRename()
-        {
-            var i = PortalPickerMath.IndexOf(_ppRows, _ppSel);
-            if (i < 0) return;
-            _ppRenaming = _ppSel;
-            var raw = _ppPortals.Find(p => p.Id == _ppSel).Name;
-            _ppRename.gameObject.SetActive(true);
-            _ppRename.text = raw != null && raw.StartsWith("$", System.StringComparison.Ordinal) ? "" : raw;
-            _ppRename.Select();
-            _ppRename.ActivateInputField();
-        }
-
-        private void SubmitRename(string text)
-        {
-            var id = _ppRenaming;
-            EndRename();
-            var travel = PortalPickerService.Travel();
-            if (travel == null || id == ZDOID.None || string.IsNullOrWhiteSpace(text)) return;
-            if (!travel.TryRename(id, text.Trim(), out var failure) && !string.IsNullOrEmpty(failure))
-                Player.m_localPlayer?.Message(MessageHud.MessageType.Center, failure);
-        }
-
-        private void EndRename()
-        {
-            _ppRenaming = ZDOID.None;
-            if (_ppRename && _ppRename.gameObject.activeSelf) _ppRename.gameObject.SetActive(false);
-        }
-
         // Per frame while the large map is open.
         private void PortalLateUpdate(float inset, float top, float band)
         {
@@ -276,7 +263,8 @@ namespace Morgott.UI.MapScreen
             if (active != _ppShown) PortalSession(active);
             if (!active) return;
             if (PortalPickerService.Dirty) PortalRebuild(travel);
-            PortalGamepad();
+            PortalEditorUpdate();
+            if (!PortalEditorShown) PortalGamepad();
             PortalLayout(inset, top, band);
             PortalRingUpdate();
         }
@@ -289,7 +277,7 @@ namespace Morgott.UI.MapScreen
             _ppSel = ZDOID.None;
             _ppRingPin = null;
             _ppScrollPx = 0f;
-            EndRename();
+            ClosePortalEditor();
             if (_ppRing) _ppRing.gameObject.SetActive(false);
             Plugin.Log.LogInfo($"[Morgott.UI] portal picker {(active ? "open" : "closed")}: panel={_pp.gameObject.activeSelf} vanillaKeyRow={(_keyRow ? _keyRow.gameObject.activeSelf.ToString() : "none")}");
             if (!active) return;
@@ -317,15 +305,28 @@ namespace Morgott.UI.MapScreen
             if (entry != null)
             {
                 var portalTag = entry.GetString(ZDOVars.s_tag);
-                here = new PortalInfo { Id = entry.m_uid, Name = Words.Get(string.IsNullOrEmpty(portalTag) ? "$piece_portal" : portalTag), Position = entry.GetPosition() };
+                var rgb = entry.GetInt(ColorKey, PortalStyle.DefaultColor);
+                var custom = rgb != PortalStyle.DefaultColor && PortalStyle.IsColor(rgb);
+                here = new PortalInfo
+                {
+                    Id = entry.m_uid,
+                    Name = Words.Get(string.IsNullOrEmpty(portalTag) ? "$piece_portal" : portalTag),
+                    Position = entry.GetPosition(),
+                    CustomColor = custom,
+                    Color = custom ? ToColor(rgb) : Color.white,
+                    Icon = entry.GetInt(IconKey, PortalStyle.NoIcon),
+                };
             }
             _ppFav = PortalPickerMath.Build(shown, here, _ppSearch.text, _ppRows);
             _ppView.Clear();
             foreach (var row in _ppRows)
             {
                 var biome = WorldGenerator.instance != null ? WorldGenerator.instance.GetBiome(row.Portal.Position) : Heightmap.Biome.None;
+                var canEdit = travel.CanEdit(row.Portal.Id, out var denied);
                 _ppView.Add(new PortalView
                 {
+                    CanEdit = canEdit,
+                    Denied = canEdit ? Words.Get("$ui_portal_edit_tip") : denied,
                     Biome = Words.Get(MapFilterMath.NameKey(biome)),
                     BiomeColor = BiomeOverlay.BiomeColor(biome),
                     Distance = row.Here ? Words.Get("$ui_portal_here") : Localization.instance.Localize("$ui_portal_meters", PortalPickerMath.Meters(row.Distance)),
@@ -439,17 +440,6 @@ namespace Morgott.UI.MapScreen
                 LayPortalRow(r, _ppRows[i], _ppView[i], ry, listW, rowH);
             }
 
-            // Pencil on the selected row; the rename field over its name.
-            var pencilOn = selected >= 0 && _ppRenaming == ZDOID.None;
-            if (_ppPencil.gameObject.activeSelf != pencilOn) _ppPencil.gameObject.SetActive(pencilOn);
-            var p = rowH * 0.4f;
-            var sy = selected >= 0 ? PortalRowY(selected) - _ppScrollPx : 0f;
-            if (pencilOn) Place(_ppPencil.rectTransform, listW - p - 4f, sy + 4f, p, p);
-            if (_ppRename.gameObject.activeSelf)
-            {
-                if (selected < 0) EndRename();
-                else Place((RectTransform)_ppRename.transform, 30f, sy + 2f, listW - 34f, rowH * 0.5f);
-            }
         }
 
         private void LayPortalRow(PortalRowUi r, PortalRow row, PortalView view, float y, float w, float rowH)
@@ -466,15 +456,27 @@ namespace Morgott.UI.MapScreen
             var star = rowH * 0.4f;
             if (r.Star.enabled != row.Portal.Favorite) r.Star.enabled = row.Portal.Favorite;
             Place(r.Star.rectTransform, 4f, (rowH - star) * 0.5f, star, star);
-            var x = 8f + star;
-            var distW = w * 0.32f;
+            // Style icon slot (Core IPortalIcons via PortalIcons; none = empty slot, mockup_window).
+            var iconSize = rowH * 0.78f;
+            var icon = PortalIcons.Instance.Get(row.Portal.Icon);
+            if (r.Icon.sprite != icon) r.Icon.sprite = icon;
+            if (r.Icon.enabled != (bool)icon) r.Icon.enabled = icon;
+            Place(r.Icon.rectTransform, 6f + star, (rowH - iconSize) * 0.5f, iconSize, iconSize);
+            var x = 10f + star + iconSize;
+            // Pencil at the right edge: dimmed when the ward rule denies editing (click then shows why).
+            var pencil = rowH * 0.62f;
+            var right = w - pencil - 6f;
+            Place(r.Pencil.rectTransform, right + 2f, (rowH - pencil) * 0.5f, pencil, pencil);
+            r.PencilGlyph.color = ThemeTokens.GetColor(view.CanEdit ? "color.text.accent" : "color.state.disabled", Color.white);
+            if (r.Pencil.TryGetComponent<UITooltip>(out var tip) && tip.m_text != view.Denied) tip.m_text = view.Denied;
+            var distW = right * 0.32f;
             var half = (rowH - 2f) * 0.5f;
-            Place(r.Name.rectTransform, x, 2f, w - x - distW, half);
+            Place(r.Name.rectTransform, x, 2f, right - x - distW, half);
             if (r.Name.text != row.Portal.Name) r.Name.text = row.Portal.Name;
             var sw = half * 0.45f;
             Place(r.Swatch.rectTransform, x + 2f, half + (half - sw) * 0.5f, sw, sw);
             r.Swatch.color = view.BiomeColor;
-            Place(r.Biome.rectTransform, x + sw + 8f, half, w - x - sw - 8f - distW, half);
+            Place(r.Biome.rectTransform, x + sw + 8f, half, right - x - sw - 8f - distW, half);
             if (r.Biome.text != view.Biome) r.Biome.text = view.Biome;
             // Stone-portal mark right after the name, centred on the name line.
             var stone = row.Portal.Stone;
@@ -482,15 +484,16 @@ namespace Morgott.UI.MapScreen
             if (stone)
             {
                 var gs = half * 0.7f;
-                var nameW = Mathf.Min(r.Name.GetPreferredValues(r.Name.text).x, w - x - distW - gs - 6f);
+                var nameW = Mathf.Min(r.Name.GetPreferredValues(r.Name.text).x, right - x - distW - gs - 6f);
                 Place(r.Stone.rectTransform, x + nameW + 6f, 2f + (half - gs) * 0.5f, gs, gs);
             }
-            Place(r.Distance.rectTransform, w - distW, half, distW - 4f, half);
+            Place(r.Distance.rectTransform, right - distW, 0f, distW - 4f, rowH - 2f);
             if (r.Distance.text != view.Distance) r.Distance.text = view.Distance;
             var dim = ThemeTokens.GetColor(row.Here ? "color.state.disabled" : "color.text.body", Color.white);
-            r.Name.color = r.Biome.color = r.Distance.color = dim;
+            r.Biome.color = r.Distance.color = dim;
+            // Name in its style colour (Core PortalInfo.Color), the body colour by default; "you are here" stays dimmed.
+            r.Name.color = row.Here ? dim : row.Portal.CustomColor ? row.Portal.Color : dim;
         }
-
         // Ring on the selected portal's pin marker (a child: follows pan / zoom). The pin is looked up again when the
         // selection or the pin markers change (UpdatePins rebuilds markers, MinimapAdapter bumps PinsVersion).
         private void PortalRingUpdate()

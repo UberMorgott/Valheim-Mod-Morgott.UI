@@ -571,5 +571,15 @@
   "ui_portal_here": "вы здесь",
   "ui_portal_meters": "$1 м",
   "ui_portal_hint": "$1 — показать · 2×$1 — телепорт · $2 — избранное · $3 — закрыть",
-  "ui_portal_hint_pad": "D-pad — выбрать · A — телепорт · Y — избранное · B — закрыть"
+  "ui_portal_hint_pad": "D-pad — выбрать · A — телепорт · Y — избранное · B — закрыть",
+  "ui_portal_edit_title": "Настройка портала",
+  "ui_portal_edit_name": "Имя",
+  "ui_portal_edit_color": "Цвет",
+  "ui_portal_edit_icon": "Значок",
+  "ui_portal_edit_reset": "Сброс",
+  "ui_portal_edit_cancel": "Отмена",
+  "ui_portal_edit_save": "Сохранить",
+  "ui_portal_edit_saving": "Сохранение…",
+  "ui_portal_edit_saved": "Сохранено",
+  "ui_portal_edit_tip": "Настроить портал"
 }

@@ -102,5 +102,19 @@ namespace Morgott.UI.Tests
             Assert.False(c.IsDouble(a, 10.5f));
             Assert.False(c.IsDouble(a, 10.5f + PortalPickerMath.DoubleClick + 0.01f));
         }
+
+        // Host save: the routed RPC to self acks inside send, so "saved" must be the last status (2026-11-13 run).
+        [Fact]
+        public void SynchronousAckLandsAfterSaving()
+        {
+            var status = "";
+            var ok = PortalPickerMath.Send(() => status = "saving", () => { status = "saved"; return true; }, () => status = "failed");
+            Assert.True(ok);
+            Assert.Equal("saved", status);
+
+            ok = PortalPickerMath.Send(() => status = "saving", () => false, () => status = "failed");
+            Assert.False(ok);
+            Assert.Equal("failed", status);
+        }
     }
 }

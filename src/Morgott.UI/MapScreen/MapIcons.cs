@@ -8,10 +8,13 @@ namespace Morgott.UI.MapScreen
     // read by AddPin / GetSprite, Minimap.cs:2336/2354), on existing boss pins and on the vanilla Boss filter button.
     public static class MapIcons
     {
-        private static Sprite _layers, _boss;
+        private static Sprite _layers, _boss, _pencil, _customColor;
 
         public static Sprite Layers => _layers ? _layers : _layers = Load("Morgott.UI.MapLayersIcon.png", "UI_MapLayersIcon");
         public static Sprite Boss => _boss ? _boss : _boss = Load("Morgott.UI.MapBossIcon.png", "UI_MapBossIcon");
+        // Portal mockups: the picker row's edit pencil (white, tinted) and the editor's rainbow "+" custom-colour swatch.
+        public static Sprite Pencil => _pencil ? _pencil : _pencil = Load("Morgott.UI.PortalPencil.png", "UI_PortalPencil");
+        public static Sprite CustomColor => _customColor ? _customColor : _customColor = Load("Morgott.UI.PortalCustomColor.png", "UI_PortalCustomColor");
 
         private static Sprite Load(string resource, string name)
         {
