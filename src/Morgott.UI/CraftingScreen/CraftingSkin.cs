@@ -402,7 +402,7 @@ namespace Morgott.UI.CraftingScreen
             var button = image.GetComponentInParent<Button>(true);
             var target = button && button.targetGraphic == image;
             var n = t.name;
-            var canCraft = !child || n != "bkg" || RowStock(row) != CraftingMath.Stock.Missing; // m_availableRecipes scan for the strip only
+            var canCraft = !child || n != "bkg" || RowCraftable(row); // m_availableRecipes scan for the strip only
             ctx.Role(image, CraftingMath.RowImageRole(n, child, target, canCraft), CraftingMath.RowImageReason(n, child, target));
         }
 
@@ -524,6 +524,9 @@ namespace Morgott.UI.CraftingScreen
                         !r.CanCraft && r.ItemData == null && chain != null && chain.CanCraft(r.Recipe, 1));
             return _canCraft.TryGetValue(row, out can) ? can : CraftingMath.Stock.Have;
         }
+
+        // Bright row (craftable now or through the chain); read by the autotest harness (reflection).
+        public bool RowCraftable(Transform row) => RowStock(row) != CraftingMath.Stock.Missing;
 
         private static Morgott.Core.IChainCraft Chain() =>
             Morgott.Core.Services.TryGet<Morgott.Core.IChainCraft>(out var chain) ? chain : null;
