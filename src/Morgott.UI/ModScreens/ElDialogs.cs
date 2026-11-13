@@ -161,6 +161,24 @@ namespace Morgott.UI.ModScreens
 
         private static readonly List<MonoBehaviour> Behaviours = new List<MonoBehaviour>();
 
+        // `t` is an Epic Loot dialog or lies inside one (its dialog component sits on the clone's root).
+        public static bool Inside(Transform t)
+        {
+            for (var p = t; p; p = p.parent)
+            {
+                Behaviours.Clear();
+                p.GetComponents(Behaviours);
+                foreach (var b in Behaviours)
+                    if (b && IsDialog(b.GetType()))
+                    {
+                        Behaviours.Clear();
+                        return true;
+                    }
+            }
+            Behaviours.Clear();
+            return false;
+        }
+
         private static void Each(Transform root, Action<MonoBehaviour> a)
         {
             Behaviours.Clear();
@@ -206,26 +224,71 @@ namespace Morgott.UI.ModScreens
             foreach (var line in desc.text.Split('\n'))
                 if (line.Length > 0) widest = Mathf.Max(widest, desc.GetPreferredValues(line).x);
             if (widest <= 0f) return;
+            FitColumn(frame, desc);
             var fr = frame.rect;
             var d = RectIn(desc.rectTransform, frame);
             var left = Mathf.Max(0f, d.xMin - fr.xMin) + desc.margin.x;
             var right = Mathf.Max(0f, fr.xMax - d.xMax) + desc.margin.z;
-            var w = Widen(frame, widest, left, right);
+            var w = Widen(frame, dialog, widest, left, right);
+            FitColumn(frame, desc);
             if (Logged.Add(dialog.GetInstanceID()))
                 Plugin.Log.LogInfo($"[Morgott.UI] el dialog {dialog.name}: widest description line {widest:0.#}, insets {left:0.#}/{right:0.#} -> frame {w:0.#} (scale {frame.lossyScale.x:0.###})");
         }
 
+        // The description ends at its viewport's right edge, left of the scroll bar: the clone keeps the recipe
+        // description's sizeDelta on Epic Loot's stretch anchors (ConvertToScrollingDescription), so it ran past the
+        // viewport and the right-aligned stat values (TooltipSheet.RightCell) were cut (run 20261113-200608, "6 (2").
+        private static void FitColumn(RectTransform frame, TMP_Text desc)
+        {
+            var rt = desc.rectTransform;
+            if (!(rt.parent is RectTransform view)) return;
+            var span = RectIn(rt, view);
+            var right = view.rect.xMax;
+            var bar = Column(frame) is RectTransform col && col.TryGetComponent<ScrollRect>(out var sr) ? sr.verticalScrollbar : null;
+            if (bar && bar.transform is RectTransform br)
+            {
+                // AutoHide: the bar shows once the text outgrows the view, so its place is kept either way.
+                var b = RectIn(br, view);
+                if (b.xMin > span.xMin && b.xMin < right) right = b.xMin;
+            }
+            var w = (right - span.xMin) / Mathf.Max(Mathf.Abs(rt.localScale.x), 1e-6f);
+            if (w > 1f && Mathf.Abs(rt.rect.width - w) > 0.5f) rt.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, w);
+        }
+
         // The frame at the width its content needs (ElDialogMath.FrameWidth: Epic Loot's 380 up to the safe area minus
         // ElDialogMath.ScreenMargin), moved back inside the safe area when the wider frame runs past it. Returns the width.
-        private static float Widen(RectTransform frame, float content, float left, float right)
+        // The drawn frame counts: the panel stack's edges and corner caps reach past the frame rect (run 20261113-200608,
+        // 760 frame at 1920x1080: right caps and value column cut by the screen edge with only the rect kept inside).
+        private static float Widen(RectTransform frame, Transform dialog, float content, float left, float right)
         {
             SafeX(frame, out var lo, out var hi);
-            var w = ElDialogMath.FrameWidth(content, left, right, hi - lo);
+            Overhang(frame, dialog, out var overL, out var overR);
+            var w = ElDialogMath.FrameWidth(content, left, right, hi - lo - overL - overR);
             if (Mathf.Abs(frame.rect.width - w) > 0.5f) frame.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, w);
             var fr = frame.rect;
-            var dx = ElDialogMath.ShiftInto(fr.xMin, fr.xMax, lo, hi);
+            var dx = ElDialogMath.ShiftInto(fr.xMin - overL, fr.xMax + overR, lo, hi);
             if (Mathf.Abs(dx) > 0.5f) frame.position += frame.TransformVector(new Vector3(dx, 0f, 0f));
             return w;
+        }
+
+        private static readonly List<Graphic> DecorGraphics = new List<Graphic>();
+
+        // How far the frame's panel stack is drawn beyond the frame rect's left / right side (frame units; 0 without one).
+        private static void Overhang(RectTransform frame, Transform dialog, out float left, out float right)
+        {
+            left = right = 0f;
+            var decor = Decor(frame, dialog);
+            if (!decor) return;
+            var fr = frame.rect;
+            decor.GetComponentsInChildren(false, DecorGraphics);
+            foreach (var g in DecorGraphics)
+            {
+                if (!g || !g.enabled) continue;
+                var r = RectIn(g.rectTransform, frame);
+                left = Mathf.Max(left, fr.xMin - r.xMin);
+                right = Mathf.Max(right, r.xMax - fr.xMax);
+            }
+            DecorGraphics.Clear();
         }
 
         // Screen.safeArea's left / right edge in the frame's local units, inset by ElDialogMath.ScreenMargin.
@@ -271,7 +334,7 @@ namespace Morgott.UI.ModScreens
             var body = BodySize(dialog);
             foreach (var rt in Active) need = Mathf.Max(need, LabelWidth(rt, body));
             SideInsets(frame, dialog, out var left, out var right, out var art);
-            Widen(frame, need, left, right);
+            Widen(frame, dialog, need, left, right);
             SideInsets(frame, dialog, out left, out right, out art);
             var fr = frame.rect;
             var col = RectIn(scroll, frame);
