@@ -901,8 +901,11 @@ namespace Morgott.UI.PlayerHud
             leftGroup.AlignRight = true;
             rightGroup.AlignRight = false;
             var budget = rows * (tile.H + gap);
+            // The right group keeps ONE row (more folds into "+N"): the vanilla key hints (bottom right) sit right above it
+            // at a fixed height (user call 2026-11-13).
+            var rightBudget = tile.H + gap;
             leftGroup.Arrange(rowW, budget);
-            var rightH = rightGroup.Arrange(rowW, budget);
+            var rightH = rightGroup.Arrange(rowW, rightBudget);
             // the vanilla chat (bottom right) clears the right group's labelled rows too, not only the strip top
             _chatTopUnits = StripMath.StatusClearTop(_stripTopUnits, _statusBase, rightH);
             var lp = new Vector2(SideLeft - leftGroup.Root.sizeDelta.x, _statusBase);
@@ -911,7 +914,7 @@ namespace Morgott.UI.PlayerHud
             if (rightGroup.Root.anchoredPosition != rp) rightGroup.Root.anchoredPosition = rp;
             // The bottom key hints clear the groups' whole row budget like the strip top (StripClear): reserved even while
             // empty, so the hint row stays put when an effect comes or goes (Codex call 2026-11-13: no 60 px jumps).
-            _clear.SetStatus(ScreenBox(leftGroup.Root, budget), ScreenBox(rightGroup.Root, budget));
+            _clear.SetStatus(ScreenBox(leftGroup.Root, budget), ScreenBox(rightGroup.Root, rightBudget));
         }
 
         // The group's band in screen px (bottom-up) through the HUD canvas: its row width x `height` units from its bottom.
