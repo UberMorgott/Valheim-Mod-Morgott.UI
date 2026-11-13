@@ -213,6 +213,10 @@ namespace Morgott.UI.Theme
                 return true;
             }
             Apply(active);
+            // TextMeshProUGUI.LoadFontAsset falls back to TMP_Settings.defaultFontAsset; Valheim's TMP Settings has none, so
+            // every text another mod adds to an active GameObject before setting its font (DiveIn FastSwimHud.CreateRow,
+            // ValheimBuildCamera GridText) logged "The LiberationSans SDF Font Asset was not found". Our body face fills it.
+            if (Fonts.TryGetValue("font.body", out var body) && body && TMP_Settings.instance) TMP_Settings.defaultFontAsset = body;
             Source = source;
             Revision++;
             Plugin.Log.LogInfo($"[Morgott.UI] theme '{ThemeName}' rev {Revision} from {source}; bundle {(BundleLoaded ? "loaded" : "MISSING")} ({BundlePath})");
