@@ -121,6 +121,15 @@ namespace Morgott.UI.InfoScreens
         // One number as a string (tooltip notes, built only while hovered).
         public static string Format(float v, bool comma) => AppendCompact(new StringBuilder(8), v, comma).ToString();
 
+        // Skill level as the skills dialog shows it (Skills.GetSkillLevel: base + item / SE bonuses), plus the share a
+        // skill-factor scaler leaves (Character.GetSkillLevel / Skills.GetSkillLevel) when it isn't 1: "110 (×0,5)".
+        public static string SkillLevel(float raw, float scaled, bool comma)
+        {
+            var sb = AppendInt(new StringBuilder(16), (float)Math.Floor(raw), false);
+            if (raw > 0f && Math.Abs(scaled - raw) >= 0.01f) AppendFactor(sb.Append(" (×"), scaled / raw, comma).Append(')');
+            return sb.ToString();
+        }
+
         // ---- formatting (into a reused builder; `comma` = decimal comma, Russian) ----
 
         // One decimal, trailing ",0" kept ("+2,4", "15,0"); `sign` writes '+' for positives.

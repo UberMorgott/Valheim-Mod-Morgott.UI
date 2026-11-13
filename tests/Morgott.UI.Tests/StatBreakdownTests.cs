@@ -23,6 +23,17 @@ namespace Morgott.UI.Tests
         }
 
         [Fact]
+        public void SkillLevelShowsRealLevelAndNerfShare()
+        {
+            // Run 100 + 10 from gear, CombatSkillFactor 0.5 -> Character.GetSkillLevel 55.
+            Assert.Equal("110 (×0,5)", StatsMath.SkillLevel(110f, 55f, true));
+            Assert.Equal("110 (×0.5)", StatsMath.SkillLevel(110f, 55f, false));
+            Assert.Equal("110", StatsMath.SkillLevel(110f, 110f, true)); // factor 1 = vanilla
+            Assert.Equal("40 (×0,25)", StatsMath.SkillLevel(40f, 10f, true));
+            Assert.Equal("0", StatsMath.SkillLevel(0f, 0f, true));
+        }
+
+        [Fact]
         public void StaminaSkillStepsMatchVanilla()
         {
             // Attack.GetAttackStamina :481: -33% x skill (a 20 stamina swing at skill 100 costs 13.4).

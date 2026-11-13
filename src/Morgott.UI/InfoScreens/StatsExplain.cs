@@ -860,7 +860,8 @@ namespace Morgott.UI.InfoScreens
 
         private readonly Dictionary<Skills.SkillType, string> _skillNames = new Dictionary<Skills.SkillType, string>(16);
 
-        // "Навык: Мечи 35" style: localized skill name + current level.
+        // "Навык Бег 110 (×0,5)": localized skill name + real level; Character.GetSkillLevel carries Morgott.Patcher's
+        // CombatSkillFactor (Character.cs:4206 forwards to Skills.GetSkillLevel), so their ratio is the nerf share.
         private string SkillName(Skills.SkillType skill)
         {
             if (!_skillNames.TryGetValue(skill, out var name))
@@ -868,7 +869,7 @@ namespace Morgott.UI.InfoScreens
                 name = Loc("$skill_" + skill.ToString().ToLowerInvariant());
                 _skillNames[skill] = name;
             }
-            return Loc("$ui_bd_skill") + " " + name + " " + Mathf.FloorToInt(_p.GetSkillLevel(skill));
+            return Loc("$ui_bd_skill") + " " + name + " " + StatsMath.SkillLevel(_p.m_skills.GetSkillLevel(skill), _p.GetSkillLevel(skill), _comma);
         }
     }
 }
