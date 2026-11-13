@@ -224,13 +224,35 @@ namespace Morgott.UI.ModScreens
             foreach (var line in desc.text.Split('\n'))
                 if (line.Length > 0) widest = Mathf.Max(widest, desc.GetPreferredValues(line).x);
             if (widest <= 0f) return;
+            FitColumn(frame, desc);
             var fr = frame.rect;
             var d = RectIn(desc.rectTransform, frame);
             var left = Mathf.Max(0f, d.xMin - fr.xMin) + desc.margin.x;
             var right = Mathf.Max(0f, fr.xMax - d.xMax) + desc.margin.z;
             var w = Widen(frame, dialog, widest, left, right);
+            FitColumn(frame, desc);
             if (Logged.Add(dialog.GetInstanceID()))
                 Plugin.Log.LogInfo($"[Morgott.UI] el dialog {dialog.name}: widest description line {widest:0.#}, insets {left:0.#}/{right:0.#} -> frame {w:0.#} (scale {frame.lossyScale.x:0.###})");
+        }
+
+        // The description ends at its viewport's right edge, left of the scroll bar: the clone keeps the recipe
+        // description's sizeDelta on Epic Loot's stretch anchors (ConvertToScrollingDescription), so it ran past the
+        // viewport and the right-aligned stat values (TooltipSheet.RightCell) were cut (run 20261113-200608, "6 (2").
+        private static void FitColumn(RectTransform frame, TMP_Text desc)
+        {
+            var rt = desc.rectTransform;
+            if (!(rt.parent is RectTransform view)) return;
+            var span = RectIn(rt, view);
+            var right = view.rect.xMax;
+            var bar = Column(frame) is RectTransform col && col.TryGetComponent<ScrollRect>(out var sr) ? sr.verticalScrollbar : null;
+            if (bar && bar.transform is RectTransform br)
+            {
+                // AutoHide: the bar shows once the text outgrows the view, so its place is kept either way.
+                var b = RectIn(br, view);
+                if (b.xMin > span.xMin && b.xMin < right) right = b.xMin;
+            }
+            var w = (right - span.xMin) / Mathf.Max(Mathf.Abs(rt.localScale.x), 1e-6f);
+            if (w > 1f && Mathf.Abs(rt.rect.width - w) > 0.5f) rt.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, w);
         }
 
         // The frame at the width its content needs (ElDialogMath.FrameWidth: Epic Loot's 380 up to the safe area minus
