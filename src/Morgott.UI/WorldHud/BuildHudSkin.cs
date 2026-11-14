@@ -73,6 +73,81 @@ namespace Morgott.UI.WorldHud
             d.offsetMax = new Vector2(d.offsetMax.x, top);
         }
 
+        // Strip fitted to what Hud.SetupPieceInfo (Hud.cs:1511) shows (user 2026-11-14: the repair tool, icon + name only,
+        // sat in the full 410 x 163 prefab box). Prefab SelectedInfo (pivot bottom-centre): selected_piece (icon x -168,
+        // name, description, snapping hint x +168) over the requirement row (cells from x -196). Per call: the drawn
+        // content box (icon / snapping hint rects, text bounds, active requirement cells) is moved so it is centred on x 0
+        // with its bottom margin above y 0, and Bkg2 (vanilla 50 % black) + the well hug it. Bottom stays at y 0 for every
+        // piece, so StripClear's flush placement (drawn bottom) does not jump when the content changes.
+        private static RectTransform _piece, _req, _bkg, _wellRt;
+        private static Vector2 _pieceHome, _reqHome, _shift;
+
+        public static void FitStrip(Hud hud)
+        {
+            var info = hud.m_buildHud ? hud.m_buildHud.transform.Find("SelectedInfo") as RectTransform : null;
+            if (!info) return;
+            if (!_piece || _piece.parent != info)
+            {
+                _piece = info.Find("selected_piece") as RectTransform;
+                _req = info.Find("requirements") as RectTransform;
+                _bkg = info.Find("Bkg2") as RectTransform;
+                _wellRt = info.Find(WellName) as RectTransform;
+                if (!_piece || !_req) { _piece = null; return; }
+                _pieceHome = _piece.anchoredPosition;
+                _reqHome = _req.anchoredPosition;
+                _shift = Vector2.zero;
+            }
+            // Vanilla never disables the description; an empty one would still count as drawn (StripClear, harness).
+            var desc = hud.m_pieceDescription;
+            if (desc) desc.enabled = !string.IsNullOrEmpty(desc.text);
+            float l = float.MaxValue, r = float.MinValue, b = float.MaxValue, t = float.MinValue;
+            void Point(Transform from, Vector2 p)
+            {
+                var q = info.InverseTransformPoint(from.TransformPoint(p)) - (Vector3)_shift; // home (unshifted) coords
+                l = Mathf.Min(l, q.x); r = Mathf.Max(r, q.x); b = Mathf.Min(b, q.y); t = Mathf.Max(t, q.y);
+            }
+            void Add(Transform from, Vector2 min, Vector2 max) { Point(from, min); Point(from, max); }
+            void AddRect(RectTransform rt) { var rr = rt.rect; Add(rt, rr.min, rr.max); }
+            void AddText(TMP_Text x)
+            {
+                if (!x || !x.enabled || string.IsNullOrEmpty(x.text)) return;
+                var tb = x.textBounds; // last mesh: one frame behind a text change, SetupPieceInfo runs every frame
+                if (tb.size.x > 0f) Add(x.transform, tb.min, tb.max);
+            }
+            if (hud.m_buildIcon && hud.m_buildIcon.enabled) AddRect(hud.m_buildIcon.rectTransform);
+            if (hud.m_snappingIcon && hud.m_snappingIcon.enabled) AddRect(hud.m_snappingIcon.rectTransform);
+            AddText(hud.m_buildSelection);
+            AddText(desc);
+            foreach (var go in hud.m_requirementItems)
+                if (go && go.activeSelf) AddRect((RectTransform)go.transform);
+            if (l == float.MaxValue) return;
+            var inner = Theme.ThemeTokens.GetFloat("size.build.strip.inner", 6f);
+            var pad = Theme.ThemeTokens.GetFloat("size.build.strip.pad", 10f);
+            PlayHudMath.StripFitShift(l, r, b, inner + pad, out var dx, out var dy);
+            _shift = new Vector2(dx, dy);
+            Set(_piece, _pieceHome + _shift);
+            Set(_req, _reqHome + _shift);
+            var box = Rect.MinMaxRect(l + _shift.x, b + _shift.y, r + _shift.x, t + _shift.y);
+            var full = info.rect;
+            Hug(_bkg, box, full, inner);
+            Hug(_wellRt, box, full, inner + pad);
+        }
+
+        private static void Set(RectTransform rt, Vector2 pos)
+        {
+            if ((rt.anchoredPosition - pos).sqrMagnitude > 0.0001f) rt.anchoredPosition = pos;
+        }
+
+        // Stretched backdrop (anchors 0..1) -> content box + margin, in the parent's rect space.
+        private static void Hug(RectTransform rt, Rect box, Rect full, float margin)
+        {
+            if (!rt) return;
+            var min = new Vector2(box.xMin - margin - full.xMin, box.yMin - margin - full.yMin);
+            var max = new Vector2(box.xMax + margin - full.xMax, box.yMax + margin - full.yMax);
+            if ((rt.offsetMin - min).sqrMagnitude > 0.0001f) rt.offsetMin = min;
+            if ((rt.offsetMax - max).sqrMagnitude > 0.0001f) rt.offsetMax = max;
+        }
+
         public static void Templates(BuildUi ui)
         {
             if (ui.m_pieceButtonPrefab) RegisterTemplate(ui.m_pieceButtonPrefab.transform);

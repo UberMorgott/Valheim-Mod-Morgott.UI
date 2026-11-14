@@ -755,6 +755,14 @@ namespace Morgott.UI.WorldHud
             if (c) c.AfterCrosshair();
         }
 
+        // Hud.UpdateBuild calls it every frame in place mode (Hud.cs:1496/1500): the strip hugs what it just filled.
+        [HarmonyPatch(typeof(Hud), nameof(Hud.SetupPieceInfo))]
+        [HarmonyPostfix]
+        private static void SetupPieceInfo_Postfix(Hud __instance)
+        {
+            if (PlayHud.Owned(OwnershipRegistry.BuildHud)) BuildHudSkin.FitStrip(__instance);
+        }
+
         // Piece / tag button templates are cloned from BuildUi.Awake on (BuildUi.cs:154 the first tag button): styled
         // before it runs, every clone copies the look.
         [HarmonyPatch(typeof(BuildUi), nameof(BuildUi.Awake))]

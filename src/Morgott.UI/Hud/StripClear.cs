@@ -23,7 +23,8 @@ namespace Morgott.UI.PlayerHud
             public Vector2 Home, Set;
             public bool WasActive, Pending, Boxed;
             public float LiftPx, Top, Left, Right; // drawn box (screen px) at the applied lift, Boxed = measured once
-            public bool StacksOnHints;             // build piece info / author: also clear of the key hint row
+            public bool StacksOnHints;             // piece author: also clear of the key hint row
+            public bool Flush;                     // build piece info: bottom exactly on the strip top + gap (may cover the hints)
         }
 
         private readonly Dictionary<RectTransform, Entry> _entries = new Dictionary<RectTransform, Entry>(16);
@@ -116,7 +117,8 @@ namespace Morgott.UI.PlayerHud
                         Home = rt.anchoredPosition,
                         Set = rt.anchoredPosition,
                         Pending = true,
-                        StacksOnHints = _names[i] == "build piece info" || _names[i] == "piece author"
+                        StacksOnHints = _names[i] == "piece author",
+                        Flush = _names[i] == "build piece info"
                     };
                     _entries[rt] = e;
                 }
@@ -143,7 +145,18 @@ namespace Morgott.UI.PlayerHud
             }
             _all = false;
             _statusMoved = false;
+            HintsUnderBuildInfo(hud);
             Order(strip);
+        }
+
+        // The flush build piece info may cover the key hint row (user 2026-11-14): the hints draw before Hud.m_buildHud
+        // (both hudroot children in the prefab). The hints move down, BuildHud keeps its place above BuildUIV2's siblings.
+        private static void HintsUnderBuildInfo(Hud hud)
+        {
+            var hints = KeyHints.instance;
+            if (!hints || !hud.m_buildHud) return;
+            Transform h = hints.transform, b = hud.m_buildHud.transform;
+            if (h.parent == b.parent && h.GetSiblingIndex() > b.GetSiblingIndex()) h.SetSiblingIndex(b.GetSiblingIndex());
         }
 
 
@@ -156,7 +169,7 @@ namespace Morgott.UI.PlayerHud
             if (!Drawn(rt, cam, out var bottom, out var top, out var left, out var right)) return; // laid out next frame: still pending
             e.Pending = false;
             var home = StripClearMath.BottomAtHome(bottom, e.LiftPx);
-            var want = StripClearMath.Lift(home, left, right, _stripTop, _stripLeft, _stripRight, gap);
+            var want = e.Flush ? StripClearMath.Flush(home, _stripTop, gap) : StripClearMath.Lift(home, left, right, _stripTop, _stripLeft, _stripRight, gap);
             if (under != null) want = Mathf.Max(want, StripClearMath.Lift(home, left, right, under.Top, under.Left, under.Right, gap));
             if (clearStatus)
                 foreach (var s in new[] { _statusA, _statusB })

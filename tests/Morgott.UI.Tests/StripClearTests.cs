@@ -20,6 +20,16 @@ namespace Morgott.UI.Tests
             Assert.True(homeBottom + lift < screenH);
         }
 
+        // Build piece info (user 2026-11-14): flush on strip top + gap from below AND from above; no strip = stays home.
+        [Theory]
+        [InlineData(90f, 214f, 12f)]
+        [InlineData(400f, 214f, 12f)]
+        public void Flush_PutsBottomOnStripTopPlusGap(float homeBottom, float stripTop, float gap) =>
+            Assert.Equal(stripTop + gap, homeBottom + StripClearMath.Flush(homeBottom, stripTop, gap), 3);
+
+        [Fact]
+        public void Flush_ZeroWithoutStrip() => Assert.Equal(0f, StripClearMath.Flush(90f, 0f, 12f));
+
         [Fact]
         public void Lift_ZeroWhenAlreadyClear()
         {

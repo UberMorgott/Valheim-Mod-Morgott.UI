@@ -18,6 +18,11 @@ namespace Morgott.UI.PlayerHud
             return Math.Max(0f, stripTop + Math.Max(0f, gap) - bottomAtHome);
         }
 
+        // Signed screen px that put the drawn bottom exactly on the strip top + gap (build piece info, user 2026-11-14:
+        // flush on the hotbar, may cover the key hint row); 0 without a strip.
+        public static float Flush(float bottomAtHome, float stripTop, float gap) =>
+            stripTop > 0f ? stripTop + Math.Max(0f, gap) - bottomAtHome : 0f;
+
         // Drawn bottom the element would have at its home position: the measured bottom minus the lift applied now.
         public static float BottomAtHome(float bottomNow, float appliedLiftPx) => bottomNow - appliedLiftPx;
 

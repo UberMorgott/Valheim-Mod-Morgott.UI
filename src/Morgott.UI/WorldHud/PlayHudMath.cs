@@ -186,5 +186,13 @@ namespace Morgott.UI.WorldHud
         // Idempotent: never raises the edge.
         public static float DescriptionTop(float nameY, float nameHeight, float namePivotY, float descriptionTop, float gap) =>
             Math.Min(descriptionTop, nameY - nameHeight * namePivotY - gap);
+
+        // Selected-piece strip fit: shift for content box [left, right] x [bottom, ..] (home coords, parent pivot at x 0 /
+        // y 0) that centres it on x 0 and puts its bottom `margin` above y 0 (the backdrop bottom lands on y 0).
+        public static void StripFitShift(float left, float right, float bottom, float margin, out float dx, out float dy)
+        {
+            dx = -(left + right) * 0.5f;
+            dy = margin - bottom;
+        }
     }
 }
