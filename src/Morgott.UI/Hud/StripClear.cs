@@ -24,7 +24,7 @@ namespace Morgott.UI.PlayerHud
             public bool WasActive, Pending, Boxed;
             public float LiftPx, Top, Left, Right; // drawn box (screen px) at the applied lift, Boxed = measured once
             public bool StacksOnHints;             // piece author: also clear of the key hint row
-            public bool Flush;                     // build piece info: bottom exactly on the strip top + gap (may cover the hints)
+            public bool Flush;                     // build piece info: bottom exactly on the strip top + gap (key hints stack on it)
         }
 
         private readonly Dictionary<RectTransform, Entry> _entries = new Dictionary<RectTransform, Entry>(16);
@@ -34,7 +34,7 @@ namespace Morgott.UI.PlayerHud
         private readonly List<int> _indices = new List<int>(16);
         private readonly Vector3[] _corners = new Vector3[4];
         private float _stripTop, _stripLeft, _stripRight, _gap, _nextPoll;
-        private Entry _hints;
+        private Entry _hints, _info;
         private bool _all, _statusMoved;
         // Status group bands above the strip (HudCluster.Status, screen px, full row budget; empty = hidden): the key hints clear them too
         // (bug 2026-11-13: lifted only to the strip top, the hint row ran through the debuff group's "Cold" cell).
@@ -68,15 +68,12 @@ namespace Morgott.UI.PlayerHud
         {
             _targets.Clear();
             _names.Clear();
-            // Key hints first: the build piece info stacks on their drawn top (both rise above the strip, run 20261108-051942:
-            // the build hint row y 145..198 px ran through the requirement cells y 169..249 px).
+            // Build piece info first (flush on the strip), the key hints stack on its drawn top (user 2026-11-14: hints always
+            // visible, above the box), the piece author on the hints.
+            if (hud.m_buildHud) Add(hud.m_buildHud.transform.Find("SelectedInfo"), "build piece info");
             var hints = KeyHints.instance;
             if (hints) Add(hints.transform, "key hints");
-            if (hud.m_buildHud)
-            {
-                Add(hud.m_buildHud.transform.Find("SelectedInfo"), "build piece info");
-                if (hud.m_hoveredPieceAuthorWindow) Add(hud.m_hoveredPieceAuthorWindow.transform, "piece author");
-            }
+            if (hud.m_buildHud && hud.m_hoveredPieceAuthorWindow) Add(hud.m_hoveredPieceAuthorWindow.transform, "piece author");
             if (hud.m_actionBarRoot) Add(hud.m_actionBarRoot.transform, "action bar");
             if (hud.m_shipHudRoot) Add(hud.m_shipHudRoot.transform.Find("RuneSkin_ShipLadder"), "ship ladder");
             if (hud.m_mountPanel) Add(hud.m_mountPanel.transform, "mount panel");
@@ -103,6 +100,8 @@ namespace Morgott.UI.PlayerHud
             var poll = Time.unscaledTime >= _nextPoll;
             var hintsTop = _hints != null ? _hints.Top : 0f;
             var hintsMoved = false;
+            var infoMoved = false;
+            var infoTop = _info != null ? _info.Top : 0f;
             if (poll) _nextPoll = Time.unscaledTime + ThemeTokens.GetFloat("size.hud.strip.clear.poll", 0.5f);
 
             for (var i = 0; i < _targets.Count; i++)
@@ -123,6 +122,8 @@ namespace Morgott.UI.PlayerHud
                     _entries[rt] = e;
                 }
                 var active = rt.gameObject.activeInHierarchy;
+                var isInfo = e.Flush;
+                if (isInfo) { infoMoved = active != e.WasActive; _info = e; }
                 if (active && !e.WasActive) e.Pending = true;
                 e.WasActive = active;
                 if (!active) continue;
@@ -134,9 +135,11 @@ namespace Morgott.UI.PlayerHud
                     e.LiftPx = 0f;
                     e.Pending = true;
                 }
-                var under = e.StacksOnHints && _hints != null && _hints.WasActive && _hints.Boxed ? _hints : null;
                 var isHints = _names[i] == "key hints";
-                if (e.Pending || _all || poll || (under != null && hintsMoved) || (isHints && _statusMoved)) Measure(e, _gap, under, isHints);
+                var under = e.StacksOnHints && _hints != null && _hints.WasActive && _hints.Boxed ? _hints
+                    : isHints && _info != null && _info.WasActive && _info.Boxed ? _info : null;
+                if (e.Pending || _all || poll || (under != null && hintsMoved) || (isHints && (_statusMoved || infoMoved))) Measure(e, _gap, under, isHints);
+                if (isInfo) infoMoved |= e.Boxed && Mathf.Abs(e.Top - infoTop) >= 0.5f;
                 if (isHints)
                 {
                     _hints = e;
@@ -145,18 +148,7 @@ namespace Morgott.UI.PlayerHud
             }
             _all = false;
             _statusMoved = false;
-            HintsUnderBuildInfo(hud);
             Order(strip);
-        }
-
-        // The flush build piece info may cover the key hint row (user 2026-11-14): the hints draw before Hud.m_buildHud
-        // (both hudroot children in the prefab). The hints move down, BuildHud keeps its place above BuildUIV2's siblings.
-        private static void HintsUnderBuildInfo(Hud hud)
-        {
-            var hints = KeyHints.instance;
-            if (!hints || !hud.m_buildHud) return;
-            Transform h = hints.transform, b = hud.m_buildHud.transform;
-            if (h.parent == b.parent && h.GetSiblingIndex() > b.GetSiblingIndex()) h.SetSiblingIndex(b.GetSiblingIndex());
         }
 
 
