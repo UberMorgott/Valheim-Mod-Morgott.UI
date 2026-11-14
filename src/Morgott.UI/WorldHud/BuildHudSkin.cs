@@ -25,7 +25,6 @@ namespace Morgott.UI.WorldHud
             if (hud.m_buildHud)
             {
                 StripWell(hud.m_buildHud.transform.Find("SelectedInfo"));
-                DescriptionUnderName(hud.m_buildSelection, hud.m_pieceDescription);
                 Register(hud.m_buildHud.transform, ScreenId + ".Selected");
             }
             // Hovered piece author window (crossplay author name / platform id; kit popup): its own root unless it lives
@@ -63,79 +62,95 @@ namespace Morgott.UI.WorldHud
 
         // Hud.SetupPieceInfo (Hud.cs:1526) fills these two; the prefab rects abut (PlayHudMath.DescriptionTop), run
         // 20261108-051942: name line box bottom == description line box top (324 px at 1080). Rect fix, set once.
-        private static void DescriptionUnderName(TMP_Text name, TMP_Text desc)
-        {
-            if (!name || !desc || name.transform.parent != desc.transform.parent) return;
-            var n = name.rectTransform;
-            var d = desc.rectTransform;
-            if (n.anchorMin.y != 1f || n.anchorMax.y != 1f || d.anchorMax.y != 1f) return; // prefab changed: top-anchored math no longer holds
-            var top = PlayHudMath.DescriptionTop(n.anchoredPosition.y, n.rect.height, n.pivot.y, d.offsetMax.y, Theme.ThemeTokens.GetFloat("size.build.desc.gap", 6f));
-            d.offsetMax = new Vector2(d.offsetMax.x, top);
-        }
-
-        // Strip fitted to what Hud.SetupPieceInfo (Hud.cs:1511) shows (user 2026-11-14: the repair tool, icon + name only,
-        // sat in the full 410 x 163 prefab box). Prefab SelectedInfo (pivot bottom-centre): selected_piece (icon x -168,
-        // name, description, snapping hint x +168) over the requirement row (cells from x -196). Per call: the drawn
-        // content box (icon / snapping hint rects, text bounds, active requirement cells) is moved so it is centred on x 0
-        // with its bottom margin above y 0, and Bkg2 (vanilla 50 % black) + the well hug it. Bottom stays at y 0 for every
-        // piece, so StripClear's flush placement (drawn bottom) does not jump when the content changes.
-        private static RectTransform _piece, _req, _bkg, _wellRt;
-        private static Vector2 _pieceHome, _reqHome, _shift;
+        // Strip = ONE row of what Hud.SetupPieceInfo (Hud.cs:1511) shows (user 2026-11-14 "ещё уже надо. в 1 строку"; earlier:
+        // the description box covered the screen): [piece icon][piece name][requirement cells][snapping hint], each element
+        // centred on one midline, the row centred on x 0, its bottom margin above y 0 (SelectedInfo pivot bottom-centre),
+        // so StripClear's flush placement (drawn bottom) never jumps. The description (Hud.cs:1527) is not drawn: one row
+        // cannot hold it. The icon is scaled to the cell height. The requirement row moves as one block (`requirements`
+        // keeps its own cell spacing). Each call moves elements by (target - current drawn box): idempotent per frame.
+        // Bkg2 (vanilla 50 % black) + the well hug the row.
+        private static RectTransform _req, _bkg, _wellRt;
+        private static Transform _info;
 
         public static void FitStrip(Hud hud)
         {
             var info = hud.m_buildHud ? hud.m_buildHud.transform.Find("SelectedInfo") as RectTransform : null;
-            if (!info) return;
-            if (!_piece || _piece.parent != info)
+            if (!info || hud.m_requirementItems == null || hud.m_requirementItems.Length == 0 || !hud.m_requirementItems[0]) return;
+            if (_info != info)
             {
-                _piece = info.Find("selected_piece") as RectTransform;
                 _req = info.Find("requirements") as RectTransform;
                 _bkg = info.Find("Bkg2") as RectTransform;
                 _wellRt = info.Find(WellName) as RectTransform;
-                if (!_piece || !_req) { _piece = null; return; }
-                _pieceHome = _piece.anchoredPosition;
-                _reqHome = _req.anchoredPosition;
-                _shift = Vector2.zero;
+                if (!_req) return;
+                _info = info;
             }
-            // Vanilla never disables the description; an empty one would still count as drawn (StripClear, harness).
-            var desc = hud.m_pieceDescription;
-            if (desc) desc.enabled = !string.IsNullOrEmpty(desc.text);
-            float l = float.MaxValue, r = float.MinValue, b = float.MaxValue, t = float.MinValue;
-            void Point(Transform from, Vector2 p)
+            if (hud.m_pieceDescription && hud.m_pieceDescription.enabled) hud.m_pieceDescription.enabled = false;
+            var cellH = ((RectTransform)hud.m_requirementItems[0].transform).rect.height;
+            var icon = hud.m_buildIcon && hud.m_buildIcon.enabled ? hud.m_buildIcon.rectTransform : null;
+            if (icon && icon.rect.height > 0f)
             {
-                var q = info.InverseTransformPoint(from.TransformPoint(p)) - (Vector3)_shift; // home (unshifted) coords
-                l = Mathf.Min(l, q.x); r = Mathf.Max(r, q.x); b = Mathf.Min(b, q.y); t = Mathf.Max(t, q.y);
+                var s = cellH / icon.rect.height;
+                if (Mathf.Abs(icon.localScale.x - s) > 0.001f) icon.localScale = new Vector3(s, s, 1f);
             }
-            void Add(Transform from, Vector2 min, Vector2 max) { Point(from, min); Point(from, max); }
-            void AddRect(RectTransform rt) { var rr = rt.rect; Add(rt, rr.min, rr.max); }
-            void AddText(TMP_Text x)
+
+            // Drawn box of each element in SelectedInfo space.
+            var moves = new System.Collections.Generic.List<RectTransform>(4);
+            var boxes = new System.Collections.Generic.List<Rect>(4);
+            Rect Box(Transform from, Vector2 min, Vector2 max)
             {
-                if (!x || !x.enabled || string.IsNullOrEmpty(x.text)) return;
+                Vector2 a = info.InverseTransformPoint(from.TransformPoint(min)), c = info.InverseTransformPoint(from.TransformPoint(max));
+                return Rect.MinMaxRect(Mathf.Min(a.x, c.x), Mathf.Min(a.y, c.y), Mathf.Max(a.x, c.x), Mathf.Max(a.y, c.y));
+            }
+            Rect Union(Rect p, Rect q) => Rect.MinMaxRect(Mathf.Min(p.xMin, q.xMin), Mathf.Min(p.yMin, q.yMin), Mathf.Max(p.xMax, q.xMax), Mathf.Max(p.yMax, q.yMax));
+            bool TextBox(TMP_Text x, out Rect r)
+            {
+                r = default;
+                if (!x || !x.enabled || !x.gameObject.activeInHierarchy || string.IsNullOrEmpty(x.text)) return false;
                 var tb = x.textBounds; // last mesh: one frame behind a text change, SetupPieceInfo runs every frame
-                if (tb.size.x > 0f) Add(x.transform, tb.min, tb.max);
+                if (!(tb.size.x > 0f)) return false;
+                r = Box(x.transform, tb.min, tb.max);
+                return true;
             }
-            if (hud.m_buildIcon && hud.m_buildIcon.enabled) AddRect(hud.m_buildIcon.rectTransform);
-            if (hud.m_snappingIcon && hud.m_snappingIcon.enabled) AddRect(hud.m_snappingIcon.rectTransform);
-            AddText(hud.m_buildSelection);
-            AddText(desc);
+            void Element(RectTransform move, Rect box) { moves.Add(move); boxes.Add(box); }
+
+            if (icon) Element(icon, Box(icon, icon.rect.min, icon.rect.max));
+            if (TextBox(hud.m_buildSelection, out var nameBox)) Element(hud.m_buildSelection.rectTransform, nameBox);
+            var cells = false;
+            var row = default(Rect);
             foreach (var go in hud.m_requirementItems)
-                if (go && go.activeSelf) AddRect((RectTransform)go.transform);
-            if (l == float.MaxValue) return;
+            {
+                if (!go || !go.activeSelf) continue;
+                var rt = (RectTransform)go.transform;
+                var cell = Box(rt, rt.rect.min, rt.rect.max);
+                foreach (var t in go.GetComponentsInChildren<TMP_Text>(false))
+                    if (TextBox(t, out var tr)) cell = Union(cell, tr); // res_name / res_amount drawn past the cell count
+                row = cells ? Union(row, cell) : cell;
+                cells = true;
+            }
+            if (cells) Element(_req, row);
+            var snap = hud.m_snappingIcon && hud.m_snappingIcon.enabled ? hud.m_snappingIcon.rectTransform : null;
+            if (snap) Element(snap, Box(snap, snap.rect.min, snap.rect.max));
+            if (moves.Count == 0) return;
+
             var inner = Theme.ThemeTokens.GetFloat("size.build.strip.inner", 6f);
             var pad = Theme.ThemeTokens.GetFloat("size.build.strip.pad", 10f);
-            PlayHudMath.StripFitShift(l, r, b, inner + pad, out var dx, out var dy);
-            _shift = new Vector2(dx, dy);
-            Set(_piece, _pieceHome + _shift);
-            Set(_req, _reqHome + _shift);
-            var box = Rect.MinMaxRect(l + _shift.x, b + _shift.y, r + _shift.x, t + _shift.y);
+            var gap = Theme.ThemeTokens.GetFloat("size.build.strip.gap", 8f);
+            var widths = new float[moves.Count];
+            var rowH = 0f;
+            for (var i = 0; i < moves.Count; i++) { widths[i] = boxes[i].width; rowH = Mathf.Max(rowH, boxes[i].height); }
+            var lefts = PlayHudMath.StripRow(widths, gap);
+            var mid = inner + pad + rowH * 0.5f;
+            for (var i = 0; i < moves.Count; i++)
+            {
+                var d = new Vector2(lefts[i] - boxes[i].xMin, mid - boxes[i].center.y);
+                if (d.sqrMagnitude <= 0.0001f) continue;
+                var parent = moves[i].parent;
+                moves[i].anchoredPosition += (Vector2)parent.InverseTransformVector(info.TransformVector(d));
+            }
+            var box = Rect.MinMaxRect(lefts[0], inner + pad, lefts[moves.Count - 1] + widths[moves.Count - 1], inner + pad + rowH);
             var full = info.rect;
             Hug(_bkg, box, full, inner);
             Hug(_wellRt, box, full, inner + pad);
-        }
-
-        private static void Set(RectTransform rt, Vector2 pos)
-        {
-            if ((rt.anchoredPosition - pos).sqrMagnitude > 0.0001f) rt.anchoredPosition = pos;
         }
 
         // Stretched backdrop (anchors 0..1) -> content box + margin, in the parent's rect space.

@@ -264,28 +264,15 @@ namespace Morgott.UI.Tests
         [InlineData(60f, 30f, 6f, 72f)]
         public void KeyPlateWidthFitsLabel(float label, float h, float pad, float want) => Assert.Equal(want, PlayHudMath.KeyPlateWidth(label, h, pad));
 
-        // Repair tool (prefab SelectedInfo): icon x -200..-136 y 88..152, name text -50..50 up to 158 -> centred on x 0,
-        // bottom 16 above y 0; a full piece (icon .. requirement row end 196, bottom 12) moves only 2 px right.
-        [Theory]
-        [InlineData(-200f, 50f, 88f, 16f, 75f, -72f)]
-        [InlineData(-200f, 196f, 12f, 16f, 2f, 4f)]
-        public void StripFitShiftCentresAndSeatsContent(float l, float r, float b, float margin, float wantDx, float wantDy)
-        {
-            PlayHudMath.StripFitShift(l, r, b, margin, out var dx, out var dy);
-            Assert.Equal(wantDx, dx, 3);
-            Assert.Equal(wantDy, dy, 3);
-            Assert.Equal(-(r + dx), l + dx, 3);   // symmetric about x 0
-            Assert.Equal(margin, b + dy, 3);
-        }
-
-        // Prefab values (Hud SelectedInfo): name bottom -26.42 == description top -26.42 -> description top -32.42 with gap 6;
-        // applying it again (re-attach) keeps it.
+        // Repair tool: icon 64 + name 100 -> row 172 wide (gap 8) centred on x 0; wood floor: icon, name, 2 cells (128).
         [Fact]
-        public void DescriptionTopSitsGapUnderName()
+        public void StripRowLaysElementsCentred()
         {
-            var top = PlayHudMath.DescriptionTop(-13.21f, 26.42f, 0.5f, -26.42f, 6f);
-            Assert.Equal(-32.42f, top, 3);
-            Assert.Equal(top, PlayHudMath.DescriptionTop(-13.21f, 26.42f, 0.5f, top, 6f), 3);
+            Assert.Equal(new[] { -86f, -14f }, PlayHudMath.StripRow(new[] { 64f, 100f }, 8f));
+            var lefts = PlayHudMath.StripRow(new[] { 64f, 120f, 128f }, 8f);
+            Assert.Equal(new[] { -164f, -92f, 36f }, lefts);
+            Assert.Equal(-lefts[0], lefts[2] + 128f, 3); // symmetric about x 0
+            Assert.Empty(PlayHudMath.StripRow(new float[0], 8f));
         }
     }
 }

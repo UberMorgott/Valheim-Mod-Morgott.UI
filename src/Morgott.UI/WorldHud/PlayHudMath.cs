@@ -179,20 +179,19 @@ namespace Morgott.UI.WorldHud
             return t * t * (3f - 2f * t);
         }
 
-        // Selected-piece strip (Hud prefab SelectedInfo/selected_piece, both anchored to the parent's top): piece_name rect
-        // y -13.21 h 26.42 pivot 0.5 (vertical Middle, line box fills it) ends exactly where the top-aligned piece_description
-        // rect (offsetMax.y -26.42) starts, so the two line boxes touch and the display face's glyphs reach the description.
-        // Description top edge (offsetMax.y) moved to $gap under the name's bottom; its bottom stays (auto-size refits).
-        // Idempotent: never raises the edge.
-        public static float DescriptionTop(float nameY, float nameHeight, float namePivotY, float descriptionTop, float gap) =>
-            Math.Min(descriptionTop, nameY - nameHeight * namePivotY - gap);
-
-        // Selected-piece strip fit: shift for content box [left, right] x [bottom, ..] (home coords, parent pivot at x 0 /
-        // y 0) that centres it on x 0 and puts its bottom `margin` above y 0 (the backdrop bottom lands on y 0).
-        public static void StripFitShift(float left, float right, float bottom, float margin, out float dx, out float dy)
+        // Selected-piece strip as one row (user 2026-11-14 "в 1 строку"): element widths laid left to right with `gap`
+        // between, the whole row centred on x 0. Returns each element's left edge.
+        public static float[] StripRow(float[] widths, float gap)
         {
-            dx = -(left + right) * 0.5f;
-            dy = margin - bottom;
+            var lefts = new float[widths.Length];
+            var x = 0f;
+            for (var i = 0; i < widths.Length; i++)
+            {
+                lefts[i] = x;
+                x += Math.Max(0f, widths[i]) + (i + 1 < widths.Length ? Math.Max(0f, gap) : 0f);
+            }
+            for (var i = 0; i < lefts.Length; i++) lefts[i] -= x * 0.5f;
+            return lefts;
         }
     }
 }
