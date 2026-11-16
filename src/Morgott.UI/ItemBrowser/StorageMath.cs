@@ -35,10 +35,39 @@ namespace Morgott.UI.ItemBrowser
         /// (1 = _1, anything else = _5; languages without own words fall back to the English ones).</summary>
         public static int Form(int n, string language) => language == "Russian" ? Plural(n) : Math.Abs(n) == 1 ? 1 : 5;
 
-        /// <summary>Grid rows: stock entries whose prefab <paramref name="shown"/> holds (BrowserIndex.Search hits for the
-        /// query + category), by name, then quality high to low; equal ones keep the provider's order (stable sort).</summary>
-        public static List<T> Rows<T>(IEnumerable<T> stock, Func<T, string> prefab, ICollection<string> shown, Func<T, string> name, Func<T, int> quality) =>
-            stock.Where(e => shown.Contains(prefab(e))).OrderBy(name, StringComparer.OrdinalIgnoreCase).ThenByDescending(quality).ToList();
+        /// <summary>Grid rows: stock entries <paramref name="keep"/> passes (search + category), by name, then quality high
+        /// to low; equal ones keep the provider's order (stable sort).</summary>
+        public static List<T> Rows<T>(IEnumerable<T> stock, Func<T, bool> keep, Func<T, string> name, Func<T, int> quality) =>
+            stock.Where(keep).OrderBy(name, StringComparer.OrdinalIgnoreCase).ThenByDescending(quality).ToList();
+
+        /// <summary>Same stock (order ignored): equal keys with equal <paramref name="sig"/> (count + chests). Unchanged
+        /// stock keeps the grid as it is (no rebuild per tick).</summary>
+        public static bool Same<T>(IReadOnlyCollection<T> a, IReadOnlyCollection<T> b, Func<T, object> key, Func<T, long> sig)
+        {
+            if (a.Count != b.Count) return false;
+            var map = new Dictionary<object, long>(a.Count);
+            foreach (var e in a) map[key(e) ?? Nil] = sig(e);
+            foreach (var e in b)
+                if (!map.TryGetValue(key(e) ?? Nil, out var v) || v != sig(e)) return false;
+            return true;
+        }
+
+        private static readonly object Nil = new object();
+
+        /// <summary>Stock signature of one entry: count and chest count.</summary>
+        public static long Sig(int count, int chests) => ((long)count << 32) | (uint)chests;
+
+        /// <summary>Units of an item (name, quality, world level) the inventory can take: free slots x max stack + the
+        /// room left in partial stacks vanilla Inventory.AddItem would fill (FindFreeStackItem: same name, quality and
+        /// world level, Inventory.cs:547).</summary>
+        public static int Room(int freeSlots, int maxStack, string name, int quality, int worldLevel, IEnumerable<(string Name, int Quality, int WorldLevel, int Stack)> held)
+        {
+            maxStack = Math.Max(1, maxStack);
+            var room = freeSlots * maxStack;
+            foreach (var h in held)
+                if (h.Name == name && h.Quality == quality && h.WorldLevel == worldLevel && h.Stack < maxStack) room += maxStack - h.Stack;
+            return room;
+        }
 
         /// <summary>Entry of <paramref name="stock"/> with identity <paramref name="key"/> (Equals), null when gone.</summary>
         public static T Pick<T>(IEnumerable<T> stock, object key, Func<T, object> keyOf) where T : class =>

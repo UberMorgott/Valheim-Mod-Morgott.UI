@@ -1,5 +1,5 @@
-using System;
 using System.Collections.Generic;
+using System.Linq;
 using Morgott.Core;
 using TMPro;
 using UnityEngine;
@@ -65,23 +65,44 @@ namespace Morgott.UI.ItemBrowser
                 if (_up && _storage) Close();
                 return;
             }
-            (_stock, _tmp) = (_tmp, _stock); // fresh entries (new item clones) every tick: rows rebuilt, selection re-found by Key
-            _resultsGen = -1;
-            if (_up && _storage) _dirty = true; // counts, free slots, network line
+            // Changed stock only (keys + counts + chests): new entries, rows rebuilt, selection re-found by Key. Unchanged =
+            // the grid stays, only the texts (network line, free slots) refresh.
+            if (!StorageMath.Same(_stock, _tmp, s => s.Key, s => StorageMath.Sig(s.Count, s.Chests)))
+            {
+                (_stock, _tmp) = (_tmp, _stock);
+                _resultsGen = -1;
+            }
+            if (_up && _storage) _dirty = true;
         }
 
         private static string PrefabOf(StorageEntry s) => s.Item.m_dropPrefab ? s.Item.m_dropPrefab.name : null;
 
-        // Storage rows: index search (query + category on the item's shared data) keeps the prefabs, every stock entry of
-        // those prefabs is a cell; returns the index entries parallel to _rows.
-        private List<Entry> StoreResults(int cat, bool dev)
+        // Storage rows straight from the stock: every stored item is shown, also ones the item index hides or lacks; search
+        // and category read the item itself (localized name, prefab, mod), a cell's Entry is built from it.
+        private List<Entry> StoreResults(int cat)
         {
-            var shown = new HashSet<string>(StringComparer.Ordinal);
-            foreach (var e in Browser.Index.Search(_query, EntryType.Item, e => cat < 0 || (int)e.Category == cat, L, Browser.ModName, dev)) shown.Add(e.Id);
-            _rows = StorageMath.Rows(_stock, PrefabOf, shown, s => L(s.Item.m_shared.m_name), s => s.Item.m_quality);
+            var words = BrowserIndex.Words(_query);
+            _rows = StorageMath.Rows(_stock, s => Shown(s, words, cat), s => L(s.Item.m_shared.m_name), s => s.Item.m_quality);
             var list = new List<Entry>(_rows.Count);
-            foreach (var s in _rows) list.Add(Browser.Index.Entries[PrefabOf(s)]);
+            foreach (var s in _rows) list.Add(new Entry { Id = PrefabOf(s) ?? s.Item.m_shared.m_name, Name = s.Item.m_shared.m_name, Type = EntryType.Item });
             return list;
+        }
+
+        private bool _nullWarned;
+
+        private bool Shown(StorageEntry s, string[] words, int cat)
+        {
+            if (s.Item == null)
+            {
+                if (!_nullWarned) Plugin.Log.LogWarning("[Morgott.UI] STORAGE: network stock entry without an item skipped");
+                _nullWarned = true;
+                return false;
+            }
+            var sh = s.Item.m_shared;
+            if (cat >= 0 && (int)PageModel.Categorize(sh.m_itemType, sh.m_skillType, sh.m_buildPieces, sh.m_food, sh.m_foodStamina, sh.m_foodEitr, sh.m_consumeStatusEffect) != cat) return false;
+            var id = PrefabOf(s) ?? "";
+            var mod = Browser.Index.Entries.TryGetValue(id, out var e) ? e.Mod : null;
+            return BrowserIndex.Matches(words, L(sh.m_name).ToLowerInvariant(), id.ToLowerInvariant(), (mod ?? "valheim").ToLowerInvariant() + " " + (Browser.ModName(mod) ?? "").ToLowerInvariant());
         }
 
         private void Select(StorageEntry entry)
@@ -113,7 +134,8 @@ namespace Morgott.UI.ItemBrowser
             Fit(_netLine, string.Format(L("$ib_store_net"), _chests, L("$ib_store_chest_" + StorageMath.Form(_chests, Lang)), _netStations, L("$ib_store_station_" + StorageMath.Form(_netStations, Lang))), 20f);
         }
 
-        // Inventory room for the item in units, as vanilla Inventory.CanAddItem counts it (Inventory.cs:93).
+        // Inventory room for the item in units: free slots + partial stacks it would really join (quality included, which
+        // vanilla FindFreeStackSpace ignores).
         private static int Room(ItemDrop.ItemData item, out int stack, out int free)
         {
             stack = 1;
@@ -123,7 +145,8 @@ namespace Morgott.UI.ItemBrowser
             free = inv.GetEmptySlots();
             if (item == null) return 0;
             stack = Mathf.Max(1, item.m_shared.m_maxStackSize);
-            return inv.FindFreeStackSpace(item.m_shared.m_name, item.m_worldLevel) + free * stack;
+            return StorageMath.Room(free, stack, item.m_shared.m_name, item.m_quality, item.m_worldLevel,
+                inv.GetAllItems().Select(i => (i.m_shared.m_name, i.m_quality, i.m_worldLevel, i.m_stack)));
         }
 
         // Take bar under the grid; returns the grid's bottom (mockup units).

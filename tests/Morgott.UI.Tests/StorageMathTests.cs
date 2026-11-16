@@ -98,7 +98,7 @@ namespace Morgott.UI.Tests
                 new Row { Prefab = "Stone", Name = "Stone", Quality = 1, Key = "s" },
                 new Row { Prefab = "SwordIron", Name = "Iron sword", Quality = 1, Key = "c" }, // same name + quality: provider order
             };
-            var rows = StorageMath.Rows(stock, r => r.Prefab, new HashSet<string> { "SwordIron", "Wood" }, r => r.Name, r => r.Quality);
+            var rows = StorageMath.Rows(stock, r => r.Prefab != "Stone", r => r.Name, r => r.Quality);
             Assert.Equal(new object[] { "b", "a", "c", "w" }, rows.Select(r => r.Key).ToArray()); // Stone not shown
         }
 
@@ -120,6 +120,35 @@ namespace Morgott.UI.Tests
         {
             Assert.Equal(single, StorageMath.Single(count));
             Assert.Equal(badge, StorageMath.Badge(count, maxStack));
+        }
+
+        [Fact]
+        public void SameIgnoresOrderAndSeesKeyCountChestChanges()
+        {
+            (object Key, int Count, int Chests)[] Stock(params (object, int, int)[] e) => e;
+            bool Same((object Key, int Count, int Chests)[] a, (object Key, int Count, int Chests)[] b) =>
+                StorageMath.Same(a, b, e => e.Key, e => StorageMath.Sig(e.Count, e.Chests));
+            var a = Stock(("wood", 240, 3), ("sword#1", 1, 1));
+            Assert.True(Same(a, Stock(("sword#1", 1, 1), ("wood", 240, 3)))); // provider order only
+            Assert.False(Same(a, Stock(("wood", 239, 3), ("sword#1", 1, 1)))); // count
+            Assert.False(Same(a, Stock(("wood", 240, 2), ("sword#1", 1, 1)))); // chests
+            Assert.False(Same(a, Stock(("wood", 240, 3), ("sword#2", 1, 1)))); // other item
+            Assert.False(Same(a, Stock(("wood", 240, 3)))); // one gone
+        }
+
+        [Fact]
+        public void RoomCountsOnlyStacksTheItemWouldJoin()
+        {
+            var held = new[]
+            {
+                ("$item_wood", 1, 0, 30), // joins: 20 left
+                ("$item_wood", 1, 1, 10), // other world level
+                ("$item_wood", 2, 0, 10), // other quality (vanilla FindFreeStackSpace would count it)
+                ("$item_wood", 1, 0, 50), // full
+                ("$item_stone", 1, 0, 1), // other item
+            };
+            Assert.Equal(3 * 50 + 20, StorageMath.Room(3, 50, "$item_wood", 1, 0, held));
+            Assert.Equal(2, StorageMath.Room(2, 1, "$item_sword", 1, 0, held)); // non-stackable: free slots only
         }
     }
 }

@@ -714,7 +714,7 @@ namespace Morgott.UI.ItemBrowser
             var fav = _type == 5 ? Browser.Favorites() : null;
             // Storage: one cell per network stock entry (StoreTick / mode switch reset _resultsGen).
             _results = _storage
-                ? StoreResults(cat, dev)
+                ? StoreResults(cat)
                 : Browser.Index.Search(_query, TypeOf[_type],
                     e => (cat < 0 || (int)e.Category == cat) && (!known || Browser.Known(e)) && (fav == null || fav.Contains(e.Id)), L, Browser.ModName, dev);
             _resultsDev = dev;

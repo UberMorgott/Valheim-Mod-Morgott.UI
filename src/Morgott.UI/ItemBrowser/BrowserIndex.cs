@@ -113,7 +113,7 @@ namespace Morgott.UI.ItemBrowser
         /// the mod GUID / name; type null = All (Other included), Favorites passes its own filter.</summary>
         public List<Entry> Search(string query, EntryType? type, Func<Entry, bool> filter, Func<string, string> localize, Func<string, string> modName, bool unlisted = false)
         {
-            var words = (query ?? "").ToLowerInvariant().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            var words = Words(query);
             var hits = new List<KeyValuePair<string, Entry>>();
             foreach (var e in Entries.Values)
             {
@@ -133,7 +133,10 @@ namespace Morgott.UI.ItemBrowser
             return list;
         }
 
-        private static bool Matches(string[] words, string name, string id, string mod)
+        public static string[] Words(string query) => (query ?? "").ToLowerInvariant().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+
+        /// <summary>Lower-case query words against a lower-case name / prefab id; "@x" words against the mod text.</summary>
+        public static bool Matches(string[] words, string name, string id, string mod)
         {
             foreach (var w in words)
             {
