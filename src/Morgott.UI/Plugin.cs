@@ -103,7 +103,7 @@ namespace Morgott.UI
             ("Radial", "styles the radial menus (texts; wheel art and icons stay)."),
             ("MenuCompendium", "adds a Compendium entry under Settings in the pause menu (needs Menu)."),
             ("SummonFrames", "shows a frame per summon next to the hotbar (icon, health with the summon's energy shield, respawn / stay / off state)."),
-            ("PlayerShields", "shows other players' energy shield and absorb shield as rails under their overhead health bar (MorgottTweaks publishes them)."),
+            ("PlayerShields", "shows other players' energy shield and absorb shield as segments of their overhead health bar (Morgott.Power publishes them)."),
             ("Cursor", "sets its rune mouse cursor."),
             ("CharacterStats", "adds the character stats window (5th button of the inventory info row, or Hud.StatsKey): pools and regeneration per second, resistances, movement and weight, defense, food, rest, combat modifiers, MorgottTweaks shield and slots (needs Inventory)."),
         };

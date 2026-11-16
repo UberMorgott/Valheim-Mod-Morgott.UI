@@ -8,32 +8,36 @@ using Morgott.UI.Ownership;
 
 namespace Morgott.UI.WorldHud
 {
-    // Other players' shields under their overhead health bar (family PlayerShields, batch P: was an AugaSkin feature).
+    // Other players' shields as segments of their overhead health bar (family PlayerShields, batch P: was an AugaSkin
+    // feature; segmented bar user 2026-11-16, docs\mockups\shield-segments): HP | energy shield (blue) | absorb shield
+    // (orchid), each its max's share of the bar (HudMath.Segments), filled current / max over the dark track, thin
+    // dividers, honeycomb material (BarView.SegmentMaterial) - the same bar as the local HP bar.
     // Vanilla shows another player's health only on the EnemyHud player HUD (m_baseHudPlayer, ShowHud EnemyHud.cs:126-157,
-    // shown in range and not crouching :101-124, health set every frame :213-224); the bar is its "Health" child. One thin
-    // rune rail goes under it with two contiguous fills over es max + shield max (user 2026-11-16):
-    // - energy shield (Morgott.Power gear pool, blue; player ZDO floats mt_es / mt_es_max, written by the owner);
-    // - absorb shield (vanilla SE_Shield, e.g. Staff of Protection, purple: its remaining absorb lives only in the owner's
-    //   SEMan, so Morgott.Power ShieldShareModule publishes player ZDO mt_shield / mt_shield_max).
-    // The rail hides while both maxes are 0; it is a child of the HUD object (its visibility). The floats arrive
-    // independently: each value is clamped to its own max.
+    // shown in range and not crouching :101-124, health set every frame :213-224). Its GuiBars health_fast / health_slow
+    // draw m_width x value (GuiBar.SetBar), so the HP segment = GuiBar.SetWidth(full x share), full = m_width at first sight.
+    // - energy shield: Morgott.Power gear pool, player ZDO floats mt_es / mt_es_max, written by the owner;
+    // - absorb shield: vanilla SE_Shield (e.g. Staff of Protection) lives only in the owner's SEMan, so Morgott.Power
+    //   ShieldShareModule publishes player ZDO mt_shield / mt_shield_max.
+    // The floats arrive independently: each value is clamped to its own max.
     [HarmonyPatch]
     public static class PlayerShields
     {
         // Harmony asks before patching this class (Plugin: one PatchAll(Assembly), batched by FastStartup).
         private static bool Prepare() => OwnershipRegistry.IsOwned(OwnershipRegistry.PlayerShields);
 
-        public const string RailName = "RuneSkin_Shields"; // children: 0 = energy shield fill, 1 = external shield fill
+        public const string GearName = "MorgottUI_ShieldGear", ExtName = "MorgottUI_ShieldExt";
+        public const string GearDividerName = "MorgottUI_ShieldGearDivider", ExtDividerName = "MorgottUI_ShieldExtDivider";
         private static readonly int EsKey = "mt_es".GetStableHashCode(), EsMaxKey = "mt_es_max".GetStableHashCode();
         private static readonly int ShieldKey = "mt_shield".GetStableHashCode(), ShieldMaxKey = "mt_shield_max".GetStableHashCode();
 
-        private sealed class Rail
+        private sealed class Segs
         {
-            public RectTransform Rect, Es, Ext;
-            public float GearW = -1f, ExtW = -1f;
+            public float Full;
+            public RectTransform Bar;
+            public Image Gear, Ext, GearDiv, ExtDiv;
         }
 
-        private static readonly ConditionalWeakTable<EnemyHud.HudData, Rail> Huds = new ConditionalWeakTable<EnemyHud.HudData, Rail>();
+        private static readonly ConditionalWeakTable<EnemyHud.HudData, Segs> Huds = new ConditionalWeakTable<EnemyHud.HudData, Segs>();
 
         [HarmonyPatch(typeof(EnemyHud), nameof(EnemyHud.UpdateHuds))]
         [HarmonyPostfix]
@@ -44,77 +48,65 @@ namespace Morgott.UI.WorldHud
             {
                 var c = pair.Key;
                 var hud = pair.Value;
-                if (!c || hud?.m_gui == null || !hud.m_gui.activeSelf || !c.IsPlayer()) continue;
+                if (!c || hud.m_gui == null || !hud.m_gui.activeSelf || !c.IsPlayer() || hud.m_healthFast == null) continue;
                 var zdo = c.m_nview ? c.m_nview.GetZDO() : null;
                 if (zdo == null) continue;
+                var s = Huds.GetValue(hud, h => new Segs { Full = h.m_healthFast.m_width, Bar = h.m_healthFast.m_bar });
+                if (!s.Bar) continue;
                 var esMax = Mathf.Max(0f, zdo.GetFloat(EsMaxKey));
                 var shMax = Mathf.Max(0f, zdo.GetFloat(ShieldMaxKey));
-                var rail = Huds.GetValue(hud, _ => new Rail());
-                Show(rail, hud.m_gui.transform, Mathf.Min(zdo.GetFloat(EsKey), esMax), Mathf.Min(zdo.GetFloat(ShieldKey), shMax), esMax + shMax);
+                HudMath.Segments(c.GetMaxHealth(), esMax, shMax, s.Full, out var hpW, out var gw, out var ew);
+                hud.m_healthFast.SetWidth(hpW);
+                if (hud.m_healthSlow) hud.m_healthSlow.SetWidth(hpW);
+                if (esMax + shMax > 0f && !s.Gear) Make(s);
+                if (!s.Gear) continue;
+                var div = ThemeTokens.GetFloat("size.enemy.segment.divider", 1f);
+                Place(s, s.Gear, hpW, HudMath.SegmentFill(zdo.GetFloat(EsKey), esMax, gw));
+                Place(s, s.Ext, hpW + gw, HudMath.SegmentFill(zdo.GetFloat(ShieldKey), shMax, ew));
+                Place(s, s.GearDiv, hpW - div / 2f, gw > 0f ? div : 0f);
+                Place(s, s.ExtDiv, hpW + gw - div / 2f, ew > 0f ? div : 0f);
             }
         }
 
-        private static void Show(Rail rail, Transform gui, float es, float shield, float max)
+        // Segment [x, x+w] of the bar's full length, the bar's height, in the bar's parent (health_fast).
+        private static void Place(Segs s, Image img, float x, float w)
         {
-            if (max <= 0f)
-            {
-                if (rail.Rect && rail.Rect.gameObject.activeSelf) rail.Rect.gameObject.SetActive(false);
-                return;
-            }
-            if (!rail.Rect && !Make(rail, gui)) return;
-            if (!rail.Rect.gameObject.activeSelf) rail.Rect.gameObject.SetActive(true);
-            HudMath.ShieldSegments(es, shield, max, 1f, out var gw, out var ew);
-            if (rail.GearW == gw && rail.ExtW == ew) return;
-            rail.GearW = gw;
-            rail.ExtW = ew;
-            rail.Es.anchorMax = new Vector2(gw, 1f);
-            rail.Ext.anchorMin = new Vector2(gw, 0f);
-            rail.Ext.anchorMax = new Vector2(gw + ew, 1f);
-        }
-        private static float Height => ThemeTokens.GetFloat("size.enemy.shield.rail", 5f);
-        private static float Gap => ThemeTokens.GetFloat("size.enemy.shield.gap", 2f);
-
-        // Top edge Gap under the health bar's bottom edge.
-        private static bool Make(Rail rail, Transform gui)
-        {
-            if (!(gui.Find("Health") is RectTransform health)) return false;
-            var rect = gui.Find(RailName) as RectTransform; // a rail left by an earlier build of this HUD object is reused
-            if (!rect)
-            {
-                rect = new GameObject(RailName, typeof(RectTransform), typeof(Image)).GetComponent<RectTransform>();
-                rect.SetParent(gui, false);
-                new GameObject("es", typeof(RectTransform), typeof(Image)).transform.SetParent(rect, false);
-                new GameObject("ext", typeof(RectTransform), typeof(Image)).transform.SetParent(rect, false);
-            }
-            rect.anchorMin = health.anchorMin;
-            rect.anchorMax = health.anchorMax;
-            rect.pivot = new Vector2(health.pivot.x, 1f);
-            rect.sizeDelta = new Vector2(health.rect.width, Height);
-            var trough = rect.GetComponent<Image>();
-            trough.sprite = ThemeTokens.GetSprite("sprite.hud.rail.trough");
-            trough.type = trough.sprite ? Image.Type.Sliced : Image.Type.Simple;
-            trough.color = trough.sprite ? Color.white : ThemeTokens.GetColor("color.hud.trough", Color.black);
-            trough.raycastTarget = false;
-            rect.anchoredPosition = health.anchoredPosition - new Vector2(0f, health.pivot.y * health.rect.height + Gap);
-            rail.Rect = rect;
-            rail.Es = Fill(rect, 0, "color.hud.es");
-            rail.Ext = Fill(rect, 1, "color.hud.shield.ext");
-            rail.GearW = rail.ExtW = -1f;
-            return true;
+            var on = w > 0.05f;
+            if (img.gameObject.activeSelf != on) img.gameObject.SetActive(on);
+            if (!on) return;
+            var bar = s.Bar;
+            var r = img.rectTransform;
+            var size = new Vector2(w, bar.rect.height);
+            if (r.sizeDelta != size) r.sizeDelta = size;
+            // the bar grows from its left edge (GuiBar keeps its pivot), so that edge is fixed in the parent
+            var pos = new Vector3(bar.localPosition.x + bar.rect.xMin + x, bar.localPosition.y + bar.rect.center.y, 0f);
+            if (r.localPosition != pos) r.localPosition = pos;
         }
 
-        private static RectTransform Fill(RectTransform rail, int index, string color)
+        private static void Make(Segs s)
         {
-            var fill = (RectTransform)rail.GetChild(index);
-            fill.anchorMin = Vector2.zero;
-            fill.anchorMax = Vector2.zero;
-            fill.sizeDelta = Vector2.zero;
-            var img = fill.GetComponent<Image>();
-            img.sprite = ThemeTokens.GetSprite("sprite.hud.rail.fill");
-            img.type = img.sprite ? Image.Type.Sliced : Image.Type.Simple;
+            var parent = s.Bar.parent;
+            s.Gear = Segment(parent, GearName, "color.hud.shield", true);
+            s.Ext = Segment(parent, ExtName, "color.hud.shield.ext", true);
+            s.GearDiv = Segment(parent, GearDividerName, "color.hud.segment.divider", false);
+            s.ExtDiv = Segment(parent, ExtDividerName, "color.hud.segment.divider", false);
+        }
+
+        private static Image Segment(Transform parent, string name, string color, bool hex)
+        {
+            var t = parent.Find(name); // a segment left by an earlier build of this HUD object is reused
+            var img = t ? t.GetComponent<Image>() : new GameObject(name, typeof(RectTransform), typeof(Image)).GetComponent<Image>();
+            if (!t) img.transform.SetParent(parent, false);
+            var r = img.rectTransform;
+            r.anchorMin = r.anchorMax = new Vector2(0.5f, 0.5f);
+            r.pivot = new Vector2(0f, 0.5f);
+            img.sprite = null;
+            img.type = Image.Type.Simple;
+            img.material = hex ? BarView.SegmentMaterial() : null;
             img.color = ThemeTokens.GetColor(color, Color.cyan);
             img.raycastTarget = false;
-            return fill;
+            img.gameObject.SetActive(false);
+            return img;
         }
     }
 }

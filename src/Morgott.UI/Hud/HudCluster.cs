@@ -441,29 +441,24 @@ namespace Morgott.UI.PlayerHud
             else _pending.Clear();
             _health.SetOuterWidth(_hpOuter);
             _health.Tick(dt);
+            // Segmented bar (user 2026-11-16): main pool | Morgott.Power energy shield (blue) | vanilla SE_Shield (orchid).
+            var ext = VanillaShield(p, out var extMax);
             if (esMain)
             {
-                // Chaos Inoculation: the fill is the energy shield; the centre still reads the HP ("HP 1/1"), the shield
-                // "cur/max" sits right with its glyph (variant C, user 2026-10-26: "119/119" read as HP).
-                // external shields still show as the purple overlay, in their own scale (the gear part is the fill itself)
-                var ext = VanillaShield(p, out var vanillaMax);
-                _health.SetShield(ext, vanillaMax, ext);
+                // Chaos Inoculation: the main pool is the energy shield (its reserve hatch, inert look and recharge stay on
+                // it), the external segment follows; the centre still reads the HP ("HP 1/1"), the shield "cur/max" sits
+                // right with its glyph (variant C, user 2026-10-26: "119/119" read as HP).
+                _health.SetShield(0f, 0f, ext, extMax);
                 _health.HealthText(hp, hpC, true, Mathf.Max(0f, es.Current), es.Max);
                 _health.Render(es.Current, es.Max, es.Available, _stripes, 0, _stripeKinds, "color.hud.es", overlaySprite, overlayColor, es.Inert, dt, es.Available < es.Max - 0.5f);
                 _health.Aux(0);
             }
             else
             {
-                var count = HudMath.Stripes(_pending, hp, hpB, _health.WindowLength, ThemeTokens.GetFloat("size.hud.stripe.min", 4f), BarView.MaxStripes, _stripes);
+                _health.SetShield(esOn ? es.Current : 0f, esOn ? es.Max : 0f, ext, extMax);
+                var count = HudMath.Stripes(_pending, hp, hpB, _health.MainLength(hpB), ThemeTokens.GetFloat("size.hud.stripe.min", 4f), BarView.MaxStripes, _stripes);
                 for (var i = 0; i < count; i++) _stripeKinds[i] = _stripes[i].Key < 0 ? (int)DotKind.Other : _stripes[i].Key;
-                // Shield = Morgott.Power energy shield (provider pool, blue) + vanilla staff shields (SE_Shield, purple): over
-                // the HP fill in its own scale (current / max shield), label "cur/max (+shield/max)" (user calls 2026-10-22,
-                // 2026-11-03, 2026-11-16).
-                var ext = VanillaShield(p, out var vanillaMax);
-                var shield = (esOn ? Mathf.Max(0f, es.Current) : 0f) + ext;
-                var shieldMax = (esOn ? es.Max : 0f) + vanillaMax;
-                _health.SetShield(shield, shieldMax, ext);
-                _health.HealthText(hp, hpB, false, shield, shieldMax);
+                _health.HealthText(hp, hpB, false, 0f, 0f);
                 _health.Render(hp, hpB, hpC, _stripes, count, _stripeKinds, null, overlaySprite, overlayColor, false, dt, false);
             }
 

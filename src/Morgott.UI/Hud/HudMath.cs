@@ -195,16 +195,16 @@ namespace Morgott.UI.PlayerHud
         // centre never reads as the shield), the shield as its own number at the window's right end next to a shield
         // glyph: "cur/max" for a pool with a max (the energy shield that carries the player, shown even at 0), else the
         // amount; "" = no shield label. Values rounded up as the bar shows them.
-        // 2026-11-03 (user): a shield on the HP bar reads in the centre label as "cur/max (+shield/shieldMax)" - both pools
-        // in their own scale, as drawn; no label of its own (shield > 0 only; Chaos Inoculation keeps variant C).
-        public static string HpText(float cur, float max, bool tagged, float shield = 0f, float shieldMax = 0f)
+        // 2026-11-16 (user, segmented bar mockup): the shield segments' current values follow as "cur/max  +gear  +ext"
+        // (a part only while it is > 0).
+        public static string HpText(float cur, float max, bool tagged, float gear = 0f, float ext = 0f)
         {
             var c = (int)Math.Ceiling(Math.Max(0f, cur));
             var m = (int)Math.Ceiling(Math.Max(0f, max));
-            var s = shield > 0f && !float.IsInfinity(shield) ? (int)Math.Ceiling(shield) : 0;
-            var sm = shieldMax > 0f && !float.IsInfinity(shieldMax) ? Math.Max(s, (int)Math.Ceiling(shieldMax)) : 0;
-            var hp = tagged ? $"HP {c}/{m}" : $"{c}/{m}";
-            return s <= 0 ? hp : sm > 0 ? $"{hp} (+{s}/{sm})" : $"{hp} (+{s})";
+            var s = tagged ? $"HP {c}/{m}" : $"{c}/{m}";
+            if (gear > 0f && !float.IsInfinity(gear)) s += $"  +{(int)Math.Ceiling(gear)}";
+            if (ext > 0f && !float.IsInfinity(ext)) s += $"  +{(int)Math.Ceiling(ext)}";
+            return s;
         }
 
         public static string ShieldText(float shield, float poolMax)
@@ -223,23 +223,32 @@ namespace Morgott.UI.PlayerHud
             return Math.Min(1f, shield / shieldMax) * windowPx;
         }
 
-        // Two contiguous shield segments from the window's left (user 2026-11-16): gear energy shield (blue) first, then
-        // external shields (vanilla SE_Shield, purple), both in the shared scale `max`; gearW + extW = the summed overlay.
-        public static void ShieldSegments(float gear, float ext, float max, float windowPx, out float gearW, out float extW)
+        // Segmented bar (user 2026-11-16, docs\mockups\shield-segments): main pool | gear energy shield | external shields,
+        // left to right, each segment as wide as its max's share of the summed max (NaN / negative / infinite max = no
+        // segment); nothing summed = the main pool takes the window.
+        public static void Segments(float mainMax, float gearMax, float extMax, float windowPx, out float mainW, out float gearW, out float extW)
         {
-            gear = gear > 0f ? gear : 0f; // NaN / negative = none
-            ext = ext > 0f ? ext : 0f;
-            gearW = ShieldOverlay(gear, max, windowPx);
-            extW = Math.Max(0f, ShieldOverlay(gear + ext, max, windowPx) - gearW);
+            mainMax = Finite(mainMax);
+            gearMax = Finite(gearMax);
+            extMax = Finite(extMax);
+            windowPx = Finite(windowPx);
+            var total = mainMax + gearMax + extMax;
+            if (!(total > 0f))
+            {
+                mainW = windowPx;
+                gearW = extW = 0f;
+                return;
+            }
+            mainW = windowPx * mainMax / total;
+            gearW = windowPx * gearMax / total;
+            extW = windowPx * extMax / total;
         }
 
-        // Shield edge glow mask over the bar height v (0 bottom .. 1 top), user + Codex call 2026-11-08: 0 over the centre
-        // third (HP reads unobstructed), smoothstep up to 1 at the top / bottom edges; the tint carries the max alpha.
-        public static float ShieldEdgeAlpha(float v)
-        {
-            var t = Math.Min(1f, Math.Max(0f, (Math.Abs(2f * v - 1f) - 1f / 3f) * 1.5f));
-            return t * t * (3f - 2f * t);
-        }
+        // Filled px of a segment: current / max of its width, clamped to it.
+        public static float SegmentFill(float cur, float max, float segmentPx) =>
+            cur > 0f && max > 0f && segmentPx > 0f && !float.IsInfinity(max) ? segmentPx * Math.Min(1f, cur / max) : 0f;
+
+        private static float Finite(float v) => v > 0f && !float.IsInfinity(v) ? v : 0f;
 
         // Shield band rect in window px (user call 2026-10-22 r2: the shield never hides HP): the upper `share` of the
         // window height, ShieldOverlay wide from the window's left.

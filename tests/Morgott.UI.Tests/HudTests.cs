@@ -407,33 +407,34 @@ namespace Morgott.UI.Tests
         public void ShieldOverlayOwnScale(float shield, float max, float window, float want) =>
             Assert.Equal(want, HudMath.ShieldOverlay(shield, max, window), 3);
 
-        // Gear (blue) then external (purple) segments, contiguous, together = the summed overlay (user 2026-11-16).
+        // Segmented bar (user 2026-11-16 mockup): HP 250 | gear 80 | ext 120 -> widths by max share of 450.
         [Theory]
-        [InlineData(60f, 30f, 200f, 600f, 180f, 90f)]         // both: gear first, ext right after it
-        [InlineData(0f, 30f, 120f, 1f, 0f, 0.25f)]            // ext only (ally rail, ratio window)
-        [InlineData(60f, 0f, 80f, 1f, 0.75f, 0f)]             // gear only
-        [InlineData(150f, 100f, 200f, 600f, 450f, 150f)]      // over max: total clamped to the window, ext gets the rest
-        [InlineData(250f, 50f, 200f, 600f, 600f, 0f)]         // gear alone overflows: no room for ext
-        [InlineData(float.NaN, 30f, 60f, 600f, 0f, 300f)]     // nonsense gear = none
-        [InlineData(30f, 30f, 0f, 600f, 0f, 0f)]              // no max
-        public void ShieldSegmentsContiguous(float gear, float ext, float max, float window, float wantGear, float wantExt)
+        [InlineData(250f, 80f, 120f, 450f, 250f, 80f, 120f)]           // mockup values, 1 px per point
+        [InlineData(250f, 0f, 0f, 600f, 600f, 0f, 0f)]                 // no shields: HP takes the window
+        [InlineData(250f, 0f, 120f, 370f, 250f, 0f, 120f)]             // gear absent: ext right after HP
+        [InlineData(1f, 80f, 120f, 201f, 1f, 80f, 120f)]               // Chaos Inoculation as the formula: HP max 1 = 1 px
+        [InlineData(250f, float.NaN, -5f, 600f, 600f, 0f, 0f)]         // nonsense maxes = absent
+        [InlineData(0f, 0f, 0f, 600f, 600f, 0f, 0f)]                   // nothing at all: main keeps the window
+        [InlineData(250f, float.PositiveInfinity, 0f, 600f, 600f, 0f, 0f)]
+        public void SegmentsByMaxShare(float hp, float gear, float ext, float window, float wantHp, float wantGear, float wantExt)
         {
-            HudMath.ShieldSegments(gear, ext, max, window, out var g, out var e);
+            HudMath.Segments(hp, gear, ext, window, out var h, out var g, out var e);
+            Assert.Equal(wantHp, h, 3);
             Assert.Equal(wantGear, g, 3);
             Assert.Equal(wantExt, e, 3);
         }
 
-        // Shield edge mask (2026-11-08): centre third clear, max at both edges, symmetric, rising toward the edges.
-        [Fact]
-        public void ShieldEdgeAlphaClearCentreThird()
-        {
-            for (var v = 1f / 3f; v <= 2f / 3f; v += 0.01f) Assert.Equal(0f, HudMath.ShieldEdgeAlpha(v), 4);
-            Assert.Equal(1f, HudMath.ShieldEdgeAlpha(0f), 4);
-            Assert.Equal(1f, HudMath.ShieldEdgeAlpha(1f), 4);
-            Assert.Equal(0.5f, HudMath.ShieldEdgeAlpha(1f / 6f), 3);
-            Assert.Equal(HudMath.ShieldEdgeAlpha(0.1f), HudMath.ShieldEdgeAlpha(0.9f), 4);
-            Assert.True(HudMath.ShieldEdgeAlpha(0.05f) > HudMath.ShieldEdgeAlpha(0.2f));
-        }
+        // Each segment fills current / max of its own width, clamped.
+        [Theory]
+        [InlineData(60f, 80f, 80f, 60f)]       // mockup gear 60/80
+        [InlineData(30f, 120f, 120f, 30f)]     // mockup ext 30/120
+        [InlineData(180f, 250f, 500f, 360f)]   // HP 180/250 in a 500 px segment
+        [InlineData(90f, 80f, 80f, 80f)]       // over max: full, never past the segment
+        [InlineData(0f, 80f, 80f, 0f)]
+        [InlineData(30f, 0f, 80f, 0f)]         // no max
+        [InlineData(float.NaN, 80f, 80f, 0f)]
+        public void SegmentFillCurrentOverMax(float cur, float max, float segment, float want) =>
+            Assert.Equal(want, HudMath.SegmentFill(cur, max, segment), 3);
         // Variant C (2026-10-26): HP value alone, "HP " while the fill is the energy shield; shield label of its own.
         [Theory]
         [InlineData(142f, 200f, false, "142/200")]
@@ -442,16 +443,15 @@ namespace Morgott.UI.Tests
         public void HpTextVariantC(float cur, float max, bool tagged, string want) =>
             Assert.Equal(want, HudMath.HpText(cur, max, tagged));
 
-        // 2026-11-03: "HP cur/max (+shield/max)" in the centre label, each pool in its own scale.
+        // 2026-11-16 (segmented bar mockup): "cur/max  +gear  +ext", a part only while it is > 0, rounded up.
         [Theory]
-        [InlineData(500f, 1000f, 30f, 60f, "500/1000 (+30/60)")]
-        [InlineData(500f, 1000f, 29.2f, 59.1f, "500/1000 (+30/60)")] // rounded up as the bar shows them
-        [InlineData(500f, 1000f, 30f, 0f, "500/1000 (+30)")]         // unknown max: the amount alone
-        [InlineData(500f, 1000f, 70f, 60f, "500/1000 (+70/70)")]     // the pair arrives apart: max never below cur
-        [InlineData(500f, 1000f, 0f, 60f, "500/1000")]
-        [InlineData(500f, 1000f, float.NaN, 60f, "500/1000")]
-        public void HpTextWithShield(float cur, float max, float shield, float shieldMax, string want) =>
-            Assert.Equal(want, HudMath.HpText(cur, max, false, shield, shieldMax));
+        [InlineData(180f, 250f, false, 60f, 30f, "180/250  +60  +30")]
+        [InlineData(180f, 250f, false, 59.2f, 0f, "180/250  +60")]
+        [InlineData(180f, 250f, false, 0f, 30f, "180/250  +30")]
+        [InlineData(180f, 250f, false, float.NaN, float.PositiveInfinity, "180/250")]
+        [InlineData(1f, 1f, true, 0f, 30f, "HP 1/1  +30")]   // Chaos Inoculation: the external part still reads
+        public void HpTextWithShields(float cur, float max, bool tagged, float gear, float ext, string want) =>
+            Assert.Equal(want, HudMath.HpText(cur, max, tagged, gear, ext));
 
         [Theory]
         [InlineData(45f, 0f, "45")]
