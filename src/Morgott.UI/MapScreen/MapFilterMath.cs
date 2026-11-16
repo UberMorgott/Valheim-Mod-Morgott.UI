@@ -115,19 +115,15 @@ namespace Morgott.UI.MapScreen
 
         private static bool Lower(byte neighbour, byte id) => neighbour != 0 && neighbour < id;
 
-        // Explored land ids: ids where the texel is explored (by anyone), 0 elsewhere - the mask the fill blends over.
-        public static void LandIds(byte[] ids, BitArray explored, BitArray others, byte[] into)
-        {
-            for (var i = 0; i < into.Length; i++) into[i] = Seen(explored, others, i) ? ids[i] : (byte)0;
-        }
-
         // Tent-weighted explored land around a texel: W = weight (0..81), R/G/B = weighted palette colour sums.
         public struct Mix
         {
             public int W, R, G, B;
         }
 
-        public static Mix LandMix(byte[] land, int size, Color32[] palette, int x, int y)
+        // Land = ids where the texel is explored (by anyone), 0 elsewhere - the mask the fill blends over. Read from the
+        // explored bits on the fly: no per-texel land copy is kept on the managed heap.
+        public static Mix LandMix(byte[] ids, BitArray explored, BitArray others, int size, Color32[] palette, int x, int y)
         {
             var m = new Mix();
             for (var dy = -Rad; dy <= Rad; dy++)
@@ -138,8 +134,9 @@ namespace Morgott.UI.MapScreen
                 {
                     var px = x + dx;
                     if (px < 0 || px >= size) continue;
-                    var id = land[py * size + px];
-                    if (id == 0 || id > palette.Length) continue;
+                    var i = py * size + px;
+                    var id = ids[i];
+                    if (id == 0 || id > palette.Length || !Seen(explored, others, i)) continue;
                     var c = palette[id - 1];
                     var k = Tent(dx) * Tent(dy);
                     m.W += k;
@@ -232,18 +229,21 @@ namespace Morgott.UI.MapScreen
                 }
         }
 
-        // Both overlay textures from the explored land ids (LandIds), the explored bits (Minimap.m_explored /
-        // m_exploredOthers, index y * size + x) and their FogAlphas, one land mix per texel.
-        public static void Compose(byte[] ids, byte[] land, int size, BitArray explored, BitArray others, byte[] fogA, Color32[] palette, byte fill, byte outline, Color32 fog, Color32[] outlineTex, Color32[] fillTex)
+        // Both overlay textures from the biome ids, the explored bits (Minimap.m_explored / m_exploredOthers, index
+        // y * size + x) and their FogAlphas, one land mix per texel. Writes the band of rows y0 .. y0 + rows.Length / size
+        // into outlineRows / fillRows (row y0 at index 0): the caller streams bands into the texture's own pixel data.
+        public static void Compose(byte[] ids, int size, BitArray explored, BitArray others, byte[] fogA, Color32[] palette, byte fill, byte outline, Color32 fog, int y0, Color32[] outlineRows, Color32[] fillRows)
         {
-            for (var y = 0; y < size; y++)
+            var y1 = y0 + outlineRows.Length / size;
+            for (var y = y0; y < y1; y++)
                 for (var x = 0; x < size; x++)
                 {
                     var i = y * size + x;
                     var seen = Seen(explored, others, i);
-                    var m = seen ? LandMix(land, size, palette, x, y) : default;
-                    outlineTex[i] = Pixel(ids, size, x, y, seen, m, fogA[i], palette, fill, outline, fog);
-                    fillTex[i] = Pixel(ids, size, x, y, seen, m, fogA[i], palette, fill, 0, fog);
+                    var m = seen ? LandMix(ids, explored, others, size, palette, x, y) : default;
+                    var o = i - y0 * size;
+                    outlineRows[o] = Pixel(ids, size, x, y, seen, m, fogA[i], palette, fill, outline, fog);
+                    fillRows[o] = Pixel(ids, size, x, y, seen, m, fogA[i], palette, fill, 0, fog);
                 }
         }
 

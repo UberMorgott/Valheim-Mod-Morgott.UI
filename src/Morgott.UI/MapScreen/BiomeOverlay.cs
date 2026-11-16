@@ -31,9 +31,10 @@ namespace Morgott.UI.MapScreen
         private readonly int _size;
         private byte[] _ids;
         private volatile bool _gridReady, _composed;
-        private Color32[] _pxOutline, _pxFill;
-        private byte[] _land; // explored land ids (MapFilterMath.LandIds), kept for the incremental blend
+        // Pixels live only in the textures' own CPU copies (GetPixelData): managed 2048^2 Color32[] mirrors were 32 MiB
+        // of Mono heap every full GC walked (heap census 2026-11-16).
         private Texture2D _texOutline, _texFill;
+        private Unity.Collections.NativeArray<Color32> _pxOutline, _pxFill;
         private RawImage _image;
         private BorderLines _lines;
         private Color32[] _palette;
@@ -101,19 +102,32 @@ namespace Morgott.UI.MapScreen
             var (fill, outline, fog) = (_fill, _outline, _fog);
             var explored = (System.Collections.BitArray)_map.m_explored.Clone();
             var others = (System.Collections.BitArray)_map.m_exploredOthers.Clone();
-            _pxOutline ??= new Color32[_size * _size];
-            _pxFill ??= new Color32[_size * _size];
-            _land ??= new byte[_size * _size];
-            var (ids, land, size, pxOutline, pxFill) = (_ids, _land, _size, _pxOutline, _pxFill);
+            if (!_texOutline)
+            {
+                _texOutline = NewTexture(_size, "Morgott.UI biome overlay");
+                _texFill = NewTexture(_size, "Morgott.UI biome overlay (fill)");
+                _pxOutline = _texOutline.GetPixelData<Color32>(0);
+                _pxFill = _texFill.GetPixelData<Color32>(0);
+            }
+            var (ids, size, pxOutline, pxFill) = (_ids, _size, _pxOutline, _pxFill);
             ThreadPool.QueueUserWorkItem(_ =>
             {
                 try
                 {
                     var sw = System.Diagnostics.Stopwatch.StartNew();
                     var fogA = new byte[size * size];
-                    MapFilterMath.LandIds(ids, explored, others, land);
                     MapFilterMath.FogAlphas(explored, others, size, fog.a, fogA);
-                    MapFilterMath.Compose(ids, land, size, explored, others, fogA, palette, fill, outline, fog, pxOutline, pxFill);
+                    // Small-heap bands (16 rows) streamed into the texture data; Detach waits for this worker.
+                    const int band = 16;
+                    Color32[] bo = null, bf = null;
+                    for (var y0 = 0; y0 < size; y0 += band)
+                    {
+                        var n = Math.Min(band, size - y0) * size;
+                        if (bo == null || bo.Length != n) { bo = new Color32[n]; bf = new Color32[n]; }
+                        MapFilterMath.Compose(ids, size, explored, others, fogA, palette, fill, outline, fog, y0, bo, bf);
+                        Unity.Collections.NativeArray<Color32>.Copy(bo, 0, pxOutline, y0 * size, n);
+                        Unity.Collections.NativeArray<Color32>.Copy(bf, 0, pxFill, y0 * size, n);
+                    }
                     Plugin.Log.LogInfo($"[Morgott.UI] biome overlay composed in {sw.ElapsedMilliseconds} ms (worker)");
                     _composeOk = true;
                 }
@@ -138,6 +152,8 @@ namespace Morgott.UI.MapScreen
         public static void Detach(Minimap map)
         {
             if (Instance == null || Instance._map != map) return;
+            // The compose worker writes into the textures' pixel data: never free it under the worker (world exit only).
+            while (Instance._composing && !Instance._composeDone) Thread.Sleep(1);
             if (Instance._texOutline) UnityEngine.Object.Destroy(Instance._texOutline);
             if (Instance._texFill) UnityEngine.Object.Destroy(Instance._texFill);
             Instance = null;
@@ -258,7 +274,6 @@ namespace Morgott.UI.MapScreen
             if (x < 0 || y < 0 || x >= _size || y >= _size) return;
             if (_composing) { _pending.Add(y * _size + x); return; } // the worker owns the pixel arrays
             if (!Ready || _full) return;
-            _land[y * _size + x] = _ids[y * _size + x];
             // The soft fog edge / land blend spread FogReach texels: the whole neighbourhood is redone.
             var r = MapFilterMath.FogReach;
             for (var py = Mathf.Max(0, y - r); py <= Mathf.Min(_size - 1, y + r); py++)
@@ -267,7 +282,7 @@ namespace Morgott.UI.MapScreen
                     var i = py * _size + px;
                     var seen = _map.m_explored[i] || _map.m_exploredOthers[i];
                     var a = MapFilterMath.FogAlpha(_map.m_explored, _map.m_exploredOthers, _size, px, py, _fog.a);
-                    var m = seen ? MapFilterMath.LandMix(_land, _size, _palette, px, py) : default;
+                    var m = seen ? MapFilterMath.LandMix(_ids, _map.m_explored, _map.m_exploredOthers, _size, _palette, px, py) : default;
                     _pxOutline[i] = MapFilterMath.Pixel(_ids, _size, px, py, seen, m, a, _palette, _fill, _outline, _fog);
                     _pxFill[i] = MapFilterMath.Pixel(_ids, _size, px, py, seen, m, a, _palette, _fill, 0, _fog);
                 }
@@ -294,11 +309,7 @@ namespace Morgott.UI.MapScreen
             EnsureGrid(); // a compose requested this frame (toggle / reload) starts now, on the worker
             if (_dirty && _composed && !_composing && !_full && Time.unscaledTime >= _nextApply)
             {
-                _texOutline ??= NewTexture(_size, "Morgott.UI biome overlay");
-                _texFill ??= NewTexture(_size, "Morgott.UI biome overlay (fill)");
-                _texOutline.SetPixels32(_pxOutline);
-                _texOutline.Apply(false);
-                _texFill.SetPixels32(_pxFill);
+                _texOutline.Apply(false); // pixels already in its CPU data (compose / Explored): upload only
                 _texFill.Apply(false);
                 _dirty = false;
                 _fresh = true;

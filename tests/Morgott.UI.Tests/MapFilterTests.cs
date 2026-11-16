@@ -194,14 +194,24 @@ namespace Morgott.UI.Tests
             var others = new BitArray(16);
             explored[0] = true;
             others[5] = true; // shared map data counts as explored
-            var land = new byte[16];
-            MapFilterMath.LandIds(ids, explored, others, land);
-            Assert.Equal(new[] { 0, 5 }, Enumerable.Range(0, 16).Where(i => land[i] != 0).ToArray());
             var po = new Color32[16];
             var pf = new Color32[16];
             var fogA = new byte[16];
             MapFilterMath.FogAlphas(explored, others, 4, Fog.a, fogA);
-            MapFilterMath.Compose(ids, land, 4, explored, others, fogA, Palette, fill, outline, Fog, po, pf);
+            MapFilterMath.Compose(ids, 4, explored, others, fogA, Palette, fill, outline, Fog, 0, po, pf);
+            // Streamed in row bands (the overlay's worker path): same pixels as one full pass.
+            var bo = new Color32[16];
+            var bf = new Color32[16];
+            for (var y0 = 0; y0 < 4; y0 += 3)
+            {
+                var n = Math.Min(3, 4 - y0) * 4;
+                var (o, f) = (new Color32[n], new Color32[n]);
+                MapFilterMath.Compose(ids, 4, explored, others, fogA, Palette, fill, outline, Fog, y0, o, f);
+                Array.Copy(o, 0, bo, y0 * 4, n);
+                Array.Copy(f, 0, bf, y0 * 4, n);
+            }
+            Assert.Equal(po, bo);
+            Assert.Equal(pf, bf);
             // Biome colour only on explored texels; every other texel is the fog colour at its soft alpha.
             foreach (var px in new[] { po, pf })
             {
@@ -217,15 +227,21 @@ namespace Morgott.UI.Tests
             // Meadows (1) left of x = 5, ocean right; one black forest (2) speck at (2, 4); all explored.
             var land = Enumerable.Range(0, n * n).Select(i => (byte)(i % n < 5 ? 1 : 0)).ToArray();
             land[4 * n + 2] = 2;
-            var w = Enumerable.Range(0, n).Select(x => MapFilterMath.LandMix(land, n, Palette, x, 6).W).ToArray();
+            var all = new BitArray(n * n, true);
+            var none = new BitArray(n * n);
+            var w = Enumerable.Range(0, n).Select(x => MapFilterMath.LandMix(land, all, none, n, Palette, x, 6).W).ToArray();
             Assert.Equal(81, w[2]); // interior (x 0-1 see the grid edge: outside is no land)
             Assert.True(w.Skip(2).Zip(w.Skip(3), (a, b) => b <= a).All(t => t), string.Join(",", w)); // ramps down across the coast
             Assert.True(w[5] > 0 && w[5] < 81 && w[7] == 0, string.Join(",", w)); // first sea texel still carries some land
             // The speck: its own texel is mostly its neighbours' colour (1/9 weight of its own), so it no longer pops.
-            var m = MapFilterMath.LandMix(land, n, Palette, 2, 4);
+            var m = MapFilterMath.LandMix(land, all, none, n, Palette, 2, 4);
             Assert.Equal(81, m.W);
             var r = (m.R + m.W / 2) / m.W;
             Assert.InRange(r, 10, 12); // meadows 10, black forest 20: 10 + 10 x 9/81 = 11.1
+            // Unexplored land is no land (fog of war): only the explored-by-others column 0 counts.
+            var col0 = new BitArray(n * n);
+            for (var y = 0; y < n; y++) col0[y * n] = true;
+            Assert.Equal(3 * 9, MapFilterMath.LandMix(land, none, col0, n, Palette, 0, 4).W); // tent 3 (dx 0) x 9 (dy sum)
         }
 
         [Fact]
