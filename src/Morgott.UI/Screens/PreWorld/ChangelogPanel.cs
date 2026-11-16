@@ -232,7 +232,6 @@ namespace Morgott.UI.PreWorld
             // The window may carry a canvas of its own that does not override sorting: then the menu texts after it in the
             // hierarchy (StartGui/Menu/modded_text, BepInEx Version) drew over the backdrop (run 20261116-131125). Override
             // sorting either way (originals kept for Revert).
-            var rootCanvas = _window.parent ? _window.parent.GetComponentInParent<Canvas>() : null;
             if (!_window.TryGetComponent(out _canvas))
             {
                 _canvas = _window.gameObject.AddComponent<Canvas>();
@@ -240,12 +239,7 @@ namespace Morgott.UI.PreWorld
             }
             else _canvasOrig = (_canvas.overrideSorting, _canvas.sortingLayerID, _canvas.sortingOrder);
             if (!_window.GetComponent<GraphicRaycaster>()) { _window.gameObject.AddComponent<GraphicRaycaster>(); _addedRaycaster = true; }
-            if (rootCanvas)
-            {
-                _canvas.overrideSorting = true;
-                _canvas.sortingLayerID = rootCanvas.rootCanvas.sortingLayerID;
-                _canvas.sortingOrder = rootCanvas.rootCanvas.sortingOrder + 20;
-            }
+            Sort();
             // Parse, filter and the first layout now, while the menu builds (window shown for this one call and hidden in
             // the same frame, nothing drawn): the dynamic serif atlas gets its glyphs and the rows their measures here,
             // the open frame only draws (run 20261116-125447: layout 33.6 ms in the open frame).
@@ -349,7 +343,10 @@ namespace Morgott.UI.PreWorld
         private void OnEnable()
         {
             if (!_window || !_laidOut) return; // Init's own show / hide
-            Stamp(); // FejdStartup.Start's ScreenRegistry.Restyle put the role faces back after Init (run 20261116-131125)
+            Sort();
+            // FejdStartup.Start's ScreenRegistry.Restyle put the role faces back after Init (run 20261116-131125); the
+            // date headers were measured in another face (run 20261116-133155: "16 ноября..."): refit them.
+            if (Stamp()) RefitDates();
             // Re-laid on the first open, a changed file or a new day for the period presets; else shown as it was.
             if (_preset >= 0 && _preset < 2 && _filter.To != DateTime.Today) ApplyPreset();
             if (!_laidOut || FileChanged()) _dirty = true;
@@ -502,10 +499,37 @@ namespace Morgott.UI.PreWorld
 
         // Faces and colours a role restyle (menu Start, theme reload) sets back: serif display face (mixed case, mockup:
         // title, tabs, section titles, dates, mod names), tab state colours. Cheap when unchanged; run on layout and open.
-        private void Stamp()
+        // Sort override above the menu canvas (run 20261116-133155: windowOrder=0 override=False, modded_text over the
+        // backdrop): at menu build the parent chain is inactive and GetComponentInParent(false) found no canvas, so the
+        // override was never set. Inactive parents included; re-applied on open.
+        private void Sort()
+        {
+            var parent = _window.parent ? _window.parent.GetComponentInParent<Canvas>(true) : null;
+            if (!parent || !_canvas) return;
+            var order = parent.rootCanvas.sortingOrder + 20;
+            if (_canvas.overrideSorting && _canvas.sortingOrder == order) return;
+            _canvas.overrideSorting = true;
+            _canvas.sortingLayerID = parent.rootCanvas.sortingLayerID;
+            _canvas.sortingOrder = order;
+        }
+
+        private void RefitDates()
+        {
+            foreach (var r in _dates.Items)
+            {
+                if (!r.Rt.gameObject.activeSelf) continue;
+                var w = r.A.GetPreferredValues(r.A.text).x;
+                Put(r.A, 0f, 6f, w + 4f, 34f);
+                Put(r.Rule, w + 18f, 24f, Mathf.Max(0f, ListW - w - 26f), 1f);
+            }
+        }
+
+        // true when a face was changed back.
+        private bool Stamp()
         {
             var serif = ThemeTokens.GetFont("font.map.header");
-            if (serif) foreach (var t in _serif) if (t && t.font != serif) t.font = serif;
+            var changed = false;
+            if (serif) foreach (var t in _serif) if (t && t.font != serif) { t.font = serif; changed = true; }
             var header = ThemeTokens.GetColor("color.text.header", Hex("#D9DCE0"));
             var title = ThemeTokens.GetColor("color.text.item.title", Hex("#F0C419"));
             foreach (var t in _serif)
@@ -520,6 +544,7 @@ namespace Morgott.UI.PreWorld
             var gold = ThemeTokens.GetColor("color.text.active", Hex("#E8B64A"));
             _tabPackLabel.color = _gameTab ? Body : gold;
             _tabGameLabel.color = _gameTab ? gold : Body;
+            return changed;
         }
 
         private void LayoutMods()
@@ -672,6 +697,7 @@ namespace Morgott.UI.PreWorld
             r.A = Txt(r.Rt, "A", "text.header", TextAlignmentOptions.Left, 24f);
             r.A.color = ThemeTokens.GetColor("color.text.header", Hex("#D9DCE0"));
             r.A.richText = false;
+            r.A.overflowMode = TextOverflowModes.Overflow; // sized to its text (RefitDates), never an ellipsis
             _serif.Add(r.A);
             if (ThemeTokens.GetFont("font.map.header") is TMP_FontAsset f) r.A.font = f;
             r.Rule = Rule(r.Rt, "Rule", Hex("#3D8290"));
