@@ -637,11 +637,17 @@ namespace Morgott.UI.PlayerHud
         private static Image SegmentImage(HudArt art, RectTransform window, string name, string colorToken, bool hex = true)
         {
             var img = art.Image(name, window, null, colorToken, Image.Type.Simple);
-            if (hex) img.material = SegmentMaterial();
+            if (hex)
+            {
+                img.material = SegmentMaterial();
+                img.color = Solid(img.color); // a fill over the dark track (the token's alpha was for the old overlay: washed out)
+            }
             img.raycastTarget = false;
             img.gameObject.SetActive(false);
             return img;
         }
+
+        public static Color Solid(Color c) => new Color(c.r, c.g, c.b, 1f);
 
         // Honeycomb shield fill (Morgott/UI Bar _Mode 2), one material for every segment (colour = the Image colour);
         // null without the morgott_vfx bundle: the segment is then a flat quad.
@@ -697,7 +703,8 @@ namespace Morgott.UI.PlayerHud
             _fx.transform.SetAsFirstSibling();
             _fxMat = FxMaterial(shader, "RuneSkin bar " + Root.name, 0f);
             _fxMat.SetColor("_LagColor", ThemeTokens.GetColor("color.hud.bar.fx.lag", new Color(0.95f, 0.88f, 0.82f)));
-            _fxMat.SetColor("_MissingColor", ThemeTokens.GetColor("color.hud.bar.fx.missing", new Color(0.42f, 0.42f, 0.42f)));
+            // the segmented HP bar's empty parts (HP and shields) are one dark track (shield-segments mockup)
+            _fxMat.SetColor("_MissingColor", ThemeTokens.GetColor(_gearSeg ? "color.hud.segment.track" : "color.hud.bar.fx.missing", new Color(0.42f, 0.42f, 0.42f)));
             _fxMat.SetColor("_SheenColor", ThemeTokens.GetColor("color.hud.shield.sheen", new Color(0.36f, 0.91f, 0.95f, 0.22f)));
             _fxMat.SetColor("_ClotColor", ThemeTokens.GetColor("color.hud.bar.fx.clot", new Color(0.30f, 0.035f, 0.045f)));
             _fx.material = _fxMat;

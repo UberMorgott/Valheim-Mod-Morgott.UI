@@ -499,9 +499,9 @@ Shader "Morgott/UI Bar"
                 float tr = _FxClock >= 0.0 ? _FxClock : _RuneSkinFxClock;
                 float breathe = 0.5 + 0.5 * sin(tr * 1.1 + hash21(h.zw) * 6.2831853);
                 float3 body = cylinder(tint.rgb, uv.y, _HiAmount);
-                body = lerp(body, lerp(tint.rgb, float3(1, 1, 1), 0.55), outline * _HexLine * (0.75 + 0.25 * breathe));
-                body *= 1.0 + 0.06 * (breathe - 0.5) * (1.0 - outline);
-                return fixed4(body * tint.a, tint.a);
+                // thin lit outlines only (the cell bodies stay the plain fill: per-cell tints read as blotches, Codex compare)
+                body = lerp(body, lerp(tint.rgb, float3(1, 1, 1), 0.6), outline * _HexLine * (0.7 + 0.3 * breathe));
+                return fixed4(body * tint.a, tint.a);   // tint.a = group fades (the segment colour itself is solid)
             }
 
             fixed4 frag(v2f IN) : SV_Target

@@ -88,8 +88,8 @@ namespace Morgott.UI.WorldHud
             var parent = s.Bar.parent;
             s.Gear = Segment(parent, GearName, "color.hud.shield", true);
             s.Ext = Segment(parent, ExtName, "color.hud.shield.ext", true);
-            s.GearDiv = Segment(parent, GearDividerName, "color.hud.segment.divider", false);
-            s.ExtDiv = Segment(parent, ExtDividerName, "color.hud.segment.divider", false);
+            s.GearDiv = Segment(parent, GearDividerName, "color.enemy.segment.divider", false);
+            s.ExtDiv = Segment(parent, ExtDividerName, "color.enemy.segment.divider", false);
         }
 
         private static Image Segment(Transform parent, string name, string color, bool hex)
@@ -103,7 +103,7 @@ namespace Morgott.UI.WorldHud
             img.sprite = null;
             img.type = Image.Type.Simple;
             img.material = hex ? BarView.SegmentMaterial() : null;
-            img.color = ThemeTokens.GetColor(color, Color.cyan);
+            img.color = hex ? BarView.Solid(ThemeTokens.GetColor(color, Color.cyan)) : ThemeTokens.GetColor(color, Color.cyan);
             img.raycastTarget = false;
             img.gameObject.SetActive(false);
             return img;
