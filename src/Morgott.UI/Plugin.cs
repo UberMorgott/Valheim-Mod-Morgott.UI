@@ -30,6 +30,7 @@ namespace Morgott.UI
         internal static Jotunn.Entities.CustomLocalization Texts { get; private set; }
         public static ConfigEntry<float> SkinScale { get; private set; }
         public static ConfigEntry<float> PanelFade { get; private set; }
+        public static ConfigEntry<float> ScrollSpeed { get; private set; }
         public static ConfigEntry<float> NumberOutline { get; private set; }
         public static ConfigEntry<bool> CharacterPreview { get; private set; }
         public static ConfigEntry<bool> MovableWindows { get; private set; }
@@ -214,6 +215,9 @@ namespace Morgott.UI
             PanelFade = Config.Bind("Layout", "PanelFade", 0.15f, new ConfigDescription(
                 "Seconds the inventory screen fades in / out in place (open and close; 0 = instant). Replaces the vanilla slide, which moved the Morgott.UI panels off their layout.",
                 new AcceptableValueRange<float>(0f, 1f)));
+            ScrollSpeed = Config.Bind("UI", "Scroll Speed", 1f, new ConfigDescription(
+                "Mouse wheel speed of every scroll list and text (trader, crafting description, mod panels): 1 = one notch scrolls 1.5 rows / lines of that list. Applied live.",
+                new AcceptableValueRange<float>(0.25f, 4f)));
             CharacterPreview = Config.Bind("Layout", "CharacterPreview", true,
                 "Live 3D preview of your character in the inventory (off = carved silhouette). Applies on the next game start.");
             MovableWindows = Config.Bind("Layout", "MovableWindows", true,

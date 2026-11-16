@@ -83,7 +83,6 @@ namespace Morgott.UI.PreWorld
             _scroll.content = _content;
             _scroll.horizontal = false;
             _scroll.movementType = ScrollRect.MovementType.Clamped;
-            _scroll.scrollSensitivity = 30f;
 
             // The list replaces the carousel arrows (still wired for gamepad shoulder navigation in vanilla Update).
             Hide(fejd.m_csLeftButton);

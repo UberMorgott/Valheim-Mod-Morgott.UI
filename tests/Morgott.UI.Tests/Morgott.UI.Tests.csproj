@@ -36,6 +36,7 @@
     <Compile Include="..\..\src\Morgott.UI\Restyle\PanelMath.cs" Link="Linked\PanelMath.cs" />
     <Compile Include="..\..\src\Morgott.UI\Restyle\LabelFit.cs" Link="Linked\LabelFit.cs" />
     <Compile Include="..\..\src\Morgott.UI\Restyle\LayoutMath.cs" Link="Linked\LayoutMath.cs" />
+    <Compile Include="..\..\src\Morgott.UI\Restyle\ScrollMath.cs" Link="Linked\ScrollMath.cs" />
     <Compile Include="..\..\src\Morgott.UI\Restyle\RenderGateMath.cs" Link="Linked\RenderGateMath.cs" />
     <Compile Include="..\..\src\Morgott.UI\Compat\FadeParkMath.cs" Link="Linked\FadeParkMath.cs" />
     <Compile Include="..\..\src\Morgott.UI\Restyle\WindowMoveMath.cs" Link="Linked\WindowMoveMath.cs" />

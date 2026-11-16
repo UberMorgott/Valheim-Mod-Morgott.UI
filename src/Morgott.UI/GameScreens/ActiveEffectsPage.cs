@@ -253,7 +253,6 @@ namespace Morgott.UI.GameScreens
             scroll.horizontal = false;
             scroll.vertical = true;
             scroll.movementType = ScrollRect.MovementType.Clamped;
-            scroll.scrollSensitivity = 40f;
             scroll.viewport = viewport;
             scroll.content = content;
             // A raycast target over the whole view so the wheel scrolls anywhere on it.

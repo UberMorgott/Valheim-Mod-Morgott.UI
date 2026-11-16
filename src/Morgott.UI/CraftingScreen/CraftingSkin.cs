@@ -1409,7 +1409,6 @@ namespace Morgott.UI.CraftingScreen
                 _descScroll.vertical = true;
                 _descScroll.movementType = ScrollRect.MovementType.Clamped;
                 _descScroll.inertia = false;
-                _descScroll.scrollSensitivity = 24f;
                 _descScroll.viewport = _descView;
                 d.rectTransform.SetParent(_descView, false);
                 _descScroll.content = d.rectTransform;
@@ -1516,7 +1515,6 @@ namespace Morgott.UI.CraftingScreen
                 sr.vertical = true;
                 sr.movementType = ScrollRect.MovementType.Clamped;
                 sr.inertia = false;
-                sr.scrollSensitivity = 24f;
                 sr.viewport = _chainView;
                 sr.content = text;
             }
