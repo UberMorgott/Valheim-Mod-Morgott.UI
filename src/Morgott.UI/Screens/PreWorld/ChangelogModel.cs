@@ -7,7 +7,7 @@ namespace Morgott.UI.PreWorld
 {
     // Pack changelog data (BepInEx\config\Morgott.UI\changelog.json, written by the pack generator mod-updaters
     // cmd/changelog): {"schemaVersion":1,"generated":"..","entries":[{id,date,mod,version,type,text:{en,ru},src}]}, newest
-    // first. Pure logic (unit tested): parse, filter by period / type / mod, group date -> mod + version -> lines.
+    // first. Pure logic (unit tested): parse, filter by period / type / mod, group mod + version + date -> lines, mod list search / solo.
     public sealed class ChangelogEntry
     {
         public string Id, Mod, Version, En, Ru;
@@ -16,12 +16,12 @@ namespace Morgott.UI.PreWorld
         public string Text(bool russian) => russian && !string.IsNullOrEmpty(Ru) ? Ru : En ?? Ru ?? "";
     }
 
-    public enum ChangelogRowKind { Date, Mod, Line }
+    public enum ChangelogRowKind { Mod, Line }
 
     public readonly struct ChangelogRow
     {
         public readonly ChangelogRowKind Kind;
-        public readonly ChangelogEntry Entry; // Date / Mod rows: the group's first entry
+        public readonly ChangelogEntry Entry; // Mod rows (mod + version + date header): the group's first entry
         public ChangelogRow(ChangelogRowKind kind, ChangelogEntry entry) { Kind = kind; Entry = entry; }
     }
 
@@ -103,22 +103,35 @@ namespace Morgott.UI.PreWorld
                 if (!byKey.TryGetValue(key, out var g)) { byKey[key] = g = new List<ChangelogEntry>(); groups.Add(g); }
                 g.Add(e);
             }
-            // Entries come newest first (Parse), so groups do too and one day's groups are adjacent.
-            DateTime? day = null;
+            // Entries come newest first (Parse), so groups do too; each group's header carries its date.
             foreach (var g in groups)
             {
-                if (day != g[0].Date) { day = g[0].Date; v.Rows.Add(new ChangelogRow(ChangelogRowKind.Date, g[0])); }
                 v.Rows.Add(new ChangelogRow(ChangelogRowKind.Mod, g[0]));
                 foreach (var e in g) v.Rows.Add(new ChangelogRow(ChangelogRowKind.Line, e));
             }
             return v;
         }
 
-        // "16 ноября 2026" / "16 November 2026".
-        public static string DateHeader(DateTime d, bool russian) =>
-            russian ? $"{d.Day} {RuGenitive[d.Month - 1]} {d.Year}" : d.ToString("d MMMM yyyy", CultureInfo.InvariantCulture);
+        // Mod list search: case-insensitive substring, empty query = every mod (order kept).
+        public static List<string> MatchMods(List<string> mods, string query)
+        {
+            query = (query ?? "").Trim();
+            return query.Length == 0 ? mods : mods.FindAll(m => m.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0);
+        }
 
-        private static readonly string[] RuGenitive = { "января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря" };
+        // "All" / "None" over the given (searched) mods.
+        public static void ShowMods(ChangelogFilter f, List<string> mods, bool show)
+        {
+            foreach (var m in mods) { if (show) f.HiddenMods.Remove(m); else f.HiddenMods.Add(m); }
+        }
+
+        // "only": just this mod visible; again on the same solo mod = every mod back.
+        public static void Solo(ChangelogFilter f, List<string> mods, string mod)
+        {
+            var alreadySolo = !f.HiddenMods.Contains(mod) && f.HiddenMods.Count == mods.Count - 1;
+            f.HiddenMods.Clear();
+            if (!alreadySolo) foreach (var m in mods) if (m != mod) f.HiddenMods.Add(m);
+        }
 
         public static bool TryParseDay(string s, out DateTime d) =>
             DateTime.TryParseExact((s ?? "").Trim(), "dd.MM.yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out d);

@@ -93,6 +93,7 @@ namespace Morgott.UI.PreWorld
         {
             Plates(fejd);
             Layout(fejd);
+            EnglishOnlyLines(fejd);
             ScreenRegistry.Restyle(fejd.transform);
             // Modded notice (m_moddedText): the body face is wider than the vanilla one, the fixed box cut the last line
             // (run 20261022-105515): shrinks to fit.
@@ -111,6 +112,26 @@ namespace Morgott.UI.PreWorld
                 fejd.m_versionLabel.overflowMode = TextOverflowModes.Overflow;                // Vanilla 14: below the readability floor (m5-text-min, run 20261022-205726).
                 fejd.m_versionLabel.fontSize = Mathf.Max(fejd.m_versionLabel.fontSize, ThemeTokens.GetFloat("size.text.readable", 16f));
             }
+        }
+
+        // Menu lines written in English only (no vanilla token), rewritten through our LOC after every Start postfix:
+        // - m_showLogButton label (prefab text; the localization table has no player.log button token);
+        // - ConfigurationManager's entry (SetupMainMenuButton writes its caption cfg; only its default caption, a custom
+        //   one stays);
+        // - DisplayBepInExInfo's corner text (DisplayInfoPlugin.OnFejdStartup: uGUI Text "BepInEx Version" next to
+        //   m_versionLabel), rebuilt from the same values.
+        private static void EnglishOnlyLines(FejdStartup fejd)
+        {
+            var loc = Localization.instance;
+            if (loc == null) return;
+            var log = fejd.m_showLogButton ? fejd.m_showLogButton.transform.Find("Text") : null;
+            if (log && log.TryGetComponent<TMP_Text>(out var logText)) logText.text = loc.Localize("$ui_menu_showlog");
+            var cm = fejd.m_menuList ? fejd.m_menuList.transform.Find("MenuEntries/Configuration Manager/Text") : null;
+            if (cm && cm.TryGetComponent<TMP_Text>(out var cmText) && cmText.text == "Mods settings") cmText.text = loc.Localize("$ui_menu_modsettings");
+            var info = fejd.m_versionLabel ? fejd.m_versionLabel.transform.parent.Find("BepInEx Version") : null;
+            if (info && info.TryGetComponent<Text>(out var infoText))
+                infoText.text = string.Format(loc.Localize("$ui_menu_bepinex"), typeof(BepInEx.BaseUnityPlugin).Assembly.GetName().Version, BepInEx.Bootstrap.Chainloader.PluginInfos.Count)
+                    + (global::Console.instance != null && global::Console.instance.IsConsoleEnabled() ? "\n" + loc.Localize("$ui_menu_console") : "");
         }
 
         // Tab row / separator / content bands (HeaderBand): the start-game mode tabs over Panel/"bkg (1)" over the

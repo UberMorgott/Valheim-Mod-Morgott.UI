@@ -615,6 +615,7 @@
   "ui_portal_edit_tip": "Настроить портал",
   "ui_changelog_title": "ИЗМЕНЕНИЯ СБОРКИ",
   "ui_changelog_tab_pack": "Сборка",
+  "ui_changelog_tab_game": "Игра Valheim",
   "ui_changelog_period": "Период",
   "ui_changelog_from": "с",
   "ui_changelog_to": "по",
@@ -628,9 +629,17 @@
   "ui_changelog_type_balance": "Баланс",
   "ui_changelog_type_perf": "Производительность",
   "ui_changelog_type_mods": "Моды",
-  "ui_changelog_mod": "Мод",
-  "ui_changelog_allmods": "Все моды",
+  "ui_changelog_mod": "Моды",
+  "ui_changelog_search": "Поиск мода…",
+  "ui_changelog_mods_all": "Все",
+  "ui_changelog_mods_none": "Ни одного",
+  "ui_changelog_only": "только",
+  "ui_changelog_close": "× Закрыть (Esc)",
   "ui_changelog_shown": "Показано {0} из {1}",
   "ui_changelog_empty_file": "Список изменений сборки пока недоступен.",
-  "ui_changelog_empty_filter": "Нет изменений по выбранным фильтрам."
+  "ui_changelog_empty_filter": "Нет изменений по выбранным фильтрам.",
+  "ui_menu_showlog": "Открыть player.log",
+  "ui_menu_modsettings": "Настройки модов",
+  "ui_menu_bepinex": "Запущен BepInEx {0}\nЗагружено плагинов: {1}",
+  "ui_menu_console": "F5 — открыть консоль"
 }
