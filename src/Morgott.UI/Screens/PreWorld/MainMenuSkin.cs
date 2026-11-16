@@ -184,14 +184,10 @@ namespace Morgott.UI.PreWorld
             }
             // Closing: vanilla closes the changelog only through the toggle that opened it (BottomLeftButtons/
             // showChangelog, OnButtonShowChangelog :1222). The RuneSkin stack (x 0..565, y 90..770 at 1080p, run
-            // 20261022-194855) lay over that button and over the menu column, so nothing closed it. The window docks
-            // right of the menu column and the bottom-left links (SidePanel, drawn above them), and gets a close
-            // button in its top-right corner plus Esc / gamepad B (ChangelogClose).
-            var menu = fejd.m_menuList ? (RectTransform)fejd.m_menuList.transform : null;
-            var links = fejd.m_mainMenu ? fejd.m_mainMenu.transform.Find("BottomLeftButtons") as RectTransform : null;
-            // The drawn plates (knots, caps) reach past the MenuList rect (run 20261022-205726: 24 px apart on paper, touching
-            // on screen): the window keeps clear of every entry button, not of the list rect.
-            SidePanel.Ensure(window, () => ButtonRects(menu, links), decor: false);
+            // 20261022-194855) lay over that button and over the menu column, so nothing closed it. Since 0.35.0 (pack
+            // changelog, approved mockup 02-sidebar) the window is a modal centred over a dimmed backdrop (ChangelogPanel:
+            // own canvas above the menu; a click on the backdrop closes it) with a close button in its top-right corner
+            // plus Esc / gamepad B (ChangelogClose).
             // Vanilla's 10-unit PatchlogScroll read as a thin pale line: theme width (track + handle art from the roles).
             if (window.TryGetComponent<ChangeLog>(out var log) && log.m_scrollbar)
                 Grow((RectTransform)log.m_scrollbar.transform, ThemeTokens.GetFloat("size.scrollbar.w", 16f), 0f);
@@ -279,20 +275,6 @@ namespace Morgott.UI.PreWorld
                 SidePanel.Ensure(help, () => new[] { LargestPanel(fejd.m_startGamePanel.transform, help) }, onTop: false);
         }
 
-        // Rects of the drawn images under the given roots (plus the roots themselves).
-        private static RectTransform[] ButtonRects(params RectTransform[] roots)
-        {
-            var list = new List<RectTransform>();
-            foreach (var r in roots)
-            {
-                if (!r) continue;
-                list.Add(r);
-                // Every drawn image (plates, knots), not only the button rects.
-                foreach (var g in r.GetComponentsInChildren<Image>(false))
-                    if (g.enabled && g.sprite) list.Add(g.rectTransform);
-            }
-            return list.ToArray();
-        }
 
         // Host of the largest active RuneSkin panel stack under scope, outside exclude (the window a side panel describes).
         private static RectTransform LargestPanel(Transform scope, Transform exclude)

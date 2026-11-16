@@ -15,16 +15,20 @@ using UnityEngine.UI;
 namespace Morgott.UI.PreWorld
 {
     // Pack changelog inside the vanilla changelog window (FejdStartup.m_changeLog; approved mockup
-    // docs\mockups\2026-11-16-changelog\02-sidebar.png, style-sheet.md there). Header "PACK CHANGES", tabs Pack (ours) |
-    // Valheim (the vanilla ScrollPanel + PatchlogScroll, text unchanged). Pack tab: sidebar period / type / mod filters, a
-    // virtualized list (scroll position = first row index, only the rows in view are laid out and measured, pooled) and
-    // the "Shown X of Y" footer. Data ChangelogModel (BepInEx\config\Morgott.UI\changelog.json, reread when it changed);
-    // the vanilla "new" badge also follows that file (MainMenuAdapter GetChangelogHash postfix, FileHash). Layout in
-    // window units = 1080p canvas units, measured from the mockup (mockup px x 1.148).
+    // docs\mockups\2026-11-16-changelog\02-sidebar.png, style-sheet.md there): a modal window centred on the screen over a
+    // dimmed backdrop (click outside the window, the close button or Esc closes it). Header "PACK CHANGES", tabs Pack
+    // (ours) | Valheim (the vanilla ScrollPanel + PatchlogScroll, text unchanged). Pack tab: sidebar period / type / mod
+    // filters, a virtualized list (scroll position = first row index, only the rows in view are laid out and measured,
+    // pooled per row kind) and the "Shown X of Y" footer. Data ChangelogModel (BepInEx\config\Morgott.UI\changelog.json):
+    // parsed and laid out once while the menu builds (Init), on open only when the file changed, so the open frame does
+    // no parsing (run 20261116-122424: 70 ms open hitch with the parse in the open frame). The vanilla "new" badge also
+    // follows that file (MainMenuAdapter GetChangelogHash postfix, FileHash). Layout in window units = 1080p canvas
+    // units, measured from the mockup (mockup px x 1.148).
     [DisallowMultipleComponent]
     public sealed class ChangelogPanel : MonoBehaviour, IRevertible
     {
         public const string RootName = "MorgottChangelog";
+        public const string ScrimName = "MorgottChangelogScrim";
         public static string FilePath => Path.Combine(BepInEx.Paths.ConfigPath, "Morgott.UI", "changelog.json");
 
         // Layout (window units, from the window's top-left).
@@ -36,9 +40,11 @@ namespace Morgott.UI.PreWorld
         private FejdStartup _fejd;
         private RectTransform _window, _root, _pack, _list, _modList;
         private readonly List<(RectTransform rt, Vector2 aMin, Vector2 aMax, Vector2 oMin, Vector2 oMax, bool active)> _vanilla = new List<(RectTransform, Vector2, Vector2, Vector2, Vector2, bool)>();
-        private Vector2 _vanillaSize;
+        private Vector2 _vanillaMin, _vanillaMax, _vanillaPivot, _vanillaPos, _vanillaSize;
         private RectTransform _topic, _scrollPanel, _scrollbar;
-        private bool _gameTab, _dirty = true;
+        private Canvas _canvas;
+        private bool _addedCanvas, _gameTab, _laidOut, _dirty = true;
+        private GameObject _scrim;
 
         // data
         private List<ChangelogEntry> _all = new List<ChangelogEntry>();
@@ -53,23 +59,31 @@ namespace Morgott.UI.PreWorld
 
         // widgets
         private Button _tabPack, _tabGame;
-        private TMP_Text _tabPackLabel, _tabGameLabel, _empty, _footer;
+        private TMP_Text _title, _tabPackLabel, _tabGameLabel, _empty, _footer;
+        private readonly List<TMP_Text> _serif = new List<TMP_Text>();
         private Image _underline, _thumb, _track;
         private TMP_InputField _from, _to;
         private readonly Button[] _presets = new Button[3];
+        private readonly Image[][] _presetRims = new Image[3][];
         private readonly TMP_Text[] _presetLabels = new TMP_Text[3];
         private readonly Button[] _chips = new Button[6];
-        private readonly Image[] _chipFills = new Image[6];
-        private readonly TMP_Text[] _chipLabels = new TMP_Text[6], _chipCounts = new TMP_Text[6];
-        private readonly List<Row> _rows = new List<Row>();
+        private readonly Image[][] _chipRims = new Image[6][];
+        private readonly TMP_Text[] _chipLabels = new TMP_Text[6], _chipCounts = new TMP_Text[6], _chipDots = new TMP_Text[6];
+        private readonly Pool _dates = new Pool(), _modHeads = new Pool(), _lines = new Pool();
         private readonly List<ModRow> _modRows = new List<ModRow>();
-        private int _rowsUsed;
 
         private sealed class Row
         {
             public RectTransform Rt;
             public TMP_Text A, B;
             public Image Tag, Rule;
+            public Image[] Rim;
+        }
+
+        private sealed class Pool
+        {
+            public readonly List<Row> Items = new List<Row>();
+            public int Used;
         }
 
         private sealed class ModRow
@@ -98,6 +112,13 @@ namespace Morgott.UI.PreWorld
             }
         }
 
+        // Dimmed backdrop: a click outside the window closes it through the vanilla toggle (badge hash written as vanilla).
+        private sealed class Backdrop : MonoBehaviour, IPointerClickHandler
+        {
+            public Action<PointerEventData> Click;
+            public void OnPointerClick(PointerEventData e) => Click?.Invoke(e);
+        }
+
         public static ChangelogPanel Ensure(FejdStartup fejd, RectTransform window)
         {
             if (!fejd || !window) return null;
@@ -110,10 +131,20 @@ namespace Morgott.UI.PreWorld
             return p;
         }
 
-        // The file's stable hash folded into the vanilla one (0 = no file: the vanilla badge alone).
+        // The file's stable hash folded into the vanilla one (0 = no file: the vanilla badge alone); cached per stamp + size
+        // (the toggle asks on every open).
+        private static (DateTime stamp, long size, int hash) _hashCache = (DateTime.MinValue, -2, 0);
+
         public static int FileHash()
         {
-            try { return File.Exists(FilePath) ? File.ReadAllText(FilePath).GetStableHashCode() : 0; }
+            try
+            {
+                var fi = new FileInfo(FilePath);
+                if (!fi.Exists) return 0;
+                if (_hashCache.stamp == fi.LastWriteTimeUtc && _hashCache.size == fi.Length) return _hashCache.hash;
+                _hashCache = (fi.LastWriteTimeUtc, fi.Length, File.ReadAllText(fi.FullName).GetStableHashCode());
+                return _hashCache.hash;
+            }
             catch (IOException) { return 0; }
             catch (UnauthorizedAccessException) { return 0; }
         }
@@ -122,14 +153,22 @@ namespace Morgott.UI.PreWorld
         private static string L(string token) => Localization.instance != null ? Localization.instance.Localize(token) : token;
         private static Color Hex(string hex) => ColorUtility.TryParseHtmlString(hex, out var c) ? c : Color.white;
         private static Color TypeColor(int t) => ThemeTokens.GetColor("color.changelog." + ChangelogModel.Types[t], Hex(TypeColors[t]));
+        private static Color Body => ThemeTokens.GetColor("color.text.body", Hex("#E3E6E8"));
+        private static Color Muted => ThemeTokens.GetColor("color.state.disabled", Hex("#8A9096"));
 
         // ---------------------------------------------------------------- build
 
         private void Init()
         {
+            // Modal, centred on the screen (mockup 02): the vanilla window sat at a fixed spot left of the centre.
+            _vanillaMin = _window.anchorMin;
+            _vanillaMax = _window.anchorMax;
+            _vanillaPivot = _window.pivot;
+            _vanillaPos = _window.anchoredPosition;
             _vanillaSize = _window.sizeDelta;
-            if (Mathf.Approximately(_window.anchorMin.x, _window.anchorMax.x) && Mathf.Approximately(_window.anchorMin.y, _window.anchorMax.y))
-                _window.sizeDelta = new Vector2(ThemeTokens.GetFloat("size.changelog.w", W), ThemeTokens.GetFloat("size.changelog.h", H));
+            _window.anchorMin = _window.anchorMax = _window.pivot = new Vector2(0.5f, 0.5f);
+            _window.anchoredPosition = Vector2.zero;
+            _window.sizeDelta = new Vector2(ThemeTokens.GetFloat("size.changelog.w", W), ThemeTokens.GetFloat("size.changelog.h", H));
             _topic = _window.Find("Topic") as RectTransform;
             _scrollPanel = _window.Find("ScrollPanel") as RectTransform;
             _scrollbar = _window.TryGetComponent<ChangeLog>(out var log) && log.m_scrollbar ? (RectTransform)log.m_scrollbar.transform : _window.Find("PatchlogScroll") as RectTransform;
@@ -146,21 +185,37 @@ namespace Morgott.UI.PreWorld
                 _scrollbar.offsetMax = new Vector2(-36f, -(ListY + 6f));
             }
 
+            // Backdrop: first child, reaching far past the window over the whole screen, drawn under the window.
+            var scrim = new GameObject(ScrimName, typeof(RectTransform)).AddComponent<Image>();
+            scrim.rectTransform.SetParent(_window, false);
+            scrim.rectTransform.SetAsFirstSibling();
+            Stretch(scrim.rectTransform, -6000f, -6000f, -6000f, -6000f);
+            scrim.color = ThemeTokens.GetColor("color.changelog.scrim", new Color(0.016f, 0.027f, 0.039f, 0.8f));
+            scrim.raycastTarget = true;
+            DollCell.Mark(scrim, "content", "changelog modal backdrop");
+            scrim.gameObject.AddComponent<Backdrop>().Click = e =>
+            {
+                if (RectTransformUtility.RectangleContainsScreenPoint(_window, e.position, e.pressEventCamera)) return;
+                if (_fejd && _fejd.m_changeLog && _fejd.m_changeLog.activeInHierarchy) _fejd.OnButtonShowChangelog();
+            };
+            _scrim = scrim.gameObject;
+
             _root = NewRect(RootName, _window);
             Stretch(_root, 0f, 0f, 0f, 0f);
             // Below the close button (ChangelogClose adds it as the last sibling).
             if (_window.Find(ChangelogClose.ButtonName) is Transform close) _root.SetSiblingIndex(close.GetSiblingIndex());
 
-            var title = Txt(_root, "Title", "window.title", TextAlignmentOptions.Center, 30f);
-            title.characterSpacing = 18f;
-            title.text = L("$ui_changelog_title");
-            Put(title, 120f, 12f, W - 240f, 40f);
+            _title = Txt(_root, "Title", "window.title", TextAlignmentOptions.Center, 31f);
+            _title.characterSpacing = 14f;
+            _title.text = L("$ui_changelog_title");
+            _serif.Add(_title);
+            Put(_title, 120f, 12f, W - 240f, 40f);
 
             _tabPack = Btn(_root, "TabPack", "tab", out _tabPackLabel, () => { _gameTab = false; _dirty = true; });
             _tabGame = Btn(_root, "TabGame", "tab", out _tabGameLabel, () => { _gameTab = true; _dirty = true; });
             _tabPackLabel.text = L("$ui_changelog_tab_pack");
             _tabGameLabel.text = "Valheim";
-            foreach (var t in new[] { _tabPackLabel, _tabGameLabel }) { t.font = title.font; t.fontSize = ThemeTokens.GetFloat("size.startgame.tab.font", 21f); }
+            foreach (var t in new[] { _tabPackLabel, _tabGameLabel }) { t.fontSize = ThemeTokens.GetFloat("size.startgame.tab.font", 21f) + 1f; _serif.Add(t); }
             Put(_tabPack, 52f, 62f, 232f, 42f);
             Put(_tabGame, 300f, 62f, 222f, 42f);
             _underline = Rule(_root, "TabUnderline", Hex("#4FE0E6"));
@@ -171,12 +226,22 @@ namespace Morgott.UI.PreWorld
             Stretch(_pack, 0f, 0f, 0f, 0f);
             BuildSidebar();
             BuildList();
+            // Parse + filter + the row objects now, while the menu builds: the open frame only lays out the rows in view
+            // (TMP measures nothing on a never-shown text: the prefix measured 0 at menu build, run 20261116-122424).
+            var sw = Stopwatch.StartNew();
+            Load();
+            _view = ChangelogModel.Build(_all, _filter);
+            for (var i = 0; i < 6; i++) Next(_dates, NewDateRow);
+            for (var i = 0; i < 10; i++) Next(_modHeads, NewModHead);
+            for (var i = 0; i < 20; i++) Next(_lines, NewLineRow);
+            foreach (var pool in new[] { _dates, _modHeads, _lines }) { foreach (var r in pool.Items) r.Rt.gameObject.SetActive(false); pool.Used = 0; }
+            Plugin.Log.LogInfo($"[Morgott.UI] changelog: {_all.Count} entries, load {sw.Elapsed.TotalMilliseconds:F1} ms at menu build{(_error != null ? ", " + _error : "")}");
         }
 
         private void BuildSidebar()
         {
             var p = _pack;
-            Label(p, "PeriodLabel", "$ui_changelog_period", 120f);
+            Label(p, "PeriodLabel", "$ui_changelog_period", 118f);
             _from = DateField(p, "From", "$ui_changelog_from", 152f, true);
             _to = DateField(p, "To", "$ui_changelog_to", 187f, false);
             string[] presetKeys = { "$ui_changelog_days7", "$ui_changelog_days30", "$ui_changelog_all" };
@@ -185,32 +250,31 @@ namespace Morgott.UI.PreWorld
             {
                 var n = i;
                 _presets[i] = Btn(p, "Preset" + i, "field", out _presetLabels[i], () => { _preset = n; ApplyPreset(); });
+                _presetRims[i] = Rim(_presets[i].transform);
                 _presetLabels[i].text = L(presetKeys[i]);
                 _presetLabels[i].fontSize = 16f;
                 Put(_presets[i], SideX + px[i], 224f, 82f, 28f);
             }
-            Label(p, "TypeLabel", "$ui_changelog_type", 260f);
+            Label(p, "TypeLabel", "$ui_changelog_type", 258f);
             for (var i = 0; i < 6; i++)
             {
                 var n = i;
+                // Mockup chip: dark glass pill (field plate), thin rim in the type colour, coloured dot, light label,
+                // count in the type colour.
                 _chips[i] = Btn(p, "Type" + i, "field", out _chipLabels[i], () => { _filter.Types[n] = !_filter.Types[n]; _scroll = 0; _dirty = true; });
-                _chipFills[i] = Img(_chips[i].transform, "Fill", "ib.rule");
-                _chipFills[i].transform.SetAsFirstSibling();
-                Stretch(_chipFills[i].rectTransform, 3f, 3f, 3f, 3f);
+                _chipRims[i] = Rim(_chips[i].transform);
                 _chipLabels[i].alignment = TextAlignmentOptions.Left;
                 _chipLabels[i].text = L("$ui_changelog_type_" + ChangelogModel.Types[i]);
                 _chipLabels[i].fontSize = 16f;
                 Stretch(_chipLabels[i].rectTransform, 30f, 0f, 50f, 0f);
-                var dot = Txt(_chips[i].transform, "Dot", "text.body", TextAlignmentOptions.Center, 16f);
-                dot.text = "●";
-                dot.color = TypeColor(i);
-                Put(dot, 6f, 0f, 20f, 25f);
+                _chipDots[i] = Txt(_chips[i].transform, "Dot", "text.body", TextAlignmentOptions.Center, 16f);
+                _chipDots[i].text = "●";
+                Put(_chipDots[i], 6f, 0f, 20f, 25f);
                 _chipCounts[i] = Txt(_chips[i].transform, "Count", "text.body", TextAlignmentOptions.Right, 16f);
-                _chipCounts[i].color = TypeColor(i);
                 Put(_chipCounts[i], SideW - 70f, 0f, 60f, 25f);
                 Put(_chips[i], SideX, 288f + i * 29.4f, SideW, 25f);
             }
-            Label(p, "ModLabel", "$ui_changelog_mod", 466f);
+            Label(p, "ModLabel", "$ui_changelog_mod", 464f);
             var all = Btn(p, "AllMods", "dropdown.field", out var allLabel, () =>
             {
                 if (_filter.HiddenMods.Count > 0) _filter.HiddenMods.Clear();
@@ -258,7 +322,27 @@ namespace Morgott.UI.PreWorld
 
         // ---------------------------------------------------------------- lifecycle
 
-        private void OnEnable() => _dirty = true;
+        private void OnEnable()
+        {
+            // Above the menu column and the bottom-left links (own canvas, sorted over the root, as SidePanel does).
+            if (!_window) return;
+            var root = _window.parent ? _window.parent.GetComponentInParent<Canvas>() : null;
+            if (!_canvas && !_window.TryGetComponent(out _canvas))
+            {
+                _canvas = _window.gameObject.AddComponent<Canvas>();
+                _addedCanvas = true;
+                if (!_window.GetComponent<GraphicRaycaster>()) _window.gameObject.AddComponent<GraphicRaycaster>();
+            }
+            if (_addedCanvas && root)
+            {
+                _canvas.overrideSorting = true;
+                _canvas.sortingLayerID = root.rootCanvas.sortingLayerID;
+                _canvas.sortingOrder = root.rootCanvas.sortingOrder + 20;
+            }
+            // Re-laid on the first open, a changed file or a new day for the period presets; else shown as it was.
+            if (_preset >= 0 && _preset < 2 && _filter.To != DateTime.Today) ApplyPreset();
+            if (!_laidOut || FileChanged()) _dirty = true;
+        }
 
         private void LateUpdate()
         {
@@ -268,8 +352,10 @@ namespace Morgott.UI.PreWorld
             _dirty = false;
             var sw = Stopwatch.StartNew();
             var loaded = Load();
+            var first = !_laidOut;
             Layout();
-            if (loaded) Plugin.Log.LogInfo($"[Morgott.UI] changelog: {_all.Count} entries, {_view?.Shown ?? 0} shown, load+layout {sw.Elapsed.TotalMilliseconds:F1} ms{(_error != null ? ", " + _error : "")}");
+            _laidOut = true;
+            if (loaded || first) Plugin.Log.LogInfo($"[Morgott.UI] changelog: {_all.Count} entries, {_view?.Shown ?? 0} shown, {(loaded ? "load+" : "")}layout {sw.Elapsed.TotalMilliseconds:F1} ms{(_error != null ? ", " + _error : "")}");
         }
 
         // Tab state: vanilla title always off (ours replaces it), vanilla text only on the Valheim tab.
@@ -286,19 +372,26 @@ namespace Morgott.UI.PreWorld
             if (c && c.gameObject.activeSelf != on) c.gameObject.SetActive(on);
         }
 
+        private static (DateTime stamp, long size) Stat()
+        {
+            try
+            {
+                var fi = new FileInfo(FilePath);
+                return fi.Exists ? (fi.LastWriteTimeUtc, fi.Length) : (DateTime.MinValue, -1L);
+            }
+            catch (Exception e) when (e is IOException || e is UnauthorizedAccessException) { return (DateTime.MinValue, -1L); }
+        }
+
+        private bool FileChanged()
+        {
+            var (stamp, size) = Stat();
+            return stamp != _stamp || size != _size;
+        }
+
         // Reads the file when it changed (stamp + size); true when it was (re)read.
         private bool Load()
         {
-            var path = FilePath;
-            DateTime stamp;
-            long size;
-            try
-            {
-                var fi = new FileInfo(path);
-                stamp = fi.Exists ? fi.LastWriteTimeUtc : DateTime.MinValue;
-                size = fi.Exists ? fi.Length : -1;
-            }
-            catch (Exception e) when (e is IOException || e is UnauthorizedAccessException) { stamp = DateTime.MinValue; size = -1; }
+            var (stamp, size) = Stat();
             if (stamp == _stamp && size == _size && _view != null) return false;
             _stamp = stamp;
             _size = size;
@@ -307,7 +400,7 @@ namespace Morgott.UI.PreWorld
             if (size < 0) _error = "no file";
             else
             {
-                try { _all = ChangelogModel.Parse(File.ReadAllText(path), out _error) ?? new List<ChangelogEntry>(); }
+                try { _all = ChangelogModel.Parse(File.ReadAllText(FilePath), out _error) ?? new List<ChangelogEntry>(); }
                 catch (Exception e) when (e is IOException || e is UnauthorizedAccessException) { _error = "unreadable: " + e.Message; }
             }
             _mods = ChangelogModel.Mods(_all);
@@ -348,43 +441,45 @@ namespace Morgott.UI.PreWorld
 
         private void Layout()
         {
+            // Serif display face (mixed case, mockup: title, tabs, section titles, dates, mod names); a theme reload restyles
+            // the role font back, so it is set on every layout.
+            var serif = ThemeTokens.GetFont("font.map.header");
+            if (serif) foreach (var t in _serif) if (t && t.font != serif) t.font = serif;
             // Tabs: selected = not interactable (tab role: disabled sprite = selected plate), gold label + cyan underline.
             _tabPack.interactable = _gameTab;
             _tabGame.interactable = !_gameTab;
             var gold = ThemeTokens.GetColor("color.text.active", Hex("#E8B64A"));
-            var body = ThemeTokens.GetColor("color.text.body", Hex("#E3E6E8"));
-            _tabPackLabel.color = _gameTab ? body : gold;
-            _tabGameLabel.color = _gameTab ? gold : body;
+            _tabPackLabel.color = _gameTab ? Body : gold;
+            _tabGameLabel.color = _gameTab ? gold : Body;
             Put(_underline, _gameTab ? 300f : 52f, 104f, _gameTab ? 222f : 232f, 3f);
             if (_gameTab) return;
 
             _view = ChangelogModel.Build(_all, _filter);
-            var muted = ThemeTokens.GetColor("color.state.disabled", Hex("#8A9096"));
-            for (var i = 0; i < 3; i++) Selected(_presets[i], _presetLabels[i], _preset == i, Hex("#4FE0E6"));
+            var cyan = Hex("#4FE0E6");
+            for (var i = 0; i < 3; i++)
+            {
+                var on = _preset == i;
+                SetRim(_presetRims[i], on ? cyan : Color.clear);
+                _presetLabels[i].color = on ? Body : Muted;
+            }
             for (var i = 0; i < 6; i++)
             {
                 var on = _filter.Types[i];
                 var c = TypeColor(i);
-                ((Image)_chips[i].targetGraphic).color = on ? c : muted;
-                _chipFills[i].color = on ? new Color(c.r, c.g, c.b, 0.22f) : Color.clear;
-                _chipLabels[i].color = on ? body : muted;
+                SetRim(_chipRims[i], on ? c : new Color(Muted.r, Muted.g, Muted.b, 0.5f));
+                _chipDots[i].color = on ? c : Muted;
+                _chipLabels[i].color = on ? Body : Muted;
                 _chipCounts[i].text = _view.TypeCounts[i].ToString();
-                _chipCounts[i].color = on ? c : muted;
+                _chipCounts[i].color = on ? c : Muted;
             }
-            LayoutMods(body, muted);
+            LayoutMods();
             LayoutRows();
             _footer.text = string.Format(L("$ui_changelog_shown"), $"<color=#E3E6E8>{ChangelogModel.Count(_view.Shown)}</color>", $"<color=#E3E6E8>{ChangelogModel.Count(_view.Total)}</color>");
             _empty.text = _error != null ? L("$ui_changelog_empty_file") : _view.Shown == 0 ? L("$ui_changelog_empty_filter") : "";
             _empty.gameObject.SetActive(_empty.text.Length > 0);
         }
 
-        private static void Selected(Button b, TMP_Text label, bool on, Color accent)
-        {
-            ((Image)b.targetGraphic).color = on ? accent : Color.white;
-            label.color = on ? ThemeTokens.GetColor("color.text.body", Color.white) : ThemeTokens.GetColor("color.state.disabled", Color.gray);
-        }
-
-        private void LayoutMods(Color body, Color muted)
+        private void LayoutMods()
         {
             var visible = Mathf.Max(1, Mathf.FloorToInt((ListBottom - ModListY) / ModRowH));
             _modScroll = Mathf.Clamp(_modScroll, 0, Mathf.Max(0, _mods.Count - visible));
@@ -403,7 +498,7 @@ namespace Morgott.UI.PreWorld
                 Put(r.Box, 10f, i * ModRowH + 2f, SideW - 10f, ModRowH);
                 r.Check.enabled = !_filter.HiddenMods.Contains(r.Mod);
                 r.Label.text = r.Mod;
-                r.Label.color = _view.ModCounts.ContainsKey(r.Mod) ? body : muted;
+                r.Label.color = _view.ModCounts.ContainsKey(r.Mod) ? Body : Muted;
             }
         }
 
@@ -440,12 +535,13 @@ namespace Morgott.UI.PreWorld
         {
             var rows = _view.Rows;
             _scroll = Mathf.Clamp(_scroll, 0, MaxScroll());
-            _rowsUsed = 0;
+            _dates.Used = _modHeads.Used = _lines.Used = 0;
             var russian = Russian;
             var y = 0f;
             var viewH = ListBottom - ListY;
             for (var i = _scroll; i < rows.Count && y < viewH; i++) y += Place(rows[i], y, russian);
-            for (var i = _rowsUsed; i < _rows.Count; i++) if (_rows[i].Rt.gameObject.activeSelf) _rows[i].Rt.gameObject.SetActive(false);
+            foreach (var pool in new[] { _dates, _modHeads, _lines })
+                for (var i = pool.Used; i < pool.Items.Count; i++) Off(pool.Items[i].Rt);
             // Scrollbar: thumb share = rows in view / all rows.
             var show = rows.Count > 0 && MaxScroll() > 0;
             _track.gameObject.SetActive(show);
@@ -472,56 +568,39 @@ namespace Morgott.UI.PreWorld
             return 0;
         }
 
+        // Data text inside a rich-text line (mod name + version): no tag can open.
+        private static string Plain(string s) => s.Replace('<', '‹');
+
         private float Place(ChangelogRow row, float y, bool russian)
         {
-            var r = _rowsUsed < _rows.Count ? _rows[_rowsUsed] : NewRow();
-            _rowsUsed++;
-            r.Rt.gameObject.SetActive(true);
             var e = row.Entry;
             switch (row.Kind)
             {
                 case ChangelogRowKind.Date:
                     {
+                        var r = Next(_dates, NewDateRow);
                         Put(r.Rt, 0f, y, ListW, DateH);
-                        Style(r.A, "text.header", 23f, ThemeTokens.GetColor("color.text.header", Hex("#D9DCE0")));
                         r.A.text = ChangelogModel.DateHeader(e.Date, russian);
                         var w = r.A.GetPreferredValues(r.A.text).x;
                         Put(r.A, 0f, 6f, w + 4f, 34f);
-                        Off(r.B);
-                        Off(r.Tag);
-                        r.Rule.gameObject.SetActive(true);
-                        Put(r.Rule, w + 18f, 23f, Mathf.Max(0f, ListW - w - 18f), 1f);
+                        Put(r.Rule, w + 18f, 24f, Mathf.Max(0f, ListW - w - 26f), 1f);
                         return DateH;
                     }
                 case ChangelogRowKind.Mod:
                     {
+                        // One text: the version follows the name at a fixed gap (mockup "Morgott.UI 0.29.40").
+                        var r = Next(_modHeads, NewModHead);
                         Put(r.Rt, 0f, y, ListW, ModH);
-                        Style(r.A, "text.header", 23f, ThemeTokens.GetColor("color.text.item.title", Hex("#F0C419")));
-                        r.A.text = e.Mod;
-                        var w = r.A.GetPreferredValues(r.A.text).x;
-                        Put(r.A, 0f, 2f, Mathf.Min(w + 4f, ListW), 32f);
-                        if (e.Version.Length > 0)
-                        {
-                            r.B.gameObject.SetActive(true);
-                            Style(r.B, "text.header", 21f, ThemeTokens.GetColor("color.text.stat", Hex("#8AB4F0")));
-                            r.B.text = e.Version;
-                            Put(r.B, w + 14f, 3f, 160f, 32f);
-                        }
-                        else Off(r.B);
-                        Off(r.Tag);
-                        Off(r.Rule);
+                        r.A.text = e.Version.Length > 0 ? $"{Plain(e.Mod)}<space=10><color=#8AB4F0>{Plain(e.Version)}</color>" : Plain(e.Mod);
                         return ModH;
                     }
                 default:
                     {
+                        var r = Next(_lines, NewLineRow);
                         var c = TypeColor(e.Type);
-                        r.Tag.gameObject.SetActive(true);
-                        r.Tag.color = c;
-                        Style(r.B, "text.body", 16f, c);
+                        SetRim(r.Rim, c);
                         r.B.text = L("$ui_changelog_type_" + ChangelogModel.Types[e.Type]);
                         var tagW = r.B.GetPreferredValues(r.B.text).x + 22f;
-                        Style(r.A, "text.body", 17f, ThemeTokens.GetColor("color.text.body", Hex("#E3E6E8")));
-                        r.A.textWrappingMode = TextWrappingModes.Normal;
                         r.A.text = e.Text(russian);
                         var textX = 2f + tagW + TagGap;
                         var textW = ListW - textX - 8f;
@@ -529,60 +608,108 @@ namespace Morgott.UI.PreWorld
                         Put(r.Rt, 0f, y, ListW, h);
                         Put(r.Tag, 2f, 6f, tagW, TagH);
                         Put(r.B, 2f, 6f, tagW, TagH);
-                        Off(r.Rule);
                         Put(r.A, textX, 5f, textW, h - 6f);
                         return h;
                     }
             }
         }
 
-        private Row NewRow()
+        private Row Next(Pool pool, Func<int, Row> make)
         {
-            var r = new Row { Rt = NewRect("Row" + _rows.Count, _list) };
-            r.Rule = Rule(r.Rt, "Rule", Hex("#3D8290"));
-            r.Tag = Img(r.Rt, "Tag", "field");
-            r.B = Txt(r.Rt, "B", "text.body", TextAlignmentOptions.Center, 16f);
-            r.A = Txt(r.Rt, "A", "text.body", TextAlignmentOptions.TopLeft, 17f);
-            r.A.richText = false; // entry text is data, never markup
-            r.B.richText = false;
-            _rows.Add(r);
+            var r = pool.Used < pool.Items.Count ? pool.Items[pool.Used] : null;
+            if (r == null) pool.Items.Add(r = make(pool.Items.Count));
+            pool.Used++;
+            if (!r.Rt.gameObject.activeSelf) r.Rt.gameObject.SetActive(true);
             return r;
         }
 
-        private static void Style(TMP_Text t, string role, float size, Color color)
+        private Row NewDateRow(int n)
         {
-            if (t.GetComponent<SkinMark>() is SkinMark m && m.Role != role)
-            {
-                m.Role = role;
-                m.Outcome = Restyler.Apply(t, m, ThemeTokens.Role(role)) ? Outcome.Styled : Outcome.Degraded;
-            }
-            t.textWrappingMode = TextWrappingModes.NoWrap;
-            t.enableAutoSizing = false;
-            if (Mathf.Abs(t.fontSize - size) > 0.05f) t.fontSize = size;
-            t.color = color;
-            t.gameObject.SetActive(true);
+            var r = new Row { Rt = NewRect("Date" + n, _list) };
+            r.A = Txt(r.Rt, "A", "text.header", TextAlignmentOptions.Left, 24f);
+            r.A.color = ThemeTokens.GetColor("color.text.header", Hex("#D9DCE0"));
+            r.A.richText = false;
+            _serif.Add(r.A);
+            if (ThemeTokens.GetFont("font.map.header") is TMP_FontAsset f) r.A.font = f;
+            r.Rule = Rule(r.Rt, "Rule", Hex("#3D8290"));
+            return r;
+        }
+
+        private Row NewModHead(int n)
+        {
+            var r = new Row { Rt = NewRect("ModHead" + n, _list) };
+            r.A = Txt(r.Rt, "A", "text.header", TextAlignmentOptions.Left, 24f);
+            r.A.color = ThemeTokens.GetColor("color.text.item.title", Hex("#F0C419"));
+            r.A.richText = true; // name + version colour; the data parts go through Plain
+            _serif.Add(r.A);
+            if (ThemeTokens.GetFont("font.map.header") is TMP_FontAsset f) r.A.font = f;
+            Put(r.A, 0f, 2f, ListW, 34f);
+            return r;
+        }
+
+        private Row NewLineRow(int n)
+        {
+            var r = new Row { Rt = NewRect("Line" + n, _list) };
+            r.Tag = Img(r.Rt, "Tag", "field");
+            r.Rim = Rim(r.Tag.transform);
+            r.B = Txt(r.Rt, "B", "text.body", TextAlignmentOptions.Center, 16f);
+            r.B.color = Body;
+            r.A = Txt(r.Rt, "A", "text.body", TextAlignmentOptions.TopLeft, 17f);
+            r.A.textWrappingMode = TextWrappingModes.Normal;
+            r.A.color = Body;
+            r.A.richText = false; // entry text is data, never markup
+            r.B.richText = false;
+            return r;
         }
 
         // ---------------------------------------------------------------- widgets
 
+        // Thin coloured rim inside a plate (mockup chips / tags / active preset): four 1.5-unit lines, corners left open
+        // for the plate's chamfer.
+        private static Image[] Rim(Transform host)
+        {
+            var rim = new Image[4];
+            for (var i = 0; i < 4; i++)
+            {
+                rim[i] = Rule(host, "Rim" + i, Color.clear);
+                var rt = rim[i].rectTransform;
+                var horizontal = i < 2;
+                var edge = i == 0 || i == 2 ? 1f : 0f; // top / left = 1 / 0 anchor
+                rt.anchorMin = horizontal ? new Vector2(0f, edge) : new Vector2(i == 3 ? 1f : 0f, 0f);
+                rt.anchorMax = horizontal ? new Vector2(1f, edge) : new Vector2(i == 3 ? 1f : 0f, 1f);
+                rt.pivot = new Vector2(0.5f, 0.5f);
+                rt.offsetMin = horizontal ? new Vector2(4f, i == 0 ? -2f : 0.5f) : new Vector2(i == 3 ? -2f : 0.5f, 4f);
+                rt.offsetMax = horizontal ? new Vector2(-4f, i == 0 ? -0.5f : 2f) : new Vector2(i == 3 ? -0.5f : 2f, -4f);
+            }
+            return rim;
+        }
+
+        private static void SetRim(Image[] rim, Color c)
+        {
+            foreach (var l in rim) if (l.color != c) l.color = c;
+        }
+
         private void Label(Transform parent, string name, string token, float y)
         {
-            var t = Txt(parent, name, "text.header", TextAlignmentOptions.Left, 21f);
+            var t = Txt(parent, name, "text.header", TextAlignmentOptions.Left, 22f);
             t.text = L(token);
-            Put(t, SideX, y, SideW, 28f);
+            t.color = ThemeTokens.GetColor("color.text.header", Hex("#D9DCE0"));
+            _serif.Add(t);
+            Put(t, SideX, y, SideW, 30f);
         }
 
         private TMP_InputField DateField(Transform parent, string name, string prefixToken, float y, bool from)
         {
+            const float PrefixW = 26f; // "с" / "по" / "from": measured width was 0 at menu build (run 20261116-122424)
             var back = Img(parent, name, "field", true);
             Put(back, SideX, y, SideW, 30f);
             var prefix = Txt(back.transform, "Prefix", "text.body", TextAlignmentOptions.Left, 16f);
             prefix.text = L(prefixToken);
-            var pw = prefix.GetPreferredValues(prefix.text).x;
-            Put(prefix, 12f, 0f, pw + 2f, 30f);
+            prefix.overflowMode = TextOverflowModes.Overflow;
+            Put(prefix, 12f, 0f, PrefixW, 30f);
             var area = new GameObject("Text Area", typeof(RectTransform), typeof(RectMask2D)).GetComponent<RectTransform>();
             area.SetParent(back.rectTransform, false);
-            Stretch(area, 12f + pw + 6f, 0f, 10f, 0f);
+            Stretch(area, 12f + PrefixW + 6f, 0f, 10f, 0f);
             var text = Txt(area, "Text", "text.body", TextAlignmentOptions.Left, 16f);
             Stretch(text.rectTransform, 0f, 0f, 0f, 0f);
             var f = back.gameObject.AddComponent<TMP_InputField>();
@@ -703,7 +830,20 @@ namespace Morgott.UI.PreWorld
                 v.rt.offsetMax = v.oMax;
                 v.rt.gameObject.SetActive(v.active);
             }
-            if (_window) _window.sizeDelta = _vanillaSize;
+            if (_window)
+            {
+                _window.anchorMin = _vanillaMin;
+                _window.anchorMax = _vanillaMax;
+                _window.pivot = _vanillaPivot;
+                _window.anchoredPosition = _vanillaPos;
+                _window.sizeDelta = _vanillaSize;
+            }
+            if (_addedCanvas && _canvas)
+            {
+                if (_window.TryGetComponent<GraphicRaycaster>(out var gr)) Destroy(gr);
+                Destroy(_canvas);
+            }
+            if (_scrim) Destroy(_scrim);
             if (_root) Destroy(_root.gameObject);
             Destroy(this);
         }
