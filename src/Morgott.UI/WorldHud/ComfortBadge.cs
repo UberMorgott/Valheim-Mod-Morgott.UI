@@ -61,7 +61,7 @@ namespace Morgott.UI.WorldHud
             var mat = GreyMaterial();
             icon.material = counted ? mat : null;
             icon.color = counted ? grey : Color.white; // the grey shader multiplies by it too: dim grey, not near-white (run 20261116-225046-2)
-            value.color = counted ? grey : _valueColor;
+            value.color = _valueColor; // grey "+N" on the grey icon lost its "+" (run 20261116-230941); the icon alone carries the state
             badge.gameObject.SetActive(true);
         }
 
