@@ -346,7 +346,7 @@ namespace Morgott.UI.Tests
                 Search = true,
                 Controls = true,
                 Requirements = 4,
-                StatLines = 7,
+                StatLines = 8,
                 ChainH = 80f
             }, t);
             Assert.Equal(8 * t.StatRowH, o.Stats.H, 3);
@@ -374,7 +374,7 @@ namespace Morgott.UI.Tests
                 Search = true,
                 Controls = true,
                 Requirements = 4,
-                StatLines = 8,
+                StatLines = 7,
                 ChainH = 72f
             }, t);
             Assert.InRange(o2.Detail.H, 530f, 542f); // the live detail well (536)
