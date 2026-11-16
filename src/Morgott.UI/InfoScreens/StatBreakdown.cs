@@ -15,7 +15,7 @@ namespace Morgott.UI.InfoScreens
             Add,    // flat delta (+12 / -3)
             Pct,    // percent of the base (+10%)
             Mul,    // factor (x1,2)
-            Range,  // factor range (x0,55-0,85)
+            Range,  // flat delta range (-18,1…-10,6)
             Note,   // plain text line (formula hint, "per block")
             Result, // final value, closes the list
         }
@@ -79,7 +79,9 @@ namespace Morgott.UI.InfoScreens
             Push(Op.Mul, label, source, factor, 0f, "", Sem(factor - 1f, higherIsBetter));
         }
 
-        public void Range(string label, string source, float min, float max) => Push(Op.Range, label, source, min, max, "", 0);
+        // A flat delta that rolls between `min` and `max` (the random skill factor of a hit).
+        public void Range(string label, string source, float min, float max, bool higherIsBetter) =>
+            Push(Op.Range, label, source, min, max, "", Sem(min + max, higherIsBetter));
 
         public void Note(string text, int color = -1) => Push(Op.Note, text, null, 0f, 0f, "", 0, color);
 
@@ -178,14 +180,20 @@ namespace Morgott.UI.InfoScreens
                         StatsMath.AppendFactor(sb, l.Value, comma);
                         break;
                     case Op.Range:
-                        sb.Append('×');
-                        StatsMath.AppendFactor(sb, l.Value, comma).Append('–');
-                        StatsMath.AppendFactor(sb, l.Value2, comma);
+                        Signed(sb, l.Value, comma).Append('…');
+                        Signed(sb, l.Value2, comma);
                         break;
                 }
                 StatsMath.Close(sb, l.Sem);
                 if (l.Op == Op.Result) sb.Append("</b>");
             }
+        }
+
+        private static StringBuilder Signed(StringBuilder sb, float v, bool comma)
+        {
+            if (v >= 0.05f) sb.Append('+');
+            else if (v <= -0.05f) sb.Append('−');
+            return StatsMath.AppendCompact(sb, Math.Abs(v), comma);
         }
 
         private static void AppendUnit(StringBuilder sb, string unit)

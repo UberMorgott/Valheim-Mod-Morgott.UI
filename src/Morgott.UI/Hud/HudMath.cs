@@ -315,6 +315,18 @@ namespace Morgott.UI.PlayerHud
 
         public const float TileWidthShare = 2f, TileLineShare = 1.35f, TileTextGap = 4f;
 
+        // Icon text too wide for its tile line: keep the value, drop the words in front (SE_Cozy.GetIconText :42
+        // "Comfort:12" -> "12"), so the ellipsis never eats the number. Starts with a value already / no digit = unchanged.
+        public static string IconValue(string text)
+        {
+            if (string.IsNullOrEmpty(text)) return text;
+            var i = 0;
+            while (i < text.Length && !char.IsDigit(text[i])) i++;
+            if (i == text.Length) return text;
+            if (i > 0 && (text[i - 1] == '+' || text[i - 1] == '-')) i--;
+            return text.Substring(i);
+        }
+
         // Food time left as vanilla Hud.UpdateFood writes it (Hud.cs:1037-1046): from 60 s ceil minutes "Nm", below floor
         // seconds "Ns". False = nothing to show (no time left / no food).
         public static bool FoodTime(float seconds, out int n, out bool minutes)

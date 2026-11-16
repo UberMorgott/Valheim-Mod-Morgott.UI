@@ -66,6 +66,17 @@ namespace Morgott.UI.Tests
             Assert.Equal(minutes, gotMin);
         }
 
+        // too-wide icon text keeps its value (SE_Cozy "Comfort:12"); value-first / wordless text unchanged
+        [Theory]
+        [InlineData("Комфорт:12", "12")]
+        [InlineData("Comfort: 7", "7")]
+        [InlineData("Armor +15%", "+15%")]
+        [InlineData("2:28:09", "2:28:09")]
+        [InlineData("12%", "12%")]
+        [InlineData("Ready", "Ready")]
+        [InlineData("", "")]
+        public void IconValueKeepsTheNumber(string text, string shown) => Assert.Equal(shown, HudMath.IconValue(text));
+
         [Fact]
         public void IconsBiggerThanTheOldTiles() =>
             Assert.True(0.75f * F("size.hud.strip.cell") > 0.6f * F("size.hud.strip.cell") * 1.2f);

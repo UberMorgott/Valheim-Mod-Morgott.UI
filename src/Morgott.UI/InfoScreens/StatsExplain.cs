@@ -734,21 +734,21 @@ namespace Morgott.UI.InfoScreens
                 bd.Add(Loc("$ui_bd_world_level"), null, d.GetTotalDamage() - vanilla, true);
                 vanilla = d.GetTotalDamage();
             }
-            Residual(bd, total, vanilla, true);
-            StatsMath.SkillRange(p.GetSkillFactor(sh.m_skillType), out var min, out var max);
-            bd.Range(SkillName(sh.m_skillType), null, min, max);
-            var factor = 1f;
+            // Every line is a damage amount (no factors shown): effects stack on the running hit, enchantments and
+            // unattributed effect parts fall into Other, the skill roll is the gap from that hit to the final range.
+            var cur = total;
             foreach (var se in Effects())
             {
-                var f = AttackFactor(se, sh.m_skillType, game);
-                bd.Mul(EffectName(se), null, f, true);
-                factor *= f;
+                var gain = cur * (AttackFactor(se, sh.m_skillType, game) - 1f);
+                bd.Add(EffectName(se), null, gain, true);
+                cur += gain;
             }
             _hit.m_damage = game;
             p.GetSEMan().ModifyAttack(sh.m_skillType, ref _hit);
             var after = _hit.m_damage.GetTotalDamage();
-            var gameFactor = total > 0f ? after / total : 1f;
-            bd.Mul(Other, null, factor > 0f ? gameFactor / factor : 1f, true);
+            Residual(bd, after, vanilla + cur - total, true);
+            StatsMath.SkillRange(p.GetSkillFactor(sh.m_skillType), out var min, out var max);
+            bd.Range(SkillName(sh.m_skillType), null, after * (min - 1f), after * (max - 1f), true);
             bd.ResultRange(Loc("$ui_bd_per_hit"), after * min, after * max);
             bd.Note(Loc("$ui_bd_damage_note"));
         }
@@ -860,16 +860,15 @@ namespace Morgott.UI.InfoScreens
 
         private readonly Dictionary<Skills.SkillType, string> _skillNames = new Dictionary<Skills.SkillType, string>(16);
 
-        // "Навык Бег 110 (×0,5)": localized skill name + real level; Character.GetSkillLevel carries Morgott.Patcher's
-        // CombatSkillFactor (Character.cs:4206 forwards to Skills.GetSkillLevel), so their ratio is the nerf share.
+        // "Навык Бег": the line's value is what the skill does; no level and no internal scaler (CombatSkillFactor).
         private string SkillName(Skills.SkillType skill)
         {
             if (!_skillNames.TryGetValue(skill, out var name))
             {
-                name = Loc("$skill_" + skill.ToString().ToLowerInvariant());
+                name = Loc("$ui_bd_skill") + " " + Loc("$skill_" + skill.ToString().ToLowerInvariant());
                 _skillNames[skill] = name;
             }
-            return Loc("$ui_bd_skill") + " " + name + " " + StatsMath.SkillLevel(_p.m_skills.GetSkillLevel(skill), _p.GetSkillLevel(skill), _comma);
+            return name;
         }
     }
 }
