@@ -43,7 +43,8 @@ namespace Morgott.UI.PreWorld
         private Vector2 _vanillaMin, _vanillaMax, _vanillaPivot, _vanillaPos, _vanillaSize;
         private RectTransform _topic, _scrollPanel, _scrollbar;
         private Canvas _canvas;
-        private bool _addedCanvas, _gameTab, _laidOut, _dirty = true;
+        private bool _addedCanvas, _addedRaycaster, _gameTab, _laidOut, _dirty = true;
+        private (bool over, int layer, int order) _canvasOrig;
         private GameObject _scrim;
 
         // data
@@ -228,14 +229,18 @@ namespace Morgott.UI.PreWorld
             BuildList();
             // Own canvas above the menu column and the bottom-left links (as SidePanel does), added now: a canvas added on
             // the open frame re-batched the whole window there (run 20261116-125447: 101 ms open frame).
+            // The window may carry a canvas of its own that does not override sorting: then the menu texts after it in the
+            // hierarchy (StartGui/Menu/modded_text, BepInEx Version) drew over the backdrop (run 20261116-131125). Override
+            // sorting either way (originals kept for Revert).
             var rootCanvas = _window.parent ? _window.parent.GetComponentInParent<Canvas>() : null;
             if (!_window.TryGetComponent(out _canvas))
             {
                 _canvas = _window.gameObject.AddComponent<Canvas>();
                 _addedCanvas = true;
-                if (!_window.GetComponent<GraphicRaycaster>()) _window.gameObject.AddComponent<GraphicRaycaster>();
             }
-            if (_addedCanvas && rootCanvas)
+            else _canvasOrig = (_canvas.overrideSorting, _canvas.sortingLayerID, _canvas.sortingOrder);
+            if (!_window.GetComponent<GraphicRaycaster>()) { _window.gameObject.AddComponent<GraphicRaycaster>(); _addedRaycaster = true; }
+            if (rootCanvas)
             {
                 _canvas.overrideSorting = true;
                 _canvas.sortingLayerID = rootCanvas.rootCanvas.sortingLayerID;
@@ -344,6 +349,7 @@ namespace Morgott.UI.PreWorld
         private void OnEnable()
         {
             if (!_window || !_laidOut) return; // Init's own show / hide
+            Stamp(); // FejdStartup.Start's ScreenRegistry.Restyle put the role faces back after Init (run 20261116-131125)
             // Re-laid on the first open, a changed file or a new day for the period presets; else shown as it was.
             if (_preset >= 0 && _preset < 2 && _filter.To != DateTime.Today) ApplyPreset();
             if (!_laidOut || FileChanged()) _dirty = true;
@@ -465,16 +471,7 @@ namespace Morgott.UI.PreWorld
 
         private void Layout()
         {
-            // Serif display face (mixed case, mockup: title, tabs, section titles, dates, mod names); a theme reload restyles
-            // the role font back, so it is set on every layout.
-            var serif = ThemeTokens.GetFont("font.map.header");
-            if (serif) foreach (var t in _serif) if (t && t.font != serif) t.font = serif;
-            // Tabs: selected = not interactable (tab role: disabled sprite = selected plate), gold label + cyan underline.
-            _tabPack.interactable = _gameTab;
-            _tabGame.interactable = !_gameTab;
-            var gold = ThemeTokens.GetColor("color.text.active", Hex("#E8B64A"));
-            _tabPackLabel.color = _gameTab ? Body : gold;
-            _tabGameLabel.color = _gameTab ? gold : Body;
+            Stamp();
             Put(_underline, _gameTab ? 300f : 52f, 104f, _gameTab ? 222f : 232f, 3f);
             if (_gameTab) return;
 
@@ -501,6 +498,28 @@ namespace Morgott.UI.PreWorld
             _footer.text = string.Format(L("$ui_changelog_shown"), $"<color=#E3E6E8>{ChangelogModel.Count(_view.Shown)}</color>", $"<color=#E3E6E8>{ChangelogModel.Count(_view.Total)}</color>");
             _empty.text = _error != null ? L("$ui_changelog_empty_file") : _view.Shown == 0 ? L("$ui_changelog_empty_filter") : "";
             _empty.gameObject.SetActive(_empty.text.Length > 0);
+        }
+
+        // Faces and colours a role restyle (menu Start, theme reload) sets back: serif display face (mixed case, mockup:
+        // title, tabs, section titles, dates, mod names), tab state colours. Cheap when unchanged; run on layout and open.
+        private void Stamp()
+        {
+            var serif = ThemeTokens.GetFont("font.map.header");
+            if (serif) foreach (var t in _serif) if (t && t.font != serif) t.font = serif;
+            var header = ThemeTokens.GetColor("color.text.header", Hex("#D9DCE0"));
+            var title = ThemeTokens.GetColor("color.text.item.title", Hex("#F0C419"));
+            foreach (var t in _serif)
+            {
+                if (!t) continue;
+                var c = t.name == "A" && t.transform.parent.name.StartsWith("ModHead", StringComparison.Ordinal) ? title : header;
+                if (t != _tabPackLabel && t != _tabGameLabel && t.color != c) t.color = c;
+            }
+            // Tabs: selected = not interactable (tab role: disabled sprite = selected plate), gold label + cyan underline.
+            _tabPack.interactable = _gameTab;
+            _tabGame.interactable = !_gameTab;
+            var gold = ThemeTokens.GetColor("color.text.active", Hex("#E8B64A"));
+            _tabPackLabel.color = _gameTab ? Body : gold;
+            _tabGameLabel.color = _gameTab ? gold : Body;
         }
 
         private void LayoutMods()
@@ -862,11 +881,9 @@ namespace Morgott.UI.PreWorld
                 _window.anchoredPosition = _vanillaPos;
                 _window.sizeDelta = _vanillaSize;
             }
-            if (_addedCanvas && _canvas)
-            {
-                if (_window.TryGetComponent<GraphicRaycaster>(out var gr)) Destroy(gr);
-                Destroy(_canvas);
-            }
+            if (_addedRaycaster && _window && _window.TryGetComponent<GraphicRaycaster>(out var gr)) Destroy(gr);
+            if (_addedCanvas && _canvas) Destroy(_canvas);
+            else if (_canvas) (_canvas.overrideSorting, _canvas.sortingLayerID, _canvas.sortingOrder) = _canvasOrig;
             if (_scrim) Destroy(_scrim);
             if (_root) Destroy(_root.gameObject);
             Destroy(this);
