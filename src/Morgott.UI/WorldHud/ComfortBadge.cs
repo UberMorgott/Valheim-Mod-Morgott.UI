@@ -60,7 +60,7 @@ namespace Morgott.UI.WorldHud
             var icon = badge.GetComponentInChildren<Image>(true);
             var mat = GreyMaterial();
             icon.material = counted ? mat : null;
-            icon.color = counted && !mat ? grey : Color.white;
+            icon.color = counted ? grey : Color.white; // the grey shader multiplies by it too: dim grey, not near-white (run 20261116-225046-2)
             value.color = counted ? grey : _valueColor;
             badge.gameObject.SetActive(true);
         }
