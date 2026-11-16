@@ -245,7 +245,7 @@ namespace Morgott.UI.PreWorld
             _tabPack = Btn(_root, "TabPack", "tab", out _tabPackLabel, () => { _gameTab = false; _dirty = true; });
             _tabGame = Btn(_root, "TabGame", "tab", out _tabGameLabel, () => { _gameTab = true; _dirty = true; });
             _tabPackLabel.text = L("$ui_changelog_tab_pack");
-            _tabGameLabel.text = "Valheim";
+            _tabGameLabel.text = L("$ui_changelog_tab_game");
             foreach (var t in new[] { _tabPackLabel, _tabGameLabel }) { t.fontSize = ThemeTokens.GetFloat("size.startgame.tab.font", 21f) + 1f; _serif.Add(t); }
             _tabRims = new[] { Rim(_tabPack.transform), Rim(_tabGame.transform) };
             Put(_tabPack, 52f, 62f, 232f, 42f);

@@ -508,6 +508,7 @@
   "ui_portal_edit_tip": "Customize portal",
   "ui_changelog_title": "PACK CHANGES",
   "ui_changelog_tab_pack": "Pack",
+  "ui_changelog_tab_game": "Valheim",
   "ui_changelog_period": "Period",
   "ui_changelog_from": "from",
   "ui_changelog_to": "to",
@@ -525,5 +526,9 @@
   "ui_changelog_allmods": "All mods",
   "ui_changelog_shown": "Shown {0} of {1}",
   "ui_changelog_empty_file": "The pack changelog is not available yet.",
-  "ui_changelog_empty_filter": "No changes match the filters."
+  "ui_changelog_empty_filter": "No changes match the filters.",
+  "ui_menu_showlog": "Show player.log",
+  "ui_menu_modsettings": "Mods settings",
+  "ui_menu_bepinex": "Running BepInEx {0}\n{1} plugins loaded",
+  "ui_menu_console": "Press F5 to open console"
 }
