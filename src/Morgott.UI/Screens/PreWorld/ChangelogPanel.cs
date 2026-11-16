@@ -190,7 +190,7 @@ namespace Morgott.UI.PreWorld
             scrim.rectTransform.SetParent(_window, false);
             scrim.rectTransform.SetAsFirstSibling();
             Stretch(scrim.rectTransform, -6000f, -6000f, -6000f, -6000f);
-            scrim.color = ThemeTokens.GetColor("color.changelog.scrim", new Color(0.016f, 0.027f, 0.039f, 0.8f));
+            scrim.color = ThemeTokens.GetColor("color.changelog.scrim", new Color(0.016f, 0.027f, 0.039f, 0.9f));
             scrim.raycastTarget = true;
             DollCell.Mark(scrim, "content", "changelog modal backdrop");
             scrim.gameObject.AddComponent<Backdrop>().Click = e =>
@@ -226,16 +226,35 @@ namespace Morgott.UI.PreWorld
             Stretch(_pack, 0f, 0f, 0f, 0f);
             BuildSidebar();
             BuildList();
-            // Parse + filter + the row objects now, while the menu builds: the open frame only lays out the rows in view
-            // (TMP measures nothing on a never-shown text: the prefix measured 0 at menu build, run 20261116-122424).
+            // Own canvas above the menu column and the bottom-left links (as SidePanel does), added now: a canvas added on
+            // the open frame re-batched the whole window there (run 20261116-125447: 101 ms open frame).
+            var rootCanvas = _window.parent ? _window.parent.GetComponentInParent<Canvas>() : null;
+            if (!_window.TryGetComponent(out _canvas))
+            {
+                _canvas = _window.gameObject.AddComponent<Canvas>();
+                _addedCanvas = true;
+                if (!_window.GetComponent<GraphicRaycaster>()) _window.gameObject.AddComponent<GraphicRaycaster>();
+            }
+            if (_addedCanvas && rootCanvas)
+            {
+                _canvas.overrideSorting = true;
+                _canvas.sortingLayerID = rootCanvas.rootCanvas.sortingLayerID;
+                _canvas.sortingOrder = rootCanvas.rootCanvas.sortingOrder + 20;
+            }
+            // Parse, filter and the first layout now, while the menu builds (window shown for this one call and hidden in
+            // the same frame, nothing drawn): the dynamic serif atlas gets its glyphs and the rows their measures here,
+            // the open frame only draws (run 20261116-125447: layout 33.6 ms in the open frame).
             var sw = Stopwatch.StartNew();
+            var was = _window.gameObject.activeSelf;
+            if (!was) _window.gameObject.SetActive(true);
+            Enforce();
             Load();
-            _view = ChangelogModel.Build(_all, _filter);
-            for (var i = 0; i < 6; i++) Next(_dates, NewDateRow);
-            for (var i = 0; i < 10; i++) Next(_modHeads, NewModHead);
-            for (var i = 0; i < 20; i++) Next(_lines, NewLineRow);
-            foreach (var pool in new[] { _dates, _modHeads, _lines }) { foreach (var r in pool.Items) r.Rt.gameObject.SetActive(false); pool.Used = 0; }
-            Plugin.Log.LogInfo($"[Morgott.UI] changelog: {_all.Count} entries, load {sw.Elapsed.TotalMilliseconds:F1} ms at menu build{(_error != null ? ", " + _error : "")}");
+            Layout();
+            foreach (var t in _root.GetComponentsInChildren<TMP_Text>(false)) t.ForceMeshUpdate(); // glyphs into the dynamic atlases now
+            _laidOut = true;
+            if (!was) _window.gameObject.SetActive(false);
+            _dirty = false;
+            Plugin.Log.LogInfo($"[Morgott.UI] changelog: {_all.Count} entries, {_view?.Shown ?? 0} shown, load+layout {sw.Elapsed.TotalMilliseconds:F1} ms at menu build{(_error != null ? ", " + _error : "")}");
         }
 
         private void BuildSidebar()
@@ -324,21 +343,7 @@ namespace Morgott.UI.PreWorld
 
         private void OnEnable()
         {
-            // Above the menu column and the bottom-left links (own canvas, sorted over the root, as SidePanel does).
-            if (!_window) return;
-            var root = _window.parent ? _window.parent.GetComponentInParent<Canvas>() : null;
-            if (!_canvas && !_window.TryGetComponent(out _canvas))
-            {
-                _canvas = _window.gameObject.AddComponent<Canvas>();
-                _addedCanvas = true;
-                if (!_window.GetComponent<GraphicRaycaster>()) _window.gameObject.AddComponent<GraphicRaycaster>();
-            }
-            if (_addedCanvas && root)
-            {
-                _canvas.overrideSorting = true;
-                _canvas.sortingLayerID = root.rootCanvas.sortingLayerID;
-                _canvas.sortingOrder = root.rootCanvas.sortingOrder + 20;
-            }
+            if (!_window || !_laidOut) return; // Init's own show / hide
             // Re-laid on the first open, a changed file or a new day for the period presets; else shown as it was.
             if (_preset >= 0 && _preset < 2 && _filter.To != DateTime.Today) ApplyPreset();
             if (!_laidOut || FileChanged()) _dirty = true;
@@ -348,6 +353,7 @@ namespace Morgott.UI.PreWorld
         {
             if (!_root) return;
             Enforce();
+            Centre();
             if (!_dirty) return;
             _dirty = false;
             var sw = Stopwatch.StartNew();
@@ -365,6 +371,24 @@ namespace Morgott.UI.PreWorld
             SetActive(_scrollPanel, _gameTab);
             SetActive(_scrollbar, _gameTab);
             SetActive(_pack, !_gameTab);
+        }
+
+        // The drawn frame (the RuneSkin stack, PanelDecor) reaches further past the window on top than at the bottom
+        // (run 20261116-125447: stack 10 px above the screen centre): the stack, not the window rect, is centred.
+        private RectTransform _stack;
+
+        private void Centre()
+        {
+            if (!_stack)
+                foreach (var rt in _window.GetComponentsInChildren<RectTransform>(false))
+                    if (rt.name == "RuneSkinPanel") { _stack = rt; break; }
+            if (!_stack) return;
+            var c = new Vector3[4];
+            _stack.GetWorldCorners(c);
+            var mid = _window.InverseTransformPoint((c[0] + c[2]) * 0.5f);
+            var own = _window.rect.center;
+            var want = -new Vector2(mid.x - own.x, mid.y - own.y); // offset of the stack inside the window: constant, so no drift
+            if ((want - _window.anchoredPosition).sqrMagnitude > 0.25f) _window.anchoredPosition = want;
         }
 
         private static void SetActive(Component c, bool on)
