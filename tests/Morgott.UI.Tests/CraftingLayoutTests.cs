@@ -346,7 +346,7 @@ namespace Morgott.UI.Tests
                 Search = true,
                 Controls = true,
                 Requirements = 4,
-                StatLines = 8,
+                StatLines = 7,
                 ChainH = 80f
             }, t);
             Assert.Equal(8 * t.StatRowH, o.Stats.H, 3);
@@ -357,7 +357,8 @@ namespace Morgott.UI.Tests
                         o.Chain.Bottom <= o.Requirements.Y && o.Requirements.Bottom <= o.Detail.Bottom + 0.01f,
                 $"icon {o.Icon} desc {o.Description} stats {o.Stats} chain {o.Chain} req {o.Requirements} detail {o.Detail}");
         }
-        // Run 20261116-161831 at 1080p: detail 536 tall, 3 cells + station level, 8 stat lines, missing box 72: the icon got 0.
+        // Run 20261116-161831 at 1080p: detail 536 tall, 3 cells + station level, 7 stat lines (0-eitr food: no eitr row),
+        // missing box 72: the icon got 0.
         // Cells shrink first: icon, description minimum, full table, box and cells all fit without overlap.
         [Fact]
         public void Live1080pDetailKeepsTheIcon()
@@ -379,7 +380,7 @@ namespace Morgott.UI.Tests
             Assert.InRange(o2.Detail.H, 530f, 542f); // the live detail well (536)
             Assert.True(o2.Icon.H >= 48f, o2.ToString());
             Assert.True(o2.Description.H >= t.DescriptionMinH - 0.01f, o2.ToString());
-            Assert.Equal(8 * t.StatRowH, o2.Stats.H, 3);
+            Assert.Equal(7 * t.StatRowH, o2.Stats.H, 3);
             Assert.Equal(72f, o2.Chain.H, 3);
             Assert.True(o2.Icon.Bottom <= o2.Description.Y + 0.01f && o2.Description.Bottom <= o2.Stats.Y && o2.Stats.Bottom <= o2.Chain.Y &&
                         o2.Chain.Bottom <= o2.Requirements.Y && o2.Requirements.Bottom <= o2.Detail.Bottom + 0.01f, o2.ToString());

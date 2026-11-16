@@ -500,8 +500,10 @@ namespace Morgott.UI.CraftingScreen
             return true;
         }
 
-        // Lines the layout reserves (CraftingInput.StatLines): 5 food stats, yield, count, the bonus line.
-        private int StatLines() => StatsFor(out _, out var food, out _, out var bonus) ? (food ? 5 : 0) + 2 + (bonus > 0 ? 1 : 0) : 0;
+        // Lines the layout reserves (CraftingInput.StatLines): food stats (eitr only when the food has it, as the row
+        // sub-line), yield, count, the bonus line.
+        private int StatLines() => StatsFor(out var recipe, out var food, out _, out var bonus)
+            ? (food ? (recipe.m_item.m_itemData.m_shared.m_foodEitr > 0f ? 5 : 4) : 0) + 2 + (bonus > 0 ? 1 : 0) : 0;
 
         // One stat line: fixed size, one line, Overflow. Not Label(): its Ellipsis overflow drops a line whose box is
         // shorter than the font's line height (TMP), and 203d97a's 19-unit rows under the 16-unit font (PT Sans line
@@ -545,7 +547,7 @@ namespace Morgott.UI.CraftingScreen
                 {
                     _statLines.Add((L("$ui_craft_stat_health"), C("color.hud.health", Num(shared.m_food))));
                     _statLines.Add((L("$ui_craft_stat_stamina"), C("color.hud.stamina", Num(shared.m_foodStamina))));
-                    _statLines.Add((L("$ui_craft_stat_eitr"), shared.m_foodEitr > 0f ? C("color.craft.stat.eitr", Num(shared.m_foodEitr)) : "0"));
+                    if (shared.m_foodEitr > 0f) _statLines.Add((L("$ui_craft_stat_eitr"), C("color.craft.stat.eitr", Num(shared.m_foodEitr))));
                     _statLines.Add((L("$ui_craft_stat_regen"), Localization.instance.Localize("$ui_craft_regen_value",
                         shared.m_foodRegen.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture))));
                     _statLines.Add((L("$ui_craft_stat_duration"), Localization.instance.Localize("$ui_craft_minutes", Num(shared.m_foodBurnTime / 60f))));
