@@ -223,6 +223,16 @@ namespace Morgott.UI.PlayerHud
             return Math.Min(1f, shield / shieldMax) * windowPx;
         }
 
+        // Two contiguous shield segments from the window's left (user 2026-11-16): gear energy shield (blue) first, then
+        // external shields (vanilla SE_Shield, purple), both in the shared scale `max`; gearW + extW = the summed overlay.
+        public static void ShieldSegments(float gear, float ext, float max, float windowPx, out float gearW, out float extW)
+        {
+            gear = gear > 0f ? gear : 0f; // NaN / negative = none
+            ext = ext > 0f ? ext : 0f;
+            gearW = ShieldOverlay(gear, max, windowPx);
+            extW = Math.Max(0f, ShieldOverlay(gear + ext, max, windowPx) - gearW);
+        }
+
         // Shield edge glow mask over the bar height v (0 bottom .. 1 top), user + Codex call 2026-11-08: 0 over the centre
         // third (HP reads unobstructed), smoothstep up to 1 at the top / bottom edges; the tint carries the max alpha.
         public static float ShieldEdgeAlpha(float v)

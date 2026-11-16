@@ -454,11 +454,13 @@ namespace Morgott.UI.PlayerHud
             {
                 var count = HudMath.Stripes(_pending, hp, hpB, _health.WindowLength, ThemeTokens.GetFloat("size.hud.stripe.min", 4f), BarView.MaxStripes, _stripes);
                 for (var i = 0; i < count; i++) _stripeKinds[i] = _stripes[i].Key < 0 ? (int)DotKind.Other : _stripes[i].Key;
-                // Shield = MorgottTweaks energy shield (provider pool) + vanilla staff shields (SE_Shield): over the HP fill in
-                // its own scale (current / max shield), label "cur/max (+shield/max)" (user calls 2026-10-22, 2026-11-03).
-                var shield = (esOn ? Mathf.Max(0f, es.Current) : 0f) + VanillaShield(p, out var vanillaMax);
+                // Shield = Morgott.Power energy shield (provider pool, blue) + vanilla staff shields (SE_Shield, purple): over
+                // the HP fill in its own scale (current / max shield), label "cur/max (+shield/max)" (user calls 2026-10-22,
+                // 2026-11-03, 2026-11-16).
+                var ext = VanillaShield(p, out var vanillaMax);
+                var shield = (esOn ? Mathf.Max(0f, es.Current) : 0f) + ext;
                 var shieldMax = (esOn ? es.Max : 0f) + vanillaMax;
-                _health.SetShield(shield, shieldMax);
+                _health.SetShield(shield, shieldMax, ext);
                 _health.HealthText(hp, hpB, false, shield, shieldMax);
                 _health.Render(hp, hpB, hpC, _stripes, count, _stripeKinds, null, overlaySprite, overlayColor, false, dt, false);
             }

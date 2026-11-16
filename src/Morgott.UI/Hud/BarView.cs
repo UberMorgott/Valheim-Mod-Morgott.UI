@@ -25,7 +25,7 @@ namespace Morgott.UI.PlayerHud
         // Fill-end rim (M6 edge pass, Codex pick B: crisp 1-2 px bright bevel, no glow): bar_edge mask tinted per bar,
         // its right edge on the fill end (and on the shield band's end). Theme float mode.hud.bar.edge: 0 = the
         // older breathing front FX, 1 = clean end (no FX), 2 = rim. EdgeModeOverride (>= 0) wins: harness variants.
-        private Image _edge, _shieldEdge;
+        private Image _edge, _shieldEdge, _shieldEdgeX;
         public static int EdgeModeOverride = -1;
         // Right end cap (0.10.2, user: the brown leather ends were "убогие"): frames are open at the right (rails run to
         // the edge), one dark-metal cap per bar covers the rail band there - equal width size.hud.bar.cap on every bar,
@@ -42,12 +42,12 @@ namespace Morgott.UI.PlayerHud
         // stripes, reserve hatch / edge / lock, paused rune or "cur/avail" texts (the main value keeps "cur/max +shield").
         public bool Plain;
         // Faint full-height sheen of the shield segment (themes with the strip4 art); else the upper band.
-        private Image _sheen;
+        private Image _sheen, _sheenX;
         private static int EdgeMode => EdgeModeOverride >= 0 ? EdgeModeOverride : (int)ThemeTokens.GetFloat("mode.hud.bar.edge", 2f);
         private float _frontCore, _frontClock;
         // Shield layer (health bar only): current / max shield of the full window from its left end (HudMath.ShieldOverlay):
         // upper band, or the top line over the sheen.
-        private Image _shield, _shieldRimB;
+        private Image _shield, _shieldRimB, _shieldX, _shieldRimBX; // X = the external (purple) segment
         private static Sprite _edgeMask;
 
         // 1x64 alpha mask of the shield edge glow (white, alpha = HudMath.ShieldEdgeAlpha; the tint carries the max alpha).
@@ -62,7 +62,7 @@ namespace Morgott.UI.PlayerHud
             _edgeMask.hideFlags = HideFlags.DontSave;
             return _edgeMask;
         }
-        private float _shieldValue, _shieldMax, _shownShield = -1f, _shownMaxLabel = -2f, _shownPlus = -1f, _shownPlusMax = -1f;
+        private float _shieldValue, _shieldExt, _shieldMax, _shownShield = -1f, _shownMaxLabel = -2f, _shownPlus = -1f, _shownPlusMax = -1f;
         // Wet: a few single drip clusters at irregular spots along the frame bottom (a tiled row read as a zipper).
         private static readonly float[] WetSpots = { 0.07f, 0.38f, 0.79f };
         private readonly Image[] _wet = new Image[WetSpots.Length];
@@ -150,15 +150,23 @@ namespace Morgott.UI.PlayerHud
                 _shield = sheenArt ? art.Image("Shield", _window, null, "color.hud.shield.rim", Image.Type.Simple)
                     : art.Image("Shield", _window, shieldToken ?? "sprite.hud.bar.fill", "color.hud.shield", shieldToken != null ? Image.Type.Simple : Image.Type.Sliced);
                 _shield.gameObject.SetActive(false);
+                // external shields (vanilla SE_Shield) = the same layer set in purple, right after the gear segment
+                _shieldX = sheenArt ? art.Image("ShieldExt", _window, null, "color.hud.shield.ext.rim", Image.Type.Simple)
+                    : art.Image("ShieldExt", _window, shieldToken ?? "sprite.hud.bar.fill", "color.hud.shield.ext", shieldToken != null ? Image.Type.Simple : Image.Type.Sliced);
+                _shieldX.gameObject.SetActive(false);
                 if (sheenArt)
                 {
                     _shieldRimB = art.Image("ShieldRimB", _window, null, "color.hud.shield.rim", Image.Type.Simple);
                     _shieldRimB.gameObject.SetActive(false);
+                    _shieldRimBX = art.Image("ShieldExtRimB", _window, null, "color.hud.shield.ext.rim", Image.Type.Simple);
+                    _shieldRimBX.gameObject.SetActive(false);
                 }
                 if (_edge)
                 {
                     _shieldEdge = art.Image("ShieldEdge", _window, "sprite.hud.bar.edge", HudMath.EdgeColorToken("color.hud.shield"), Image.Type.Simple);
                     _shieldEdge.gameObject.SetActive(false);
+                    _shieldEdgeX = art.Image("ShieldExtEdge", _window, "sprite.hud.bar.edge", HudMath.EdgeColorToken("color.hud.shield.ext"), Image.Type.Simple);
+                    _shieldEdgeX.gameObject.SetActive(false);
                 }
             }
             if (sheenArt)
@@ -167,6 +175,9 @@ namespace Morgott.UI.PlayerHud
                 _sheen = art.Image("ShieldSheen", _window, null, "color.hud.shield.edge", Image.Type.Simple);
                 _sheen.sprite = EdgeMask();
                 _sheen.gameObject.SetActive(false);
+                _sheenX = art.Image("ShieldExtSheen", _window, null, "color.hud.shield.ext.edge", Image.Type.Simple);
+                _sheenX.sprite = _sheen.sprite;
+                _sheenX.gameObject.SetActive(false);
             }
             _reserved = art.Image("Reserved", _window, "sprite.hud.reserved", "color.hud.reserve", Image.Type.Tiled);
             _reservedEdge = art.Image("ReservedEdge", _window, "sprite.hud.reserved.edge", "color.hud.reserve.edge", Image.Type.Simple);
@@ -554,35 +565,22 @@ namespace Morgott.UI.PlayerHud
                 // Shield over the HP fill in its own scale (user 2026-11-03: shield / max shield of the full window, from the
                 // left end, independent of HP). With the edge mask: glow at the top + bottom edges fading to a clear centre
                 // third, 1 px rims on both edges (user + Codex call 2026-11-08); else the upper band. Over the shader fill too.
-                float sx, sy, sw, sh;
+                // Gear energy shield (blue) then external shields (purple) as two contiguous segments (user 2026-11-16).
+                float sy, sh;
+                HudMath.ShieldSegments(_shieldValue - _shieldExt, _shieldExt, _shieldMax, l, out var gw, out var ew);
                 if (_sheen)
                 {
-                    sx = 0f;
-                    sw = HudMath.ShieldOverlay(_shieldValue, _shieldMax, l);
-                    PlaceAt(_sheen, sx, 0f, sw, _h, true);
                     sh = ThemeTokens.GetFloat("size.hud.shield.rim", 1f);
                     sy = _h - sh;
                 }
-                else HudMath.ShieldBand(_shieldValue, _shieldMax, l, _h, ThemeTokens.GetFloat("share.hud.shield.band", 0.4f), out sx, out sy, out sw, out sh);
-                var son = sw > 0.05f && sh > 0.05f;
-                if (_shield.gameObject.activeSelf != son) _shield.gameObject.SetActive(son);
-                if (son)
-                {
-                    var sr = _shield.rectTransform;
-                    sr.anchoredPosition = new Vector2(sx, sy);
-                    sr.sizeDelta = new Vector2(sw, sh);
-                }
-                if (_shieldRimB)
-                {
-                    if (_shieldRimB.gameObject.activeSelf != son) _shieldRimB.gameObject.SetActive(son);
-                    if (son)
-                    {
-                        var br = _shieldRimB.rectTransform;
-                        br.anchoredPosition = new Vector2(sx, 0f);
-                        br.sizeDelta = new Vector2(sw, sh);
-                    }
-                }
-                if (_shieldEdge) Edge(_shieldEdge, sx + sw, sy, sh, !_fx && son && EdgeMode == 2 && sx + sw < l - 0.5f);
+                else HudMath.ShieldBand(_shieldValue, _shieldMax, l, _h, ThemeTokens.GetFloat("share.hud.shield.band", 0.4f), out _, out sy, out _, out sh);
+                ShieldSegment(_sheen, _shield, _shieldRimB, 0f, gw, sy, sh);
+                ShieldSegment(_sheenX, _shieldX, _shieldRimBX, gw, ew, sy, sh);
+                var end = gw + ew;
+                var edgeOn = !_fx && sh > 0.05f && EdgeMode == 2 && end < l - 0.5f;
+                // purple end only when it fits inside the purple segment, else the blue end
+                var extEdge = _shieldEdgeX && Edge(_shieldEdgeX, end, sy, sh, edgeOn && ew > 0.05f, gw);
+                if (_shieldEdge) Edge(_shieldEdge, end, sy, sh, edgeOn && gw > 0.05f && !extEdge);
             }
             if (Plain) showAvail = false;
             var extra = showAvail ? avail : -1f;
@@ -687,6 +685,25 @@ namespace Morgott.UI.PlayerHud
             }
         }
 
+        // One shield segment [x, x+w] of the window: full-height sheen (strip4 art), top line / band, bottom rim.
+        private void ShieldSegment(Image sheen, Image top, Image rimB, float x, float w, float y, float h)
+        {
+            PlaceAt(sheen, x, 0f, w, _h, true);
+            var on = w > 0.05f && h > 0.05f;
+            ShieldRect(top, x, y, w, h, on);
+            ShieldRect(rimB, x, 0f, w, h, on);
+        }
+
+        private static void ShieldRect(Image img, float x, float y, float w, float h, bool on)
+        {
+            if (!img) return;
+            if (img.gameObject.activeSelf != on) img.gameObject.SetActive(on);
+            if (!on) return;
+            var r = img.rectTransform;
+            r.anchoredPosition = new Vector2(x, y);
+            r.sizeDelta = new Vector2(w, h);
+        }
+
         private static void PlaceAt(Image img, float x, float y, float w, float h, bool on)
         {
             if (!img) return;
@@ -735,7 +752,7 @@ namespace Morgott.UI.PlayerHud
             if (!shader || _fx) return;
             _fxColorToken = colorToken;
             _fxPool = pool;
-            foreach (var img in new[] { _trough, _lag, _fill, _edge, _front, _shieldEdge })
+            foreach (var img in new[] { _trough, _lag, _fill, _edge, _front, _shieldEdge, _shieldEdgeX })
                 if (img) img.enabled = false;
             _fx = _art.Image("BarFx", _window, null, "color.frame", Image.Type.Simple);
             _fx.color = Color.white;
@@ -862,11 +879,13 @@ namespace Morgott.UI.PlayerHud
             _follow.Reset(); // the drawn fill snaps to the value on return too
             _shownShare = -1f;
         }
-        // Shield drawn over the health fill on the next Render: amount and its own pool max (0 = none).
-        public void SetShield(float amount, float max = 0f)
+        // Shield drawn over the health fill on the next Render: total amount, its own pool max (0 = none) and the external
+        // (vanilla SE_Shield, purple) part of the amount; the rest is the gear energy shield (blue).
+        public void SetShield(float amount, float max = 0f, float ext = 0f)
         {
             _shieldValue = Mathf.Max(0f, amount);
             _shieldMax = Mathf.Max(0f, max);
+            _shieldExt = Mathf.Clamp(ext, 0f, _shieldValue);
         }
         // ---- health labels (variant C) -----------------------------------------------------------------------------
         private TMP_Text _shieldText;
@@ -968,18 +987,20 @@ namespace Morgott.UI.PlayerHud
         }
 
         // Rim ending at window x (its right edge), from y up h; width from the sprite's aspect, whole ref px.
-        private void Edge(Image img, float x, float y, float h, bool on)
+        // minX: the leftmost window x the edge may start at (it stays inside its segment); returns whether it shows.
+        private bool Edge(Image img, float x, float y, float h, bool on, float minX = 0f)
         {
             var s = img.sprite;
             var w = HudMath.EdgeWidth(s ? s.rect.width : 0f, s ? s.rect.height : 0f, h);
-            on = on && w > 0f && x >= w;
+            on = on && w > 0f && x - w >= minX;
             if (img.gameObject.activeSelf != on) img.gameObject.SetActive(on);
-            if (!on) return;
+            if (!on) return false;
             var rt = img.rectTransform;
             var pos = new Vector2(Mathf.Round(x - w), y);
             var size = new Vector2(w, h);
             if (rt.anchoredPosition != pos) rt.anchoredPosition = pos;
             if (rt.sizeDelta != size) rt.sizeDelta = size;
+            return true;
         }
 
         // Window-local horizontal strip [x, x+w] of the full window height.

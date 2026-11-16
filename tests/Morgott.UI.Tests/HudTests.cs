@@ -407,6 +407,22 @@ namespace Morgott.UI.Tests
         public void ShieldOverlayOwnScale(float shield, float max, float window, float want) =>
             Assert.Equal(want, HudMath.ShieldOverlay(shield, max, window), 3);
 
+        // Gear (blue) then external (purple) segments, contiguous, together = the summed overlay (user 2026-11-16).
+        [Theory]
+        [InlineData(60f, 30f, 200f, 600f, 180f, 90f)]         // both: gear first, ext right after it
+        [InlineData(0f, 30f, 120f, 1f, 0f, 0.25f)]            // ext only (ally rail, ratio window)
+        [InlineData(60f, 0f, 80f, 1f, 0.75f, 0f)]             // gear only
+        [InlineData(150f, 100f, 200f, 600f, 450f, 150f)]      // over max: total clamped to the window, ext gets the rest
+        [InlineData(250f, 50f, 200f, 600f, 600f, 0f)]         // gear alone overflows: no room for ext
+        [InlineData(float.NaN, 30f, 60f, 600f, 0f, 300f)]     // nonsense gear = none
+        [InlineData(30f, 30f, 0f, 600f, 0f, 0f)]              // no max
+        public void ShieldSegmentsContiguous(float gear, float ext, float max, float window, float wantGear, float wantExt)
+        {
+            HudMath.ShieldSegments(gear, ext, max, window, out var g, out var e);
+            Assert.Equal(wantGear, g, 3);
+            Assert.Equal(wantExt, e, 3);
+        }
+
         // Shield edge mask (2026-11-08): centre third clear, max at both edges, symmetric, rising toward the edges.
         [Fact]
         public void ShieldEdgeAlphaClearCentreThird()
