@@ -445,7 +445,9 @@ namespace Morgott.UI.PlayerHud
             {
                 // Chaos Inoculation: the fill is the energy shield; the centre still reads the HP ("HP 1/1"), the shield
                 // "cur/max" sits right with its glyph (variant C, user 2026-10-26: "119/119" read as HP).
-                _health.SetShield(0f);
+                // external shields still show as the purple overlay, in their own scale (the gear part is the fill itself)
+                var ext = VanillaShield(p, out var vanillaMax);
+                _health.SetShield(ext, vanillaMax, ext);
                 _health.HealthText(hp, hpC, true, Mathf.Max(0f, es.Current), es.Max);
                 _health.Render(es.Current, es.Max, es.Available, _stripes, 0, _stripeKinds, "color.hud.es", overlaySprite, overlayColor, es.Inert, dt, es.Available < es.Max - 0.5f);
                 _health.Aux(0);
