@@ -42,6 +42,11 @@ namespace Morgott.UI.MapScreen
         private bool _full = true, _dirty, _linesDirty = true;
         private float _nextApply, _nextLines;
         private Thread _worker;
+        // Full compose (~350 ms for 2048^2) runs on a worker as soon as the grid is ready, not in the first large-map frame
+        // (user 2026-11-16: freeze before the map appeared). Pixels explored meanwhile are replayed after it.
+        private volatile bool _composing, _composeDone, _composeOk;
+        private bool _fresh; // the uploaded textures match the explored bits (false after a reset until the recompose lands)
+        private readonly System.Collections.Generic.List<int> _pending = new System.Collections.Generic.List<int>();
         private int _themeRev = -1;
         private RectInt _window;
 
@@ -80,6 +85,54 @@ namespace Morgott.UI.MapScreen
         public void EnsureGrid()
         {
             if (_worker == null && WorldGenerator.instance != null) StartGrid();
+            if (_composeDone) FinishCompose();
+            if (_themeRev != ThemeTokens.Revision) { _themeRev = ThemeTokens.Revision; Restyle(); } // ui_reload: new colours
+            if (_full && _gridReady && !_composing && On) StartCompose();
+        }
+
+        private static bool On => (MapConfig.BiomeOverlay?.Value ?? true) || (MapConfig.FogTint?.Value ?? true);
+
+        // Main thread: palette + explored snapshot; the worker fills both pixel arrays.
+        private void StartCompose()
+        {
+            _full = false;
+            _composing = true;
+            var palette = Palette();
+            var (fill, outline, fog) = (_fill, _outline, _fog);
+            var explored = (System.Collections.BitArray)_map.m_explored.Clone();
+            var others = (System.Collections.BitArray)_map.m_exploredOthers.Clone();
+            _pxOutline ??= new Color32[_size * _size];
+            _pxFill ??= new Color32[_size * _size];
+            _land ??= new byte[_size * _size];
+            var (ids, land, size, pxOutline, pxFill) = (_ids, _land, _size, _pxOutline, _pxFill);
+            ThreadPool.QueueUserWorkItem(_ =>
+            {
+                try
+                {
+                    var sw = System.Diagnostics.Stopwatch.StartNew();
+                    var fogA = new byte[size * size];
+                    MapFilterMath.LandIds(ids, explored, others, land);
+                    MapFilterMath.FogAlphas(explored, others, size, fog.a, fogA);
+                    MapFilterMath.Compose(ids, land, size, explored, others, fogA, palette, fill, outline, fog, pxOutline, pxFill);
+                    Plugin.Log.LogInfo($"[Morgott.UI] biome overlay composed in {sw.ElapsedMilliseconds} ms (worker)");
+                    _composeOk = true;
+                }
+                catch (Exception e) { Plugin.Log.LogError($"[Morgott.UI] biome overlay compose failed (overlay stays off): {e}"); }
+                _composeDone = true;
+            });
+        }
+
+        private void FinishCompose()
+        {
+            _composeDone = false;
+            _composing = false;
+            _composed = _composeOk; // failed: overlay off, half-written arrays never uploaded
+            _composeOk = false;
+            if (!_composed) _fresh = false;
+            _dirty = _composed;
+            _linesDirty = true;
+            if (_composed) foreach (var i in _pending) Explored(i % _size, i / _size);
+            _pending.Clear();
         }
 
         public static void Detach(Minimap map)
@@ -202,7 +255,9 @@ namespace Morgott.UI.MapScreen
         // Explore / ExploreOthers postfix: one newly explored pixel.
         internal void Explored(int x, int y)
         {
-            if (!Ready || _full || x < 0 || y < 0 || x >= _size || y >= _size) return;
+            if (x < 0 || y < 0 || x >= _size || y >= _size) return;
+            if (_composing) { _pending.Add(y * _size + x); return; } // the worker owns the pixel arrays
+            if (!Ready || _full) return;
             _land[y * _size + x] = _ids[y * _size + x];
             // The soft fog edge / land blend spread FogReach texels: the whole neighbourhood is redone.
             var r = MapFilterMath.FogReach;
@@ -224,6 +279,7 @@ namespace Morgott.UI.MapScreen
         internal void Invalidate()
         {
             _full = true;
+            _fresh = false; // hidden until the recompose is uploaded: forgotten biomes must not show over the new fog
             _nextApply = _nextLines = 0f; // stale lit pixels / lines must not outlive a reset
         }
 
@@ -235,7 +291,20 @@ namespace Morgott.UI.MapScreen
         {
             var img = _map.m_mapImageLarge;
             if (!img || !_gridReady) return;
-            var on = (MapConfig.BiomeOverlay?.Value ?? true) || (MapConfig.FogTint?.Value ?? true);
+            EnsureGrid(); // a compose requested this frame (toggle / reload) starts now, on the worker
+            if (_dirty && _composed && !_composing && !_full && Time.unscaledTime >= _nextApply)
+            {
+                _texOutline ??= NewTexture(_size, "Morgott.UI biome overlay");
+                _texFill ??= NewTexture(_size, "Morgott.UI biome overlay (fill)");
+                _texOutline.SetPixels32(_pxOutline);
+                _texOutline.Apply(false);
+                _texFill.SetPixels32(_pxFill);
+                _texFill.Apply(false);
+                _dirty = false;
+                _fresh = true;
+                _nextApply = Time.unscaledTime + 0.5f; // exploring with the map open: at most two uploads a second
+            }
+            var on = On && _fresh; // nothing drawn until a current compose is uploaded
             if (!_image)
             {
                 if (!on) return;
@@ -254,38 +323,9 @@ namespace Morgott.UI.MapScreen
                 if (_lines.gameObject.activeSelf) _lines.gameObject.SetActive(false);
                 return;
             }
-            if (_themeRev != ThemeTokens.Revision) { _themeRev = ThemeTokens.Revision; Restyle(); } // ui_reload: new colours
             // Under pins / markers / mod layers: overlay first, its lines right after it.
             if (_image.transform.GetSiblingIndex() != 0) _image.transform.SetAsFirstSibling();
             if (_lines.transform.GetSiblingIndex() != 1) _lines.transform.SetSiblingIndex(1);
-            if (_full)
-            {
-                _full = false;
-                var palette = Palette();
-                _pxOutline ??= new Color32[_size * _size];
-                _pxFill ??= new Color32[_size * _size];
-                var sw = System.Diagnostics.Stopwatch.StartNew();
-                var fogA = new byte[_size * _size];
-                _land ??= new byte[_size * _size];
-                MapFilterMath.LandIds(_ids, _map.m_explored, _map.m_exploredOthers, _land);
-                MapFilterMath.FogAlphas(_map.m_explored, _map.m_exploredOthers, _size, _fog.a, fogA);
-                MapFilterMath.Compose(_ids, _land, _size, _map.m_explored, _map.m_exploredOthers, fogA, palette, _fill, _outline, _fog, _pxOutline, _pxFill);
-                Plugin.Log.LogInfo($"[Morgott.UI] biome overlay composed in {sw.ElapsedMilliseconds} ms");
-                _composed = true;
-                _dirty = true;
-                _linesDirty = true;
-            }
-            if (_dirty && Time.unscaledTime >= _nextApply)
-            {
-                _texOutline ??= NewTexture(_size, "Morgott.UI biome overlay");
-                _texFill ??= NewTexture(_size, "Morgott.UI biome overlay (fill)");
-                _texOutline.SetPixels32(_pxOutline);
-                _texOutline.Apply(false);
-                _texFill.SetPixels32(_pxFill);
-                _texFill.Apply(false);
-                _dirty = false;
-                _nextApply = Time.unscaledTime + 0.5f; // exploring with the map open: at most two uploads a second
-            }
             var uv = img.uvRect;
             if (_image.uvRect != uv) _image.uvRect = uv;
             UpdateLines(img, uv);
