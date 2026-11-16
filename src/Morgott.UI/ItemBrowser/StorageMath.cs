@@ -27,8 +27,12 @@ namespace Morgott.UI.ItemBrowser
         }
 
         /// <summary>Take bar chest count, "в 5 сундуках" / "in 5 chests"; <paramref name="localize"/> resolves $tokens.</summary>
-        public static string InChests(int n, Func<string, string> localize) =>
-            string.Format(localize("$ib_store_in"), n, localize("$ib_store_in_chest_" + Plural(n)));
+        public static string InChests(int n, string language, Func<string, string> localize) =>
+            string.Format(localize("$ib_store_in"), n, localize("$ib_store_in_chest_" + Form(n, language)));
+
+        /// <summary>Word form of <paramref name="n"/> in the game language: Russian rules for Russian, else English ones
+        /// (1 = _1, anything else = _5; languages without own words fall back to the English ones).</summary>
+        public static int Form(int n, string language) => language == "Russian" ? Plural(n) : Math.Abs(n) == 1 ? 1 : 5;
 
         /// <summary>Grid filter: in stock, and in the category when one is picked (search is BrowserIndex.Search's).</summary>
         public static Func<Entry, bool> Filter(IReadOnlyDictionary<string, int> stock, int cat) =>

@@ -95,10 +95,12 @@ namespace Morgott.UI.ItemBrowser
             });
         }
 
+        private static string Lang => Localization.instance?.GetSelectedLanguage();
+
         private void NetLine()
         {
             Put(_netLine, 0f, 0f, UnitW, 28f);
-            Fit(_netLine, string.Format(L("$ib_store_net"), _chests, L("$ib_store_chest_" + StorageMath.Plural(_chests)), _netStations, L("$ib_store_station_" + StorageMath.Plural(_netStations))), 20f);
+            Fit(_netLine, string.Format(L("$ib_store_net"), _chests, L("$ib_store_chest_" + StorageMath.Form(_chests, Lang)), _netStations, L("$ib_store_station_" + StorageMath.Form(_netStations, Lang))), 20f);
         }
 
         // Inventory room for prefab id in units, as vanilla Inventory.CanAddItem counts it (Inventory.cs:99).
@@ -134,11 +136,11 @@ namespace Morgott.UI.ItemBrowser
                 SetIcon(_barIcon, _sel);
                 Put(_barName, 40f, top + 10f, 300f, 28f);
                 _chestsOf.TryGetValue(_sel, out var held);
-                Fit(_barName, $"{NameOf(_sel)} — {StorageMath.Count(stock)} · {StorageMath.InChests(held, L)}", 20f);
+                Fit(_barName, $"{NameOf(_sel)} — {StorageMath.Count(stock)} · {StorageMath.InChests(held, Lang, L)}", 20f);
             }
             else { Off(_barIcon); Off(_barName); }
             Put(_barFree, 330f, top + 10f, UnitW - 330f, 28f);
-            Fit(_barFree, string.Format(L("$ib_store_free"), free, L("$ib_store_slot_" + StorageMath.Plural(free))), 18f);
+            Fit(_barFree, string.Format(L("$ib_store_free"), free, L("$ib_store_slot_" + StorageMath.Form(free, Lang))), 18f);
 
             var y = h - BarBtnH - 2f;
             StoreBtn(_bStack, _stackLabel, string.Format(L("$ib_store_stack"), _barStack), live, 10f, y, 113f);

@@ -47,7 +47,7 @@ namespace Morgott.UI.Tests
         [InlineData(1, "в 1 сундуке", "in 1 chest")]
         [InlineData(2, "в 2 сундуках", "in 2 chests")]
         [InlineData(5, "в 5 сундуках", "in 5 chests")]
-        [InlineData(21, "в 21 сундуке", "in 21 chest")] // RU singular form, EN takes the _1 word too (as the network line)
+        [InlineData(21, "в 21 сундуке", "in 21 chests")] // RU singular form, EN plural
         [InlineData(11, "в 11 сундуках", "in 11 chests")]
         public void InChestsUsesThePrepositionalPlural(int n, string ru, string en)
         {
@@ -56,8 +56,21 @@ namespace Morgott.UI.Tests
                 using var s = typeof(StorageMathTests).Assembly.GetManifestResourceStream($"Morgott.UI.Translations.{language}.json");
                 return System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(s)[token.TrimStart('$')];
             }
-            Assert.Equal(ru, StorageMath.InChests(n, t => Words("Russian", t)));
-            Assert.Equal(en, StorageMath.InChests(n, t => Words("English", t)));
+            Assert.Equal(ru, StorageMath.InChests(n, "Russian", t => Words("Russian", t)));
+            Assert.Equal(en, StorageMath.InChests(n, "English", t => Words("English", t)));
+        }
+
+        [Theory]
+        [InlineData(1, 1, 1)]
+        [InlineData(2, 2, 5)]
+        [InlineData(5, 5, 5)]
+        [InlineData(21, 1, 5)]
+        [InlineData(0, 5, 5)]
+        public void FormFollowsTheLanguage(int n, int ru, int en)
+        {
+            Assert.Equal(ru, StorageMath.Form(n, "Russian"));
+            Assert.Equal(en, StorageMath.Form(n, "English"));
+            Assert.Equal(en, StorageMath.Form(n, "German")); // no German words: English ones, English rules
         }
 
         [Fact]
