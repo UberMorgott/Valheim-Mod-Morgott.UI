@@ -187,8 +187,23 @@ namespace Morgott.UI.PlayerHud
         public void Feed(List<StatusEffect> effects)
         {
             _hudEffects.Clear();
-            _hudEffects.AddRange(effects);
+            var belt = BeltEffectHash();
+            foreach (var se in effects)
+                if (!se || belt == 0 || se.NameHash() != belt) _hudEffects.Add(se);
             _fed = true;
+        }
+
+        // Megingjord's equip effect (carry weight) is on for as long as the belt is worn: no tile for it (player request
+        // 2026-11-16). Only the HUD list skips it; the effect itself keeps working. Read from the item, not a guessed name.
+        private static int _beltHash;
+
+        private static int BeltEffectHash()
+        {
+            if (_beltHash != 0 || !ObjectDB.instance) return _beltHash;
+            var prefab = ObjectDB.instance.GetItemPrefab("BeltStrength");
+            var se = prefab && prefab.TryGetComponent<ItemDrop>(out var drop) ? drop.m_itemData.m_shared.m_equipStatusEffect : null;
+            if (se) _beltHash = se.NameHash();
+            return _beltHash;
         }
 
         // ---- vanilla suppression ---------------------------------------------------------------------------------

@@ -92,5 +92,25 @@ namespace Morgott.UI.Tests
         [InlineData(1, "+1")]
         [InlineData(3, "+3")]
         public void Badge_Label(int comfort, string expected) => Assert.Equal(expected, ComfortBadgeMath.Label(comfort));
+
+        // Vanilla ComfortGroup: None = 0, Fire = 1, Bed = 2 (Piece.cs:68).
+        private static ComfortBadgeMath.Source S(int group, string name, int comfort) => new ComfortBadgeMath.Source(group, name, comfort);
+
+        [Fact]
+        public void Counted_FollowsVanillaComfortDedup()
+        {
+            var none = new List<ComfortBadgeMath.Source>();
+            Assert.False(ComfortBadgeMath.Counted(1, "$piece_firepit", 1, none), "empty range");
+            // group: a stronger or equal piece of the group holds the slot, a weaker one does not
+            Assert.True(ComfortBadgeMath.Counted(1, "$piece_firepit", 1, new[] { S(1, "$piece_hearth", 2) }));
+            Assert.True(ComfortBadgeMath.Counted(1, "$piece_firepit", 1, new[] { S(1, "$piece_bonfire", 1) }));
+            Assert.False(ComfortBadgeMath.Counted(1, "$piece_hearth", 2, new[] { S(1, "$piece_firepit", 1) }));
+            Assert.False(ComfortBadgeMath.Counted(1, "$piece_firepit", 1, new[] { S(2, "$piece_bed", 1) }), "other group");
+            // no group: only the same piece (name) counts as a duplicate
+            Assert.True(ComfortBadgeMath.Counted(0, "$piece_banner01", 1, new[] { S(0, "$piece_banner01", 1) }));
+            Assert.False(ComfortBadgeMath.Counted(0, "$piece_banner01", 1, new[] { S(0, "$piece_banner02", 1) }));
+            // a same-name piece whose comfort object is off (GetComfort 0) adds nothing, so the new one would count
+            Assert.False(ComfortBadgeMath.Counted(1, "$piece_firepit", 1, new[] { S(1, "$piece_firepit", 0) }));
+        }
     }
 }
