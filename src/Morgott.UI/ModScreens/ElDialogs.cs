@@ -121,8 +121,6 @@ namespace Morgott.UI.ModScreens
         {
             if (!dialog) return;
             var type = dialog.GetType();
-            // Auga-built panels (IsAugaPanel) are no variant-dialog clones.
-            if (Field(type, "IsAugaPanel")?.GetValue(dialog) is bool auga && auga) return;
             if (ElDialogMath.IsStaleRootMark(dialog.TryGetComponent<RootMark>(out var mark), ScreenRegistry.IsRoot(dialog.transform)))
                 UnityEngine.Object.DestroyImmediate(mark);
             if (Field(type, "Icon")?.GetValue(dialog) is Image icon) _icon.To(icon.rectTransform);
@@ -184,8 +182,7 @@ namespace Morgott.UI.ModScreens
             Behaviours.Clear();
             root.GetComponentsInChildren(true, Behaviours);
             foreach (var b in Behaviours)
-                if (b && IsDialog(b.GetType()) && !(Field(b.GetType(), "IsAugaPanel")?.GetValue(b) is bool auga && auga))
-                    a(b);
+                if (b && IsDialog(b.GetType())) a(b);
             Behaviours.Clear();
         }
 
