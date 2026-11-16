@@ -156,6 +156,16 @@ namespace Morgott.UI.ItemBrowser
         public static int Mix(int h, int v) { unchecked { return (h ^ v) * 16777619; } }
 
         public const int Seed = unchecked((int)2166136261);
+
+        // Keys added, removed or rehashed between two per-recipe fingerprints, so a rebuild log names the mutated recipes.
+        public static string ChangedKeys(IReadOnlyDictionary<string, int> a, IReadOnlyDictionary<string, int> b, int max)
+        {
+            var d = new List<string>();
+            foreach (var kv in b) if (!a.TryGetValue(kv.Key, out var h) || h != kv.Value) d.Add(kv.Key);
+            foreach (var k in a.Keys) if (!b.ContainsKey(k)) d.Add(k);
+            d.Sort(StringComparer.Ordinal);
+            return d.Count <= max ? string.Join(", ", d) : string.Join(", ", d.GetRange(0, max)) + $" (+{d.Count - max})";
+        }
     }
 
     // Back / forward history of item pages (mouse buttons + arrow hotkeys).

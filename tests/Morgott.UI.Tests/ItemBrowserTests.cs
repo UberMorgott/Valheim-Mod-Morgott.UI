@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using Morgott.Core;
 using Morgott.UI.ItemBrowser;
@@ -195,6 +196,16 @@ namespace Morgott.UI.Tests
             Assert.NotEqual(Fp(2), Fp(3));
             Assert.Equal(Fp(2), Fp(2));
             Assert.NotEqual(BrowserIndex.Mix(BrowserIndex.Mix(BrowserIndex.Seed, "ab"), "c"), BrowserIndex.Mix(BrowserIndex.Mix(BrowserIndex.Seed, "a"), "bc"));
+        }
+
+        [Fact]
+        public void ChangedKeysNamesRehashedAddedAndRemovedRecipes()
+        {
+            var a = new Dictionary<string, int> { ["Recipe_A"] = 1, ["Recipe_B"] = 2, ["Recipe_Gone"] = 3 };
+            var b = new Dictionary<string, int> { ["Recipe_A"] = 1, ["Recipe_B"] = 5, ["Recipe_New"] = 4 };
+            Assert.Equal("Recipe_B, Recipe_Gone, Recipe_New", BrowserIndex.ChangedKeys(a, b, 8));
+            Assert.Equal("Recipe_B (+2)", BrowserIndex.ChangedKeys(a, b, 1));
+            Assert.Equal("", BrowserIndex.ChangedKeys(a, a, 8));
         }
 
         // ---------------------------------------------------------------- PageModel (item page)
