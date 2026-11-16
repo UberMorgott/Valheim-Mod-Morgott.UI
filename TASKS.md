@@ -14,7 +14,6 @@ Finished work: History below (one line per milestone); details in `git log` / ta
   sprite or runic font exists.
 - [ ] Chip / tag accent fills render brighter than their 0.22 / 0.18 alpha (run 20261116-134647, Codex: mockup =
   dark plates; yellow tag text on the ochre fill reads weakly): tune after checking the UI colour space.
-- [ ] Backdrop blur: no GUI blur material is loaded at the main menu (log "changelog backdrop blur: none"); dim only.
 - [ ] Codex 8/10 leftovers: body / title / mod-name faces read smaller and narrower than the mockup; inner glass flat
   (mockup has a faint dark gradient).
 

@@ -52,7 +52,7 @@ namespace Morgott.UI.PreWorld
         private Canvas _canvas;
         private bool _addedCanvas, _addedRaycaster, _gameTab, _laidOut, _dirty = true;
         private (bool over, int layer, int order) _canvasOrig;
-        private GameObject _scrim, _blur;
+        private GameObject _scrim;
         private Vector2 _frame; // current frame size (Fit)
 
         // data
@@ -219,7 +219,10 @@ namespace Morgott.UI.PreWorld
             scrim.rectTransform.SetParent(_window, false);
             scrim.rectTransform.SetAsFirstSibling();
             Stretch(scrim.rectTransform, -6000f, -6000f, -6000f, -6000f);
-            scrim.color = ThemeTokens.GetColor("color.changelog.scrim", new Color(0.016f, 0.027f, 0.039f, 0.9f));
+            // Opaque: the game blends in linear space, so alpha 0.9 left 10 % linear light = ~31 % sRGB and the menu
+            // texts in the 24 px margin (BepInEx Version, player.log link) read through at 80/255 vs 230 bare (run
+            // 20261116-210336, ui-runeskin-m5-changelog vs -badge). The full-screen window leaves nothing to show behind.
+            scrim.color = ThemeTokens.GetColor("color.changelog.scrim", new Color(0.016f, 0.027f, 0.039f, 1f));
             scrim.raycastTarget = true;
             DollCell.Mark(scrim, "content", "changelog modal backdrop");
             scrim.gameObject.AddComponent<Backdrop>().Click = e =>
@@ -228,23 +231,6 @@ namespace Morgott.UI.PreWorld
                 if (_fejd && _fejd.m_changeLog && _fejd.m_changeLog.activeInHierarchy) _fejd.OnButtonShowChangelog();
             };
             _scrim = scrim.gameObject;
-            // The menu behind is blurred: the vanilla GUI blur material (grab pass; InventoryGui "blur" images, InfoPage)
-            // under the dim when the game has it loaded at the menu; else the dim alone.
-            Material blurMat = null;
-            foreach (var m in Resources.FindObjectsOfTypeAll<Material>())
-                if (m && m.shader && m.name.IndexOf("blur", StringComparison.OrdinalIgnoreCase) >= 0 && m.shader.name.IndexOf("blur", StringComparison.OrdinalIgnoreCase) >= 0) { blurMat = m; break; } // a UI blur, not a post effect by name only
-            if (blurMat)
-            {
-                var blur = new GameObject("MorgottChangelogBlur", typeof(RectTransform)).AddComponent<Image>();
-                blur.rectTransform.SetParent(_window, false);
-                blur.rectTransform.SetAsFirstSibling();
-                Stretch(blur.rectTransform, -6000f, -6000f, -6000f, -6000f);
-                blur.material = blurMat;
-                blur.raycastTarget = false;
-                DollCell.Mark(blur, "content", "changelog backdrop blur");
-                _blur = blur.gameObject;
-            }
-            Plugin.Log.LogInfo($"[Morgott.UI] changelog backdrop blur: {(blurMat ? blurMat.name + " / " + blurMat.shader.name : "none loaded at the menu")}");
 
             _root = NewRect(RootName, _window);
             Stretch(_root, -PadX, -PadT, -PadX, -PadB); // root = the drawn frame (layout units)
@@ -574,11 +560,15 @@ namespace Morgott.UI.PreWorld
         // Sort override above the menu canvas (run 20261116-133155: windowOrder=0 override=False, modded_text over the
         // backdrop): at menu build the parent chain is inactive and GetComponentInParent(false) found no canvas, so the
         // override was never set. Inactive parents included; re-applied on open.
+        // One above the higher of its own root ("Canvas Changelog") and the menu's root (GUI: StartGui/Menu with the
+        // BepInEx text and BottomLeftButtons), so popups (ModalLayer, base + 5) and tooltips (TopOverlay, base + 10) still
+        // draw over it; the former +20 put the window above both.
         private void Sort()
         {
             var parent = _window.parent ? _window.parent.GetComponentInParent<Canvas>(true) : null;
             if (!parent || !_canvas) return;
-            var order = parent.rootCanvas.sortingOrder + 20;
+            var menu = _fejd && _fejd.m_mainMenu ? _fejd.m_mainMenu.GetComponentInParent<Canvas>(true) : null;
+            var order = Mathf.Max(parent.rootCanvas.sortingOrder, menu ? menu.rootCanvas.sortingOrder : int.MinValue) + 1;
             if (_canvas.overrideSorting && _canvas.sortingOrder == order) return;
             _canvas.overrideSorting = true;
             _canvas.sortingLayerID = parent.rootCanvas.sortingLayerID;
@@ -1062,7 +1052,6 @@ namespace Morgott.UI.PreWorld
             if (_addedCanvas && _canvas) Destroy(_canvas);
             else if (_canvas) (_canvas.overrideSorting, _canvas.sortingLayerID, _canvas.sortingOrder) = _canvasOrig;
             if (_scrim) Destroy(_scrim);
-            if (_blur) Destroy(_blur);
             if (_root) Destroy(_root.gameObject);
             Destroy(this);
         }
