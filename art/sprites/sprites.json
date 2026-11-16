@@ -2752,6 +2752,28 @@
       "notes": "M2 slot lock overlay badge: stone disc, glyph_slot_locked 28 px on top; pivot bottom-right of the cell"
     },
     {
+      "name": "badge_slot_padlock",
+      "file": "badge_slot_padlock.png",
+      "size": [
+        64,
+        64
+      ],
+      "border": {
+        "left": 0,
+        "bottom": 0,
+        "right": 0,
+        "top": 0
+      },
+      "pivot": [
+        1,
+        1
+      ],
+      "imageType": "Simple",
+      "fillCenter": true,
+      "token": "badge.slot.padlock",
+      "notes": "slot lock overlay (sprite.inventory.lock): forged iron padlock, cyan shackle + keyhole, thick dark outline; top-right of the cell, ~1/3 cell width, untinted"
+    },
+    {
       "name": "slot_lock_veil",
       "file": "slot_lock_veil.png",
       "size": [

@@ -405,7 +405,7 @@
     { "token": "sprite.glyph.sort.name", "asset": "glyph_sort_name" },
     { "token": "sprite.inventory.hotbar.header", "asset": "hotbar_header" },
     { "token": "sprite.inventory.plate.number", "asset": "plate_hotbar_number" },
-    { "token": "sprite.inventory.lock", "asset": "badge_lock" },
+    { "token": "sprite.inventory.lock", "asset": "badge_slot_padlock" },
     { "token": "sprite.inventory.lock.veil", "asset": "slot_lock_veil" },
     { "token": "sprite.doll.backdrop", "asset": "doll_backdrop" },
     { "token": "sprite.plate.stat", "asset": "plate_stat" },

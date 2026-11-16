@@ -1,0 +1,6 @@
+Generate ONE PNG image, 1024x1024, background solid flat pure magenta #FF00FF everywhere (it will be chroma-keyed; no gradients, no shadows, no glow spilling onto the background, no magenta inside the sprite).
+Content: ONE game-UI badge sprite, centered, about 760x760 px, nothing else (no text, no labels).
+Sprite "slot locked padlock": a chunky forged dark-iron padlock (blackened iron #2a3036 to #12161a, subtle hammered texture, small rivets), front-facing flat orthographic. Thick rounded shackle on top, glowing bright cyan #4FE0E6 (solid cyan metal with light inner glow). On the centre of the body ONE bold simple cyan keyhole mark: a big round hole with a short wide slot below it (classic keyhole silhouette), filled glowing cyan #4FE0E6, very thick shapes, no thin lines, no detailed rune.
+Readability is the main goal: the sprite will be downscaled to 16-24 px, so use a strong thick near-black outline (#05070a, about 5% of the sprite width) around the whole padlock silhouette and around the keyhole, very high contrast, simple bold shapes, body clearly wider than tall, shackle clearly visible as an arch.
+Style: dark Norse rune UI matching the padlock in ref-mockupA.png in the current directory (top-right corner of the highlighted slots), but simpler and bolder.
+Save the result exactly to the -To path.

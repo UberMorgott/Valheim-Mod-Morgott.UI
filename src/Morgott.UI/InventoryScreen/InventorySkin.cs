@@ -1833,8 +1833,8 @@ namespace Morgott.UI.InventoryScreen
                     rt.anchorMin = new Vector2(1f, 1f);
                     rt.anchorMax = new Vector2(1f, 1f);
                     rt.pivot = new Vector2(1f, 1f);
-                    rt.anchoredPosition = new Vector2(-2f, -2f);
-                    rt.sizeDelta = new Vector2(20f, 20f);
+                    rt.anchoredPosition = new Vector2(-1f, -1f);
+                    rt.sizeDelta = new Vector2(24f, 24f); // ~1/3 of the cell: the padlock reads at real scale, clear of the stack count
                     image.raycastTarget = false;
                     image.preserveAspect = true;
                     DollCell.Mark(image, "content", "slot overlay (Skin.SetSlotOverlay)");
