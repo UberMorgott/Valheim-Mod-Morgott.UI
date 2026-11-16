@@ -536,7 +536,7 @@ namespace Morgott.UI.CraftingScreen
         // ---------------------------------------------------------------- requirement stock (cells)
 
         // Cell -> its requirement as the last SetupRequirement drew it (craft multiplier included, InventoryGui.cs:1760).
-        private readonly Dictionary<GameObject, (string Name, int Need, int Multi)> _cellReq = new Dictionary<GameObject, (string, int, int)>();
+        private readonly Dictionary<GameObject, (string Name, int Need, int Multi, string Prefab)> _cellReq = new Dictionary<GameObject, (string, int, int, string)>();
         // Chain verdicts of the selection, recomputed when any inventory changed (player or chest: Inventory.Changed) or
         // the selection / multiplier changed; never on a timer.
         private readonly Dictionary<(string, int), bool> _chainCells = new Dictionary<(string, int), bool>();
@@ -551,7 +551,53 @@ namespace Morgott.UI.CraftingScreen
         public void Requirement(Transform cell, Piece.Requirement req, int quality, int multi)
         {
             if (!IsRequirementCell(cell)) return; // Hud build pieces draw with it too (Hud.cs)
-            _cellReq[cell.gameObject] = (req.m_resItem.m_itemData.m_shared.m_name, req.GetAmount(quality) * multi, multi);
+            _cellReq[cell.gameObject] = (req.m_resItem.m_itemData.m_shared.m_name, req.GetAmount(quality) * multi, multi, req.m_resItem.gameObject.name);
+        }
+
+        // Prefab id of the requirement cell `go` is (or sits in); null outside the cells. Click (ReqCellClick) and the
+        // item browser's R / U hover keys (BrowserPanel.Hovered).
+        public string CellPrefab(GameObject go)
+        {
+            for (var t = go ? go.transform : null; t; t = t.parent)
+                if (_cellReq.TryGetValue(t.gameObject, out var r)) return r.Prefab;
+            return null;
+        }
+
+        // (prefab, incoming tooltip text) -> composed text: SetupRequirement runs every frame and UITooltip re-shows on a
+        // changed m_text, so GetTooltip runs once per material and Patcher text. Cleared when the player's max health /
+        // stamina / eitr change: food tooltips print them (ItemDrop.cs:1065, "current" values).
+        private readonly Dictionary<(string, string), string> _reqTips = new Dictionary<(string, string), string>();
+        private int _reqTipsStamp;
+
+        // SetupRequirement postfix after Morgott.Patcher's (its producer lines are in m_text by now): topic = the name,
+        // text = the full item tooltip (food stats, ...) + those lines (vanilla wrote the name only, InventoryGui.cs:1756).
+        public void RequirementTip(Transform cell, Piece.Requirement req)
+        {
+            if (!IsRequirementCell(cell) || !cell.TryGetComponent<UITooltip>(out var tip)) return;
+            var prefab = req.m_resItem.gameObject.name;
+            // Nobody rewrote it this frame (a SetupRequirement replacement that leaves the tooltip): never compose twice.
+            if (_tipShown.TryGetValue(cell.gameObject, out var shown) && ReferenceEquals(shown, tip.m_text)) return;
+            var player = Player.m_localPlayer;
+            var stamp = player ? ((int)player.GetMaxHealth() * 31 + (int)player.GetMaxStamina()) * 31 + (int)player.GetMaxEitr() : 0;
+            if (stamp != _reqTipsStamp)
+            {
+                _reqTipsStamp = stamp;
+                _reqTips.Clear();
+            }
+            if (!_reqTips.TryGetValue((prefab, tip.m_text), out var text))
+            {
+                if (_reqTips.Count >= 256) _reqTips.Clear();
+                text = _reqTips[(prefab, tip.m_text)] = CraftingMath.RequirementTip(ItemBrowser.Browser.ItemTip(prefab, 1, 1), tip.m_text);
+            }
+            tip.m_topic = req.m_resItem.m_itemData.m_shared.m_name;
+            tip.m_text = _tipShown[cell.gameObject] = text;
+        }
+
+        private readonly Dictionary<GameObject, string> _tipShown = new Dictionary<GameObject, string>();
+
+        public void HideTip(Transform cell)
+        {
+            if (IsRequirementCell(cell) && cell.TryGetComponent<UITooltip>(out var tip)) tip.m_topic = "";
         }
 
         // A requirement short by `shortBy`: craftable through the chain when the whole selection is (its plan makes every
@@ -727,6 +773,7 @@ namespace Morgott.UI.CraftingScreen
             i.Repair = RepairShown();
             i.CraftType = _gui.m_itemCraftType && _gui.m_itemCraftType.gameObject.activeSelf;
             i.Quality = _gui.m_qualityPanel && _gui.m_qualityPanel.gameObject.activeSelf;
+            i.Network = Network() != null && Station();
             i.TabOffset = _tabOffset;
             i.CategoryOffset = _catOffset;
             i.SubCategoryOffset = _subOffset;
@@ -744,7 +791,7 @@ namespace Morgott.UI.CraftingScreen
                 h = h * 31 + i.WindowHeaderH.GetHashCode();
                 h = h * 31 + i.Tabs;
                 h = h * 31 + i.Categories * 7 + i.Requirements * 101;
-                h = h * 31 + (i.Search ? 1 : 0) + (i.Repair ? 2 : 0) + (i.CraftType ? 4 : 0) + (i.Quality ? 8 : 0);
+                h = h * 31 + (i.Search ? 1 : 0) + (i.Repair ? 2 : 0) + (i.CraftType ? 4 : 0) + (i.Quality ? 8 : 0) + (i.Network ? 16 : 0);
                 h = h * 31 + i.TabOffset * 13 + i.CategoryOffset;
                 h = h * 31 + i.SubCategories * 17 + i.SubCategoryOffset;
                 h = h * 31 + ThemeTokens.Revision;
@@ -765,6 +812,7 @@ namespace Morgott.UI.CraftingScreen
             var t = _t;
             t.Pad = F("size.craft.pad", t.Pad); t.Gap = F("size.craft.gap", t.Gap); t.HeaderH = F("size.craft.header", t.HeaderH);
             t.TabH = F("size.craft.tab.h", t.TabH); t.TabW = F("size.craft.tab.w", t.TabW); t.TabMinW = F("size.craft.tab.min", t.TabMinW);
+            t.NetworkH = F("size.craft.network", t.NetworkH);
             t.ArrowW = F("size.craft.arrow", t.ArrowW); t.CategoryH = F("size.craft.category", t.CategoryH); t.SubCategoryH = F("size.craft.subcategory", t.SubCategoryH); t.SearchH = F("size.craft.search", t.SearchH);
             t.ListShare = F("share.craft.list", t.ListShare); t.ListMinW = F("size.craft.list.min", t.ListMinW); t.RowH = F("size.craft.row", t.RowH); t.ScrollbarW = F("size.craft.scrollbar", t.ScrollbarW);
             t.TitleH = F("size.craft.title", t.TitleH); t.CraftTypeH = F("size.craft.crafttype", t.CraftTypeH); t.IconH = F("size.craft.icon", t.IconH);
@@ -784,6 +832,7 @@ namespace Morgott.UI.CraftingScreen
 
             Header(o);
             Tabs(o);
+            NetworkRow(o);
             Categories(o);
             List(o);
             Detail(o);
@@ -879,6 +928,77 @@ namespace Morgott.UI.CraftingScreen
                 }
             }
             _tabArrows.Show(_canvas, o.Tabs);
+        }
+
+        // ---------------------------------------------------------------- station network checkbox
+
+        // "In the station network" row under the mode tabs (approved mockup bench-net-toggle, 2026-11-16): checked = this
+        // station shares chests / chains with the stations whose zones overlap it (Core IStationNetwork, owner Morgott.Patcher).
+        private RectTransform _net;
+        private Image _netBox, _netCheck;
+        private TMP_Text _netLabel;
+
+        private static Morgott.Core.IStationNetwork Network() =>
+            Morgott.Core.Services.TryGet<Morgott.Core.IStationNetwork>(out var n) ? n : null;
+
+        private static CraftingStation Station() => Player.m_localPlayer ? Player.m_localPlayer.GetCurrentCraftingStation() : null;
+
+        private void BuildNetwork()
+        {
+            _net = (RectTransform)new GameObject(Prefix + "Network", typeof(RectTransform)).transform;
+            _net.SetParent(_crafting, false);
+            _netBox = new GameObject("Box", typeof(RectTransform)).AddComponent<Image>();
+            _netBox.rectTransform.SetParent(_net, false);
+            var box = DollCell.Mark(_netBox, "toggle.box", "station network checkbox box");
+            box.Outcome = Restyler.Apply(_netBox, box, ThemeTokens.Role(box.Role)) ? Outcome.Styled : Outcome.Degraded;
+            _netBox.raycastTarget = true;
+            _netCheck = new GameObject("Check", typeof(RectTransform)).AddComponent<Image>();
+            _netCheck.rectTransform.SetParent(_netBox.rectTransform, false);
+            Stretch(_netCheck.rectTransform);
+            _netCheck.raycastTarget = false;
+            var check = DollCell.Mark(_netCheck, "craft.network.check", "station network check mark (gold)");
+            check.Outcome = Restyler.Apply(_netCheck, check, ThemeTokens.Role(check.Role)) ? Outcome.Styled : Outcome.Degraded;
+            _netLabel = NewText("Label", _net, "$ui_craft_network");
+            _netLabel.raycastTarget = true; // the whole row toggles
+            var button = _net.gameObject.AddComponent<Button>();
+            button.targetGraphic = _netBox;
+            button.transition = Selectable.Transition.None;
+            button.navigation = new Navigation { mode = Navigation.Mode.None };
+            button.onClick.AddListener(() =>
+            {
+                var station = Station();
+                if (Network() is Morgott.Core.IStationNetwork n && station && n.SetDetached(station, !n.IsDetached(station))) StockChanged();
+            });
+            var tip = _net.gameObject.AddComponent<UITooltip>();
+            var list = _gui.m_recipeRequirementList;
+            tip.m_tooltipPrefab = list != null && list.Length > 0 && list[0] && list[0].TryGetComponent<UITooltip>(out var reqTip) ? reqTip.m_tooltipPrefab : null;
+            tip.m_topic = "$ui_craft_network_tip_title";
+            tip.m_text = "$ui_craft_network_tip";
+        }
+
+        private void NetworkRow(CraftingLayout o)
+        {
+            if (o.NetworkRow.IsEmpty)
+            {
+                if (_net && _net.gameObject.activeSelf) _net.gameObject.SetActive(false);
+                return;
+            }
+            if (!_net) BuildNetwork();
+            if (!_net.gameObject.activeSelf) _net.gameObject.SetActive(true);
+            var row = o.NetworkRow;
+            var side = row.H;
+            Geo.Place(_canvas, _net, row);
+            Geo.Place(_canvas, _netBox.rectTransform, new Box(row.X, row.Y, side, side));
+            var gap = side * 0.4f;
+            Geo.Place(_canvas, _netLabel.rectTransform, new Box(row.X + side + gap, row.Y, Mathf.Max(0f, row.W - side - gap), side));
+            var text = Localization.instance.Localize("$ui_craft_network");
+            if (_netLabel.text != text) _netLabel.text = text;
+            Label(_netLabel, TextAlignmentOptions.Left, ThemeTokens.GetFloat("size.craft.font.tab", 18f) * _in.Scale);
+            var station = Station();
+            var on = station && Network() is Morgott.Core.IStationNetwork n && !n.IsDetached(station);
+            if (_netCheck.enabled == on) return;
+            _netCheck.enabled = on;
+            StockChanged(); // other stations' chests joined / left: chain verdicts of the cells are stale (also a remote toggle)
         }
 
         private void Categories(CraftingLayout o)
@@ -1417,6 +1537,9 @@ namespace Morgott.UI.CraftingScreen
         private void StyleSocket(RectTransform cell)
         {
             var k = _in.Scale;
+            // Left click = the material's item browser page; the socket image is the hit target (UITooltip hover too).
+            if (!cell.TryGetComponent<ReqCellClick>(out _)) cell.gameObject.AddComponent<ReqCellClick>();
+            if (cell.TryGetComponent<Image>(out var socket) && !socket.raycastTarget) socket.raycastTarget = true;
             foreach (var c in Children.Of(cell))
             {
                 if (!(c is RectTransform rt)) continue;

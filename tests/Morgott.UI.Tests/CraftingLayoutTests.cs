@@ -71,6 +71,29 @@ namespace Morgott.UI.Tests
         }
 
         [Fact]
+        public void NetworkRowSitsBetweenTabsAndCategories()
+        {
+            Assert.True(CraftingMath.Compute(Input(4), new CraftingTokens()).NetworkRow.IsEmpty);
+            var i = Input(4);
+            i.Network = true;
+            var o = CraftingMath.Compute(i, new CraftingTokens());
+            AllInside(o, i.Panel);
+            Assert.True(o.NetworkRow.Inside(i.Panel));
+            Assert.True(o.NetworkRow.Y >= o.TabRow.Bottom);
+            Assert.True(o.CategoryRow.Y >= o.NetworkRow.Bottom);
+            Assert.Equal(28f, o.NetworkRow.H);
+        }
+
+        [Theory]
+        [InlineData("Food\nHealth 20", "Honey", "Food\nHealth 20")] // vanilla: name only
+        [InlineData("Food\n", "Honey\n<color=#9be37b>Workbench: 1 X</color>", "Food\n\n<color=#9be37b>Workbench: 1 X</color>")] // Patcher lines
+        [InlineData(null, "Honey\nA\nB", "A\nB")] // no item tooltip
+        [InlineData("Food", null, "Food")]
+        [InlineData("Food", "", "Food")]
+        public void RequirementTipJoinsItemTooltipAndChainLines(string item, string chain, string want) =>
+            Assert.Equal(want, CraftingMath.RequirementTip(item, chain));
+
+        [Fact]
         public void SubCategoryRowSitsUnderTheCategoriesAndTheBodyGivesWay()
         {
             var without = CraftingMath.Compute(Input(4), new CraftingTokens());

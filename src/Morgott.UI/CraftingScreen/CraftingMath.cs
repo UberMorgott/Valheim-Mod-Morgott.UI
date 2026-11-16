@@ -14,7 +14,7 @@ namespace Morgott.UI.CraftingScreen
     {
         public float Pad = 18f, Gap = 8f;
         public float HeaderH = 80f, TabH = 36f, TabW = 150f, TabMinW = 96f, ArrowW = 28f;
-        public float CategoryH = 44f, SubCategoryH = 44f, SearchH = 38f;
+        public float CategoryH = 44f, SubCategoryH = 44f, SearchH = 38f, NetworkH = 28f;
         // ListMinW: the list column never narrower than this while the detail keeps half the body (0.24.0 list at the
         // 576 window; layout A docks crafting at the room right of the hotbar-locked centre column, 536 at 16:9).
         public float ListShare = 0.4f, ListMinW = 204f, RowH = 46f, ScrollbarW = 10f;
@@ -34,6 +34,8 @@ namespace Morgott.UI.CraftingScreen
         // CraftingFilter sub-group tabs (second row under the categories, MT_CraftFilter/Subs); 0 = no row.
         public int SubCategories;
         public bool Search, Repair, CraftType, Quality;
+        // Station network checkbox row under the mode tabs (at a station while Core IStationNetwork is registered).
+        public bool Network;
         // First visible tab / category of a scrolled row (row arrows).
         public int TabOffset, CategoryOffset, SubCategoryOffset;
         // The shared window header band height (RuneWindowHeader, canvas units): > 0 = the header row is that band at the
@@ -53,7 +55,7 @@ namespace Morgott.UI.CraftingScreen
     public sealed class CraftingLayout
     {
         public Box Content, Header, StationIcon, Title, Level;
-        public Box TabRow, CategoryRow, SubCategoryRow, Search, List, ListView, ListScrollbar;
+        public Box TabRow, NetworkRow, CategoryRow, SubCategoryRow, Search, List, ListView, ListScrollbar;
         public Box Detail, DetailTitle, CraftType, Icon, Description, Quality, Requirements, ButtonRow, Repair, Craft;
         public RowFit Tabs = new RowFit(), Categories = new RowFit(), SubCategories = new RowFit();
         public Box[] RequirementCells = Array.Empty<Box>();
@@ -154,6 +156,16 @@ namespace Morgott.UI.CraftingScreen
             return buttonTarget ? "recipe row button" : "recipe row icon / durability / magic background";
         }
 
+        // Requirement cell tooltip: the item's own tooltip, then the cell's previous text (Morgott.Patcher producer lines,
+        // or vanilla's bare name) minus its first line, which only repeats the name (shown as the topic).
+        public static string RequirementTip(string item, string chain)
+        {
+            var cut = chain == null ? -1 : chain.IndexOf('\n');
+            var rest = cut < 0 ? "" : chain.Substring(cut + 1).Trim('\n', '\r');
+            if (string.IsNullOrEmpty(item)) return rest;
+            return rest.Length == 0 ? item : item.TrimEnd('\n', '\r') + "\n\n" + rest;
+        }
+
         public static CraftingLayout Compute(CraftingInput i, CraftingTokens t)
         {
             var o = new CraftingLayout();
@@ -194,6 +206,11 @@ namespace Morgott.UI.CraftingScreen
                 o.TabRow = new Box(c.X, y, c.W, S(t.TabH));
                 o.Tabs = Row(o.TabRow, i.Tabs, S(t.TabW), S(t.TabMinW), gap, S(t.ArrowW), i.TabOffset, true);
                 y += o.TabRow.H + gap;
+            }
+            if (i.Network)
+            {
+                o.NetworkRow = new Box(c.X, y, c.W, S(t.NetworkH));
+                y += o.NetworkRow.H + gap;
             }
             // Category filter (CraftingFilter): square tabs, left-aligned, scrolls when they do not fit.
             if (i.Categories > 0)

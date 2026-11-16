@@ -62,13 +62,29 @@ namespace Morgott.UI.CraftingScreen
         // Which requirement each cell shows (InventoryGui.SetupRequirement, :1744; ValheimPlus replaces its body, postfixes
         // still run): the cell stock (CraftingSkin.SocketState) reads it.
         [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.SetupRequirement))]
+        // After Morgott.Patcher's postfix (RecipeChains writes its producer lines into the cell tooltip): RequirementTip
+        // puts the full item tooltip in front of them.
         [HarmonyPostfix]
-        private static void SetupRequirement_Postfix(UnityEngine.Transform elementRoot, Piece.Requirement req, bool craft, int quality, int craftMultiplier)
+        [HarmonyAfter(Morgott.Core.Contracts.PatcherGuid)]
+        private static void SetupRequirement_Postfix(UnityEngine.Transform elementRoot, Piece.Requirement req, bool craft, int quality, int craftMultiplier, bool __result)
         {
             var skin = CraftingSkin.Instance;
             if (!skin || !craft || !elementRoot || req == null || !req.m_resItem) return;
-            try { skin.Requirement(elementRoot, req, quality, craftMultiplier); }
+            try
+            {
+                skin.Requirement(elementRoot, req, quality, craftMultiplier);
+                if (__result) skin.RequirementTip(elementRoot, req);
+            }
             catch (System.Exception e) { Fault(e); }
+        }
+
+        // Vanilla clears only m_text (InventoryGui.HideRequirement); the topic RequirementTip set goes with it.
+        [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.HideRequirement))]
+        [HarmonyPostfix]
+        private static void HideRequirement_Postfix(UnityEngine.Transform elementRoot)
+        {
+            var skin = CraftingSkin.Instance;
+            if (skin && elementRoot) skin.HideTip(elementRoot);
         }
 
         // Any inventory changed (the player's, or a chest CraftFromChest / the station network counts): chain verdicts stale.
