@@ -54,11 +54,11 @@ namespace Morgott.UI.Tests
         }
 
         [Fact]
-        public void GroupsDateThenModVersionThenLines()
+        public void GroupsModVersionDateThenLines()
         {
             var v = ChangelogModel.Build(ChangelogModel.Parse(Sample, out _), new ChangelogFilter());
-            var shape = string.Join(" ", v.Rows.Select(r => r.Kind == ChangelogRowKind.Date ? "D" : r.Kind == ChangelogRowKind.Mod ? "M:" + r.Entry.Mod : "l"));
-            Assert.Equal("D M:Morgott.UI l l M:ValheimPlus l D M:EpicLoot l M:Morgott.Performance l D M:Morgott.UI l", shape);
+            var shape = string.Join(" ", v.Rows.Select(r => r.Kind == ChangelogRowKind.Mod ? "M:" + r.Entry.Mod : "l"));
+            Assert.Equal("M:Morgott.UI l l M:ValheimPlus l M:EpicLoot l M:Morgott.Performance l M:Morgott.UI l", shape);
             Assert.Equal(6, v.Shown);
             Assert.Equal(6, v.Total);
         }
@@ -97,10 +97,47 @@ namespace Morgott.UI.Tests
         }
 
         [Fact]
+        public void ModSearchIsCaseInsensitiveSubstring()
+        {
+            var mods = ChangelogModel.Mods(ChangelogModel.Parse(Sample, out _));
+            Assert.Equal(new[] { "Morgott.Performance", "Morgott.UI" }, ChangelogModel.MatchMods(mods, " morgott "));
+            Assert.Equal(new[] { "Morgott.UI", "ValheimPlus" }, ChangelogModel.MatchMods(mods, "U"));
+            Assert.Same(mods, ChangelogModel.MatchMods(mods, ""));
+            Assert.Empty(ChangelogModel.MatchMods(mods, "zzz"));
+        }
+
+        [Fact]
+        public void SoloShowsOneModAndAgainShowsAll()
+        {
+            var all = ChangelogModel.Parse(Sample, out _);
+            var mods = ChangelogModel.Mods(all);
+            var f = new ChangelogFilter();
+            ChangelogModel.Solo(f, mods, "EpicLoot");
+            var v = ChangelogModel.Build(all, f);
+            Assert.Equal(1, v.Shown);
+            Assert.All(v.Rows, r => Assert.Equal("EpicLoot", r.Entry.Mod));
+            Assert.Equal(3, v.ModCounts["Morgott.UI"]); // per-mod counts ignore the mod filter
+            ChangelogModel.Solo(f, mods, "EpicLoot");
+            Assert.Empty(f.HiddenMods);
+            ChangelogModel.Solo(f, mods, "EpicLoot");
+            ChangelogModel.Solo(f, mods, "ValheimPlus"); // another mod while solo: switches
+            Assert.Equal(new[] { "EpicLoot", "Morgott.Performance", "Morgott.UI" }, f.HiddenMods.OrderBy(m => m));
+        }
+
+        [Fact]
+        public void AllAndNoneActOnTheSearchedMods()
+        {
+            var mods = ChangelogModel.Mods(ChangelogModel.Parse(Sample, out _));
+            var f = new ChangelogFilter();
+            ChangelogModel.ShowMods(f, ChangelogModel.MatchMods(mods, "morgott"), false);
+            Assert.Equal(new[] { "Morgott.Performance", "Morgott.UI" }, f.HiddenMods.OrderBy(m => m));
+            ChangelogModel.ShowMods(f, mods, true);
+            Assert.Empty(f.HiddenMods);
+        }
+
+        [Fact]
         public void FormatsDatesAndCounts()
         {
-            Assert.Equal("16 ноября 2026", ChangelogModel.DateHeader(new DateTime(2026, 11, 16), true));
-            Assert.Equal("16 November 2026", ChangelogModel.DateHeader(new DateTime(2026, 11, 16), false));
             Assert.True(ChangelogModel.TryParseDay(" 01.11.2026 ", out var d));
             Assert.Equal(new DateTime(2026, 11, 1), d);
             Assert.False(ChangelogModel.TryParseDay("2026-11-01", out _));

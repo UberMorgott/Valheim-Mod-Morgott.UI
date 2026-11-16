@@ -14,16 +14,19 @@ using UnityEngine.UI;
 
 namespace Morgott.UI.PreWorld
 {
-    // Pack changelog inside the vanilla changelog window (FejdStartup.m_changeLog; approved mockup
-    // docs\mockups\2026-11-16-changelog\02-sidebar.png, style-sheet.md there): a modal window centred on the screen over a
-    // dimmed backdrop (click outside the window, the close button or Esc closes it). Header "PACK CHANGES", tabs Pack
-    // (ours) | Valheim (the vanilla ScrollPanel + PatchlogScroll, text unchanged). Pack tab: sidebar period / type / mod
-    // filters, a virtualized list (scroll position = first row index, only the rows in view are laid out and measured,
-    // pooled per row kind) and the "Shown X of Y" footer. Data ChangelogModel (BepInEx\config\Morgott.UI\changelog.json):
-    // parsed and laid out once while the menu builds (Init), on open only when the file changed, so the open frame does
-    // no parsing (run 20261116-122424: 70 ms open hitch with the parse in the open frame). The vanilla "new" badge also
-    // follows that file (MainMenuAdapter GetChangelogHash postfix, FileHash). Layout in window units = 1080p canvas
-    // units, measured from the mockup (mockup px x 1.148).
+    // Pack changelog inside the vanilla changelog window (FejdStartup.m_changeLog; approved full-screen mockup
+    // docs\mockups\2026-11-16-changelog\03-fullscreen.png, style-sheet.md there): a modal window filling the screen (Margin
+    // to the edges, sized from the root canvas, so GUI scale and resolution follow) over a dimmed backdrop (click outside the
+    // window, the close button or Esc closes it). Header "PACK CHANGES", close "× Close (Esc)", tabs Pack (ours) | Valheim
+    // (the vanilla ScrollPanel + PatchlogScroll, text unchanged). Pack tab: left column period / type / mod filters (mod
+    // search, All / None, a virtualized mod list with per-mod counts, hover "only" = solo, own scrollbar) and the
+    // "Shown X of Y" footer; right a virtualized list (scroll position = first row index, only the rows in view are laid out
+    // and measured, pooled per row kind) of mod + version + date groups. Data ChangelogModel
+    // (BepInEx\config\Morgott.UI\changelog.json): parsed and laid out once while the menu builds (Init), on open only when
+    // the file changed, so the open frame does no parsing (run 20261116-122424: 70 ms open hitch with the parse in the open
+    // frame). The vanilla "new" badge also follows that file (MainMenuAdapter GetChangelogHash postfix, FileHash). Layout in
+    // frame units (= canvas units; frame = the drawn RuneSkin stack): fixed left column, everything else anchored to the
+    // frame edges, so a resize only moves anchors and re-runs the list layouts.
     [DisallowMultipleComponent]
     public sealed class ChangelogPanel : MonoBehaviour, IRevertible
     {
@@ -31,14 +34,14 @@ namespace Morgott.UI.PreWorld
         public const string ScrimName = "MorgottChangelogScrim";
         public static string FilePath => Path.Combine(BepInEx.Paths.ConfigPath, "Morgott.UI", "changelog.json");
 
-        // Layout (window units, from the window's top-left).
-        private const float W = 1050f, H = 676f;
         // The drawn frame (RuneSkin panel stack) reaches past the window by these (run 20261116-125447: stack 1170 x 776
-        // around a 1050 x 676 window, 20 more on top): the window is the frame minus them, the layout below is in frame
-        // units (mockup frame = 1047 x 675 at 1920; run 20261116-133823 drew the frame 120 x 100 too big, Codex 7/10).
+        // around a 1050 x 676 window): the window is the frame minus them.
         private const float PadX = 60f, PadT = 60f, PadB = 40f;
-        private const float SideX = 36f, SideW = 260f, ListX = 342f, ListY = 124f, ListW = 641f, ListBottom = 616f;
-        private const float DateH = 48f, ModH = 38f, LineH = 37f, TagH = 24f, TagGap = 12f, ModRowH = 23f, ModListY = 530f;
+        private const float Margin = 24f; // screen edge to the frame, canvas units
+        // Layout (frame units, from the frame's top-left; Bottom / ListRight = insets from the bottom / right edge).
+        private const float SideX = 36f, SideW = 460f, ListY = 156f, Bottom = 36f, ListRight = 64f, ListX = SideX + SideW + 48f;
+        private const float ModListY = ListY + 480f, ModListW = SideW - 28f, ModRowH = 34f, FootH = 30f;
+        private const float ModH = 58f, LineH = 40f, TagH = 30f, TagCol = 176f, TagGap = 14f;
         private static readonly string[] TypeColors = { "#9FD66B", "#E0413A", "#4FE0E6", "#E8B64A", "#8AB4F0", "#8E7BB8" };
 
         private FejdStartup _fejd;
@@ -50,11 +53,12 @@ namespace Morgott.UI.PreWorld
         private bool _addedCanvas, _addedRaycaster, _gameTab, _laidOut, _dirty = true;
         private (bool over, int layer, int order) _canvasOrig;
         private GameObject _scrim, _blur;
+        private Vector2 _frame; // current frame size (Fit)
 
         // data
         private List<ChangelogEntry> _all = new List<ChangelogEntry>();
-        private List<string> _mods = new List<string>();
-        private string _error;
+        private List<string> _mods = new List<string>(), _shownMods = new List<string>();
+        private string _error, _modQuery = "";
         private DateTime _stamp = DateTime.MinValue;
         private long _size = -1;
         private readonly ChangelogFilter _filter = new ChangelogFilter();
@@ -66,9 +70,10 @@ namespace Morgott.UI.PreWorld
         private Button _tabPack, _tabGame;
         private TMP_Text _title, _tabPackLabel, _tabGameLabel, _empty, _footer;
         private readonly List<TMP_Text> _serif = new List<TMP_Text>();
-        private Image _underline, _thumb, _track;
+        private Image _underline;
         private Image[][] _tabRims;
-        private TMP_InputField _from, _to;
+        private TMP_InputField _from, _to, _search;
+        private Bar _bar, _modBar;
         private readonly Button[] _presets = new Button[3];
         private readonly Image[][] _presetRims = new Image[3][];
         private readonly TMP_Text[] _presetLabels = new TMP_Text[3];
@@ -76,7 +81,7 @@ namespace Morgott.UI.PreWorld
         private readonly Image[][] _chipRims = new Image[6][];
         private readonly Image[] _chipFills = new Image[6];
         private readonly TMP_Text[] _chipLabels = new TMP_Text[6], _chipCounts = new TMP_Text[6], _chipDots = new TMP_Text[6];
-        private readonly Pool _dates = new Pool(), _modHeads = new Pool(), _lines = new Pool();
+        private readonly Pool _modHeads = new Pool(), _lines = new Pool();
         private readonly List<ModRow> _modRows = new List<ModRow>();
 
         private sealed class Row
@@ -95,10 +100,18 @@ namespace Morgott.UI.PreWorld
 
         private sealed class ModRow
         {
-            public Button Box;
-            public Image Check;
-            public TMP_Text Label;
+            public Button Box, Solo;
+            public Image Check, Fill;
+            public TMP_Text Label, Count;
             public string Mod;
+            public bool Hover;
+        }
+
+        // Scrollbar: grip (hit area: press / drag / wheel) with a track and a thumb inside.
+        private sealed class Bar
+        {
+            public RectTransform Grip;
+            public Image Track, Thumb;
         }
 
         // Wheel over the list / mod list, press + drag on the scrollbar (share 0..1 of the track from its top).
@@ -124,6 +137,14 @@ namespace Morgott.UI.PreWorld
         {
             public Action<PointerEventData> Click;
             public void OnPointerClick(PointerEventData e) => Click?.Invoke(e);
+        }
+
+        // Mod row hover (shows its "only" button).
+        private sealed class Hover : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
+        {
+            public Action<bool> Set;
+            public void OnPointerEnter(PointerEventData e) => Set?.Invoke(true);
+            public void OnPointerExit(PointerEventData e) => Set?.Invoke(false);
         }
 
         public static ChangelogPanel Ensure(FejdStartup fejd, RectTransform window)
@@ -162,12 +183,13 @@ namespace Morgott.UI.PreWorld
         private static Color TypeColor(int t) => ThemeTokens.GetColor("color.changelog." + ChangelogModel.Types[t], Hex(TypeColors[t]));
         private static Color Body => ThemeTokens.GetColor("color.text.body", Hex("#E3E6E8"));
         private static Color Muted => ThemeTokens.GetColor("color.state.disabled", Hex("#8A9096"));
+        private static Color Gold => ThemeTokens.GetColor("color.text.active", Hex("#E8B64A"));
 
         // ---------------------------------------------------------------- build
 
         private void Init()
         {
-            // Modal, centred on the screen (mockup 02): the vanilla window sat at a fixed spot left of the centre.
+            // Modal, centred on the screen: the vanilla window sat at a fixed spot left of the centre.
             _vanillaMin = _window.anchorMin;
             _vanillaMax = _window.anchorMax;
             _vanillaPivot = _window.pivot;
@@ -175,20 +197,20 @@ namespace Morgott.UI.PreWorld
             _vanillaSize = _window.sizeDelta;
             _window.anchorMin = _window.anchorMax = _window.pivot = new Vector2(0.5f, 0.5f);
             _window.anchoredPosition = Vector2.zero;
-            _window.sizeDelta = new Vector2(ThemeTokens.GetFloat("size.changelog.w", W) - 2f * PadX, ThemeTokens.GetFloat("size.changelog.h", H) - PadT - PadB);
             _topic = _window.Find("Topic") as RectTransform;
             _scrollPanel = _window.Find("ScrollPanel") as RectTransform;
             _scrollbar = _window.TryGetComponent<ChangeLog>(out var log) && log.m_scrollbar ? (RectTransform)log.m_scrollbar.transform : _window.Find("PatchlogScroll") as RectTransform;
             foreach (var rt in new[] { _topic, _scrollPanel, _scrollbar })
                 if (rt) _vanilla.Add((rt, rt.anchorMin, rt.anchorMax, rt.offsetMin, rt.offsetMax, rt.gameObject.activeSelf));
-            // Valheim tab: the vanilla text fills the content area under the tabs, its scrollbar at the right edge.
-            if (_scrollPanel) Stretch(_scrollPanel, SideX - PadX, ListY + 6f - PadT, 64f - PadX, 40f - PadB);
+            // Valheim tab: the vanilla text fills the content area under the tabs, its scrollbar at the right edge (window
+            // anchors: follows the window size).
+            if (_scrollPanel) Stretch(_scrollPanel, SideX - PadX, ListY + 6f - PadT, 64f - PadX, Bottom - PadB);
             if (_scrollbar)
             {
                 _scrollbar.anchorMin = new Vector2(1f, 0f);
                 _scrollbar.anchorMax = Vector2.one;
                 _scrollbar.pivot = new Vector2(1f, 0.5f);
-                _scrollbar.offsetMin = new Vector2(-36f + PadX - ThemeTokens.GetFloat("size.scrollbar.w", 16f), 40f - PadB);
+                _scrollbar.offsetMin = new Vector2(-36f + PadX - ThemeTokens.GetFloat("size.scrollbar.w", 16f), Bottom - PadB);
                 _scrollbar.offsetMax = new Vector2(-36f + PadX, -(ListY + 6f - PadT));
             }
 
@@ -206,8 +228,8 @@ namespace Morgott.UI.PreWorld
                 if (_fejd && _fejd.m_changeLog && _fejd.m_changeLog.activeInHierarchy) _fejd.OnButtonShowChangelog();
             };
             _scrim = scrim.gameObject;
-            // Mockup: the menu behind is blurred. The vanilla GUI blur material (grab pass; InventoryGui "blur" images,
-            // InfoPage) under the dim when the game has it loaded at the menu; else the dim alone.
+            // The menu behind is blurred: the vanilla GUI blur material (grab pass; InventoryGui "blur" images, InfoPage)
+            // under the dim when the game has it loaded at the menu; else the dim alone.
             Material blurMat = null;
             foreach (var m in Resources.FindObjectsOfTypeAll<Material>())
                 if (m && m.shader && m.name.IndexOf("blur", StringComparison.OrdinalIgnoreCase) >= 0 && m.shader.name.IndexOf("blur", StringComparison.OrdinalIgnoreCase) >= 0) { blurMat = m; break; } // a UI blur, not a post effect by name only
@@ -226,33 +248,37 @@ namespace Morgott.UI.PreWorld
 
             _root = NewRect(RootName, _window);
             Stretch(_root, -PadX, -PadT, -PadX, -PadB); // root = the drawn frame (layout units)
-            // Below the close button (ChangelogClose adds it as the last sibling); the button at the mockup spot (frame
-            // x 923..967, y 18..53), in the frame band beside the title.
+            // Below the close button (ChangelogClose adds it as the last sibling); the button in the frame band right of the
+            // title, labelled "× Close (Esc)" (mockup).
             if (_window.Find(ChangelogClose.ButtonName) is RectTransform close)
             {
                 _root.SetSiblingIndex(close.GetSiblingIndex());
                 close.anchorMin = close.anchorMax = close.pivot = Vector2.one;
-                close.anchoredPosition = new Vector2(-(W - 967f - PadX), PadT - 16f);
-                close.sizeDelta = new Vector2(38f, 38f);
+                close.anchoredPosition = new Vector2(PadX - 36f, PadT - 22f);
+                close.sizeDelta = new Vector2(230f, 46f);
+                if (close.GetComponentInChildren<TMP_Text>() is TMP_Text closeLabel)
+                {
+                    closeLabel.text = L("$ui_changelog_close");
+                    closeLabel.fontSize = 21f;
+                }
             }
 
-            _title = Txt(_root, "Title", "window.title", TextAlignmentOptions.Center, 31f);
+            _title = Txt(_root, "Title", "window.title", TextAlignmentOptions.Center, 42f);
             _title.characterSpacing = 14f;
             _title.text = L("$ui_changelog_title");
             _serif.Add(_title);
-            Put(_title, 120f, 12f, W - 240f, 40f);
+            Band(_title, 300f, 300f, 10f, 60f);
 
             _tabPack = Btn(_root, "TabPack", "tab", out _tabPackLabel, () => { _gameTab = false; _dirty = true; });
             _tabGame = Btn(_root, "TabGame", "tab", out _tabGameLabel, () => { _gameTab = true; _dirty = true; });
             _tabPackLabel.text = L("$ui_changelog_tab_pack");
             _tabGameLabel.text = L("$ui_changelog_tab_game");
-            foreach (var t in new[] { _tabPackLabel, _tabGameLabel }) { t.fontSize = ThemeTokens.GetFloat("size.startgame.tab.font", 21f) + 1f; _serif.Add(t); }
+            foreach (var t in new[] { _tabPackLabel, _tabGameLabel }) { t.fontSize = 26f; _serif.Add(t); }
             _tabRims = new[] { Rim(_tabPack.transform), Rim(_tabGame.transform) };
-            Put(_tabPack, 52f, 62f, 232f, 42f);
-            Put(_tabGame, 300f, 62f, 222f, 42f);
+            Put(_tabPack, -330f, 74f, 320f, 52f, 0.5f);
+            Put(_tabGame, 10f, 74f, 320f, 52f, 0.5f);
             _underline = Rule(_root, "TabUnderline", Hex("#4FE0E6"));
-            var band = Rule(_root, "TabRule", Hex("#2395B7"));
-            Put(band, 28f, 108f, W - 56f, 1f);
+            Band(Rule(_root, "TabRule", Hex("#2395B7")), 28f, 28f, 140f, 1f);
 
             _pack = NewRect("Pack", _root);
             Stretch(_pack, 0f, 0f, 0f, 0f);
@@ -271,6 +297,7 @@ namespace Morgott.UI.PreWorld
             else _canvasOrig = (_canvas.overrideSorting, _canvas.sortingLayerID, _canvas.sortingOrder);
             if (!_window.GetComponent<GraphicRaycaster>()) { _window.gameObject.AddComponent<GraphicRaycaster>(); _addedRaycaster = true; }
             Sort();
+            Fit();
             // Parse, filter and the first layout now, while the menu builds (window shown for this one call and hidden in
             // the same frame, nothing drawn): the dynamic serif atlas gets its glyphs and the rows their measures here,
             // the open frame only draws (run 20261116-125447: layout 33.6 ms in the open frame).
@@ -290,21 +317,22 @@ namespace Morgott.UI.PreWorld
         private void BuildSidebar()
         {
             var p = _pack;
-            Label(p, "PeriodLabel", "$ui_changelog_period", 118f);
-            _from = DateField(p, "From", "$ui_changelog_from", 152f, true);
-            _to = DateField(p, "To", "$ui_changelog_to", 187f, false);
+            Label(p, "PeriodLabel", "$ui_changelog_period", ListY);
+            const float FieldW = (SideW - 12f) / 2f;
+            _from = DateField(p, "From", "$ui_changelog_from", SideX, FieldW, true);
+            _to = DateField(p, "To", "$ui_changelog_to", SideX + FieldW + 12f, FieldW, false);
             string[] presetKeys = { "$ui_changelog_days7", "$ui_changelog_days30", "$ui_changelog_all" };
-            float[] px = { 0f, 88f, 177f };
+            const float PresetW = (SideW - 20f) / 3f;
             for (var i = 0; i < 3; i++)
             {
                 var n = i;
                 _presets[i] = Btn(p, "Preset" + i, "field", out _presetLabels[i], () => { _preset = n; ApplyPreset(); });
                 _presetRims[i] = Rim(_presets[i].transform);
                 _presetLabels[i].text = L(presetKeys[i]);
-                _presetLabels[i].fontSize = 16f;
-                Put(_presets[i], SideX + px[i], 224f, 82f, 28f);
+                _presetLabels[i].fontSize = 19f;
+                Put(_presets[i], SideX + i * (PresetW + 10f), ListY + 86f, PresetW, 36f);
             }
-            Label(p, "TypeLabel", "$ui_changelog_type", 258f);
+            Label(p, "TypeLabel", "$ui_changelog_type", ListY + 132f);
             for (var i = 0; i < 6; i++)
             {
                 var n = i;
@@ -314,60 +342,55 @@ namespace Morgott.UI.PreWorld
                 _chipRims[i] = Rim(_chips[i].transform);
                 _chipLabels[i].alignment = TextAlignmentOptions.Left;
                 _chipLabels[i].text = L("$ui_changelog_type_" + ChangelogModel.Types[i]);
-                _chipLabels[i].fontSize = 17f;
+                _chipLabels[i].fontSize = 20f;
                 _chipFills[i] = Fill(_chips[i].transform);
-                Stretch(_chipLabels[i].rectTransform, 30f, 0f, 50f, 0f);
-                _chipDots[i] = Txt(_chips[i].transform, "Dot", "text.body", TextAlignmentOptions.Center, 16f);
+                Stretch(_chipLabels[i].rectTransform, 38f, 0f, 76f, 0f);
+                _chipDots[i] = Txt(_chips[i].transform, "Dot", "text.body", TextAlignmentOptions.Center, 18f);
                 _chipDots[i].text = "●";
-                Put(_chipDots[i], 6f, 0f, 20f, 25f);
-                _chipCounts[i] = Txt(_chips[i].transform, "Count", "text.body", TextAlignmentOptions.Right, 17f);
-                Put(_chipCounts[i], SideW - 70f, 0f, 60f, 25f);
-                Put(_chips[i], SideX, 288f + i * 29.4f, SideW, 25f);
+                Put(_chipDots[i], 8f, 0f, 24f, 32f);
+                _chipCounts[i] = Txt(_chips[i].transform, "Count", "text.body", TextAlignmentOptions.Right, 20f);
+                Put(_chipCounts[i], SideW - 82f, 0f, 66f, 32f);
+                Put(_chips[i], SideX, ListY + 170f + i * 36f, SideW, 32f);
             }
-            Label(p, "ModLabel", "$ui_changelog_mod", 464f);
-            var all = Btn(p, "AllMods", "dropdown.field", out var allLabel, () =>
-            {
-                if (_filter.HiddenMods.Count > 0) _filter.HiddenMods.Clear();
-                else foreach (var m in _mods) _filter.HiddenMods.Add(m);
-                _scroll = 0;
-                _dirty = true;
-            });
-            allLabel.text = L("$ui_changelog_allmods");
-            allLabel.alignment = TextAlignmentOptions.Left;
-            allLabel.fontSize = 16f;
-            Stretch(allLabel.rectTransform, 12f, 0f, 30f, 0f);
-            var arrow = Img(all.transform, "Arrow", "dropdown.arrow");
-            Put(arrow, SideW - 26f, 9f, 12f, 12f);
-            Put(all, SideX, 494f, SideW, 30f);
+            Label(p, "ModLabel", "$ui_changelog_mod", ListY + 392f);
+            // Search (substring, case-insensitive) + All / None over the mods it matches.
+            _search = InputBox(p, "ModSearch", "", 0f, "$ui_changelog_search");
+            _search.characterLimit = 40;
+            _search.onValueChanged.AddListener(s => { _modQuery = s; _modScroll = 0; _dirty = true; });
+            Put(_search, SideX, ListY + 430f, SideW - 216f, 38f);
+            var all = Btn(p, "ModsAll", "field", out var allLabel, () => { ChangelogModel.ShowMods(_filter, _shownMods, true); _scroll = 0; _dirty = true; });
+            var none = Btn(p, "ModsNone", "field", out var noneLabel, () => { ChangelogModel.ShowMods(_filter, _shownMods, false); _scroll = 0; _dirty = true; });
+            allLabel.text = L("$ui_changelog_mods_all");
+            noneLabel.text = L("$ui_changelog_mods_none");
+            allLabel.fontSize = noneLabel.fontSize = 18f;
+            Put(all, SideX + SideW - 208f, ListY + 430f, 100f, 38f);
+            Put(none, SideX + SideW - 100f, ListY + 430f, 100f, 38f);
             _modList = NewRect("ModList", p);
-            Put(_modList, SideX, ModListY, SideW, ListBottom - ModListY + 4f);
+            Column(_modList, SideX, ModListW, ModListY, Bottom + FootH + 12f);
             HitArea(_modList, "ModListHit").Wheel = d => { _modScroll -= Math.Sign(d); _dirty = true; };
-            var vrule = Rule(p, "SideRule", Hex("#3D8290"));
-            Put(vrule, 316f, ListY, 1f, ListBottom - ListY + 4f);
+            _modBar = NewBar(p, "ModScroll", s => { _modScroll = Mathf.RoundToInt(s * ModMax()); _dirty = true; }, d => { _modScroll -= Math.Sign(d); _dirty = true; });
+            Column(_modBar.Grip, SideX + ModListW + 2f, 26f, ModListY, Bottom + FootH + 12f);
+            _footer = Txt(p, "Footer", "text.muted", TextAlignmentOptions.Center, 20f);
+            _footer.richText = true;
+            var foot = _footer.rectTransform;
+            foot.anchorMin = foot.anchorMax = foot.pivot = Vector2.zero;
+            foot.anchoredPosition = new Vector2(SideX, Bottom);
+            foot.sizeDelta = new Vector2(SideW, FootH);
+            Column(Rule(p, "SideRule", Hex("#3D8290")), SideX + SideW + 24f, 1f, ListY, Bottom);
         }
 
         private void BuildList()
         {
             _list = NewRect("List", _pack);
             _list.gameObject.AddComponent<RectMask2D>();
-            Put(_list, ListX, ListY, ListW, ListBottom - ListY);
+            Stretch(_list, ListX, ListY, ListRight, Bottom);
             HitArea(_list, "ListHit").Wheel = d => { _scroll -= 3 * Math.Sign(d); _dirty = true; };
-            _track = Img(_pack, "ScrollTrack", "scrollbar.track");
-            _thumb = Img(_pack, "ScrollThumb", "scrollbar.handle");
-            var grip = NewRect("ScrollGrip", _pack);
-            Put(grip, 996f, ListY, 30f, ListBottom - ListY);
-            var input = HitArea(grip, "ScrollGripHit");
-            input.Drag = s => { _scroll = Mathf.RoundToInt(s * MaxScroll()); _dirty = true; };
-            input.Wheel = d => { _scroll -= 3 * Math.Sign(d); _dirty = true; };
-            _empty = Txt(_pack, "Empty", "text.muted", TextAlignmentOptions.Top, 18f);
+            _bar = NewBar(_pack, "ScrollGrip", s => { _scroll = Mathf.RoundToInt(s * MaxScroll()); _dirty = true; }, d => { _scroll -= 3 * Math.Sign(d); _dirty = true; });
+            Column(_bar.Grip, -(ListRight - 12f), 30f, ListY, Bottom, 1f);
+            _empty = Txt(_pack, "Empty", "text.muted", TextAlignmentOptions.Top, 22f);
             _empty.textWrappingMode = TextWrappingModes.Normal;
             _empty.fontStyle = FontStyles.Italic;
-            Put(_empty, ListX + 20f, ListY + 40f, ListW - 40f, 120f);
-            var foot = Rule(_pack, "FooterRule", Hex("#3D8290"));
-            Put(foot, 28f, 622f, W - 56f, 1f);
-            _footer = Txt(_pack, "Footer", "text.muted", TextAlignmentOptions.Left, 17f);
-            _footer.richText = true;
-            Put(_footer, 82f, 628f, 600f, 26f);
+            Stretch(_empty.rectTransform, ListX + 20f, ListY + 40f, ListRight + 20f, Bottom);
         }
 
         // ---------------------------------------------------------------- lifecycle
@@ -376,9 +399,8 @@ namespace Morgott.UI.PreWorld
         {
             if (!_window || !_laidOut) return; // Init's own show / hide
             Sort();
-            // FejdStartup.Start's ScreenRegistry.Restyle put the role faces back after Init (run 20261116-131125); the
-            // date headers were measured in another face (run 20261116-133155: "16 ноября..."): refit them.
-            if (Stamp()) RefitDates();
+            // FejdStartup.Start's ScreenRegistry.Restyle put the role faces back after Init (run 20261116-131125).
+            Stamp();
             // Re-laid on the first open, a changed file or a new day for the period presets; else shown as it was.
             if (_preset >= 0 && _preset < 2 && _filter.To != DateTime.Today) ApplyPreset();
             if (!_laidOut || FileChanged()) _dirty = true;
@@ -388,6 +410,7 @@ namespace Morgott.UI.PreWorld
         {
             if (!_root) return;
             Enforce();
+            if (Fit()) _dirty = true;
             Centre();
             if (!_dirty) return;
             _dirty = false;
@@ -397,6 +420,22 @@ namespace Morgott.UI.PreWorld
             Layout();
             _laidOut = true;
             if (loaded || first) Plugin.Log.LogInfo($"[Morgott.UI] changelog: {_all.Count} entries, {_view?.Shown ?? 0} shown, {(loaded ? "load+" : "")}layout {sw.Elapsed.TotalMilliseconds:F1} ms{(_error != null ? ", " + _error : "")}");
+        }
+
+        // Frame = the root canvas (canvas units: GuiScaler scale + GUI scale setting applied) minus Margin per side; true
+        // when the window was resized.
+        private bool Fit()
+        {
+            // Topmost canvas, inactive parents included (Init runs with the menu hierarchy inactive).
+            var canvases = _window.GetComponentsInParent<Canvas>(true);
+            var rrt = canvases.Length > 0 ? (RectTransform)canvases[canvases.Length - 1].transform : null;
+            var size = rrt ? rrt.rect.size * (rrt.lossyScale.x / Mathf.Max(_window.lossyScale.x, 1e-6f)) : Vector2.zero;
+            if (size.x < 640f || size.y < 360f) size = new Vector2(1920f, 1080f); // canvas not laid out yet
+            var frame = size - 2f * Margin * Vector2.one;
+            if ((frame - _frame).sqrMagnitude < 0.25f) return false;
+            _frame = frame;
+            _window.sizeDelta = new Vector2(frame.x - 2f * PadX, frame.y - PadT - PadB);
+            return true;
         }
 
         // Tab state: vanilla title always off (ours replaces it), vanilla text only on the Valheim tab.
@@ -501,7 +540,7 @@ namespace Morgott.UI.PreWorld
         private void Layout()
         {
             Stamp();
-            Put(_underline, _gameTab ? 300f : 52f, 104f, _gameTab ? 222f : 232f, 3f);
+            Put(_underline, _gameTab ? 10f : -330f, 126f, 320f, 3f, 0.5f);
             if (_gameTab) return;
 
             _view = ChangelogModel.Build(_all, _filter);
@@ -531,7 +570,7 @@ namespace Morgott.UI.PreWorld
         }
 
         // Faces and colours a role restyle (menu Start, theme reload) sets back: serif display face (mixed case, mockup:
-        // title, tabs, section titles, dates, mod names), tab state colours. Cheap when unchanged; run on layout and open.
+        // title, tabs, section titles, mod headers), tab state colours. Cheap when unchanged; run on layout and open.
         // Sort override above the menu canvas (run 20261116-133155: windowOrder=0 override=False, modded_text over the
         // backdrop): at menu build the parent chain is inactive and GetComponentInParent(false) found no canvas, so the
         // override was never set. Inactive parents included; re-applied on open.
@@ -546,23 +585,10 @@ namespace Morgott.UI.PreWorld
             _canvas.sortingOrder = order;
         }
 
-        private void RefitDates()
-        {
-            foreach (var r in _dates.Items)
-            {
-                if (!r.Rt.gameObject.activeSelf) continue;
-                var w = r.A.GetPreferredValues(r.A.text).x;
-                Put(r.A, 0f, 6f, w + 4f, 34f);
-                Put(r.Rule, w + 18f, 24f, Mathf.Max(0f, ListW - w - 26f), 1f);
-            }
-        }
-
-        // true when a face was changed back.
-        private bool Stamp()
+        private void Stamp()
         {
             var serif = ThemeTokens.GetFont("font.map.header");
-            var changed = false;
-            if (serif) foreach (var t in _serif) if (t && t.font != serif) { t.font = serif; changed = true; }
+            if (serif) foreach (var t in _serif) if (t && t.font != serif) t.font = serif;
             var header = ThemeTokens.GetColor("color.text.header", Hex("#D9DCE0"));
             var title = ThemeTokens.GetColor("color.text.item.title", Hex("#F0C419"));
             foreach (var t in _serif)
@@ -574,42 +600,56 @@ namespace Morgott.UI.PreWorld
             // Tabs: selected = not interactable (tab role: disabled sprite = selected plate), gold label + cyan underline.
             _tabPack.interactable = _gameTab;
             _tabGame.interactable = !_gameTab;
-            var gold = ThemeTokens.GetColor("color.text.active", Hex("#E8B64A"));
-            _tabPackLabel.color = _gameTab ? Body : gold;
-            _tabGameLabel.color = _gameTab ? gold : Body;
+            _tabPackLabel.color = _gameTab ? Body : Gold;
+            _tabGameLabel.color = _gameTab ? Gold : Body;
             // Selected tab: gold rim (mockup tabs-c glass + rune).
-            SetRim(_tabRims[0], _gameTab ? Color.clear : gold);
-            SetRim(_tabRims[1], _gameTab ? gold : Color.clear);
-            return changed;
+            SetRim(_tabRims[0], _gameTab ? Color.clear : Gold);
+            SetRim(_tabRims[1], _gameTab ? Gold : Color.clear);
         }
 
+        private int ModVisible => Mathf.Max(1, Mathf.FloorToInt(_modList.rect.height / ModRowH));
+        private int ModMax() => Mathf.Max(0, _shownMods.Count - ModVisible);
+
+        // Mods matching the search, from _modScroll down; name, entry count (date + type filters), check = not hidden.
         private void LayoutMods()
         {
-            var visible = Mathf.Max(1, Mathf.FloorToInt((ListBottom - ModListY) / ModRowH));
-            _modScroll = Mathf.Clamp(_modScroll, 0, Mathf.Max(0, _mods.Count - visible));
+            _shownMods = ChangelogModel.MatchMods(_mods, _modQuery);
+            var visible = ModVisible;
+            _modScroll = Mathf.Clamp(_modScroll, 0, ModMax());
             for (var i = 0; i < Mathf.Max(visible, _modRows.Count); i++)
             {
                 var k = _modScroll + i;
-                if (i >= visible || k >= _mods.Count)
+                if (i >= visible || k >= _shownMods.Count)
                 {
-                    if (i < _modRows.Count) _modRows[i].Box.gameObject.SetActive(false);
+                    if (i < _modRows.Count) { _modRows[i].Mod = null; _modRows[i].Box.gameObject.SetActive(false); }
                     continue;
                 }
                 if (i == _modRows.Count) _modRows.Add(NewModRow(i));
                 var r = _modRows[i];
-                r.Mod = _mods[k];
+                r.Mod = _shownMods[k];
                 r.Box.gameObject.SetActive(true);
-                Put(r.Box, 10f, i * ModRowH + 2f, SideW - 10f, ModRowH);
+                Put(r.Box, 0f, i * ModRowH, ModListW, ModRowH);
                 r.Check.enabled = !_filter.HiddenMods.Contains(r.Mod);
                 r.Label.text = r.Mod;
-                r.Label.color = _view.ModCounts.ContainsKey(r.Mod) ? Body : Muted;
+                var n = _view.ModCounts.TryGetValue(r.Mod, out var c) ? c : 0;
+                r.Label.color = n > 0 ? Body : Muted;
+                r.Count.text = n.ToString();
+                r.Count.color = Muted;
+                ApplyHover(r);
             }
+            SetBar(_modBar, _modScroll, ModMax(), visible / (float)Mathf.Max(1, _shownMods.Count));
+        }
+
+        private static void ApplyHover(ModRow r)
+        {
+            SetActive(r.Solo, r.Hover && r.Mod != null);
+            r.Fill.color = r.Hover ? new Color(0.91f, 0.71f, 0.29f, 0.14f) : Color.clear;
         }
 
         private ModRow NewModRow(int i)
         {
             var r = new ModRow();
-            // Clear hit area over the row; box + check drawn at its left.
+            // Clear hit area over the row; box + check drawn at its left, count at its right, "only" on hover.
             var hit = new GameObject("Mod" + i, typeof(RectTransform)).AddComponent<Image>();
             hit.rectTransform.SetParent(_modList, false);
             hit.color = Color.clear;
@@ -625,12 +665,29 @@ namespace Morgott.UI.PreWorld
                 _scroll = 0;
                 _dirty = true;
             });
+            r.Fill = Fill(hit.transform);
             var box = Img(hit.transform, "Box", "toggle.box");
-            Put(box, 0f, 2f, 18f, 18f);
+            Put(box, 4f, 8f, 18f, 18f);
             r.Check = Img(box.transform, "Check", "toggle.check");
             Stretch(r.Check.rectTransform, 2f, 2f, 2f, 2f);
-            r.Label = Txt(hit.transform, "Label", "text.body", TextAlignmentOptions.Left, 17f);
-            Put(r.Label, 30f, 0f, SideW - 50f, ModRowH);
+            r.Label = Txt(hit.transform, "Label", "text.body", TextAlignmentOptions.Left, 20f);
+            Put(r.Label, 34f, 0f, ModListW - 34f - 70f, ModRowH);
+            r.Count = Txt(hit.transform, "Count", "text.body", TextAlignmentOptions.Right, 19f);
+            Put(r.Count, ModListW - 66f, 0f, 58f, ModRowH);
+            r.Solo = Btn(hit.transform, "Solo", "field", out var soloLabel, () =>
+            {
+                if (r.Mod == null) return;
+                ChangelogModel.Solo(_filter, _mods, r.Mod);
+                _scroll = 0;
+                _dirty = true;
+            });
+            soloLabel.text = L("$ui_changelog_only");
+            soloLabel.fontSize = 16f;
+            soloLabel.color = Gold;
+            SetRim(Rim(r.Solo.transform), Gold);
+            Put(r.Solo, ModListW - 66f - 100f, 5f, 92f, 24f);
+            r.Solo.gameObject.SetActive(false);
+            hit.gameObject.AddComponent<Hover>().Set = on => { r.Hover = on; ApplyHover(r); };
             return r;
         }
 
@@ -639,22 +696,16 @@ namespace Morgott.UI.PreWorld
         {
             var rows = _view.Rows;
             _scroll = Mathf.Clamp(_scroll, 0, MaxScroll());
-            _dates.Used = _modHeads.Used = _lines.Used = 0;
+            _modHeads.Used = _lines.Used = 0;
             var russian = Russian;
             var y = 0f;
-            var viewH = ListBottom - ListY;
-            for (var i = _scroll; i < rows.Count && y < viewH; i++) y += Place(rows[i], y, russian);
-            foreach (var pool in new[] { _dates, _modHeads, _lines })
+            var viewH = _list.rect.height;
+            var listW = _list.rect.width;
+            for (var i = _scroll; i < rows.Count && y < viewH; i++) y += Place(rows[i], y, listW, russian);
+            foreach (var pool in new[] { _modHeads, _lines })
                 for (var i = pool.Used; i < pool.Items.Count; i++) Off(pool.Items[i].Rt);
-            // Scrollbar: thumb share = rows in view / all rows.
-            var show = rows.Count > 0 && MaxScroll() > 0;
-            _track.gameObject.SetActive(show);
-            _thumb.gameObject.SetActive(show);
-            if (!show) return;
-            var trackW = ThemeTokens.GetFloat("size.scrollbar.w", 16f) * 0.6f;
-            Put(_track, 1008f - trackW / 2f, ListY, trackW, viewH);
-            var thumbH = Mathf.Max(40f, viewH * Mathf.Clamp01(viewH / LineH / rows.Count));
-            Put(_thumb, 1008f - trackW / 2f, ListY + (viewH - thumbH) * _scroll / Mathf.Max(1, MaxScroll()), trackW, thumbH);
+            // Thumb share = rows in view / all rows.
+            SetBar(_bar, _scroll, rows.Count > 0 ? MaxScroll() : 0, viewH / LineH / Mathf.Max(1, rows.Count));
         }
 
         // Last first-row index that still fills the view (unwrapped heights from the end).
@@ -663,10 +714,10 @@ namespace Morgott.UI.PreWorld
             if (_view == null) return 0;
             var rows = _view.Rows;
             var h = 0f;
-            var viewH = ListBottom - ListY;
+            var viewH = _list.rect.height;
             for (var i = rows.Count - 1; i >= 0; i--)
             {
-                h += rows[i].Kind == ChangelogRowKind.Date ? DateH : rows[i].Kind == ChangelogRowKind.Mod ? ModH : LineH;
+                h += rows[i].Kind == ChangelogRowKind.Mod ? ModH : LineH;
                 if (h > viewH) return Mathf.Min(rows.Count - 1, i + 1);
             }
             return 0;
@@ -675,49 +726,37 @@ namespace Morgott.UI.PreWorld
         // Data text inside a rich-text line (mod name + version): no tag can open.
         private static string Plain(string s) => s.Replace('<', '‹');
 
-        private float Place(ChangelogRow row, float y, bool russian)
+        private float Place(ChangelogRow row, float y, float listW, bool russian)
         {
             var e = row.Entry;
-            switch (row.Kind)
+            if (row.Kind == ChangelogRowKind.Mod)
             {
-                case ChangelogRowKind.Date:
-                    {
-                        var r = Next(_dates, NewDateRow);
-                        Put(r.Rt, 0f, y, ListW, DateH);
-                        r.A.text = ChangelogModel.DateHeader(e.Date, russian);
-                        var w = r.A.GetPreferredValues(r.A.text).x;
-                        Put(r.A, 0f, 6f, w + 4f, 34f);
-                        Put(r.Rule, w + 18f, 24f, Mathf.Max(0f, ListW - w - 26f), 1f);
-                        return DateH;
-                    }
-                case ChangelogRowKind.Mod:
-                    {
-                        // One text: the version follows the name at a fixed gap (mockup "Morgott.UI 0.29.40").
-                        var r = Next(_modHeads, NewModHead);
-                        Put(r.Rt, 0f, y, ListW, ModH);
-                        r.A.text = e.Version.Length > 0 ? $"{Plain(e.Mod)}<space=10><color=#8AB4F0>{Plain(e.Version)}</color>" : Plain(e.Mod);
-                        return ModH;
-                    }
-                default:
-                    {
-                        var r = Next(_lines, NewLineRow);
-                        var c = TypeColor(e.Type);
-                        SetRim(r.Rim, c);
-                        r.Rule.color = new Color(c.r, c.g, c.b, 0.18f); // style sheet: accent text on accent @ 0.18
-                        r.B.color = c;
-                        r.B.text = L("$ui_changelog_type_" + ChangelogModel.Types[e.Type]);
-                        var tagW = r.B.GetPreferredValues(r.B.text).x + 22f;
-                        r.A.text = e.Text(russian);
-                        var textX = 2f + tagW + TagGap;
-                        var textW = ListW - textX - 8f;
-                        var h = Mathf.Max(LineH, r.A.GetPreferredValues(r.A.text, textW, 0f).y + 12f);
-                        Put(r.Rt, 0f, y, ListW, h);
-                        Put(r.Tag, 2f, 6f, tagW, TagH);
-                        Put(r.B, 2f, 6f, tagW, TagH);
-                        Put(r.A, textX, 5f, textW, h - 6f);
-                        return h;
-                    }
+                // Mockup group header: "Morgott.Creatures  0.37.0" left, the date right, a rule under it.
+                var r = Next(_modHeads, NewModHead);
+                Put(r.Rt, 0f, y, listW, ModH);
+                r.A.text = e.Version.Length > 0 ? $"{Plain(e.Mod)}<space=24><color=#8AB4F0>{Plain(e.Version)}</color>" : Plain(e.Mod);
+                r.B.text = ChangelogModel.Day(e.Date);
+                Put(r.A, 0f, 8f, listW - 200f, 42f);
+                Put(r.B, listW - 200f, 8f, 196f, 42f);
+                Put(r.Rule, 0f, ModH - 5f, listW, 1f);
+                return ModH;
             }
+            var l = Next(_lines, NewLineRow);
+            var col = TypeColor(e.Type);
+            SetRim(l.Rim, col);
+            l.Rule.color = new Color(col.r, col.g, col.b, 0.18f); // style sheet: accent text on accent @ 0.18
+            l.B.color = col;
+            l.B.text = L("$ui_changelog_type_" + ChangelogModel.Types[e.Type]);
+            var tagW = Mathf.Min(TagCol, l.B.GetPreferredValues(l.B.text).x + 28f);
+            l.A.text = e.Text(russian);
+            var textX = 4f + TagCol + TagGap;
+            var textW = listW - textX - 8f;
+            var h = Mathf.Max(LineH, l.A.GetPreferredValues(l.A.text, textW, 0f).y + 12f);
+            Put(l.Rt, 0f, y, listW, h);
+            Put(l.Tag, 4f, 5f, tagW, TagH);
+            Put(l.B, 4f, 5f, tagW, TagH);
+            Put(l.A, textX, 6f, textW, h - 6f);
+            return h;
         }
 
         private Row Next(Pool pool, Func<int, Row> make)
@@ -729,28 +768,20 @@ namespace Morgott.UI.PreWorld
             return r;
         }
 
-        private Row NewDateRow(int n)
-        {
-            var r = new Row { Rt = NewRect("Date" + n, _list) };
-            r.A = Txt(r.Rt, "A", "text.header", TextAlignmentOptions.Left, 24f);
-            r.A.color = ThemeTokens.GetColor("color.text.header", Hex("#D9DCE0"));
-            r.A.richText = false;
-            r.A.overflowMode = TextOverflowModes.Overflow; // sized to its text (RefitDates), never an ellipsis
-            _serif.Add(r.A);
-            if (ThemeTokens.GetFont("font.map.header") is TMP_FontAsset f) r.A.font = f;
-            r.Rule = Rule(r.Rt, "Rule", Hex("#3D8290"));
-            return r;
-        }
-
         private Row NewModHead(int n)
         {
             var r = new Row { Rt = NewRect("ModHead" + n, _list) };
-            r.A = Txt(r.Rt, "A", "text.header", TextAlignmentOptions.Left, 24f);
+            r.A = Txt(r.Rt, "A", "text.header", TextAlignmentOptions.Left, 32f);
             r.A.color = ThemeTokens.GetColor("color.text.item.title", Hex("#F0C419"));
             r.A.richText = true; // name + version colour; the data parts go through Plain
-            _serif.Add(r.A);
-            if (ThemeTokens.GetFont("font.map.header") is TMP_FontAsset f) r.A.font = f;
-            Put(r.A, 0f, 2f, ListW, 34f);
+            r.B = Txt(r.Rt, "B", "text.header", TextAlignmentOptions.Right, 26f);
+            r.B.richText = false;
+            foreach (var t in new[] { r.A, r.B })
+            {
+                _serif.Add(t);
+                if (ThemeTokens.GetFont("font.map.header") is TMP_FontAsset f) t.font = f;
+            }
+            r.Rule = Rule(r.Rt, "Rule", Hex("#3D8290"));
             return r;
         }
 
@@ -760,9 +791,9 @@ namespace Morgott.UI.PreWorld
             r.Tag = Img(r.Rt, "Tag", "field");
             r.Rim = Rim(r.Tag.transform);
             r.Rule = Fill(r.Tag.transform); // tag fill (Rule slot unused on line rows)
-            r.B = Txt(r.Rt, "B", "text.body", TextAlignmentOptions.Center, 16f);
+            r.B = Txt(r.Rt, "B", "text.body", TextAlignmentOptions.Center, 19f);
             r.B.color = Body;
-            r.A = Txt(r.Rt, "A", "text.body", TextAlignmentOptions.TopLeft, 18f);
+            r.A = Txt(r.Rt, "A", "text.body", TextAlignmentOptions.TopLeft, 22f);
             r.A.textWrappingMode = TextWrappingModes.Normal;
             r.A.color = Body;
             r.A.richText = false; // entry text is data, never markup
@@ -771,6 +802,31 @@ namespace Morgott.UI.PreWorld
         }
 
         // ---------------------------------------------------------------- widgets
+
+        private static Bar NewBar(RectTransform parent, string name, Action<float> drag, Action<float> wheel)
+        {
+            var b = new Bar { Grip = NewRect(name, parent) };
+            var input = HitArea(b.Grip, name + "Hit");
+            input.Drag = drag;
+            input.Wheel = wheel;
+            b.Track = Img(b.Grip, "Track", "scrollbar.track");
+            b.Thumb = Img(b.Grip, "Thumb", "scrollbar.handle");
+            return b;
+        }
+
+        // Thumb height = share of the track (view / content), position = pos / max; hidden with nothing to scroll.
+        private static void SetBar(Bar b, int pos, int max, float share)
+        {
+            SetActive(b.Track, max > 0);
+            SetActive(b.Thumb, max > 0);
+            if (max <= 0) return;
+            var h = b.Grip.rect.height;
+            var w = ThemeTokens.GetFloat("size.scrollbar.w", 16f) * 0.6f;
+            var x = (b.Grip.rect.width - w) / 2f;
+            var thumbH = Mathf.Max(40f, h * Mathf.Clamp01(share));
+            Put(b.Track, x, 0f, w, h);
+            Put(b.Thumb, x, (h - thumbH) * Mathf.Clamp01(pos / (float)max), w, thumbH);
+        }
 
         // Thin coloured rim inside a plate (mockup chips / tags / active preset): four 1.5-unit lines, corners left open
         // for the plate's chamfer.
@@ -792,7 +848,8 @@ namespace Morgott.UI.PreWorld
             return rim;
         }
 
-        // Translucent accent fill inside a plate (chips, tags): plain quad, no role (a role restyle keeps its colour off).
+        // Translucent accent fill inside a plate (chips, tags, mod row hover): plain quad, no role (a role restyle keeps its
+        // colour off).
         private static Image Fill(Transform host)
         {
             var img = new GameObject("Fill", typeof(RectTransform)).AddComponent<Image>();
@@ -812,33 +869,18 @@ namespace Morgott.UI.PreWorld
 
         private void Label(Transform parent, string name, string token, float y)
         {
-            var t = Txt(parent, name, "text.header", TextAlignmentOptions.Left, 22f);
+            var t = Txt(parent, name, "text.header", TextAlignmentOptions.Left, 26f);
             t.text = L(token);
             t.color = ThemeTokens.GetColor("color.text.header", Hex("#D9DCE0"));
             _serif.Add(t);
-            Put(t, SideX, y, SideW, 30f);
+            Put(t, SideX, y, SideW, 34f);
         }
 
-        private TMP_InputField DateField(Transform parent, string name, string prefixToken, float y, bool from)
+        private TMP_InputField DateField(Transform parent, string name, string prefixToken, float x, float w, bool from)
         {
-            const float PrefixW = 26f; // "с" / "по" / "from": measured width was 0 at menu build (run 20261116-122424)
-            var back = Img(parent, name, "field", true);
-            Put(back, SideX, y, SideW, 30f);
-            var prefix = Txt(back.transform, "Prefix", "text.body", TextAlignmentOptions.Left, 17f);
-            prefix.text = L(prefixToken);
-            prefix.overflowMode = TextOverflowModes.Overflow;
-            Put(prefix, 12f, 0f, PrefixW, 30f);
-            var area = new GameObject("Text Area", typeof(RectTransform), typeof(RectMask2D)).GetComponent<RectTransform>();
-            area.SetParent(back.rectTransform, false);
-            Stretch(area, 12f + PrefixW + 6f, 0f, 10f, 0f);
-            var text = Txt(area, "Text", "text.body", TextAlignmentOptions.Left, 17f);
-            Stretch(text.rectTransform, 0f, 0f, 0f, 0f);
-            var f = back.gameObject.AddComponent<TMP_InputField>();
-            f.textViewport = area;
-            f.textComponent = text;
-            f.targetGraphic = back;
-            f.transition = Selectable.Transition.None;
-            f.navigation = new Navigation { mode = Navigation.Mode.None };
+            // Prefix "с" / "по" / "from" at a fixed width: measured width was 0 at menu build (run 20261116-122424).
+            var f = InputBox(parent, name, L(prefixToken), 32f, null);
+            Put(f, x, ListY + 40f, w, 36f);
             f.characterLimit = 10;
             f.onEndEdit.AddListener(s =>
             {
@@ -851,6 +893,40 @@ namespace Morgott.UI.PreWorld
                 }
                 else SetField(f, from ? _filter.From : _filter.To); // invalid: back to the current value
             });
+            return f;
+        }
+
+        // Field plate with an optional fixed-width prefix and an optional placeholder (LOC token).
+        private static TMP_InputField InputBox(Transform parent, string name, string prefix, float prefixW, string placeholderToken)
+        {
+            var back = Img(parent, name, "field", true);
+            if (prefixW > 0f)
+            {
+                var pre = Txt(back.transform, "Prefix", "text.body", TextAlignmentOptions.Left, 19f);
+                pre.text = prefix;
+                pre.overflowMode = TextOverflowModes.Overflow;
+                Column(pre, 12f, prefixW, 0f, 0f);
+            }
+            var area = new GameObject("Text Area", typeof(RectTransform), typeof(RectMask2D)).GetComponent<RectTransform>();
+            area.SetParent(back.rectTransform, false);
+            Stretch(area, 12f + (prefixW > 0f ? prefixW + 6f : 0f), 0f, 10f, 0f);
+            var text = Txt(area, "Text", "text.body", TextAlignmentOptions.Left, 19f);
+            Stretch(text.rectTransform, 0f, 0f, 0f, 0f);
+            var f = back.gameObject.AddComponent<TMP_InputField>();
+            f.textViewport = area;
+            f.textComponent = text;
+            if (placeholderToken != null)
+            {
+                var ph = Txt(area, "Placeholder", "text.muted", TextAlignmentOptions.Left, 19f);
+                ph.text = L(placeholderToken);
+                ph.fontStyle = FontStyles.Italic;
+                ph.color = Muted;
+                Stretch(ph.rectTransform, 0f, 0f, 0f, 0f);
+                f.placeholder = ph;
+            }
+            f.targetGraphic = back;
+            f.transition = Selectable.Transition.None;
+            f.navigation = new Navigation { mode = Navigation.Mode.None };
             return f;
         }
 
@@ -922,13 +998,36 @@ namespace Morgott.UI.PreWorld
             if (c && c.gameObject.activeSelf) c.gameObject.SetActive(false);
         }
 
-        // Top-left box in the parent's space (y down).
-        private static void Put(Component c, float x, float y, float w, float h)
+        // Top-left box (y down) from an anchor on the parent's top edge: ax 0 = left, 0.5 = centre, 1 = right.
+        private static void Put(Component c, float x, float y, float w, float h, float ax = 0f)
         {
             var rt = (RectTransform)c.transform;
-            rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0f, 1f);
+            rt.anchorMin = rt.anchorMax = new Vector2(ax, 1f);
+            rt.pivot = new Vector2(0f, 1f);
             rt.anchoredPosition = new Vector2(x, -y);
             rt.sizeDelta = new Vector2(w, h);
+        }
+
+        // Fixed-width column at x from an anchor on the left (ax 0) or right (ax 1) edge, stretched between top and bottom insets.
+        private static void Column(Component c, float x, float w, float top, float bottom, float ax = 0f)
+        {
+            var rt = (RectTransform)c.transform;
+            rt.anchorMin = new Vector2(ax, 0f);
+            rt.anchorMax = new Vector2(ax, 1f);
+            rt.pivot = new Vector2(0f, 1f);
+            rt.offsetMin = new Vector2(x, bottom);
+            rt.offsetMax = new Vector2(x + w, -top);
+        }
+
+        // Fixed-height band at y from the top, stretched between left and right insets.
+        private static void Band(Component c, float left, float right, float y, float h)
+        {
+            var rt = (RectTransform)c.transform;
+            rt.anchorMin = new Vector2(0f, 1f);
+            rt.anchorMax = Vector2.one;
+            rt.pivot = new Vector2(0f, 1f);
+            rt.offsetMin = new Vector2(left, -y - h);
+            rt.offsetMax = new Vector2(-right, -y);
         }
 
         private static void Stretch(RectTransform rt, float left, float top, float right, float bottom)
