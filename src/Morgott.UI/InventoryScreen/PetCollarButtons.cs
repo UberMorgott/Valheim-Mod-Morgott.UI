@@ -11,9 +11,14 @@ namespace Morgott.UI.InventoryScreen
     // with it. Greyed and not clickable when the owner says no; the tooltip then names why. Absent without Summons.
     public sealed class PetCollarButtons : MonoBehaviour
     {
-        private Button _store, _release;
-        private Image _storeGlyph, _releaseGlyph;
-        private UITooltip _storeTip, _releaseTip;
+        private Button _store, _release, _stance;
+        private Image _storeGlyph, _releaseGlyph, _stanceGlyph;
+        private UITooltip _storeTip, _releaseTip, _stanceTip;
+        private PetStance? _shown;
+
+        // Stance glyphs reuse the theme's item-category glyphs (swords / shield / stop), no new art.
+        private static readonly string[] StanceGlyph = { "sprite.glyph.sub.swords", "sprite.glyph.sub.shield", "sprite.glyph.stop" };
+        private static readonly string[] StanceName = { "aggressive", "defensive", "passive" };
         private float _next;
 
         // From PlaceEaqsCells for the collar cell; side 1 = right doll column (buttons on its left).
@@ -38,6 +43,8 @@ namespace Morgott.UI.InventoryScreen
         {
             if (_store && _store.gameObject.activeSelf != on) _store.gameObject.SetActive(on);
             if (_release && _release.gameObject.activeSelf != on) _release.gameObject.SetActive(on);
+            var stance = on && Services.TryGet<IPetStance>(out _);
+            if (_stance && _stance.gameObject.activeSelf != stance) _stance.gameObject.SetActive(stance);
         }
 
         private void Build(RectTransform cell, int side, GameObject tooltipPrefab)
@@ -46,9 +53,12 @@ namespace Morgott.UI.InventoryScreen
             _release = Make(cell, "RuneSkinPetRelease", "sprite.glyph.act.upgrade", tooltipPrefab, 1, side, out _releaseGlyph, out _releaseTip);
             _store.onClick.AddListener(() => { if (Services.TryGet<IPetCollar>(out var p)) p.Store(); _next = 0f; });
             _release.onClick.AddListener(() => { if (Services.TryGet<IPetCollar>(out var p)) p.Release(); _next = 0f; });
+            // Stance (Core IPetStance, user 2026-11-16): one click = next stance; the glyph follows once the pet's ZDO shows it.
+            _stance = Make(cell, "RuneSkinPetStance", StanceGlyph[0], tooltipPrefab, 2, side, out _stanceGlyph, out _stanceTip);
+            _stance.onClick.AddListener(() => { if (Services.TryGet<IPetStance>(out var s)) s.Cycle(); _next = 0f; });
         }
 
-        // Square, 44 % of the cell, outside its inner edge: Store on top, Release below.
+        // Square, 44 % of the cell, outside its inner edge: Store on top, Release below, Stance under Release.
         private static Button Make(RectTransform cell, string name, string glyphToken, GameObject tooltipPrefab, int index, int side,
             out Image glyph, out UITooltip tip)
         {
@@ -57,7 +67,7 @@ namespace Morgott.UI.InventoryScreen
             rt.SetParent(cell, false);
             const float share = 0.44f, gap = 0.04f;
             var x = side == 1 ? -share - gap : 1f + gap;
-            var top = 0.5f + (index == 0 ? share + gap / 2f : -gap / 2f);
+            var top = 0.5f + share + gap / 2f - index * (share + gap);
             rt.anchorMin = new Vector2(x, top - share);
             rt.anchorMax = new Vector2(x + share, top);
             rt.offsetMin = rt.offsetMax = Vector2.zero;
@@ -94,6 +104,25 @@ namespace Morgott.UI.InventoryScreen
             if (!Services.TryGet<IPetCollar>(out var pet)) return;
             Apply(_store, _storeGlyph, _storeTip, pet.CanStore(out var whyStore), "$su_pet_store_button", whyStore);
             Apply(_release, _releaseGlyph, _releaseTip, pet.CanRelease(out var whyRelease), "$su_pet_release_button", whyRelease);
+            if (_stance && _stance.gameObject.activeSelf && Services.TryGet<IPetStance>(out var stance)) ApplyStance(stance);
+        }
+
+        private void ApplyStance(IPetStance owner)
+        {
+            var have = owner.TryGet(out var s);
+            if (_shown != s)
+            {
+                _shown = s;
+                _stanceGlyph.sprite = ThemeTokens.GetSprite(StanceGlyph[(int)s]);
+                _stanceGlyph.enabled = _stanceGlyph.sprite;
+            }
+            var name = StanceName[(int)s];
+            Apply(_stance, _stanceGlyph, _stanceTip, have, "$su_pet_stance_" + name, "$su_pet_stance_none");
+            if (have && _stanceTip)
+            {
+                var text = Localization.instance.Localize("$su_pet_stance_" + name + "_desc\n$su_pet_stance_hint");
+                if (_stanceTip.m_text != text) _stanceTip.m_text = text;
+            }
         }
 
         private static void Apply(Button b, Image glyph, UITooltip tip, bool can, string topic, string why)
