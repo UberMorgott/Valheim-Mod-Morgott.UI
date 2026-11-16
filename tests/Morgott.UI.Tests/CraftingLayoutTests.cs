@@ -404,6 +404,41 @@ namespace Morgott.UI.Tests
             Assert.True(o2.Icon.Bottom <= o2.Description.Y + 0.01f && o2.Description.Bottom <= o2.Stats.Y && o2.Stats.Bottom <= o2.Chain.Y &&
                         o2.Chain.Bottom <= o2.Requirements.Y && o2.Requirements.Bottom <= o2.Detail.Bottom + 0.01f, o2.ToString());
         }
+        // The live game's model (run 20261116-170414 view-ui layout): theme tokens (req 68 x 86, row 40, scrollbar 14), panel
+        // (1283.2, 32, 576, 906.9) with a 32-unit cap inset -> detail (1527.2, 298, 300, 536.9) exactly as logged. 3 cells +
+        // the station level and a 150-unit tree: cells in one row (each >= 84 high, its count band holds the amount line),
+        // icon >= 56, description >= 48, full 7-line table, missing box >= its minimum, nothing overlaps.
+        [Fact]
+        public void LiveGameLayoutMatchesTheLoggedRun()
+        {
+            var t = new CraftingTokens { ReqH = 86f, RowH = 40f, ScrollbarW = 14f };
+            var o = CraftingMath.Compute(new CraftingInput
+            {
+                Panel = new Box(1283.2f, 32f, 576f, 906.9f),
+                CapInset = 32f,
+                WindowHeaderH = 40f,
+                Tabs = 3,
+                Network = true,
+                Categories = 4,
+                Search = true,
+                Controls = true,
+                Requirements = 4,
+                StatLines = 7,
+                ChainH = 150f
+            }, t);
+            Assert.Equal(1527.2f, o.Detail.X, 1);
+            Assert.Equal(298f, o.Detail.Y, 1);
+            Assert.Equal(300f, o.Detail.W, 1);
+            Assert.Equal(536.9f, o.Detail.H, 1);
+            Assert.Equal(1, o.RequirementRows);
+            Assert.All(o.RequirementCells, c => Assert.True(c.H >= t.ReqMinH - 0.01f && c.H * CraftingMath.AmountBand >= 16f * CraftingMath.LineEm - 0.01f, $"cell {c}"));
+            Assert.True(o.Icon.H >= t.IconMinH - 0.01f, o.ToString());
+            Assert.True(o.Description.H >= t.DescriptionMinH - 0.01f, o.ToString());
+            Assert.Equal(7 * t.StatRowH, o.Stats.H, 3);
+            Assert.True(o.Chain.H >= t.ChainMinH - 0.01f, o.ToString());
+            Assert.True(o.Icon.Bottom <= o.Description.Y + 0.01f && o.Description.Bottom <= o.Stats.Y && o.Stats.Bottom <= o.Chain.Y &&
+                        o.Chain.Bottom <= o.Requirements.Y && o.Requirements.Bottom <= o.Detail.Bottom + 0.01f, o.ToString());
+        }
         // Run 20261116-155947: 19-unit stat rows under the 16-unit body font held no line (TMP drops a line taller than its box).
         [Fact]
         public void StatRowHoldsOneBodyLine()

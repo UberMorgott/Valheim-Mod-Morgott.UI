@@ -295,7 +295,7 @@ namespace Morgott.UI.CraftingScreen
             // missing box leave (run 20261116-161831 at 1080p: two full rows of cells left the icon 0 units).
             var keep = (top - d.Y) + S(i.StatLines > 0 || i.ChainH > 0f ? t.IconMinH : t.IconH) + gap * 0.5f + S(t.DescriptionMinH) + gap + (i.Quality ? S(t.QualityH) + gap * 0.5f : 0f) +
                        (statsH > 0f ? statsH + gap * 0.5f : 0f) + (i.ChainH > 0f ? Math.Min(i.ChainH, S(t.ChainMinH)) + gap * 0.5f : 0f);
-            Requirements(o, i.Requirements, new Box(d.X, d.Y, d.W, d.H), S(t.ReqW), S(t.ReqH), Math.Max(S(t.ReqMinW), S(t.ReqMinH) * t.ReqW / Math.Max(1f, t.ReqH)), (int)Math.Max(1f, t.ReqMaxRows), gap * 0.75f, Math.Max(0f, d.H - keep));
+            Requirements(o, i.Requirements, new Box(d.X, d.Y, d.W, d.H), S(t.ReqW), S(t.ReqH), S(t.ReqMinW), (int)Math.Max(1f, t.ReqMaxRows), gap * 0.75f, Math.Max(0f, d.H - keep), S(t.ReqMinH));
             if (o.RequirementRows > 0)
             {
                 var rh = o.Requirements.H;
@@ -341,7 +341,10 @@ namespace Morgott.UI.CraftingScreen
         // fit it come first (the cells shrink only past it: a 60-wide cell drops its two-line names under the 10 font
         // floor, run 20261026-222320 names-*).
         // Cell boxes relative to `area` (y from area.Y). Requirements.H = grid height.
-        public static void Requirements(CraftingLayout o, int n, Box area, float w, float h, float minW, int maxRows, float gap, float roomH = 0f)
+        // minH: cells never get lower than this (their count band must hold the amount line); narrower cells keep it, so their
+        // aspect may get taller (theme req 68 x 86: aspect-kept cells at 84 high were 66.4 wide and only 3 fit the 280-unit
+        // detail of run 20261116-170414, 3 + 1 rows left the icon 4 units).
+        public static void Requirements(CraftingLayout o, int n, Box area, float w, float h, float minW, int maxRows, float gap, float roomH = 0f, float minH = 0f)
         {
             o.RequirementCells = new Box[Math.Max(0, n)];
             o.RequirementColumns = o.RequirementRows = 0;
@@ -354,7 +357,7 @@ namespace Morgott.UI.CraftingScreen
                 var want = (n + maxRows - 1) / maxRows;
                 var fitW = (area.W - (want - 1) * gap) / want;
                 var cw = Math.Max(minW, Math.Min(w, fitW));
-                h *= cw / w;
+                h = Math.Max(Math.Min(h, minH), h * cw / w);
                 w = cw;
                 cols = Columns(area.W, w, gap);
             }
@@ -365,7 +368,7 @@ namespace Morgott.UI.CraftingScreen
             while (roomH > 0f && rows * h + (rows - 1) * gap > roomH + 0.01f && w > minW + 0.01f)
             {
                 var nw = Math.Max(minW, w - 1f);
-                h *= nw / w;
+                h = Math.Max(Math.Min(h, minH), h * nw / w);
                 w = nw;
                 cols = Math.Min(Columns(area.W, w, gap), n);
                 rows = (n + cols - 1) / cols;
