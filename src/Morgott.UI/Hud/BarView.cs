@@ -649,16 +649,20 @@ namespace Morgott.UI.PlayerHud
 
         public static Color Solid(Color c) => new Color(c.r, c.g, c.b, 1f);
 
-        // Honeycomb shield fill (Morgott/UI Bar _Mode 2), one material for every segment (colour = the Image colour);
-        // null without the morgott_vfx bundle: the segment is then a flat quad.
-        private static Material _segMat;
+        // Shield segment tube (Morgott/UI Bar _Mode 2), colour = the Image colour: [0] honeycomb fill (HP bar), [1] the same
+        // with rounded ends (ally bars), [2] plain rounded tube = the ally bar's dark track. Null without the morgott_vfx
+        // bundle: the segment is then a flat quad.
+        private static readonly Material[] SegMats = new Material[3];
 
-        public static Material SegmentMaterial()
+        public static Material SegmentMaterial(int kind = 0)
         {
-            if (_segMat) return _segMat;
+            if (SegMats[kind]) return SegMats[kind];
             var shader = ThemeTokens.BarShader;
-            if (shader) _segMat = FxMaterial(shader, "Morgott shield segment", 2f);
-            return _segMat;
+            if (!shader) return null;
+            var m = SegMats[kind] = FxMaterial(shader, "Morgott shield segment " + kind, 2f);
+            m.SetFloat("_Round", kind > 0 ? 1f : 0f);
+            if (kind == 2) m.SetFloat("_HexLine", 0f);
+            return m;
         }
 
 

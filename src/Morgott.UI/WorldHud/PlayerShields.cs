@@ -26,7 +26,7 @@ namespace Morgott.UI.WorldHud
         private static bool Prepare() => OwnershipRegistry.IsOwned(OwnershipRegistry.PlayerShields);
 
         public const string GearName = "MorgottUI_ShieldGear", ExtName = "MorgottUI_ShieldExt";
-        public const string GearDividerName = "MorgottUI_ShieldGearDivider", ExtDividerName = "MorgottUI_ShieldExtDivider";
+        public const string GearDividerName = "MorgottUI_ShieldGearDivider", ExtDividerName = "MorgottUI_ShieldExtDivider", TrackName = "MorgottUI_ShieldTrack";
         private static readonly int EsKey = "mt_es".GetStableHashCode(), EsMaxKey = "mt_es_max".GetStableHashCode();
         private static readonly int ShieldKey = "mt_shield".GetStableHashCode(), ShieldMaxKey = "mt_shield_max".GetStableHashCode();
 
@@ -34,7 +34,7 @@ namespace Morgott.UI.WorldHud
         {
             public float Full;
             public RectTransform Bar;
-            public Image Gear, Ext, GearDiv, ExtDiv;
+            public Image Track, Gear, Ext, GearDiv, ExtDiv;
         }
 
         private static readonly ConditionalWeakTable<EnemyHud.HudData, Segs> Huds = new ConditionalWeakTable<EnemyHud.HudData, Segs>();
@@ -60,6 +60,7 @@ namespace Morgott.UI.WorldHud
                 if (hud.m_healthSlow) hud.m_healthSlow.SetWidth(hpW);
                 if (esMax + shMax > 0f && !s.Gear) Make(s);
                 if (!s.Gear) continue;
+                Place(s, s.Track, 0f, s.Full);
                 var div = ThemeTokens.GetFloat("size.enemy.segment.divider", 1f);
                 Place(s, s.Gear, hpW, HudMath.SegmentFill(zdo.GetFloat(EsKey), esMax, gw));
                 Place(s, s.Ext, hpW + gw, HudMath.SegmentFill(zdo.GetFloat(ShieldKey), shMax, ew));
@@ -68,7 +69,7 @@ namespace Morgott.UI.WorldHud
             }
         }
 
-        // Segment [x, x+w] of the bar's full length, the bar's height, in the bar's parent (health_fast).
+        // Segment [x, x+w] of the bar's full length, the bar's height (Health and health_* share one scale).
         private static void Place(Segs s, Image img, float x, float w)
         {
             var on = w > 0.05f;
@@ -78,21 +79,38 @@ namespace Morgott.UI.WorldHud
             var r = img.rectTransform;
             var size = new Vector2(w, bar.rect.height);
             if (r.sizeDelta != size) r.sizeDelta = size;
-            // the bar grows from its left edge (GuiBar keeps its pivot), so that edge is fixed in the parent
-            var pos = new Vector3(bar.localPosition.x + bar.rect.xMin + x, bar.localPosition.y + bar.rect.center.y, 0f);
+            // the bar grows from its left edge (GuiBar keeps its pivot), so that edge is fixed in its parent
+            var at = new Vector3(bar.localPosition.x + bar.rect.xMin + x, bar.localPosition.y + bar.rect.center.y, 0f);
+            var pos = img.transform.parent == bar.parent ? at : img.transform.parent.InverseTransformPoint(bar.parent.TransformPoint(at));
             if (r.localPosition != pos) r.localPosition = pos;
         }
 
         private static void Make(Segs s)
         {
             var parent = s.Bar.parent;
-            s.Gear = Segment(parent, GearName, "color.hud.shield", true);
-            s.Ext = Segment(parent, ExtName, "color.hud.shield.ext", true);
-            s.GearDiv = Segment(parent, GearDividerName, "color.enemy.segment.divider", false);
-            s.ExtDiv = Segment(parent, ExtDividerName, "color.enemy.segment.divider", false);
+            // one rounded dark track under the whole bar (HP + segments, mockup) in place of vanilla's bkg / darken, whose
+            // trough showed as a lighter strip under the thinner bar
+            var health = parent.parent;
+            s.Track = Segment(health, TrackName, "color.hud.segment.track", 2);
+            s.Track.transform.SetSiblingIndex(FirstBar(health));
+            foreach (var n in new[] { "bkg", "darken" })
+                if (health.Find(n) is Transform v && v.TryGetComponent<Image>(out var vi)) vi.enabled = false;
+            s.Gear = Segment(parent, GearName, "color.hud.shield", 1);
+            s.Ext = Segment(parent, ExtName, "color.hud.shield.ext", 1);
+            s.GearDiv = Segment(parent, GearDividerName, "color.enemy.segment.divider", -1);
+            s.ExtDiv = Segment(parent, ExtDividerName, "color.enemy.segment.divider", -1);
         }
 
-        private static Image Segment(Transform parent, string name, string color, bool hex)
+        // the first health_* child (the track goes right before the bars)
+        private static int FirstBar(Transform health)
+        {
+            for (var i = 0; i < health.childCount; i++)
+                if (health.GetChild(i).name.StartsWith("health_", System.StringComparison.Ordinal)) return i;
+            return 0;
+        }
+
+        // kind: BarView.SegmentMaterial kind, -1 = plain quad (divider)
+        private static Image Segment(Transform parent, string name, string color, int kind)
         {
             var t = parent.Find(name); // a segment left by an earlier build of this HUD object is reused
             var img = t ? t.GetComponent<Image>() : new GameObject(name, typeof(RectTransform), typeof(Image)).GetComponent<Image>();
@@ -102,8 +120,8 @@ namespace Morgott.UI.WorldHud
             r.pivot = new Vector2(0f, 0.5f);
             img.sprite = null;
             img.type = Image.Type.Simple;
-            img.material = hex ? BarView.SegmentMaterial() : null;
-            img.color = hex ? BarView.Solid(ThemeTokens.GetColor(color, Color.cyan)) : ThemeTokens.GetColor(color, Color.cyan);
+            img.material = kind >= 0 ? BarView.SegmentMaterial(kind) : null;
+            img.color = kind >= 0 ? BarView.Solid(ThemeTokens.GetColor(color, Color.cyan)) : ThemeTokens.GetColor(color, Color.cyan);
             img.raycastTarget = false;
             img.gameObject.SetActive(false);
             return img;

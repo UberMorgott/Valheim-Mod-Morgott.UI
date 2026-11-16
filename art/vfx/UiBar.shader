@@ -18,8 +18,9 @@ Shader "Morgott/UI Bar"
         _Color ("Tint", Color) = (1,1,1,1)
         _Mode ("Mode 0 fill, 1 glow, 2 shield segment", Float) = 0
         _HexCells ("Segment: hex cells per bar height", Float) = 2.2
-        _HexMinPx ("Segment: min hex cell px", Float) = 6
-        _HexLine ("Segment: hex outline strength", Float) = 0.45
+        _HexMinPx ("Segment: min hex cell px", Float) = 4
+        _HexLine ("Segment: hex outline strength", Float) = 0.8
+        _Round ("Segment: rounded ends", Float) = 0
         _Fill ("Fill share", Range(0,1)) = 1
         _Lag ("Lag share", Range(0,1)) = 1
         _Shield ("Shield share", Range(0,1)) = 0
@@ -112,7 +113,7 @@ Shader "Morgott/UI Bar"
             fixed4 _Color;
             float4 _ClipRect;
             float _Mode, _Fill, _Lag, _Shield, _Aspect, _HiPos, _HiWidth, _HiAmount, _Bottom, _Depth, _Rim, _GlowWidth;
-            float _HexCells, _HexMinPx, _HexLine;
+            float _HexCells, _HexMinPx, _HexLine, _Round;
             fixed4 _FillColor, _LagColor, _MissingColor, _SheenColor, _GlowColor, _ClotColor;
             float _RuneSkinFxClock;   // global shader clock, written once per frame by BarFxConfig.TickClock
             float _Pool, _FxOn, _FxIntensity, _FxSpeed, _FxClock, _HitAt, _HitSize, _HealAt, _PulseAt, _Regen, _Exhaust;
@@ -482,28 +483,41 @@ Shader "Morgott/UI Bar"
                 return dot(h.xy, h.xy) < dot(h.zw, h.zw) ? float4(h.xy, hc.xy) : float4(h.zw, hc.zw + 0.5);
             }
 
-            // _Mode 2 = shield segment fill (user 2026-11-16): the glossy cylinder in the Image colour with a faint
-            // honeycomb (lighter cell outlines, each cell breathing slowly on the shared clock), the quad = the filled part
-            // (cells anchored at its left end, so they stay put while it fills). Cell = bar height / _HexCells, never under
-            // _HexMinPx screen px. Straight quad, premultiplied.
+            // _Mode 2 = shield segment fill (user 2026-11-16, mockup shield-segments v2): a glossy tube in the Image colour
+            // (dark bottom, narrow bright highlight band near the top, as the HP / ally fills) with a honeycomb of crisp
+            // ~1 px cell lines in a lighter shade of the same hue (no whitening), each cell's line breathing slowly on the
+            // shared clock. The quad = the filled part, cells anchored at its left end (they stay put while it fills).
+            // Cell = bar height / _HexCells, never under _HexMinPx screen px. _Round 1: rounded (pill) ends (ally bars).
+            // Plain colour math like the effects-off fill (no gamma round trip). Premultiplied.
             fixed4 segment(float2 uv, fixed4 tint)
             {
                 float pxU = max(fwidth(uv.x), 1e-6), pxV = max(fwidth(uv.y), 1e-6);
+                float aspect = pxV / pxU;                                     // quad width / height from the derivatives
                 float cells = min(_HexCells, 1.0 / (pxV * _HexMinPx));
-                float2 P = float2(uv.x * pxV / pxU, uv.y) * cells;   // bar-height units (quad aspect from the derivatives)
+                float2 P = float2(uv.x * aspect, uv.y) * cells;
                 float4 h = hexCell(P);
                 float2 q = abs(h.xy);
                 float e = 0.5 - max(dot(q, float2(0.5, 0.8660254)), q.x);   // 0 on a cell edge
                 float pe = max(fwidth(e), 1e-5);
-                float outline = 1.0 - smoothstep(0.6 * pe, 1.6 * pe, e);
+                float outline = 1.0 - smoothstep(0.25 * pe, 1.1 * pe, e);    // ~1 px, crisp
                 float tr = _FxClock >= 0.0 ? _FxClock : _RuneSkinFxClock;
                 float breathe = 0.5 + 0.5 * sin(tr * 1.1 + hash21(h.zw) * 6.2831853);
-                float3 body = cylinder(tint.rgb, uv.y, _HiAmount);
-                // thin lit outlines only (the cell bodies stay the plain fill: per-cell tints read as blotches, Codex compare)
-                body = lerp(body, lerp(tint.rgb, float3(1, 1, 1), 0.6), outline * _HexLine * (0.7 + 0.3 * breathe));
-                return fixed4(body * tint.a, tint.a);   // tint.a = group fades (the segment colour itself is solid)
+                float v = uv.y;
+                float shade = lerp(0.5, 1.0, smoothstep(0.0, 0.62, v)) * lerp(1.0, 0.85, smoothstep(0.93, 1.0, v));
+                float hi = exp(-pow((v - 0.8) / 0.07, 2.0));
+                float3 body = tint.rgb * shade;
+                body = lerp(body, lerp(tint.rgb, float3(1, 1, 1), 0.7), hi * 0.75);
+                float3 lineC = saturate(tint.rgb * 1.5 + 0.06) * shade;
+                body = lerp(body, lineC, outline * _HexLine * (0.75 + 0.25 * breathe));
+                float a = tint.a;
+                if (_Round > 0.5)
+                {
+                    float d = pill(float2((uv.x - 0.5) * aspect, v - 0.5), 0.5 * aspect, 0.5);
+                    float pd = max(fwidth(d), 1e-5);
+                    a *= 1.0 - smoothstep(-pd, pd, d);
+                }
+                return fixed4(body * a, a);   // tint.a = group fades (the segment colour itself is solid)
             }
-
             fixed4 frag(v2f IN) : SV_Target
             {
                 fixed4 c;
