@@ -73,15 +73,42 @@ namespace Morgott.UI.Tests
             Assert.Equal(600f + (1200f - 960f * k) / 2f - 20f * k, x, 2);
         }
 
+        // Trader v2 mockup at 1920x1080: body 48..1872 x 210..1040 -> store 48..620, board 636..1872; Тайник 210..610,
+        // Лотерея 636..1037 | Карты 1053..1454 | Задания 1470..1872 at 626..1040 (spec "v2 layout", ±2 px).
         [Fact]
-        public void GridCellsTileTheArea()
+        public void TraderBoardMatchesMockupV2()
         {
-            var a = new Box(0f, 0f, 1010f, 610f);
-            var c = ElPageMath.Cell(a, 1, 1, 10f);
-            Assert.Equal(510f, c.X, 2);
-            Assert.Equal(310f, c.Y, 2);
-            Assert.Equal(a.Right, c.Right, 2);
-            Assert.Equal(a.Bottom, c.Bottom, 2);
+            var body = new Box(48f, 210f, 1824f, 830f);
+            ElPageMath.Trader(body, true, out var store, out var right);
+            Assert.Equal(620f, store.Right, 1);
+            Assert.Equal(636f, right.X, 1);
+            var stash = ElPageMath.BoardCell(right, 0, 16f);
+            Assert.Equal(610f, stash.Bottom, 1);
+            Assert.Equal(1872f, stash.Right, 1);
+            var xs = new[] { 636f, 1053f, 1470f };
+            for (var i = 1; i <= 3; i++)
+            {
+                var c = ElPageMath.BoardCell(right, i, 16f);
+                Assert.True(System.Math.Abs(c.X - xs[i - 1]) <= 2f, $"cell {i} x {c.X}");
+                Assert.Equal(626f, c.Y, 1);
+                Assert.Equal(1040f, c.Bottom, 1);
+                Assert.True(System.Math.Abs(c.W - 401f) <= 2f, $"cell {i} w {c.W}");
+            }
+            Assert.Equal(1872f, ElPageMath.BoardCell(right, 3, 16f).Right, 1);
+        }
+
+        // Header on top, action row at the bottom, the list between; a centred button never outgrows its row.
+        [Fact]
+        public void SectionStacksHeaderListAction()
+        {
+            ElPageMath.Section(new Box(0f, 0f, 400f, 400f), 10f, 70f, 44f, 8f, out var head, out var list, out var act);
+            Assert.Equal(10f, head.Y, 2);
+            Assert.Equal(380f, head.W, 2);
+            Assert.Equal(390f, act.Bottom, 2);
+            Assert.Equal(head.Bottom + 8f, list.Y, 2);
+            Assert.Equal(act.Y - 8f, list.Bottom, 2);
+            Assert.Equal(150f, ElPageMath.Centre(act, 100f).X, 2);
+            Assert.Equal(act.W, ElPageMath.Centre(act, 900f).W, 2);
         }
     }
 }

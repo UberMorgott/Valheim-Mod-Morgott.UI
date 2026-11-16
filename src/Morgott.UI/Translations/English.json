@@ -9,6 +9,7 @@
   "ui_slot_light": "Light",
   "ui_action_take_all": "Take all",
   "ui_action_stack_all": "Stack matching",
+  "ui_trader_goods": "Goods",
   "ui_eitr_to_hp": "EITR → HP",
   "ui_eitr_to_shield": "EITR → SHIELD",
   "ui_reserve_available": "Available",

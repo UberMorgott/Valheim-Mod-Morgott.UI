@@ -356,10 +356,13 @@ namespace Morgott.UI.InfoScreens
         // Banner end blocks at `end` canvas units (mockup 02: ~200 px knotwork per end on the 68 px title band; at the
         // header_plaque's default density they drew ~105): the plate's sprite density is set so its fixed left border
         // (the knotwork block, header_plaque border 230 sprite px) spans `end`; the art keeps its aspect (rails scale too).
-        private void Ends(Image plate, float end)
+        private void Ends(Image plate, float end) => Ends(_canvas, plate, end);
+
+        // A plaque's end ornaments `end` canvas units wide whatever its scale (sliced border via the ppu multiplier).
+        public static void Ends(RectTransform canvas, Image plate, float end)
         {
-            if (!plate || !plate.sprite || end <= 0f || plate.sprite.border.x <= 0f || !plate.canvas) return;
-            var r = Mathf.Abs(plate.rectTransform.lossyScale.x / Mathf.Max(1e-6f, _canvas.lossyScale.x));
+            if (!plate || !plate.sprite || end <= 0f || plate.sprite.border.x <= 0f || !plate.canvas || !canvas) return;
+            var r = Mathf.Abs(plate.rectTransform.lossyScale.x / Mathf.Max(1e-6f, canvas.lossyScale.x));
             var mul = plate.sprite.border.x * plate.canvas.referencePixelsPerUnit / (plate.sprite.pixelsPerUnit * end / Mathf.Max(1e-6f, r));
             if (Mathf.Abs(plate.pixelsPerUnitMultiplier - mul) > 0.0005f) plate.pixelsPerUnitMultiplier = mul;
         }

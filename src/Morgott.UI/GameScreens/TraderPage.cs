@@ -3,6 +3,8 @@ using Morgott.UI.InfoScreens;
 using Morgott.UI.InventoryScreen;
 using Morgott.UI.ModScreens;
 using Morgott.UI.Restyle;
+using Morgott.UI.Theme;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -15,8 +17,10 @@ namespace Morgott.UI.GameScreens
     // re-places widgets (PagePart):
     // - left (~30 %): the vanilla stock list stretched to the column, Buy + the vanilla Sell (sells the first valuable,
     //   StoreGui.SellItem) under it; Bog Witch / traders without a mod panel: that column centred;
-    // - right: Haldor's Epic Loot MerchantPanel sections SecretStash / Gamble / TreasureMap / Bounties as a 2 x 2 grid in
-    //   wells (frame_inset), its Currencies + Sundial in the top bar; Hildir's TemperPanel fitted whole;
+    // - right: Haldor's Epic Loot MerchantPanel sections in wells (frame_inset) with knot plate headers (mockup
+    //   2026-11-16 trader-ui-mockup-v2): SecretStash across the top (2-column rows), Gamble | TreasureMap | Bounties
+    //   below; widgets at the page unit, rows / texts sized in px; its Currencies + Sundial in the top bar; Hildir's
+    //   TemperPanel fitted whole;
     // - the coin purse (vanilla "coins") in the top bar, hidden where the mod panel shows its own currencies.
     public sealed class TraderPage : MonoBehaviour
     {
@@ -33,6 +37,9 @@ namespace Morgott.UI.GameScreens
         private readonly List<GameObject> _gated = new List<GameObject>();
         private readonly PagePart.Pane[] _wells = new PagePart.Pane[4];
         private PagePart.Pane _storeWell, _barCap;
+        private readonly Image[] _plates = new Image[5]; // section header knot plates (mockup v2), the last = the store's
+        private TMP_Text _goods;
+        private string _goodsText;
 
         public static void Ensure(StoreGui s)
         {
@@ -65,6 +72,14 @@ namespace Morgott.UI.GameScreens
                 _wells[i] = PagePart.Pane.Make(_store, "RuneSkinTradeWell" + i, "trader page board section well (mockup 04)");
             _storeWell = PagePart.Pane.Make(_store, "RuneSkinTradeStoreWell", "trader page store column well (mockup 04)");
             _barCap = PagePart.Pane.Make(_store, "RuneSkinTradeBarCap", "trader page top-bar currency cap (mockup 04)");
+            // Over the wells (later siblings), under the board (a later sibling of the store).
+            for (var i = 0; i < _plates.Length; i++)
+            {
+                _plates[i] = InfoArt.OwnImage(_store, "RuneSkinTradePlate" + i, "decor.plaque", "trader page section header plate (mockup v2)");
+                _plates[i].preserveAspect = false;
+            }
+            _goods = InfoArt.RowText(_plates[Sections.Length].transform, "Label", "text.header", TextAlignmentOptions.Center);
+            _goodsText = Localization.instance != null ? Localization.instance.Localize("$ui_trader_goods") : "Goods";
             // The stock list's content from the top of its (now taller) viewport: vanilla centred it in a fixed-height one
             // (run 20261107-145553: rows began ~240 px down).
             if (_gui.m_listRoot is RectTransform lr)
@@ -118,8 +133,9 @@ namespace Morgott.UI.GameScreens
             var inv = InventorySkin.Instance;
             var body = _page.Layout(inv ? inv.SkinScaleValue : 1f, _header);
             if (body.IsEmpty) return;
-            // Mockup 04 body ~15 px under the title plaque (run 20261107-151323: the store well touched it at y 207).
-            body = new Box(body.X, body.Y - 18f * u, body.W, body.H + 18f * u);
+            // Mockup v2 body: x 48..1872, y 210 (under the title plaque) .. 1022.
+            var full = InfoPage.Full(_canvas);
+            body = new Box(48f * u, 210f * u, Mathf.Max(0f, full.W - 96f * u), Mathf.Max(0f, full.H - 268f * u));
             ElPageMath.Trader(body, mod, out var col, out var right);
             // Right after the page backing ("border (1)") and the header face that follows it, under the store widgets.
             if (_storeWell != null && _storeWell.Fill && (Child(RuneWindowHeader.FaceName) ?? Child("border (1)")) is RectTransform pb)
@@ -141,6 +157,8 @@ namespace Morgott.UI.GameScreens
                 if (_coinKids.Count > 0) PagePart.Fit(_canvas, _coinKids, new Box(bar.X + 8f * u, bar.Y + 6f * u, bar.W - 16f * u, bar.H - 12f * u), left: true);
             }
             for (var i = board ? _wells.Length : mod ? 1 : 0; i < _wells.Length; i++) _wells[i]?.Place(_canvas, default, false);
+            for (var i = 0; !board && i < Sections.Length; i++)
+                if (_plates[i] && _plates[i].enabled) _plates[i].enabled = false;
             if (!mod) return;
             // Drawn after the page (EL's TemperPanel moves itself to the first sibling, TemperPanel.cs:190/887/1010: under
             // the opaque store and gated by CoverCull there).
@@ -151,31 +169,14 @@ namespace Morgott.UI.GameScreens
             {
                 // The board's own box spans the right zone first (its input blocker / dialogs follow it), then its sections.
                 m.Whole?.Put(_canvas, right.W / m.Whole.Box0.W, right);
-                var g = 16f * u;
-                var pad = 12f * u;
+                // Mockup v2: Тайник across the top, Лотерея | Карты сокровищ | Задания below. Each widget is placed at the
+                // page unit (one local unit = one 1080p px) and its rows / texts sized in px: the old uniform group fit
+                // shrank rows, names and timers to ~8 px (rca: TraderPage :163).
                 for (var i = 0; i < Sections.Length; i++)
                 {
-                    var cell = ElPageMath.Cell(right, i % 2, i / 2, g);
+                    var cell = ElPageMath.BoardCell(right, i, 16f * u);
                     _wells[i]?.Place(_canvas, cell, true);
-                    var part = m.Sections[i];
-                    // The section's children as one group (its title / timer sit above its own rect: run 20261107-145553
-                    // drew the lower titles in the gap between the rows).
-                    PagePart.Fit(_canvas, m.SectionKids[i], new Box(cell.X + pad, cell.Y + pad, cell.W - 2f * pad, cell.H - 2f * pad));
-                    // Its lists across the cell (Epic Loot's fixed-width scroll panels: SecretStash/Panel, Bounties/*Panel).
-                    foreach (Transform c in part.Rt)
-                        if (c is RectTransform list && c.name.EndsWith("Panel", System.StringComparison.Ordinal) && c.gameObject.activeSelf)
-                        {
-                            var b = Geo.BoxOf(_canvas, list);
-                            Geo.Place(_canvas, list, new Box(cell.X + pad, b.Y, cell.W - 2f * pad, b.H));
-                        }
-                        // Its action buttons at half the cell (Epic Loot's ~150 px plates: run 20261107-152301 vs mockup 04 ~330),
-                        // centred where they were; the small icon button (abandon) keeps its size.
-                        else if (c is RectTransform btn && c.gameObject.activeSelf && c.TryGetComponent<Button>(out _) && btn.rect.width > btn.rect.height * 2f)
-                        {
-                            var b = Geo.BoxOf(_canvas, btn);
-                            var w = Mathf.Max(b.W, cell.W * 0.5f);
-                            Geo.Place(_canvas, btn, new Box(b.X + (b.W - w) / 2f, b.Y, w, b.H));
-                        }
+                    Section(m.SectionKids[i], i, cell, u);
                 }
             }
             else if (m.Whole != null)
@@ -207,13 +208,288 @@ namespace Morgott.UI.GameScreens
         }
 
         private readonly Dictionary<Transform, Mod> _mods = new Dictionary<Transform, Mod>();
+
+        private static float T(string token, float px) => ThemeTokens.GetFloat(token, px);
+
+        // A part at the page unit (one local unit = u canvas units = one 1080p px) on box; null-safe.
+        private void At(PagePart p, Box box, float u)
+        {
+            if (p != null && p.Unit > 0f) p.Put(_canvas, u / p.Unit, box);
+        }
+
+        // One board section in its cell (mockup v2): knot plate header (title; timer on line 2, Тайник: on the right of
+        // one line), the list(s), the action button(s) centred at the bottom.
+        private void Section(List<PagePart> kids, int i, Box cell, float u)
+        {
+            PagePart Kid(string n) => kids.Find(k => k.Rt && k.Rt.name == n);
+            var stash = i == 0;
+            var pad = 10f * u;
+            ElPageMath.Section(cell, pad, (stash ? 52f : 70f) * u, 44f * u, 8f * u, out var head, out var list, out var act);
+            Plate(_plates[i], head, u);
+            var title = Kid("Title");
+            var timer = Kid("TimeLeft");
+            if (stash)
+            {
+                At(title, head, u);
+                At(timer, new Box(head.Right - 340f * u - 24f * u, head.Y, 340f * u, head.H), u);
+            }
+            else
+            {
+                At(title, new Box(head.X, head.Y + 4f * u, head.W, 36f * u), u);
+                At(timer, new Box(head.X, head.Y + 40f * u, head.W, 26f * u), u);
+            }
+            Font(title?.Rt, Mathf.RoundToInt(T(stash ? "size.trader.title.wide" : "size.trader.title", stash ? 30f : 26f)), TextAnchor.MiddleCenter);
+            Font(timer?.Rt, Mathf.RoundToInt(T("size.trader.timer", 18f)), stash ? TextAnchor.MiddleRight : TextAnchor.MiddleCenter);
+            var row = T(stash ? "size.trader.row.wide" : "size.trader.row", stash ? 52f : 48f);
+            if (i < 3)
+            {
+                var panel = Kid("Panel");
+                At(panel, list, u);
+                Rows(panel?.Rt, row, stash ? 2 : 1);
+                Button(Kid(Sections[i] + "BuyButton"), ElPageMath.Centre(act, (stash ? 490f : 290f) * u), u);
+                return;
+            }
+            // Задания: "Доступные" + one row well + Взять задание, "Принятые" + their list, Забрать награду + abandon (X).
+            var sub = 24f * u;
+            var y = list.Y;
+            Box Next(float h, float gap)
+            {
+                var b = new Box(list.X, y, list.W, h);
+                y += h + gap;
+                return b;
+            }
+            var avail = Kid("AvailableLabel");
+            At(avail, Next(sub, 2f * u), u);
+            At(Kid("AvailableBountiesPanel"), Next(T("size.trader.row", 48f) * u + 8f * u, 6f * u), u);
+            Button(Kid("AcceptBountyButton"), ElPageMath.Centre(Next(32f * u, 6f * u), 240f * u), u);
+            var claim = Kid("ClaimLabel");
+            At(claim, Next(sub, 2f * u), u);
+            At(Kid("ClaimableBountiesPanel"), new Box(list.X, y, list.W, Mathf.Max(0f, list.Bottom - y)), u);
+            foreach (var l in new[] { avail, claim }) Font(l?.Rt, Mathf.RoundToInt(T("size.trader.text", 18f)), TextAnchor.MiddleCenter);
+            Rows(Kid("AvailableBountiesPanel")?.Rt, T("size.trader.row", 48f), 1);
+            Rows(Kid("ClaimableBountiesPanel")?.Rt, T("size.trader.row.wide", 52f), 1);
+            var x = act.H + 8f * u; // the abandon icon button right of the claim plate
+            var claimBox = ElPageMath.Centre(new Box(act.X, act.Y, act.W - x, act.H), 300f * u);
+            Button(Kid("ClaimBountyButton"), claimBox, u);
+            At(Kid("AbandonBountyButton"), new Box(claimBox.Right + 8f * u, act.Y, act.H, act.H), u);
+        }
+
+        private void Button(PagePart b, Box box, float u)
+        {
+            At(b, box, u);
+            if (b != null) Font(b.Rt.Find("Text"), Mathf.RoundToInt(T("size.trader.button", 22f)), TextAnchor.MiddleCenter);
+        }
+
+        private void Plate(Image plate, Box box, float u)
+        {
+            if (!plate) return;
+            Geo.Place(_canvas, plate.rectTransform, box);
+            InfoPage.Ends(_canvas, plate, Mathf.Min(box.H * 2.6f, box.W * 0.22f));
+            if (plate.enabled != (bool)plate.sprite) plate.enabled = plate.sprite;
+        }
+
+        // A legacy Epic Loot text at a fixed px size (its prefab best-fit ran 1..16 / 1..20 in shrunken boxes).
+        private static void Font(Transform t, int size, TextAnchor align)
+        {
+            if (!t || !t.TryGetComponent<Text>(out var text)) return;
+            if (text.resizeTextForBestFit) text.resizeTextForBestFit = false;
+            if (text.fontSize != size) text.fontSize = size;
+            if (text.alignment != align) text.alignment = align;
+        }
+
+        // A scroll panel's rows across its width at rowH px (columns 2 = Тайник's grid, filled top-down like the mockup).
+        private static void Rows(RectTransform panel, float rowH, int columns)
+        {
+            if (!panel || !(panel.Find("ItemList") is RectTransform list)) return;
+            // Epic Loot's scrollbar is 465 px from the bottom in the prefab: along the whole panel instead.
+            if (panel.Find("Scrollbar") is RectTransform bar && bar.anchorMax.y < 1f)
+            {
+                bar.anchorMin = new Vector2(1f, 0f);
+                bar.anchorMax = new Vector2(1f, 1f);
+                bar.pivot = new Vector2(1f, 0.5f);
+                bar.anchoredPosition = Vector2.zero;
+                bar.sizeDelta = new Vector2(8f, -8f);
+            }
+            if (columns > 1)
+            {
+                // LayoutGroup is DisallowMultipleComponent: Epic Loot's column goes before the grid comes.
+                if (list.TryGetComponent<VerticalLayoutGroup>(out var v)) DestroyImmediate(v);
+                if (!list.TryGetComponent<GridLayoutGroup>(out var g))
+                {
+                    g = list.gameObject.AddComponent<GridLayoutGroup>();
+                    g.padding = new RectOffset(4, 14, 4, 4);
+                    g.spacing = new Vector2(12f, 4f);
+                    g.startAxis = GridLayoutGroup.Axis.Vertical;
+                    g.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+                    g.constraintCount = columns;
+                }
+                var cell = new Vector2(Mathf.Max(1f, (list.rect.width - 18f - g.spacing.x * (columns - 1)) / columns), rowH);
+                if ((g.cellSize - cell).sqrMagnitude > 0.25f) g.cellSize = cell;
+            }
+            else if (list.TryGetComponent<VerticalLayoutGroup>(out var v) && !v.childControlWidth)
+            {
+                v.childControlWidth = v.childForceExpandWidth = v.childControlHeight = true;
+                v.childForceExpandHeight = false;
+                v.padding = new RectOffset(4, 14, 4, 4);
+                v.spacing = 4f;
+            }
+            foreach (Transform r in list)
+                if (r is RectTransform rt && r.gameObject.activeSelf && r.TryGetComponent<LayoutElement>(out var le) && !Mathf.Approximately(le.minHeight, rowH))
+                {
+                    le.minHeight = rowH; // also this row's "laid out" mark: Epic Loot re-instantiates rows on refresh
+                    Row(rt);
+                }
+        }
+
+        // One Epic Loot row (BuyListElement / TreasureMapListElement / BountyListElement, local px): icon 36 left, name
+        // 18 px, prices / rewards right-aligned at 18 px, bounty status 16 px under the name.
+        private static void Row(RectTransform r)
+        {
+            var text = Mathf.RoundToInt(T("size.trader.text", 18f));
+            foreach (var n in new[] { "MagicBG", "Icon" })
+                if (r.Find(n) is RectTransform ic) Anchored(ic, new Vector2(0f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(26f, 0f), new Vector2(36f, 36f));
+            var right = 8f;
+            if (r.Find("Purchased") is RectTransform bought && bought.gameObject.activeSelf)
+            {
+                Font(bought, text, TextAnchor.MiddleRight);
+                Zone(bought, 96f, right);
+                right += 104f;
+            }
+            foreach (var n in new[] { "Price", "Rewards" })
+                if (r.Find(n) is RectTransform price && price.TryGetComponent<HorizontalLayoutGroup>(out var h))
+                {
+                    var w = Amounts(price, h, text);
+                    Zone(price, w, right);
+                    right += w + 10f;
+                }
+            var status = r.Find("Status") as RectTransform;
+            var two = status && status.gameObject.activeSelf;
+            if (r.Find("Name") is RectTransform name)
+            {
+                Font(name, text, TextAnchor.MiddleLeft);
+                if (name.TryGetComponent<Text>(out var nt)) nt.verticalOverflow = VerticalWrapMode.Truncate;
+                Span(name, two ? 0.5f : 0f, 1f, 52f, right, 0f, two ? 2f : 0f);
+            }
+            if (!two) return;
+            Span(status, 0f, 0.5f, 52f, right, 2f, 0f);
+            if (status.TryGetComponent<HorizontalLayoutGroup>(out var sh)) sh.childAlignment = TextAnchor.MiddleLeft;
+            var size = Mathf.RoundToInt(T("size.trader.status", 16f));
+            foreach (Transform l in status)
+                if (l.TryGetComponent<Text>(out var lt))
+                {
+                    Font(l, size, TextAnchor.MiddleLeft);
+                    lt.horizontalOverflow = HorizontalWrapMode.Overflow;
+                    ((RectTransform)l).sizeDelta = new Vector2(Mathf.Ceil(lt.preferredWidth) + 2f, 22f);
+                }
+        }
+
+        // A row's price / reward strip (icon 20 + amount per currency shown), packed right; its width.
+        private static float Amounts(RectTransform strip, HorizontalLayoutGroup h, int size)
+        {
+            h.childAlignment = TextAnchor.MiddleRight;
+            h.spacing = 10f;
+            var w = 0f;
+            var n = 0;
+            foreach (Transform e in strip)
+            {
+                if (!e.gameObject.activeSelf || !(e.Find("Amount") is RectTransform a) || !a.TryGetComponent<Text>(out var amount)) continue;
+                Font(a, size, TextAnchor.MiddleLeft);
+                amount.horizontalOverflow = HorizontalWrapMode.Overflow;
+                if (e.Find("Icon") is RectTransform ic) Anchored(ic, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), Vector2.zero, new Vector2(20f, 20f));
+                a.anchorMin = Vector2.zero;
+                a.anchorMax = Vector2.one;
+                a.offsetMin = new Vector2(24f, 0f);
+                a.offsetMax = Vector2.zero;
+                var ew = 24f + Mathf.Ceil(amount.preferredWidth) + 2f;
+                ((RectTransform)e).sizeDelta = new Vector2(ew, 24f);
+                w += ew;
+                n++;
+            }
+            return w + Mathf.Max(0, n - 1) * h.spacing;
+        }
+
+        private static void Anchored(RectTransform rt, Vector2 anchor, Vector2 pivot, Vector2 pos, Vector2 size)
+        {
+            rt.anchorMin = rt.anchorMax = anchor;
+            rt.pivot = pivot;
+            rt.anchoredPosition = pos;
+            rt.sizeDelta = size;
+        }
+
+        // Full row height, w wide, `right` px from the row's right edge.
+        private static void Zone(RectTransform rt, float w, float right)
+        {
+            rt.anchorMin = new Vector2(1f, 0f);
+            rt.anchorMax = new Vector2(1f, 1f);
+            rt.pivot = new Vector2(1f, 0.5f);
+            rt.anchoredPosition = new Vector2(-right, 0f);
+            rt.sizeDelta = new Vector2(w, 0f);
+        }
+
+        // Vanilla's stock rows across the list at size.trader.store.row px: the template takes the size + layout, the
+        // pitch is vanilla's own m_itemSpacing, and FillList re-clones the rows (StoreGui.FillList centres a row by
+        // (list width - row width) / 2, so the margin stays even).
+        private void StoreRows()
+        {
+            if (!_gui.m_listElement || !(_gui.m_listElement.transform is RectTransform t) || !_gui.m_listRoot || !_gui.m_trader) return;
+            var h = T("size.trader.store.row", 56f);
+            var w = _gui.m_listRoot.rect.width - 16f;
+            if (w <= 1f || (Mathf.Abs(t.rect.width - w) < 0.5f && Mathf.Abs(t.rect.height - h) < 0.5f)) return;
+            t.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, w);
+            t.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, h);
+            _gui.m_itemSpacing = h + 6f;
+            var size = T("size.trader.store.text", 22f);
+            if (t.Find("icon") is RectTransform icon) Anchored(icon, new Vector2(0f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(30f, 0f), new Vector2(40f, 40f));
+            var coin = t.Find("coin_bkg") as RectTransform;
+            if (coin)
+            {
+                Anchored(coin, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-14f, 0f), new Vector2(110f, 32f));
+                foreach (var img in coin.GetComponentsInChildren<Image>(true))
+                    if (img.transform != coin) Anchored(img.rectTransform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), Vector2.zero, new Vector2(26f, 26f));
+            }
+            foreach (var n in new[] { "name", "price" })
+                if (Utils.FindChild(t, n) is Transform c && c.TryGetComponent<TMP_Text>(out var label))
+                {
+                    OwnFit.Claim(label); // fixed px size; the global row inset rule would re-fit it
+                    var rt = label.rectTransform;
+                    if (n == "name") Span(rt, 0f, 1f, 62f, coin ? 132f : 14f, 0f, 0f);
+                    else Span(rt, 0f, 1f, 32f, 0f, 0f, 0f);
+                    if (label.enableAutoSizing) label.enableAutoSizing = false;
+                    label.fontSize = size;
+                    label.textWrappingMode = TextWrappingModes.NoWrap;
+                    label.overflowMode = TextOverflowModes.Ellipsis;
+                    label.alignment = n == "name" ? TextAlignmentOptions.MidlineLeft : TextAlignmentOptions.MidlineRight;
+                }
+            _gui.FillList();
+        }
+
+        // Between x left and `right` from the right edge, over the row's y band [y0, y1] (shares), insets in px.
+        private static void Span(RectTransform rt, float y0, float y1, float left, float right, float bottom, float top)
+        {
+            rt.anchorMin = new Vector2(0f, y0);
+            rt.anchorMax = new Vector2(1f, y1);
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.offsetMin = new Vector2(left, bottom);
+            rt.offsetMax = new Vector2(-right, -top);
+        }
+
         private void StoreColumn(Box col, float u)
         {
             var row = 56f * u;
             var gap = 12f * u;
-            var listBox = new Box(col.X, col.Y, col.W, Mathf.Max(0f, col.H - row - gap));
-            // Vanilla rows at ~1.25x (mockup 04 row height), the list stretched to the column.
-            var kl = Mathf.Min(1.25f, col.W / _list?.Box0.W ?? 1f);
+            // "ТОВАРЫ" header plate (mockup v2), the list under it.
+            var head = new Box(col.X, col.Y, col.W, 52f * u);
+            Plate(_plates[Sections.Length], head, u);
+            if (_goods)
+            {
+                if (_goods.text != _goodsText) _goods.text = _goodsText;
+                Geo.Place(_canvas, _goods.rectTransform, head);
+                InfoArt.Label(_goods, TextAlignmentOptions.Center, T("size.trader.title.wide", 30f) * u, 16f * u, upper: true);
+            }
+            var top = head.Bottom + 8f * u;
+            var listBox = new Box(col.X, top, col.W, Mathf.Max(0f, col.Bottom - row - gap - top));
+            // At the page unit: rows are sized in px (StoreRows), not scaled.
+            var kl = _list != null ? u / _list.Unit : 1f;
             _list?.Put(_canvas, kl, listBox);
             // Rows from the column top: vanilla's list viewport sits ~150 px into the ItemList part (run 20261107-152301);
             // the part moves up by that, its bottom stays.
@@ -222,6 +498,7 @@ namespace Morgott.UI.GameScreens
                 var dy = Geo.BoxOf(_canvas, view).Y - listBox.Y;
                 if (dy > 0.5f) _list.Put(_canvas, kl, new Box(listBox.X, listBox.Y - dy, listBox.W, listBox.H + dy));
             }
+            StoreRows();
             var y = listBox.Bottom + gap;
             var half = (col.W - gap) / 2f;
             if (_buy != null) _buy.Put(_canvas, row / _buy.Box0.H, new Box(col.X, y, half, row));
@@ -273,6 +550,10 @@ namespace Morgott.UI.GameScreens
                     RenderGate.Set(t.gameObject, Gate, true);
                     _gated.Add(t.gameObject);
                 }
+            // The board's own (gated) window header mirrored the top-left section title (Тайник) and so switched it
+            // off (RuneWindowHeader.Refresh): a static title releases it; the page names the trader anyway.
+            if (mod.name == "MerchantPanel")
+                foreach (var h in mod.GetComponentsInChildren<RuneWindowHeader>(true)) h.Text(h.TitleText);
             foreach (var host in new[] { mod, mod.Find("Frame") })
                 if (host)
                     foreach (Transform c in host)

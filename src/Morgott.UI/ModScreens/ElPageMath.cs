@@ -57,9 +57,10 @@ namespace Morgott.UI.ModScreens
             return k;
         }
 
-        // Trader body: store column ~30 % (mockup 04 x 40..617 of 1840) left, the mod board right; without a board the
-        // store column is centred.
-        public const float StoreShare = 0.3f, BoardGap = 0.016f;
+        // Trader body (mockup 2026-11-16 trader-ui-mockup-v2, 1920x1080): store column x 48..620 of the 48..1872 body,
+        // the mod board from 636 (16 gap); without a board the store column is centred. Board: Тайник across the top
+        // (y 210..610 of 210..1040), Лотерея | Карты сокровищ | Задания in three equal cells below.
+        public const float StoreShare = 572f / 1824f, BoardGap = 16f / 1824f, StashShare = 400f / 830f;
 
         public static void Trader(Box body, bool board, out Box store, out Box right)
         {
@@ -75,12 +76,31 @@ namespace Morgott.UI.ModScreens
             right = new Box(x, body.Y, Math.Max(0f, body.Right - x), body.H);
         }
 
-        // Cell (col, row) of a 2 x 2 grid in area with gap g.
-        public static Box Cell(Box area, int col, int row, float g)
+        // Board cell i (gap g): 0 = Тайник across the top, 1..3 = the bottom row left to right.
+        public static Box BoardCell(Box area, int i, float g)
         {
-            var w = (area.W - g) / 2f;
-            var h = (area.H - g) / 2f;
-            return new Box(area.X + col * (w + g), area.Y + row * (h + g), w, h);
+            var top = new Box(area.X, area.Y, area.W, area.H * StashShare);
+            if (i == 0) return top;
+            var y = top.Bottom + g;
+            var w = (area.W - 2f * g) / 3f;
+            return new Box(area.X + (i - 1) * (w + g), y, w, Math.Max(0f, area.Bottom - y));
+        }
+
+        // A section column inside its cell (inner pad p): header strip on top, action row at the bottom, the list between
+        // them (gap g).
+        public static void Section(Box cell, float p, float header, float action, float g, out Box head, out Box list, out Box act)
+        {
+            head = new Box(cell.X + p, cell.Y + p, cell.W - 2f * p, header);
+            act = new Box(head.X, cell.Bottom - p - action, head.W, action);
+            var y = head.Bottom + g;
+            list = new Box(head.X, y, head.W, Math.Max(0f, act.Y - g - y));
+        }
+
+        // A box w wide centred in row (never wider than it).
+        public static Box Centre(Box row, float w)
+        {
+            w = Math.Min(w, row.W);
+            return new Box(row.X + (row.W - w) / 2f, row.Y, w, row.H);
         }
     }
 }
