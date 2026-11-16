@@ -59,6 +59,7 @@ namespace Morgott.UI.CraftingScreen
         private TMP_Dropdown _sortDrop;
         private Image _dirGlyph, _newGlyph;
         private TMP_Text _badge;
+        private Image _badgeDot;
         private readonly Button[] _showButtons = new Button[3];
         private readonly TMP_Text[] _showLabels = new TMP_Text[3];
         private string _sortLang;
@@ -70,21 +71,38 @@ namespace Morgott.UI.CraftingScreen
 
         public bool SortListOpen => _sortDrop && _sortDrop.IsExpanded;
 
-        // The controls' own gamepad group, appended to InventoryGui.m_uiGroups (vanilla indexes 0-3 stay): JoyTabRight from
-        // the crafting list (group 3) reaches it (InventoryGui.UpdateGamepad :591-611, SetActiveGroup cycles the array),
-        // the sort dropdown is its default element; SetActiveGroup toggles it like the vanilla groups.
-        private void JoinGamepadGroups()
+        // The controls' own gamepad group, in InventoryGui.m_uiGroups (appended: vanilla indexes 0-3 stay) only while the
+        // controls show, so the shoulder-button cycle (InventoryGui.UpdateGamepad :591-611, SetActiveGroup cycles the array)
+        // never stops on a hidden row; JoyTabRight from the crafting list (group 3) reaches it, the sort dropdown is its
+        // default element, SetActiveGroup toggles it like the vanilla groups.
+        private void GamepadGroup(bool on)
         {
             var groups = _gui.m_uiGroups;
             if (groups == null || groups.Length < 4) return;
-            _ctlGroup = _ctl.gameObject.AddComponent<UIGroupHandler>();
-            _ctlGroup.m_defaultElement = _sortDrop.gameObject;
-            _ctlGroup.m_groupPriority = groups[3].m_groupPriority;
-            var grown = new UIGroupHandler[groups.Length + 1];
-            Array.Copy(groups, grown, groups.Length);
-            grown[groups.Length] = _ctlGroup;
-            _gui.m_uiGroups = grown;
-            _ctlGroup.SetActive(_gui.m_activeGroup == groups.Length);
+            if (!_ctlGroup)
+            {
+                _ctlGroup = _ctl.gameObject.AddComponent<UIGroupHandler>();
+                _ctlGroup.m_defaultElement = _sortDrop.gameObject;
+                _ctlGroup.m_groupPriority = groups[3].m_groupPriority;
+            }
+            var index = Array.IndexOf(groups, _ctlGroup);
+            if (on == index >= 0) return;
+            if (on)
+            {
+                var grown = new UIGroupHandler[groups.Length + 1];
+                Array.Copy(groups, grown, groups.Length);
+                grown[groups.Length] = _ctlGroup;
+                _gui.m_uiGroups = grown;
+                _ctlGroup.SetActive(false);
+                return;
+            }
+            var active = _gui.m_activeGroup == index;
+            var shrunk = new UIGroupHandler[groups.Length - 1];
+            for (int i = 0, j = 0; i < groups.Length; i++)
+                if (i != index) shrunk[j++] = groups[i];
+            _gui.m_uiGroups = shrunk;
+            if (active) _gui.SetActiveGroup(shrunk[3], false); // a hidden group must not hold the gamepad: back to the list
+            else if (_gui.m_activeGroup > index) _gui.m_activeGroup--;
         }
 
         private Button PlateButton(string name, Action click, out Image plate)
@@ -160,16 +178,21 @@ namespace Morgott.UI.CraftingScreen
             var funnel = PlateButton(Prefix + "NewOnly", () => { if (View() is ICraftingAvailability v) v.NewOnly = !v.NewOnly; }, out var newPlate);
             _newGlyph = Glyph(newPlate.rectTransform, "craft.glyph.filter");
             Tip(funnel.gameObject, "$ui_craft_new_only");
+            // Count badge (mockup-v2): filled cyan dot, dark digit.
+            _badgeDot = new GameObject("BadgeDot", typeof(RectTransform)).AddComponent<Image>();
+            _badgeDot.rectTransform.SetParent(newPlate.rectTransform, false);
+            _badgeDot.raycastTarget = false;
+            _badgeDot.preserveAspect = true;
+            _badgeDot.enabled = Styled(_badgeDot, "craft.badge.dot", "funnel active-filter count dot");
             _badge = NewText("Badge", newPlate.rectTransform, "", "content");
             _badge.fontStyle |= FontStyles.Bold;
-            _badge.color = ThemeTokens.GetColor("color.text.accent", Color.cyan);
+            _badge.color = ThemeTokens.GetColor("color.text.dark", new Color(0.06f, 0.09f, 0.11f));
             for (var i = 0; i < ShowKeys.Length; i++)
             {
                 var key = ShowKeys[i];
                 _showButtons[i] = PlateButton(Prefix + "Show" + key, () => { if (View() is ICraftingAvailability v) v.Show = key; }, out var plate);
                 _showLabels[i] = NewText("Label", plate.rectTransform, "", "text.body");
             }
-            JoinGamepadGroups();
             Plugin.Log.LogInfo("[Morgott.UI] crafting view controls built");
         }
 
@@ -179,13 +202,13 @@ namespace Morgott.UI.CraftingScreen
             if (o.Controls.IsEmpty || view == null)
             {
                 if (!_ctl || !_ctl.gameObject.activeSelf) return;
-                // A hidden group would hold the gamepad on nothing (Upgrade tab): hand it back to the recipe list.
-                if (_ctlGroup && _gui.m_activeGroup == Array.IndexOf(_gui.m_uiGroups, _ctlGroup)) _gui.SetActiveGroup(_gui.m_uiGroups[3], false);
+                GamepadGroup(false);
                 _ctl.gameObject.SetActive(false);
                 return;
             }
             if (!_ctl) BuildControls();
             if (!_ctl.gameObject.activeSelf) _ctl.gameObject.SetActive(true);
+            GamepadGroup(true);
             var k = _in.Scale;
             var (sortBox, dirBox, filterBox, showBox) = CraftingMath.ControlRow(o.Controls, o.List.W, _t.Gap * k);
             Geo.Place(_canvas, _ctl, o.Controls);
@@ -239,8 +262,11 @@ namespace Morgott.UI.CraftingScreen
             var badge = active > 0 ? active.ToString(System.Globalization.CultureInfo.InvariantCulture) : "";
             if (_badge.text != badge) _badge.text = badge;
             var side = filterBox.H * 0.55f;
-            Geo.Place(_canvas, _badge.rectTransform, new Box(filterBox.Right - side * 0.8f, filterBox.Y - side * 0.3f, side, side));
-            Label(_badge, TextAlignmentOptions.Center, side * 0.9f);
+            var dot = new Box(filterBox.Right - side * 0.8f, filterBox.Y - side * 0.3f, side, side);
+            Shown(_badgeDot, active > 0 && _badgeDot.enabled);
+            Geo.Place(_canvas, _badgeDot.rectTransform, dot);
+            Geo.Place(_canvas, _badge.rectTransform, dot);
+            Label(_badge, TextAlignmentOptions.Center, side * 0.75f);
 
             var w = showBox.W / ShowKeys.Length;
             for (var i = 0; i < ShowKeys.Length; i++)

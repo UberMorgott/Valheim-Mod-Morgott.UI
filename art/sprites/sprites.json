@@ -5335,6 +5335,29 @@
       "atlas": "hires"
     },
     {
+      "name": "glyph_badge_dot",
+      "file": "glyph_badge_dot.png",
+      "size": [
+        48,
+        48
+      ],
+      "border": {
+        "left": 0,
+        "bottom": 0,
+        "right": 0,
+        "top": 0
+      },
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "imageType": "Simple",
+      "fillCenter": true,
+      "token": "glyph.badge.dot",
+      "notes": "crafting Create tab: filled circle under the funnel's active-filter count; tint text_accent, dark digit",
+      "atlas": "hires"
+    },
+    {
       "name": "glyph_chevron_down",
       "file": "glyph_chevron_down.png",
       "size": [
