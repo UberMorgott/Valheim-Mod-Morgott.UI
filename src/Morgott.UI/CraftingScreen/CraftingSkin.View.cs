@@ -559,7 +559,7 @@ namespace Morgott.UI.CraftingScreen
 
             var lines = _statLines.Count + (_bonusText.Length > 0 ? 1 : 0);
             var rowH = box.H / Mathf.Max(1, lines);
-            var size = Mathf.Min(ThemeTokens.GetFloat("size.craft.font.body", 16f) * _in.Scale, rowH * 0.75f);
+            var size = Mathf.Min(ThemeTokens.GetFloat("size.craft.font.body", 16f) * _in.Scale, rowH * 0.85f); // a row = one text line (mockup-v2)
             Geo.Place(_canvas, _stats, box);
             for (var i = 0; i < _statLines.Count; i++)
             {

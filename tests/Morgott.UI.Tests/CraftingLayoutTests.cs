@@ -329,6 +329,34 @@ namespace Morgott.UI.Tests
             Assert.True(none.Stats.IsEmpty);
         }
 
+        // 1080p (run 20261116-152659: crafting column ~628 x 985 canvas units; mode tabs, network row, 4 categories, search +
+        // controls): a food recipe with the full stat table + bonus line, a "missing" box of header + 1 line + hint (80) and 3
+        // cells + the station level: everything keeps its height, nothing overlaps (mockup-v2).
+        [Fact]
+        public void Detail1080pFitsTableChainAndCells()
+        {
+            var t = new CraftingTokens();
+            var o = CraftingMath.Compute(new CraftingInput
+            {
+                Panel = new Box(0f, 0f, 628f, 985f),
+                WindowHeaderH = 40f,
+                Tabs = 3,
+                Network = true,
+                Categories = 4,
+                Search = true,
+                Controls = true,
+                Requirements = 4,
+                StatLines = 8,
+                ChainH = 80f
+            }, t);
+            Assert.Equal(8 * t.StatRowH, o.Stats.H, 3);
+            Assert.Equal(80f, o.Chain.H, 3);
+            Assert.True(o.Description.H >= t.DescriptionMinH - 0.01f, $"description {o.Description} icon {o.Icon}");
+            Assert.True(o.Icon.H >= 32f, $"icon {o.Icon}");
+            Assert.True(o.Icon.Bottom <= o.Description.Y + 0.01f && o.Description.Bottom <= o.Stats.Y && o.Stats.Bottom <= o.Chain.Y &&
+                        o.Chain.Bottom <= o.Requirements.Y && o.Requirements.Bottom <= o.Detail.Bottom + 0.01f,
+                $"icon {o.Icon} desc {o.Description} stats {o.Stats} chain {o.Chain} req {o.Requirements} detail {o.Detail}");
+        }
         // Controls on: search at list width, the controls row across both columns, list and detail start under it.
         [Fact]
         public void ControlsRowSpansBothColumns()

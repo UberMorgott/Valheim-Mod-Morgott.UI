@@ -783,6 +783,7 @@ namespace Morgott.UI.CraftingScreen
             i.Network = Network() != null && Station();
             i.Controls = i.Search && View() is Morgott.Core.ICraftingAvailability view && view.ControlsShown;
             i.StatLines = StatLines();
+            i.ChainH = ChainNeed();
             i.TabOffset = _tabOffset;
             i.CategoryOffset = _catOffset;
             i.SubCategoryOffset = _subOffset;
@@ -802,6 +803,7 @@ namespace Morgott.UI.CraftingScreen
                 h = h * 31 + i.Categories * 7 + i.Requirements * 101;
                 h = h * 31 + (i.Search ? 1 : 0) + (i.Repair ? 2 : 0) + (i.CraftType ? 4 : 0) + (i.Quality ? 8 : 0) + (i.Network ? 16 : 0) + (i.Controls ? 32 : 0);
                 h = h * 31 + i.StatLines;
+                h = h * 31 + (int)i.ChainH;
                 h = h * 31 + i.TabOffset * 13 + i.CategoryOffset;
                 h = h * 31 + i.SubCategories * 17 + i.SubCategoryOffset;
                 h = h * 31 + ThemeTokens.Revision;
@@ -1364,37 +1366,18 @@ namespace Morgott.UI.CraftingScreen
             }
             if (_gui.m_qualityPanel && !o.Quality.IsEmpty) Geo.Place(_canvas, (RectTransform)_gui.m_qualityPanel, o.Quality);
             RequirementGrid(o);
-            var description = o.Description;
-            var stats = o.Stats;
-            var chain = Chain(o);
-            if (!chain.IsEmpty)
-            {
-                // The chain box docks above the requirements (RecipeChainsUi): the stat table sits on it, the description above.
-                var bottom = chain.Y - _t.Gap * k * 0.5f;
-                if (!stats.IsEmpty)
-                {
-                    stats = new Box(stats.X, bottom - stats.H, stats.W, stats.H);
-                    bottom = stats.Y - _t.Gap * k * 0.5f;
-                }
-                description = new Box(description.X, description.Y, description.W, Mathf.Max(0f, bottom - description.Y));
-            }
-            // The chain box is not in the layout: the icon gives way so the description keeps its minimum (run
-            // 20261116-152659: chain + stat table left one clipped line of description).
-            var iconBox = o.Icon;
-            var shrink = Mathf.Min(iconBox.H, ThemeTokens.GetFloat("size.craft.description.min", 48f) * k - description.H);
-            if (shrink > 0f)
-            {
-                iconBox = new Box(iconBox.X + shrink / 2f, iconBox.Y, iconBox.W - shrink, iconBox.H - shrink);
-                description = new Box(description.X, description.Y - shrink, description.W, description.H + shrink);
-            }
             if (_gui.m_recipeIcon)
             {
                 var icon = _gui.m_recipeIcon.rectTransform;
-                PlaceKeep(_gui.m_recipeIcon, iconBox, true);
+                PlaceKeep(_gui.m_recipeIcon, o.Icon, true);
                 var bg = icon.parent ? icon.parent.Find("magicItemIconBG") as RectTransform : null;
-                if (bg) Geo.Place(_canvas, bg, iconBox);
+                if (bg) Geo.Place(_canvas, bg, o.Icon);
             }
-            StatTable(stats);
+            var description = o.Description;
+            var chain = Chain(o);
+            if (!chain.IsEmpty && o.Chain.IsEmpty) // not reserved yet (first frame): the description ends above it
+                description = new Box(description.X, description.Y, description.W, Mathf.Max(0f, Mathf.Min(description.Bottom, chain.Y - _t.Gap * k * 0.5f) - description.Y));
+            StatTable(o.Stats);
             DescriptionView(description, k);
         }
 
@@ -1479,17 +1462,37 @@ namespace Morgott.UI.CraftingScreen
             if (!_chain || !_chain.gameObject.activeInHierarchy) return default;
             var k = _in.Scale;
             var box = Geo.BoxOf(_canvas, _chain);
-            var top = (o.Icon.IsEmpty ? o.Description.Y : o.Icon.Bottom) + ThemeTokens.GetFloat("size.craft.description.min", 48f) * k +
-                      (o.Stats.IsEmpty ? 0f : o.Stats.H + _t.Gap * k * 0.5f); // the stat table keeps its lines above the chain box
-            var h = CraftingMath.ChainHeight(box.H, box.Bottom, top, ThemeTokens.GetFloat("size.craft.chain.max", 150f) * k, ThemeTokens.GetFloat("size.craft.chain.min", 72f) * k);
-            if (box.H > h + 0.5f)
+            var unit = Geo.WorldPerUnit(_canvas) / Mathf.Max(_chain.lossyScale.y, 1e-6f);
+            // Reserved: exactly the layout's box (RecipeChainsUi sizes it to the description's last line, which now ends
+            // above the stat table: it collapsed). Else (first frame) capped at its own height as before.
+            var h = !o.Chain.IsEmpty ? o.Chain.H
+                : CraftingMath.ChainHeight(box.H, box.Bottom, (o.Icon.IsEmpty ? o.Description.Y : o.Icon.Bottom) + ThemeTokens.GetFloat("size.craft.description.min", 48f) * k,
+                    ThemeTokens.GetFloat("size.craft.chain.max", 150f) * k, ThemeTokens.GetFloat("size.craft.chain.min", 72f) * k);
+            if (Mathf.Abs(box.H - h) > 0.5f && (!o.Chain.IsEmpty || box.H > h))
             {
-                var unit = Geo.WorldPerUnit(_canvas) / Mathf.Max(_chain.lossyScale.y, 1e-6f);
                 _chain.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, h * unit);
                 box = Geo.BoxOf(_canvas, _chain);
             }
+            // The tree text is the scroll content: its full height (RecipeChainsUi cut it to the box it gave).
+            if (_chain.Find("Text") is RectTransform text && text.TryGetComponent<TMP_Text>(out var tree))
+            {
+                var want = Mathf.Max(tree.preferredHeight, 1f);
+                if (Mathf.Abs(text.rect.height - want) > 0.5f) text.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, want);
+            }
             ChainScroll(box);
             return box;
+        }
+
+        // The box RecipeChainsUi would draw for its whole tree (canvas units, at most size.craft.chain.max): its chrome
+        // (box minus text area, as RecipeChainsUi wrote both this frame) plus the text's preferred height.
+        private float ChainNeed()
+        {
+            if (!_chain) _chain = _crafting.Find(Morgott.Core.Contracts.ChainTree) as RectTransform;
+            if (!_chain || !_chain.gameObject.activeInHierarchy || !(_chain.Find("Text") is RectTransform text) || !text.TryGetComponent<TMP_Text>(out var tree)) return 0f;
+            var unit = Geo.WorldPerUnit(_canvas) / Mathf.Max(_chain.lossyScale.y, 1e-6f);
+            var chrome = Mathf.Max(0f, _chain.rect.height - text.rect.height);
+            var need = Mathf.Round((chrome + tree.preferredHeight) / Mathf.Max(unit, 1e-6f));
+            return Mathf.Min(need, ThemeTokens.GetFloat("size.craft.chain.max", 150f) * _in.Scale);
         }
 
         private void ChainScroll(Box box)
