@@ -1357,13 +1357,6 @@ namespace Morgott.UI.CraftingScreen
                 Geo.Place(_canvas, _gui.m_itemCraftType.rectTransform, o.CraftType);
                 Label(_gui.m_itemCraftType, TextAlignmentOptions.MidlineLeft, ThemeTokens.GetFloat("size.craft.font.body", 16f) * k);
             }
-            if (_gui.m_recipeIcon)
-            {
-                var icon = _gui.m_recipeIcon.rectTransform;
-                PlaceKeep(_gui.m_recipeIcon, o.Icon, true);
-                var bg = icon.parent ? icon.parent.Find("magicItemIconBG") as RectTransform : null;
-                if (bg) Geo.Place(_canvas, bg, o.Icon);
-            }
             if (_gui.m_variantButton && _gui.m_variantButton.gameObject.activeSelf)
             {
                 var w = 96f * k;
@@ -1384,6 +1377,22 @@ namespace Morgott.UI.CraftingScreen
                     bottom = stats.Y - _t.Gap * k * 0.5f;
                 }
                 description = new Box(description.X, description.Y, description.W, Mathf.Max(0f, bottom - description.Y));
+            }
+            // The chain box is not in the layout: the icon gives way so the description keeps its minimum (run
+            // 20261116-152659: chain + stat table left one clipped line of description).
+            var iconBox = o.Icon;
+            var shrink = Mathf.Min(iconBox.H, ThemeTokens.GetFloat("size.craft.description.min", 48f) * k - description.H);
+            if (shrink > 0f)
+            {
+                iconBox = new Box(iconBox.X + shrink / 2f, iconBox.Y, iconBox.W - shrink, iconBox.H - shrink);
+                description = new Box(description.X, description.Y - shrink, description.W, description.H + shrink);
+            }
+            if (_gui.m_recipeIcon)
+            {
+                var icon = _gui.m_recipeIcon.rectTransform;
+                PlaceKeep(_gui.m_recipeIcon, iconBox, true);
+                var bg = icon.parent ? icon.parent.Find("magicItemIconBG") as RectTransform : null;
+                if (bg) Geo.Place(_canvas, bg, iconBox);
             }
             StatTable(stats);
             DescriptionView(description, k);

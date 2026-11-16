@@ -38,6 +38,14 @@ namespace Morgott.UI.CraftingScreen
             return "#" + ColorUtility.ToHtmlStringRGBA(c);
         }
 
+        // Own texts of the view: NewText takes the craft button label's face, whose style is UPPER CASE (mockup-v2: the
+        // view's labels and values keep their case; run 20261116-152659 drew "ЭЙТР", "30M").
+        private TMP_Text ViewText(string name, RectTransform parent, string value, string role)
+        {
+            var t = NewText(name, parent, value, role);
+            t.fontStyle &= ~FontStyles.UpperCase;
+            return t;
+        }
         private static string Num(float v) => Mathf.RoundToInt(v).ToString(System.Globalization.CultureInfo.InvariantCulture);
 
         private static bool IsFood(ItemDrop.ItemData.SharedData s) =>
@@ -184,14 +192,14 @@ namespace Morgott.UI.CraftingScreen
             _badgeDot.raycastTarget = false;
             _badgeDot.preserveAspect = true;
             _badgeDot.enabled = Styled(_badgeDot, "craft.badge.dot", "funnel active-filter count dot");
-            _badge = NewText("Badge", newPlate.rectTransform, "", "content");
+            _badge = ViewText("Badge", newPlate.rectTransform, "", "content");
             _badge.fontStyle |= FontStyles.Bold;
             _badge.color = ThemeTokens.GetColor("color.text.dark", new Color(0.06f, 0.09f, 0.11f));
             for (var i = 0; i < ShowKeys.Length; i++)
             {
                 var key = ShowKeys[i];
                 _showButtons[i] = PlateButton(Prefix + "Show" + key, () => { if (View() is ICraftingAvailability v) v.Show = key; }, out var plate);
-                _showLabels[i] = NewText("Label", plate.rectTransform, "", "text.body");
+                _showLabels[i] = ViewText("Label", plate.rectTransform, "", "text.body");
             }
             Plugin.Log.LogInfo("[Morgott.UI] crafting view controls built");
         }
@@ -309,7 +317,7 @@ namespace Morgott.UI.CraftingScreen
 
         private TMP_Text RowText(RowView v, string name, TextAlignmentOptions align)
         {
-            var t = NewText(name, v.Root, "", "content");
+            var t = ViewText(name, v.Root, "", "content");
             t.alignment = align;
             t.overflowMode = TextOverflowModes.Overflow;
             t.enableAutoSizing = false;
@@ -509,7 +517,7 @@ namespace Morgott.UI.CraftingScreen
             {
                 _stats = (RectTransform)new GameObject(Prefix + "Stats", typeof(RectTransform)).transform;
                 _stats.SetParent(detail, false);
-                _bonus = NewText("Bonus", _stats, "", "content");
+                _bonus = ViewText("Bonus", _stats, "", "content");
             }
             if (!_stats.gameObject.activeSelf) _stats.gameObject.SetActive(true);
             var shared = recipe.m_item.m_itemData.m_shared;
@@ -534,7 +542,7 @@ namespace Morgott.UI.CraftingScreen
                 _statLines.Add((L("$ui_craft_stat_craftable"), C(count > 0 ? "color.stats.good" : "color.state.disabled", CraftingMath.CountLabel(count, cap))));
                 _bonusText = bonus > 0 ? C("color.text.accent", Localization.instance.Localize("$ui_craft_bonus", bonus.ToString(System.Globalization.CultureInfo.InvariantCulture))) : "";
                 while (_statRows.Count < _statLines.Count)
-                    _statRows.Add((NewText("Label", _stats, "", "text.body"), NewText("Value", _stats, "", "content")));
+                    _statRows.Add((ViewText("Label", _stats, "", "text.body"), ViewText("Value", _stats, "", "content")));
                 for (var i = 0; i < _statRows.Count; i++)
                 {
                     var on = i < _statLines.Count;
