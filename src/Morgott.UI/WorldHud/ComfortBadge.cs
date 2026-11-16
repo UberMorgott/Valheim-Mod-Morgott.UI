@@ -4,6 +4,7 @@ using HarmonyLib;
 using Morgott.UI.InfoScreens;
 using Morgott.UI.Ownership;
 using Morgott.UI.Restyle;
+using Morgott.UI.Theme;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -13,7 +14,7 @@ namespace Morgott.UI.WorldHud
     // Build menu piece buttons of pieces that add comfort (Piece.m_comfort > 0, vanilla and mod pieces alike) carry a
     // small badge: the vanilla "Rested" status icon (ObjectDB SE_Rested.m_icon) + "+N". Placed in a free corner of the
     // cell (ComfortBadgeMath, away from the favourite star / upgrade arrow). Pooled buttons are re-Setup per piece: the
-    // badge is created once per button and switched with the piece.
+    // badge is created once per button and switched with the piece. Grey when the comfort is already counted in range.
     public static class ComfortBadge
     {
         public const string BadgeName = "RuneSkin_ComfortBadge";
@@ -21,6 +22,7 @@ namespace Morgott.UI.WorldHud
         private const float ValueSize = 14f;
         private static Sprite _sprite;
         private static bool _warned;
+        private static Color _valueColor = Color.white;
 
         public static void Apply(BuildUiPieceButton button)
         {
@@ -41,8 +43,27 @@ namespace Morgott.UI.WorldHud
             badge.anchorMax = new Vector2(corner.X1, corner.Y1);
             badge.offsetMin = badge.offsetMax = Vector2.zero;
             badge.SetAsLastSibling();
-            badge.GetComponentInChildren<TMP_Text>(true).text = ComfortBadgeMath.Label(comfort);
+            var value = badge.GetComponentInChildren<TMP_Text>(true);
+            value.text = ComfortBadgeMath.Label(comfort);
+            // Grey = this comfort is already counted at the player's spot (another piece of its group / name in range).
+            var counted = ComfortBadgeMath.Counted((int)button.Piece.m_comfortGroup, button.Piece.m_name, comfort, Nearby);
+            var grey = ThemeTokens.GetColor("color.state.disabled", Color.grey);
+            badge.GetComponentInChildren<Image>(true).color = counted ? grey : Color.white;
+            value.color = counted ? grey : _valueColor;
             badge.gameObject.SetActive(true);
+        }
+
+        // Comfort pieces in range of the local player, read once per build menu open (ComfortBadgePatches): vanilla's own
+        // SE_Rested.GetNearbyComfortPieces, so a radius changed by ValheimPlus (pieceComfortRadius patches it) holds too.
+        private static readonly List<ComfortBadgeMath.Source> Nearby = new List<ComfortBadgeMath.Source>();
+
+        public static void ReadNearby()
+        {
+            Nearby.Clear();
+            var player = Player.m_localPlayer;
+            if (!player) return;
+            foreach (var p in SE_Rested.GetNearbyComfortPieces(player.transform.position))
+                if (p) Nearby.Add(new ComfortBadgeMath.Source((int)p.m_comfortGroup, p.m_name, p.GetComfort()));
         }
 
         private static Sprite RestedIcon()
@@ -85,6 +106,7 @@ namespace Morgott.UI.WorldHud
             value.rectTransform.offsetMin = value.rectTransform.offsetMax = Vector2.zero;
             value.textWrappingMode = TextWrappingModes.NoWrap;
             value.overflowMode = TextOverflowModes.Overflow;
+            _valueColor = value.color;
             return rt;
         }
 
@@ -120,6 +142,22 @@ namespace Morgott.UI.WorldHud
             if (!OwnershipRegistry.IsOwned(OwnershipRegistry.BuildHud)) return;
             try { ComfortBadge.Apply(__instance); }
             catch (Exception e) { Plugin.Log.LogError($"[Morgott.UI] comfort badge failed: {e}"); }
+        }
+
+        // Reopening the menu re-Setups no buttons (BuildUi.OpenBuildMenu, BuildUi.cs:617): re-read what is in range and
+        // re-apply the shown badges so grey follows where the player stands now.
+        [HarmonyPatch(typeof(BuildUi), nameof(BuildUi.OpenBuildMenu))]
+        [HarmonyPostfix]
+        private static void OpenBuildMenu_Postfix(BuildUi __instance)
+        {
+            if (!OwnershipRegistry.IsOwned(OwnershipRegistry.BuildHud)) return;
+            try
+            {
+                ComfortBadge.ReadNearby();
+                foreach (var b in __instance.m_pieceButtons)
+                    if (b) ComfortBadge.Apply(b);
+            }
+            catch (Exception e) { Plugin.Log.LogError($"[Morgott.UI] comfort badge refresh failed: {e}"); }
         }
     }
 }

@@ -39,5 +39,24 @@ namespace Morgott.UI.WorldHud
         }
 
         internal static string Label(int comfort) => comfort > 0 ? "+" + comfort : "";
+
+        // A comfort piece in range of the player (Piece.m_comfortGroup as int, 0 = None; m_name; GetComfort()).
+        internal readonly struct Source
+        {
+            public readonly int Group;
+            public readonly string Name;
+            public readonly int Comfort;
+            public Source(int group, string name, int comfort) { Group = group; Name = name; Comfort = comfort; }
+        }
+
+        // True when one more such piece adds no comfort here. Vanilla SE_Rested.CalculateComfortLevel (SE_Rested.cs:68-91)
+        // sorts the pieces in range by group, comfort descending, name, and counts only the first of a group (group != None)
+        // and of a name: a piece in range with at least this comfort and the same group or name already holds the slot.
+        internal static bool Counted(int group, string name, int comfort, IReadOnlyList<Source> nearby)
+        {
+            foreach (var n in nearby)
+                if (n.Comfort >= comfort && (n.Name == name || (group != 0 && n.Group == group))) return true;
+            return false;
+        }
     }
 }
