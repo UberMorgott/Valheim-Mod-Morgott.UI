@@ -294,18 +294,24 @@ namespace Morgott.UI.ItemBrowser
             topic = e.Name;
             text = e.Desc ?? "";
             if (e.Type == EntryType.Creature) text = PageModel.CreatureTip(text, Tameable(e.Id, out var breed), breed);
-            if (e.Type != EntryType.Item) return;
-            if (!_tips.TryGetValue(e.Id, out var copy))
+            if (e.Type == EntryType.Item) text = ItemTip(e.Id, quality, e.MaxQuality) ?? text;
+        }
+
+        /// <summary>GetTooltip text of item prefab <paramref name="id"/> on its cached clone; null when it is no item.
+        /// Also the crafting requirement cells (CraftingSkin.RequirementTip).</summary>
+        public static string ItemTip(string id, int quality, int maxQuality)
+        {
+            if (!_tips.TryGetValue(id, out var copy))
             {
-                var go = Prefab(e.Id);
-                if (!go || !go.TryGetComponent<ItemDrop>(out var d)) return;
+                var go = Prefab(id);
+                if (!go || !go.TryGetComponent<ItemDrop>(out var d)) return null;
                 copy = d.m_itemData.Clone();
                 copy.m_dropPrefab = go;
-                _tips[e.Id] = copy;
+                _tips[id] = copy;
             }
-            copy.m_quality = Mathf.Clamp(quality, 1, e.MaxQuality);
+            copy.m_quality = Mathf.Clamp(quality, 1, maxQuality);
             copy.m_durability = copy.GetMaxDurability();
-            text = ItemDrop.ItemData.GetTooltip(copy, copy.m_quality, false, copy.m_worldLevel);
+            return ItemDrop.ItemData.GetTooltip(copy, copy.m_quality, false, copy.m_worldLevel);
         }
 
         // ---------------------------------------------------------------- cheat take

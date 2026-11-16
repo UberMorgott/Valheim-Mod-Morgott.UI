@@ -305,8 +305,10 @@ namespace Morgott.UI.ItemBrowser
         internal bool Show(string id, PageSection section)
         {
             if (id == null) return false;
-            Open();
+            // Index first: an unknown id must not leave the ITEMS tab up on its grid (looked like "opened, wrong item").
+            Browser.EnsureReady();
             if (Browser.Index == null || !Browser.Index.Entries.ContainsKey(id)) return false;
+            Open();
             OpenPage(id);
             _jump = section;
             _dirty = true;
@@ -333,7 +335,7 @@ namespace Morgott.UI.ItemBrowser
         }
 
         // Prefab id under the pointer: a browser slot, any InventoryGrid cell (player, chest, backpack, EAQS doll / quick
-        // cells, equipment / quick slot grids of other mods) through the public InventoryGrid.GetItem (InventoryGrid.cs:589), or a crafting list row.
+        // cells, equipment / quick slot grids of other mods) through the public InventoryGrid.GetItem (InventoryGrid.cs:589), a crafting requirement cell, or a crafting list row.
         private string Hovered()
         {
             var es = EventSystem.current;
@@ -352,6 +354,7 @@ namespace Morgott.UI.ItemBrowser
                 // grid's transform; they stay player grid elements (m_elements, EquipmentPanel.UpdateInventorySlots).
                 if (!grid && go.GetComponentInParent<InventoryElement>() is InventoryElement cell && _gui.m_playerGrid.m_elements.Contains(cell)) grid = _gui.m_playerGrid;
                 if (grid && grid.GetInventory() != null && ItemId(grid.GetItem(new Vector2i((int)pos.x, (int)pos.y))) is string item) return item;
+                if (CraftingScreen.CraftingSkin.Instance && CraftingScreen.CraftingSkin.Instance.CellPrefab(go) is string material) return material;
                 foreach (var p in _gui.m_availableRecipes)
                     if (p.InterfaceElement && go.transform.IsChildOf(p.InterfaceElement.transform))
                         return p.Recipe && p.Recipe.m_item ? p.Recipe.m_item.gameObject.name : null;
