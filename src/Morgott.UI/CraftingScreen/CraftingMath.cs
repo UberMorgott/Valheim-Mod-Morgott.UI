@@ -18,7 +18,7 @@ namespace Morgott.UI.CraftingScreen
         // ListMinW: the list column never narrower than this while the detail keeps half the body (0.24.0 list at the
         // 576 window; layout A docks crafting at the room right of the hotbar-locked centre column, 536 at 16:9).
         public float ListShare = 0.4f, ListMinW = 204f, RowH = 46f, ScrollbarW = 10f;
-        public float TitleH = 32f, CraftTypeH = 24f, IconH = 112f, QualityH = 44f, DescriptionMinH = 48f;
+        public float TitleH = 32f, CraftTypeH = 24f, IconH = 112f, IconMinH = 56f, QualityH = 44f, DescriptionMinH = 48f;
         public float ReqW = 68f, ReqH = 88f, ReqMinW = 52f, ReqMaxRows = 2f;
         // StatRowH: one body line (16 x LineEm), mockup-v2 rows sit line on line.
         public float ButtonH = 64f, StatRowH = 21f, ChainMinH = 72f;
@@ -289,7 +289,9 @@ namespace Morgott.UI.CraftingScreen
             var bottom = d.Bottom;
             // Height the grid may take while the title / type, the full icon, the description minimum and the quality row keep theirs.
             var statsH = i.StatLines > 0 ? S(t.StatRowH) * i.StatLines : 0f;
-            var keep = (top - d.Y) + S(t.IconH) + gap * 0.5f + S(t.DescriptionMinH) + gap + (i.Quality ? S(t.QualityH) + gap * 0.5f : 0f) +
+            // The grid may take what the title, a minimum icon, the description minimum, the quality row, the stat table and the
+            // missing box leave (run 20261116-161831 at 1080p: two full rows of cells left the icon 0 units).
+            var keep = (top - d.Y) + S(i.StatLines > 0 || i.ChainH > 0f ? t.IconMinH : t.IconH) + gap * 0.5f + S(t.DescriptionMinH) + gap + (i.Quality ? S(t.QualityH) + gap * 0.5f : 0f) +
                        (statsH > 0f ? statsH + gap * 0.5f : 0f) + (i.ChainH > 0f ? Math.Min(i.ChainH, S(t.ChainMinH)) + gap * 0.5f : 0f);
             Requirements(o, i.Requirements, new Box(d.X, d.Y, d.W, d.H), S(t.ReqW), S(t.ReqH), S(t.ReqMinW), (int)Math.Max(1f, t.ReqMaxRows), gap * 0.75f, Math.Max(0f, d.H - keep));
             if (o.RequirementRows > 0)
@@ -355,6 +357,16 @@ namespace Morgott.UI.CraftingScreen
             }
             cols = Math.Min(cols, n);
             var rows = (n + cols - 1) / cols;
+            // Still taller than the room: the cells shrink further (aspect kept, never under minW); narrower cells may also
+            // take fewer rows.
+            while (roomH > 0f && rows * h + (rows - 1) * gap > roomH + 0.01f && w > minW + 0.01f)
+            {
+                var nw = Math.Max(minW, w - 1f);
+                h *= nw / w;
+                w = nw;
+                cols = Math.Min(Columns(area.W, w, gap), n);
+                rows = (n + cols - 1) / cols;
+            }
             o.RequirementColumns = cols;
             o.RequirementRows = rows;
             for (var i = 0; i < n; i++)
