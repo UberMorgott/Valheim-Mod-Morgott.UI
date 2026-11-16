@@ -238,7 +238,8 @@ namespace Morgott.UI.GameScreens
                 At(title, new Box(head.X, head.Y + 4f * u, head.W, 36f * u), u);
                 At(timer, new Box(head.X, head.Y + 40f * u, head.W, 26f * u), u);
             }
-            Font(title?.Rt, Mathf.RoundToInt(T(stash ? "size.trader.title.wide" : "size.trader.title", stash ? 30f : 26f)), TextAnchor.MiddleCenter);
+            // >= size.text.header.min (28): below it a restyle pass re-classifies the title as body text (run 20261116-135513).
+            Font(title?.Rt, Mathf.RoundToInt(T(stash ? "size.trader.title.wide" : "size.trader.title", stash ? 30f : 28f)), TextAnchor.MiddleCenter);
             Font(timer?.Rt, Mathf.RoundToInt(T("size.trader.timer", 18f)), stash ? TextAnchor.MiddleRight : TextAnchor.MiddleCenter);
             var row = T(stash ? "size.trader.row.wide" : "size.trader.row", stash ? 52f : 48f);
             if (i < 3)
@@ -367,7 +368,14 @@ namespace Morgott.UI.GameScreens
             if (r.Find("Name") is RectTransform name)
             {
                 Font(name, text, TextAnchor.MiddleLeft);
-                if (name.TryGetComponent<Text>(out var nt)) nt.verticalOverflow = VerticalWrapMode.Truncate;
+                if (name.TryGetComponent<Text>(out var nt))
+                {
+                    nt.verticalOverflow = VerticalWrapMode.Truncate;
+                    // Treasure map rows: "<биом> #N" (mockup v2); the panel title already says "Карты сокровищ" and the
+                    // tooltip keeps the full name. Epic Loot writes the name once per row (TreasureMapListElement.SetItem).
+                    var cut = r.Find("Purchased") ? nt.text.LastIndexOf(": ", System.StringComparison.Ordinal) : -1;
+                    if (cut >= 0) nt.text = nt.text.Substring(cut + 2);
+                }
                 Span(name, two ? 0.5f : 0f, 1f, 52f, right, 0f, two ? 2f : 0f);
             }
             if (!two) return;
@@ -392,7 +400,19 @@ namespace Morgott.UI.GameScreens
             var n = 0;
             foreach (Transform e in strip)
             {
-                if (!e.gameObject.activeSelf || !(e.Find("Amount") is RectTransform a) || !a.TryGetComponent<Text>(out var amount)) continue;
+                if (!e.gameObject.activeSelf) continue;
+                // A caption in the strip (bounty "Награды:" RewardLabel): same size, its own width.
+                if (e.TryGetComponent<Text>(out var caption))
+                {
+                    Font(e, size, TextAnchor.MiddleLeft);
+                    caption.horizontalOverflow = HorizontalWrapMode.Overflow;
+                    var cw = Mathf.Ceil(caption.preferredWidth) + 2f;
+                    ((RectTransform)e).sizeDelta = new Vector2(cw, 24f);
+                    w += cw;
+                    n++;
+                    continue;
+                }
+                if (!(e.Find("Amount") is RectTransform a) || !a.TryGetComponent<Text>(out var amount)) continue;
                 Font(a, size, TextAnchor.MiddleLeft);
                 amount.horizontalOverflow = HorizontalWrapMode.Overflow;
                 if (e.Find("Icon") is RectTransform ic) Anchored(ic, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), Vector2.zero, new Vector2(20f, 20f));

@@ -1177,7 +1177,7 @@
     { "token": "size.el.tab.caption.min", "value": 16 },
     { "token": "size.el.tab.badge", "value": 18 },
     { "token": "size.el.tab.locked.alpha", "value": 0.45 },
-    { "token": "size.trader.title", "value": 26 },
+    { "token": "size.trader.title", "value": 28 },
     { "token": "size.trader.title.wide", "value": 30 },
     { "token": "size.trader.timer", "value": 18 },
     { "token": "size.trader.text", "value": 18 },
