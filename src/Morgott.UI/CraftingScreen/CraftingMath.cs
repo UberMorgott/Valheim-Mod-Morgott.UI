@@ -316,7 +316,8 @@ namespace Morgott.UI.CraftingScreen
             {
                 // The missing box takes what the title, the description minimum and the stat table leave (the icon may go):
                 // at least its header + a line + the hint (ChainMinH), its tree scrolls inside.
-                var free = bottom - top - S(t.DescriptionMinH) - gap - (statsH > 0f ? statsH + gap * 0.5f : 0f) - gap * 0.5f;
+                // ... and the minimum icon (run 20261116-170414: the box took 88, the icon got 4).
+                var free = bottom - top - S(t.IconMinH) - gap * 0.5f - S(t.DescriptionMinH) - gap - (statsH > 0f ? statsH + gap * 0.5f : 0f) - gap * 0.5f;
                 var ch = Math.Min(i.ChainH, Math.Max(Math.Min(i.ChainH, S(t.ChainMinH)), free));
                 o.Chain = new Box(d.X, bottom - ch, d.W, ch);
                 bottom = o.Chain.Y - gap * 0.5f;

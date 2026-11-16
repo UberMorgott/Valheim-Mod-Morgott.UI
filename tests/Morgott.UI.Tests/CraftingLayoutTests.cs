@@ -382,6 +382,21 @@ namespace Morgott.UI.Tests
             Assert.True(o2.Icon.H >= 48f, o2.ToString());
             Assert.True(o2.Description.H >= t.DescriptionMinH - 0.01f, o2.ToString());
             Assert.Equal(7 * t.StatRowH, o2.Stats.H, 3);
+            // A tall tree (150) gets only what the minimum icon leaves (run 20261116-170414: icon 4 units).
+            var tall = CraftingMath.Compute(new CraftingInput
+            {
+                Panel = new Box(1283.2f, 0f, 576f, 892f),
+                WindowHeaderH = 40f,
+                Tabs = 3,
+                Network = true,
+                Categories = 4,
+                Search = true,
+                Controls = true,
+                Requirements = 4,
+                StatLines = 7,
+                ChainH = 150f
+            }, t);
+            Assert.True(tall.Icon.H >= t.IconMinH - 0.01f && tall.Chain.H >= t.ChainMinH - 0.01f, tall.ToString());
             // Every cell keeps a count band that holds one amount line (run 20261116-164446: "0/1" gone at 82-unit cells).
             Assert.All(o2.RequirementCells, c => Assert.True(c.H * CraftingMath.AmountBand >= 16f * CraftingMath.LineEm - 0.01f, $"cell {c}"));
             Assert.True(o2.RequirementCells.Length == 4);
