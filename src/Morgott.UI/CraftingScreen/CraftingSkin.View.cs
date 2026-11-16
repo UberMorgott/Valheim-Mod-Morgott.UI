@@ -503,6 +503,18 @@ namespace Morgott.UI.CraftingScreen
         // Lines the layout reserves (CraftingInput.StatLines): 5 food stats, yield, count, the bonus line.
         private int StatLines() => StatsFor(out _, out var food, out _, out var bonus) ? (food ? 5 : 0) + 2 + (bonus > 0 ? 1 : 0) : 0;
 
+        // One stat line: fixed size, one line, Overflow. Not Label(): its Ellipsis overflow drops a line whose box is
+        // shorter than the font's line height (TMP), and 203d97a's 19-unit rows under the 16-unit font (PT Sans line
+        // ~1.3 em = 20.8) left every stat text empty (run 20261116-155947: 15 texts, GetParsedText "").
+        private static void StatText(TMP_Text t, TextAlignmentOptions align, float size)
+        {
+            if (t.alignment != align) t.alignment = align;
+            if (t.textWrappingMode != TextWrappingModes.NoWrap) t.textWrappingMode = TextWrappingModes.NoWrap;
+            if (t.overflowMode != TextOverflowModes.Overflow) t.overflowMode = TextOverflowModes.Overflow;
+            if (t.enableAutoSizing) t.enableAutoSizing = false;
+            if (Mathf.Abs(t.fontSize - size) > 0.1f) t.fontSize = size;
+        }
+
         // The table in its reserved box (CraftingLayout.Stats, moved onto the chain box by Detail): one line per row.
         private void StatTable(Box box)
         {
@@ -559,21 +571,21 @@ namespace Morgott.UI.CraftingScreen
 
             var lines = _statLines.Count + (_bonusText.Length > 0 ? 1 : 0);
             var rowH = box.H / Mathf.Max(1, lines);
-            var size = Mathf.Min(ThemeTokens.GetFloat("size.craft.font.body", 16f) * _in.Scale, rowH * 0.85f); // a row = one text line (mockup-v2)
+            var size = Mathf.Min(ThemeTokens.GetFloat("size.craft.font.body", 16f) * _in.Scale, rowH / CraftingMath.LineEm); // a row = one text line (mockup-v2)
             Geo.Place(_canvas, _stats, box);
             for (var i = 0; i < _statLines.Count; i++)
             {
                 var b = new Box(box.X, box.Y + i * rowH, box.W, rowH);
                 Geo.Place(_canvas, _statRows[i].Label.rectTransform, b);
-                Label(_statRows[i].Label, TextAlignmentOptions.MidlineLeft, size);
+                StatText(_statRows[i].Label, TextAlignmentOptions.MidlineLeft, size);
                 Geo.Place(_canvas, _statRows[i].Value.rectTransform, b);
-                Label(_statRows[i].Value, TextAlignmentOptions.MidlineRight, size);
+                StatText(_statRows[i].Value, TextAlignmentOptions.MidlineRight, size);
             }
             Shown(_bonus, _bonusText.Length > 0);
             if (_bonusText.Length > 0)
             {
                 Geo.Place(_canvas, _bonus.rectTransform, new Box(box.X, box.Y + _statLines.Count * rowH, box.W, rowH));
-                Label(_bonus, TextAlignmentOptions.MidlineLeft, size);
+                StatText(_bonus, TextAlignmentOptions.MidlineLeft, size);
             }
         }
     }

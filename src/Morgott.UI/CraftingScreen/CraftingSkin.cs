@@ -1520,11 +1520,21 @@ namespace Morgott.UI.CraftingScreen
                 sr.viewport = _chainView;
                 sr.content = text;
             }
-            // Viewport = the text area: from the box top down to the chain button (or the box bottom).
+            // Viewport = the text area inside the box's pads (size.craft.chain.pad, RecipeChainsUi Pad x 2), down to the chain
+            // button (or the bottom pad). The clip is the box's RectMask2D inset to it: the text is the box's child, not the
+            // viewport's, and a mask at the box edge drew the tree over the frame (run 20261116-155947 "x Морковь x2").
             var button = _chain.Find(Morgott.Core.Contracts.ChainCraftButton) as RectTransform;
-            var bottom = box.Bottom;
-            if (button && button.gameObject.activeSelf) bottom = Geo.BoxOf(_canvas, button).Y;
-            Geo.Place(_canvas, _chainView, new Box(box.X, box.Y, box.W, Mathf.Max(1f, bottom - box.Y)));
+            var pad = ThemeTokens.GetFloat("size.craft.chain.pad", 20f) * 0.5f * _in.Scale;
+            var bottom = box.Bottom - pad;
+            if (button && button.gameObject.activeSelf) bottom = Mathf.Min(bottom, Geo.BoxOf(_canvas, button).Y);
+            var view = new Box(box.X, box.Y + pad, box.W, Mathf.Max(1f, bottom - box.Y - pad));
+            Geo.Place(_canvas, _chainView, view);
+            if (_chain.TryGetComponent<RectMask2D>(out var mask))
+            {
+                var unit = Geo.WorldPerUnit(_canvas) / Mathf.Max(_chain.lossyScale.y, 1e-6f);
+                var clip = new Vector4(0f, (box.Bottom - view.Bottom) * unit, 0f, (view.Y - box.Y) * unit);
+                if ((mask.padding - clip).sqrMagnitude > 0.01f) mask.padding = clip;
+            }
         }
 
         private void RequirementGrid(CraftingLayout o)

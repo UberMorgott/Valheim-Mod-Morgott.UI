@@ -357,6 +357,13 @@ namespace Morgott.UI.Tests
                         o.Chain.Bottom <= o.Requirements.Y && o.Requirements.Bottom <= o.Detail.Bottom + 0.01f,
                 $"icon {o.Icon} desc {o.Description} stats {o.Stats} chain {o.Chain} req {o.Requirements} detail {o.Detail}");
         }
+        // Run 20261116-155947: 19-unit stat rows under the 16-unit body font held no line (TMP drops a line taller than its box).
+        [Fact]
+        public void StatRowHoldsOneBodyLine()
+        {
+            var t = new CraftingTokens();
+            Assert.True(t.StatRowH >= 16f * CraftingMath.LineEm - 0.01f, $"row {t.StatRowH} < line {16f * CraftingMath.LineEm}");
+        }
         // Run 20261116-155947: a 7-line tree (need 150) on a ~575-unit detail well covered the stat table and the description.
         // The box takes only what the description minimum and the full table leave, never less than header + line + hint.
         [Fact]

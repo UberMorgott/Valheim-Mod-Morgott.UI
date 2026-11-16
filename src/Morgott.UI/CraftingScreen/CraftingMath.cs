@@ -20,7 +20,8 @@ namespace Morgott.UI.CraftingScreen
         public float ListShare = 0.4f, ListMinW = 204f, RowH = 46f, ScrollbarW = 10f;
         public float TitleH = 32f, CraftTypeH = 24f, IconH = 112f, QualityH = 44f, DescriptionMinH = 48f;
         public float ReqW = 68f, ReqH = 88f, ReqMinW = 52f, ReqMaxRows = 2f;
-        public float ButtonH = 64f, StatRowH = 19f, ChainMinH = 72f;
+        // StatRowH: one body line (16 x LineEm), mockup-v2 rows sit line on line.
+        public float ButtonH = 64f, StatRowH = 21f, ChainMinH = 72f;
         public float WellPad = 10f;
     }
 
@@ -476,6 +477,10 @@ namespace Morgott.UI.CraftingScreen
         }
 
         // Row / detail count: "x6", "x99+" at the cap (the count search stops there).
+        // Line height of the body face in em (PT Sans: ascender + descender + gap ~1.3): a text box shorter than size x
+        // LineEm holds no line.
+        public const float LineEm = 1.3f;
+
         public static string CountLabel(int count, int cap) => "\u00D7" + Math.Max(0, count) + (count >= cap ? "+" : "");
 
         // Active filters on the funnel badge: availability other than All, plus "new only".
