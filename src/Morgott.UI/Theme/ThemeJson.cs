@@ -12,6 +12,15 @@ namespace Morgott.UI.Theme
     // game (UnityEngine.JsonUtility is native and dropped array entries of the default theme in game).
     public static class ThemeJson
     {
+        // Any JSON document as Dictionary<string, object> / List<object> / string / double / bool / null (the changelog file).
+        public static object ParseValue(string json)
+        {
+            var p = new Reader(json);
+            var v = p.Value();
+            p.End();
+            return v;
+        }
+
         public static ThemeFile Parse(string json)
         {
             var p = new Reader(json);

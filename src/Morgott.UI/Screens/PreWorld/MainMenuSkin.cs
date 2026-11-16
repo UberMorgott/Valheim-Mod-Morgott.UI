@@ -196,6 +196,8 @@ namespace Morgott.UI.PreWorld
             if (window.TryGetComponent<ChangeLog>(out var log) && log.m_scrollbar)
                 Grow((RectTransform)log.m_scrollbar.transform, ThemeTokens.GetFloat("size.scrollbar.w", 16f), 0f);
             ChangelogClose.Ensure(fejd, window);
+            // Pack changelog tab + filters inside the same window (vanilla text = the Valheim tab).
+            ChangelogPanel.Ensure(fejd, window);
         }
 
         // Manage-saves rows (ManageSavesMenuElement template: PrimarySaveElement name / size / backups / date + source
@@ -960,6 +962,17 @@ namespace Morgott.UI.PreWorld
         {
             try { MainMenuSkin.Refresh(__instance); }
             catch (Exception e) { Plugin.Log.LogError($"[Morgott.UI] main menu refresh failed: {e}"); }
+        }
+
+        // "New" badge of the changelog link (CheckShowChangelogNotice / OnButtonShowChangelog compare and store this hash
+        // in PlatformPrefs ChangeLogHash, FejdStartup.cs:1223-1248): the pack changelog file joins the vanilla text, so a
+        // changed changelog.json shows the badge until the window is opened.
+        [HarmonyPatch(typeof(FejdStartup), nameof(FejdStartup.GetChangelogHash))]
+        [HarmonyPostfix]
+        private static void GetChangelogHash_Postfix(ref int __result)
+        {
+            var file = ChangelogPanel.FileHash();
+            if (file != 0) __result = unchecked(__result * 31 + file);
         }
 
         [HarmonyPatch(typeof(FejdStartup), nameof(FejdStartup.UpdateCharacterList))]
