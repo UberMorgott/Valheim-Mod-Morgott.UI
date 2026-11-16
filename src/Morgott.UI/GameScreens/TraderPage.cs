@@ -338,17 +338,18 @@ namespace Morgott.UI.GameScreens
                 if (r is RectTransform rt && r.gameObject.activeSelf && r.TryGetComponent<LayoutElement>(out var le) && !Mathf.Approximately(le.minHeight, rowH))
                 {
                     le.minHeight = rowH; // also this row's "laid out" mark: Epic Loot re-instantiates rows on refresh
-                    Row(rt);
+                    Row(rt, columns > 1);
                 }
         }
 
         // One Epic Loot row (BuyListElement / TreasureMapListElement / BountyListElement, local px): icon 36 left, name
         // 18 px, prices / rewards right-aligned at 18 px, bounty status 16 px under the name.
-        private static void Row(RectTransform r)
+        private static void Row(RectTransform r, bool wide)
         {
-            var text = Mathf.RoundToInt(T("size.trader.text", 18f));
+            var text = Mathf.RoundToInt(wide ? T("size.trader.text.wide", 20f) : T("size.trader.text", 18f));
+            var ics = wide ? 40f : 36f;
             foreach (var n in new[] { "MagicBG", "Icon" })
-                if (r.Find(n) is RectTransform ic) Anchored(ic, new Vector2(0f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(26f, 0f), new Vector2(36f, 36f));
+                if (r.Find(n) is RectTransform ic) Anchored(ic, new Vector2(0f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(6f + ics / 2f, 0f), new Vector2(ics, ics));
             var right = 8f;
             if (r.Find("Purchased") is RectTransform bought && bought.gameObject.activeSelf)
             {
@@ -376,7 +377,7 @@ namespace Morgott.UI.GameScreens
                     var cut = r.Find("Purchased") ? nt.text.LastIndexOf(": ", System.StringComparison.Ordinal) : -1;
                     if (cut >= 0) nt.text = nt.text.Substring(cut + 2);
                 }
-                Span(name, two ? 0.5f : 0f, 1f, 52f, right, 0f, two ? 2f : 0f);
+                Span(name, two ? 0.5f : 0f, 1f, ics + 16f, right, 0f, two ? 2f : 0f);
             }
             if (!two) return;
             Span(status, 0f, 0.5f, 52f, right, 2f, 0f);
@@ -448,14 +449,14 @@ namespace Morgott.UI.GameScreens
         private void StoreRows()
         {
             if (!_gui.m_listElement || !(_gui.m_listElement.transform is RectTransform t) || !_gui.m_listRoot || !_gui.m_trader) return;
-            var h = T("size.trader.store.row", 56f);
+            var h = T("size.trader.store.row", 80f);
             var w = _gui.m_listRoot.rect.width - 16f;
             if (w <= 1f || (Mathf.Abs(t.rect.width - w) < 0.5f && Mathf.Abs(t.rect.height - h) < 0.5f)) return;
             t.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, w);
             t.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, h);
-            _gui.m_itemSpacing = h + 6f;
-            var size = T("size.trader.store.text", 22f);
-            if (t.Find("icon") is RectTransform icon) Anchored(icon, new Vector2(0f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(30f, 0f), new Vector2(40f, 40f));
+            _gui.m_itemSpacing = h + 8f;
+            var size = T("size.trader.store.text", 24f);
+            if (t.Find("icon") is RectTransform icon) Anchored(icon, new Vector2(0f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(40f, 0f), new Vector2(56f, 56f));
             var coin = t.Find("coin_bkg") as RectTransform;
             if (coin)
             {
@@ -468,13 +469,13 @@ namespace Morgott.UI.GameScreens
                 {
                     OwnFit.Claim(label); // fixed px size; the global row inset rule would re-fit it
                     var rt = label.rectTransform;
-                    if (n == "name") Span(rt, 0f, 1f, 62f, coin ? 132f : 14f, 0f, 0f);
+                    if (n == "name") Span(rt, 0f, 1f, 84f, coin ? 132f : 14f, 0f, 0f);
                     else Span(rt, 0f, 1f, 32f, 0f, 0f, 0f);
                     if (label.enableAutoSizing) label.enableAutoSizing = false;
                     label.fontSize = size;
                     label.textWrappingMode = TextWrappingModes.NoWrap;
                     label.overflowMode = TextOverflowModes.Ellipsis;
-                    label.alignment = n == "name" ? TextAlignmentOptions.MidlineLeft : TextAlignmentOptions.MidlineRight;
+                    label.alignment = TextAlignmentOptions.MidlineLeft; // the number right after its coin (mockup v2)
                 }
             _gui.FillList();
         }
@@ -516,8 +517,10 @@ namespace Morgott.UI.GameScreens
             }
             StoreRows();
             var y = listBox.Bottom + gap;
-            var half = (col.W - gap) / 2f;
-            if (_buy != null) _buy.Put(_canvas, row / _buy.Box0.H, new Box(col.X, y, half, row));
+            // Mockup v2: a 375 px Buy plate from x 80, the rest of the row (Sell socket) right of it.
+            var buy = new Box(col.X + 32f * u, y, Mathf.Min(375f * u, col.W * 0.66f), row);
+            if (_buy != null) _buy.Put(_canvas, row / _buy.Box0.H, buy);
+            var rest = new Box(buy.Right + gap, y, Mathf.Max(1f, col.Right - buy.Right - gap), row);
             if (_sell != null)
             {
                 // Its own Morgott.UI panel stack off (the caps reached ~10 px under the column, run 20261107-154027): the Sell
@@ -528,8 +531,8 @@ namespace Morgott.UI.GameScreens
                         RenderGate.Set(c.gameObject, Gate, true);
                         _gated.Add(c.gameObject);
                     }
-                var k = Mathf.Min(row / _sell.Box0.H, half / _sell.Box0.W);
-                _sell.Put(_canvas, k, col.X + half + gap + (half - _sell.Box0.W * k) / 2f, y + (row - _sell.Box0.H * k) / 2f);
+                var k = Mathf.Min(row / _sell.Box0.H, rest.W / _sell.Box0.W);
+                _sell.Put(_canvas, k, rest.X + (rest.W - _sell.Box0.W * k) / 2f, y + (row - _sell.Box0.H * k) / 2f);
             }
         }
 
