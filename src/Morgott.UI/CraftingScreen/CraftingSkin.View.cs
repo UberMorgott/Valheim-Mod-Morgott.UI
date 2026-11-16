@@ -43,7 +43,7 @@ namespace Morgott.UI.CraftingScreen
         private TMP_Text ViewText(string name, RectTransform parent, string value, string role)
         {
             var t = NewText(name, parent, value, role);
-            t.fontStyle &= ~FontStyles.UpperCase;
+            t.fontStyle &= ~(FontStyles.UpperCase | FontStyles.Bold); // the craft label face is UPPER CASE + bold
             return t;
         }
         private static string Num(float v) => Mathf.RoundToInt(v).ToString(System.Globalization.CultureInfo.InvariantCulture);
@@ -67,7 +67,7 @@ namespace Morgott.UI.CraftingScreen
         private TMP_Dropdown _sortDrop;
         private Image _dirGlyph, _newGlyph;
         private TMP_Text _badge;
-        private Image _badgeDot;
+        private Image _badgeDot, _showPlate;
         private readonly Button[] _showButtons = new Button[3];
         private readonly TMP_Text[] _showLabels = new TMP_Text[3];
         private string _sortLang;
@@ -113,14 +113,14 @@ namespace Morgott.UI.CraftingScreen
             else if (_gui.m_activeGroup > index) _gui.m_activeGroup--;
         }
 
-        private Button PlateButton(string name, Action click, out Image plate)
+        private Button PlateButton(string name, Action click, out Image plate, string role = "craft.control")
         {
             plate = new GameObject(name, typeof(RectTransform)).AddComponent<Image>();
             plate.rectTransform.SetParent(_ctl, false);
             var button = plate.gameObject.AddComponent<Button>();
             button.targetGraphic = plate;
             button.navigation = RowNav;
-            Styled(plate, "craft.category", "crafting view control plate (square tab: selected = interactable off)");
+            Styled(plate, role, "crafting view control plate (" + role + ")");
             button.onClick.AddListener(() => click());
             return button;
         }
@@ -195,10 +195,16 @@ namespace Morgott.UI.CraftingScreen
             _badge = ViewText("Badge", newPlate.rectTransform, "", "content");
             _badge.fontStyle |= FontStyles.Bold;
             _badge.color = ThemeTokens.GetColor("color.text.dark", new Color(0.06f, 0.09f, 0.11f));
+            // Segmented All | Can | Can't (mockup-v2): one thin field, the chosen segment framed like the selected recipe row.
+            _showPlate = new GameObject(Prefix + "ShowField", typeof(RectTransform)).AddComponent<Image>();
+            _showPlate.rectTransform.SetParent(_ctl, false);
+            _showPlate.raycastTarget = false;
+            Styled(_showPlate, "craft.control", "crafting view availability field");
             for (var i = 0; i < ShowKeys.Length; i++)
             {
                 var key = ShowKeys[i];
-                _showButtons[i] = PlateButton(Prefix + "Show" + key, () => { if (View() is ICraftingAvailability v) v.Show = key; }, out var plate);
+                _showButtons[i] = PlateButton(Prefix + "Show" + key, () => { if (View() is ICraftingAvailability v) v.Show = key; }, out var plate, "craft.row.selected");
+                _showButtons[i].transition = Selectable.Transition.None;
                 _showLabels[i] = ViewText("Label", plate.rectTransform, "", "text.body");
             }
             Plugin.Log.LogInfo("[Morgott.UI] crafting view controls built");
@@ -258,12 +264,12 @@ namespace Morgott.UI.CraftingScreen
             }
 
             Geo.Place(_canvas, (RectTransform)_dirGlyph.transform.parent, dirBox);
-            Geo.Place(_canvas, _dirGlyph.rectTransform, CraftingMath.Inset(dirBox, dirBox.W * 0.2f, dirBox.H * 0.2f));
+            Geo.Place(_canvas, _dirGlyph.rectTransform, CraftingMath.Inset(dirBox, dirBox.W * 0.3f, dirBox.H * 0.3f));
             var flip = view.Descending ? 1f : -1f; // ascending = the same arrow upside down
             if (!Mathf.Approximately(_dirGlyph.rectTransform.localScale.y, flip)) _dirGlyph.rectTransform.localScale = new Vector3(1f, flip, 1f);
 
             Geo.Place(_canvas, (RectTransform)_newGlyph.transform.parent, filterBox);
-            Geo.Place(_canvas, _newGlyph.rectTransform, CraftingMath.Inset(filterBox, filterBox.H * 0.22f + (filterBox.W - filterBox.H) / 2f, filterBox.H * 0.22f));
+            Geo.Place(_canvas, _newGlyph.rectTransform, CraftingMath.Inset(filterBox, filterBox.H * 0.3f + (filterBox.W - filterBox.H) / 2f, filterBox.H * 0.3f));
             var glyphColor = ThemeTokens.GetColor(view.NewOnly ? "color.text.accent" : "color.text.body", Color.white);
             if (_newGlyph.color != glyphColor) _newGlyph.color = glyphColor;
             var active = CraftingMath.ActiveFilters((int)view.Show, view.NewOnly);
@@ -276,6 +282,7 @@ namespace Morgott.UI.CraftingScreen
             Geo.Place(_canvas, _badge.rectTransform, dot);
             Label(_badge, TextAlignmentOptions.Center, side * 0.75f);
 
+            Geo.Place(_canvas, _showPlate.rectTransform, showBox);
             var w = showBox.W / ShowKeys.Length;
             for (var i = 0; i < ShowKeys.Length; i++)
             {
@@ -283,7 +290,10 @@ namespace Morgott.UI.CraftingScreen
                 var button = _showButtons[i];
                 Geo.Place(_canvas, (RectTransform)button.transform, cell);
                 var selected = view.Show == ShowKeys[i];
-                if (button.interactable == selected) button.interactable = !selected;
+                // Only the chosen segment draws its frame; the others keep their hit area (alpha 0 still raycasts).
+                var a = selected ? 1f : 0f;
+                if (!Mathf.Approximately(button.targetGraphic.canvasRenderer.GetAlpha(), a)) button.targetGraphic.canvasRenderer.SetAlpha(a);
+                Geo.Place(_canvas, (RectTransform)button.transform, CraftingMath.Inset(cell, cell.H * 0.08f, cell.H * 0.08f));
                 var label = _showLabels[i];
                 var text = Localization.instance.Localize("$ui_craft_show_" + ShowKeys[i].ToString().ToLowerInvariant());
                 if (label.text != text) label.text = text;
@@ -405,7 +415,7 @@ namespace Morgott.UI.CraftingScreen
             }
             var cap = CountCap();
             var sort = on ? view.Sort : CraftSort.Default;
-            var size = ThemeTokens.GetFloat("size.craft.font.row", 16f) * _in.Scale * 0.8f;
+            var size = ThemeTokens.GetFloat("size.craft.font.row", 16f) * _in.Scale * 0.95f; // mockup-v2: stats near the name size
             var newText = Localization.instance.Localize("$ui_craft_new");
             foreach (var r in rows)
             {
@@ -438,9 +448,9 @@ namespace Morgott.UI.CraftingScreen
                     regroup = true;
                 _rowCounts[r.Recipe] = count;
                 var countText = "<color=" + Hex(count > 0 ? "color.stats.good" : "color.state.disabled", Color.white) + ">" + CraftingMath.CountLabel(count, cap) + "</color>";
-                v.Count.fontSize = size;
+                v.Count.fontSize = size * 1.1f; // its own right column (mockup-v2 "x6")
                 if (v.Count.text != countText) v.Count.text = countText;
-                At(v.Count.rectTransform, new Vector2(1f, 0f), -6f, 2f, 64f, subH);
+                At(v.Count.rectTransform, new Vector2(1f, 0f), -6f, 1f, 48f, subH);
 
                 // Top right: NEW (gold), the chain link left of it.
                 var isNew = view.IsNew(r.Recipe);
@@ -478,6 +488,7 @@ namespace Morgott.UI.CraftingScreen
         private RectTransform _stats;
         private readonly List<(TMP_Text Label, TMP_Text Value)> _statRows = new List<(TMP_Text, TMP_Text)>();
         private TMP_Text _bonus;
+        private readonly List<Image> _statRules = new List<Image>();
         private int _statKey;
         private readonly List<(string Label, string Value)> _statLines = new List<(string, string)>();
         private string _bonusText = "";
@@ -531,7 +542,7 @@ namespace Morgott.UI.CraftingScreen
             {
                 _stats = (RectTransform)new GameObject(Prefix + "Stats", typeof(RectTransform)).transform;
                 _stats.SetParent(detail, false);
-                _bonus = ViewText("Bonus", _stats, "", "content");
+                _bonus = ViewText("Bonus", _stats, "", "text.body");
             }
             if (!_stats.gameObject.activeSelf) _stats.gameObject.SetActive(true);
             var shared = recipe.m_item.m_itemData.m_shared;
@@ -556,7 +567,15 @@ namespace Morgott.UI.CraftingScreen
                 _statLines.Add((L("$ui_craft_stat_craftable"), C(count > 0 ? "color.stats.good" : "color.state.disabled", CraftingMath.CountLabel(count, cap))));
                 _bonusText = bonus > 0 ? C("color.text.accent", Localization.instance.Localize("$ui_craft_bonus", bonus.ToString(System.Globalization.CultureInfo.InvariantCulture))) : "";
                 while (_statRows.Count < _statLines.Count)
-                    _statRows.Add((ViewText("Label", _stats, "", "text.body"), ViewText("Value", _stats, "", "content")));
+                    _statRows.Add((ViewText("Label", _stats, "", "text.body"), ViewText("Value", _stats, "", "text.body")));
+                while (_statRules.Count < _statLines.Count - 1)
+                {
+                    var rule = new GameObject("Rule", typeof(RectTransform)).AddComponent<Image>();
+                    rule.rectTransform.SetParent(_stats, false);
+                    rule.raycastTarget = false;
+                    rule.enabled = Styled(rule, "craft.stat.rule", "stat table row separator (divider, faint)");
+                    _statRules.Add(rule);
+                }
                 for (var i = 0; i < _statRows.Count; i++)
                 {
                     var on = i < _statLines.Count;
@@ -582,6 +601,13 @@ namespace Morgott.UI.CraftingScreen
                 StatText(_statRows[i].Label, TextAlignmentOptions.MidlineLeft, size);
                 Geo.Place(_canvas, _statRows[i].Value.rectTransform, b);
                 StatText(_statRows[i].Value, TextAlignmentOptions.MidlineRight, size);
+            }
+            // Thin separators between the rows (mockup-v2), 2 units on each boundary.
+            for (var i = 0; i < _statRules.Count; i++)
+            {
+                var on = i < _statLines.Count - 1;
+                Shown(_statRules[i], on && _statRules[i].enabled);
+                if (on) Geo.Place(_canvas, _statRules[i].rectTransform, new Box(box.X, box.Y + (i + 1) * rowH - 1f, box.W, 2f));
             }
             Shown(_bonus, _bonusText.Length > 0);
             if (_bonusText.Length > 0)

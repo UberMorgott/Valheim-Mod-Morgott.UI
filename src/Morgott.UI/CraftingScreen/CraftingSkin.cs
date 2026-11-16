@@ -1528,6 +1528,12 @@ namespace Morgott.UI.CraftingScreen
             var bottom = box.Bottom - pad;
             if (button && button.gameObject.activeSelf) bottom = Mathf.Min(bottom, Geo.BoxOf(_canvas, button).Y);
             var view = new Box(box.X, box.Y + pad, box.W, Mathf.Max(1f, bottom - box.Y - pad));
+            // Whole lines only (no half line at the edge, run 20261116-163644): the tree's line pitch from its own text.
+            if (text.TryGetComponent<TMP_Text>(out var tree) && tree.textInfo != null && tree.textInfo.lineCount > 0)
+            {
+                var line = tree.preferredHeight / tree.textInfo.lineCount * text.lossyScale.y / Mathf.Max(Geo.WorldPerUnit(_canvas), 1e-6f);
+                if (line > 1f && view.H >= line) view = new Box(view.X, view.Y, view.W, Mathf.Floor(view.H / line + 0.01f) * line);
+            }
             Geo.Place(_canvas, _chainView, view);
             if (_chain.TryGetComponent<RectMask2D>(out var mask))
             {
