@@ -209,7 +209,7 @@ namespace Morgott.UI.CraftingScreen
             return button;
         }
 
-        private TMP_Text NewText(string name, RectTransform parent, string value)
+        private TMP_Text NewText(string name, RectTransform parent, string value, string role = "content")
         {
             var src = CraftLabel();
             var t = UiText.Add(new GameObject(name, typeof(RectTransform)), src ? src.font : null, src ? src.fontSharedMaterial : null);
@@ -224,7 +224,10 @@ namespace Morgott.UI.CraftingScreen
             // Own text, laid out by this screen: unmarked, the network row label (inside its Button) was classified as a
             // plate label and PlateLabelFit's 4 px pads left a 20 px line box under the 16 px font's line height, so TMP's
             // Ellipsis overflow emptied it (run 20261116-104928-2, nothing drawn).
-            SkinMark.Own(t.gameObject, "content", "crafting screen text (own layout)");
+            // role "content" = kept as made (the amount text follows the craft label face, SameFace); a theme role (no
+            // fitInset) is re-applied by the Restyler on theme reloads.
+            var mark = SkinMark.Own(t.gameObject, role, "crafting screen text (own layout)");
+            if (role != "content") mark.Outcome = Restyler.Apply(t, mark, ThemeTokens.Role(role)) ? Outcome.Styled : Outcome.Degraded;
             return t;
         }
 
@@ -962,7 +965,7 @@ namespace Morgott.UI.CraftingScreen
             _netCheck.raycastTarget = false;
             var check = DollCell.Mark(_netCheck, "craft.network.check", "station network check mark (gold)");
             check.Outcome = Restyler.Apply(_netCheck, check, ThemeTokens.Role(check.Role)) ? Outcome.Styled : Outcome.Degraded;
-            _netLabel = NewText("Label", _net, "$ui_craft_network");
+            _netLabel = NewText("Label", _net, "$ui_craft_network", "text.body");
             _netLabel.raycastTarget = true; // the whole row toggles
             var button = _net.gameObject.AddComponent<Button>();
             button.targetGraphic = _netBox;
