@@ -26,6 +26,10 @@ namespace Morgott.UI.ItemBrowser
             return ones >= 2 && ones <= 4 && (tens < 12 || tens > 14) ? 2 : 5;
         }
 
+        /// <summary>Take bar chest count, "в 5 сундуках" / "in 5 chests"; <paramref name="localize"/> resolves $tokens.</summary>
+        public static string InChests(int n, Func<string, string> localize) =>
+            string.Format(localize("$ib_store_in"), n, localize("$ib_store_in_chest_" + Plural(n)));
+
         /// <summary>Grid filter: in stock, and in the category when one is picked (search is BrowserIndex.Search's).</summary>
         public static Func<Entry, bool> Filter(IReadOnlyDictionary<string, int> stock, int cat) =>
             e => stock.TryGetValue(e.Id, out var c) && c > 0 && (cat < 0 || (int)e.Category == cat);

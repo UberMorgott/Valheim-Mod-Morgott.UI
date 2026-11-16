@@ -16,14 +16,15 @@ namespace Morgott.UI.ItemBrowser
 
         private Button _storeTab;
         private bool _storage, _busy;
-        private Dictionary<string, int> _stock = new Dictionary<string, int>(), _tmp = new Dictionary<string, int>();
+        private Dictionary<string, int> _stock = new Dictionary<string, int>(), _tmp = new Dictionary<string, int>(),
+            _chestsOf = new Dictionary<string, int>(), _tmpChestsOf = new Dictionary<string, int>(); // prefab -> chests holding it
         private int _chests, _netStations, _amount = -1, _barStack = 1, _barMax;
         private float _stockNext;
         private CraftingStation _stockStation;
         private string _sel;
 
         private TMP_Text _netLine, _barName, _barFree, _amountText, _stackLabel, _takeLabel, _allLabel;
-        private Image _selHalo, _barRule, _barIcon, _amountBack, _takeHalo;
+        private Image _selHalo, _selRim, _barRule, _barIcon, _amountBack, _takeHalo;
         private Button _bStack, _bMinus, _bPlus, _bTake, _bAll;
         private TMP_Text _minusLabel, _plusLabel;
 
@@ -31,6 +32,7 @@ namespace Morgott.UI.ItemBrowser
         {
             _netLine = Txt(g, "NetworkLine", "text.body", TextAlignmentOptions.Left);
             _selHalo = Img(g, "SelectedHalo", "ib.halo"); // built before the cells: drawn behind them
+            _selRim = Img(g, "SelectedRim", "ib.rim"); // raised over the cells when placed (LayoutGrid)
             _barRule = Img(g, "TakeRule", "ib.rule");
             _barIcon = Img(g, "TakeIcon", "content");
             _barName = Txt(g, "TakeName", "text.body", TextAlignmentOptions.Left);
@@ -55,13 +57,15 @@ namespace Morgott.UI.ItemBrowser
             _stockNext = Time.unscaledTime + 2f;
             _stockStation = station;
             _tmp.Clear();
-            var on = station && Services.TryGet<INetworkStorage>(out var net) && net.Stock(station, _tmp, out _chests, out _netStations);
+            _tmpChestsOf.Clear();
+            var on = station && Services.TryGet<INetworkStorage>(out var net) && net.Stock(station, _tmp, _tmpChestsOf, out _chests, out _netStations);
             if (_storeTab.gameObject.activeSelf != on) _storeTab.gameObject.SetActive(on);
             if (!on)
             {
                 if (_up && _storage) Close();
                 return;
             }
+            (_chestsOf, _tmpChestsOf) = (_tmpChestsOf, _chestsOf); // drawn only in the bar, refreshed below
             if (!StorageMath.Same(_stock, _tmp))
             {
                 (_stock, _tmp) = (_tmp, _stock);
@@ -129,7 +133,8 @@ namespace Morgott.UI.ItemBrowser
                 Put(_barIcon, 4f, top + 10f, 28f, 28f);
                 SetIcon(_barIcon, _sel);
                 Put(_barName, 40f, top + 10f, 300f, 28f);
-                Fit(_barName, $"{NameOf(_sel)} — {StorageMath.Count(stock)}", 20f);
+                _chestsOf.TryGetValue(_sel, out var held);
+                Fit(_barName, $"{NameOf(_sel)} — {StorageMath.Count(stock)} · {StorageMath.InChests(held, L)}", 20f);
             }
             else { Off(_barIcon); Off(_barName); }
             Put(_barFree, 330f, top + 10f, UnitW - 330f, 28f);
@@ -164,7 +169,7 @@ namespace Morgott.UI.ItemBrowser
         // Storage widgets off in the items mode / on the item page.
         private void StoreOff()
         {
-            foreach (var c in new Component[] { _netLine, _selHalo, _barRule, _barIcon, _barName, _barFree, _bStack, _bMinus, _amountBack, _bPlus, _takeHalo, _bTake, _bAll }) Off(c);
+            foreach (var c in new Component[] { _netLine, _selHalo, _selRim, _barRule, _barIcon, _barName, _barFree, _bStack, _bMinus, _amountBack, _bPlus, _takeHalo, _bTake, _bAll }) Off(c);
         }
     }
 }

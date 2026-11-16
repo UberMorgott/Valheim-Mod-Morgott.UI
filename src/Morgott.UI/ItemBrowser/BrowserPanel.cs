@@ -818,7 +818,15 @@ namespace Morgott.UI.ItemBrowser
                     Text(c.B, StorageMath.Count(count), 19f);
                 }
                 else Off(c.B);
-                if (store && c.Id == _sel) { Put(_selHalo, cx - 8f, cy - 8f, CellW + 16f, CellH + 16f); halo = true; }
+                if (store && c.Id == _sel)
+                {
+                    // Mockup: cyan rim (slot_cell_selected, as a selected ib.square) on the socket, glow behind it.
+                    Put(_selHalo, cx - 8f, cy - 8f, CellW + 16f, CellH + 16f);
+                    Put(_selRim, cx, cy, CellW, CellH);
+                    PlateFit(_selRim, 1.6f);
+                    _selRim.transform.SetAsLastSibling();
+                    halo = true;
+                }
                 // Tame badge: bottom-left, 3 units in from the socket frame (approved mockup, art v1); gold = tameable, blue =
                 // summon; cells are reused.
                 var paw = Browser.TameableBadge.Value && list[n].Type == EntryType.Creature ? Browser.TameBadge(Browser.Tameable(c.Id, out _)) : null;
@@ -844,7 +852,7 @@ namespace Morgott.UI.ItemBrowser
             }
             else { Off(_track); Off(_thumb); Off(_grip); }
             // Undiscovered hidden (checkbox off): an empty list names the checkbox.
-            if (!halo) Off(_selHalo);
+            if (!halo) { Off(_selHalo); Off(_selRim); }
             if (list.Count == 0 && Browser.KnownFilter && !store)
             {
                 Put(_empty, 20f, top + 20f, UnitW - 40f, 80f);
