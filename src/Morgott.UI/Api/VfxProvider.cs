@@ -7,14 +7,14 @@ namespace Morgott.UI.Api
 {
     // Morgott.Core IVfx implementation (plan 5a): the small "morgott_vfx" bundle next to the DLL (unity BuildVfx), loaded on
     // the first call and kept loaded (handed-out shaders / template live as long as consumer copies may).
-    public sealed class VfxProvider : IVfx, IWebVfx
+    public sealed class VfxProvider : IVfx, IWebVfx, IOverlayVfx
     {
         public const string BundleFile = "morgott_vfx";
 
         private readonly string _path;
         private bool _loaded;
         private Shader _shell, _telegraph, _bossFx, _bar;
-        private Material _particle, _web;
+        private Material _particle, _web, _overlay;
 
         public VfxProvider(string pluginDir) => _path = Path.Combine(pluginDir, BundleFile);
 
@@ -26,6 +26,7 @@ namespace Morgott.UI.Api
         public Shader UiBar() => Load()._bar;
         public Material AdditiveParticle() => Load()._particle;
         public Material Web() => BindVanillaWeb(Load()._web);
+        public Material Overlay() => Load()._overlay;
 
         private static readonly int WebTexId = Shader.PropertyToID("_WebTex"), WrapTexId = Shader.PropertyToID("_WrapTex");
         private bool _vanillaBound;
@@ -83,7 +84,9 @@ namespace Morgott.UI.Api
             if (_particle && (!_particle.shader || !_particle.shader.isSupported)) _particle = null;
             _web = bundle.LoadAsset<Material>("Web");
             if (_web && (!_web.shader || !_web.shader.isSupported || !_web.mainTexture)) _web = null;
-            Plugin.Log.LogInfo($"[Morgott.UI] {BundleFile}: shell {(bool)_shell}, telegraph {(bool)_telegraph}, boss fx {(bool)_bossFx}, bar {(bool)_bar}, particle {(bool)_particle}, web {(bool)_web}");
+            _overlay = bundle.LoadAsset<Material>("Overlay");
+            if (_overlay && (!_overlay.shader || !_overlay.shader.isSupported)) _overlay = null;
+            Plugin.Log.LogInfo($"[Morgott.UI] {BundleFile}: shell {(bool)_shell}, telegraph {(bool)_telegraph}, boss fx {(bool)_bossFx}, bar {(bool)_bar}, particle {(bool)_particle}, web {(bool)_web}, overlay {(bool)_overlay}");
             return this;
         }
     }

@@ -1,6 +1,6 @@
 // Shared gameplay / UI VFX bundle "morgott_vfx" (plan 5a, Morgott.Core IVfx): art/vfx/*.shader (Morgott/Shell,
 // Morgott/Telegraph, Morgott/UI Boss FX, Morgott/UI Bar) + the AdditiveParticle template (white soft dot, Legacy
-// Particles/Additive) + the Web template (Morgott/Web + strand atlas from art/vfx/web) -> unity/Build/vfx/morgott_vfx (StandaloneWindows64, LZ4), then loaded back and verified (shader
+// Particles/Additive) + the Web template (Morgott/Web + strand atlas from art/vfx/web) + the Overlay template (Morgott/Overlay, white) -> unity/Build/vfx/morgott_vfx (StandaloneWindows64, LZ4), then loaded back and verified (shader
 // compiled, supported, pass count) into unity/Build/vfx/morgott_vfx.contents.txt. Explicit AssetBundleBuild: asset
 // bundle names stay untouched, so BuildBundles (the "runeskin" UI bundle) never picks these up.
 // Batchmode: Unity.exe -batchmode -quit -projectPath unity -executeMethod BuildVfx.Build -logFile -
@@ -17,7 +17,7 @@ public static class BuildVfx
     const string BundleName = "morgott_vfx";
     const string Dir = "Assets/Morgott/Vfx";
     const string OutDir = "Build/vfx";
-    static readonly string[] Shaders = { "Morgott/Shell", "Morgott/Telegraph", "Morgott/UI Boss FX", "Morgott/UI Bar", "Morgott/Web" };
+    static readonly string[] Shaders = { "Morgott/Shell", "Morgott/Telegraph", "Morgott/UI Boss FX", "Morgott/UI Bar", "Morgott/Web", "Morgott/Overlay" };
     // Web strand atlas tiles (Codex image gen, white silk on black) in Core WebBurn.Tile* order: lower-left, lower-right, upper-left, upper-right.
     static readonly string[] WebTiles = { "sheet", "orb", "carpet", "band" };
     const int BandGutter = 16;
@@ -42,6 +42,7 @@ public static class BuildVfx
             }
             assets.Add(Particle(Dot()));
             assets.Add(Web(WebAtlas()));
+            assets.Add(Overlay());
             Directory.CreateDirectory(OutDir);
             var build = new[] { new AssetBundleBuild { assetBundleName = BundleName, assetNames = assets.ToArray() } };
             var res = BuildPipeline.BuildAssetBundles(OutDir, build, BuildAssetBundleOptions.ChunkBasedCompression | BuildAssetBundleOptions.StrictMode,
@@ -140,6 +141,17 @@ public static class BuildVfx
         return path;
     }
 
+    static string Overlay()
+    {
+        var path = $"{Dir}/Overlay.mat";
+        var shader = AssetDatabase.LoadAssetAtPath<Shader>($"{Dir}/Overlay.shader") ?? throw new Exception("Overlay.shader missing");
+        AssetDatabase.DeleteAsset(path);
+        var m = new Material(shader) { name = "Overlay" }; // _MainTex unset = the shader's "white" default
+        AssetDatabase.CreateAsset(m, path);
+        AssetDatabase.SaveAssets();
+        return path;
+    }
+
     static void Verify(string file)
     {
         AssetBundle.UnloadAllAssetBundles(true);
@@ -161,6 +173,9 @@ public static class BuildVfx
             var wt = web.mainTexture as Texture2D ?? throw new Exception("Web has no atlas");
             if (web.shader?.name != "Morgott/Web") throw new Exception("Web material shader " + web.shader?.name);
             sb.Append($"Material {web.name}: shader {web.shader.name}, mainTexture {wt.name} {wt.width}x{wt.height} {wt.format} mips {wt.mipmapCount}\n");
+            var ov = all.OfType<Material>().FirstOrDefault(m => m.name == "Overlay") ?? throw new Exception("bundle lacks Overlay");
+            if (ov.shader?.name != "Morgott/Overlay") throw new Exception("Overlay material shader " + ov.shader?.name);
+            sb.Append($"Material {ov.name}: shader {ov.shader.name}, ZTest {ov.GetFloat("_ZTest")}\n");
             File.WriteAllText(file + ".contents.txt", sb.ToString());
             Debug.Log("morgott_vfx: " + sb);
         }
