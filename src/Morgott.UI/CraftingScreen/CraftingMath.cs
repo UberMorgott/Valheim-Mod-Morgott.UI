@@ -19,7 +19,9 @@ namespace Morgott.UI.CraftingScreen
         // 576 window; layout A docks crafting at the room right of the hotbar-locked centre column, 536 at 16:9).
         public float ListShare = 0.4f, ListMinW = 204f, RowH = 46f, ScrollbarW = 10f;
         public float TitleH = 32f, CraftTypeH = 24f, IconH = 112f, IconMinH = 56f, QualityH = 44f, DescriptionMinH = 48f;
-        public float ReqW = 68f, ReqH = 88f, ReqMinW = 52f, ReqMaxRows = 2f;
+        // ReqMinH: the lowest cell whose count band (AmountBand of the height) still holds one amount line (16 x LineEm):
+        // run 20261116-163644 shrank the cells to 82 and every "0/1" vanished.
+        public float ReqW = 68f, ReqH = 88f, ReqMinW = 52f, ReqMaxRows = 2f, ReqMinH = 84f;
         // StatRowH: one body line (16 x LineEm), mockup-v2 rows sit line on line.
         public float ButtonH = 64f, StatRowH = 21f, ChainMinH = 72f;
         public float WellPad = 10f;
@@ -293,7 +295,7 @@ namespace Morgott.UI.CraftingScreen
             // missing box leave (run 20261116-161831 at 1080p: two full rows of cells left the icon 0 units).
             var keep = (top - d.Y) + S(i.StatLines > 0 || i.ChainH > 0f ? t.IconMinH : t.IconH) + gap * 0.5f + S(t.DescriptionMinH) + gap + (i.Quality ? S(t.QualityH) + gap * 0.5f : 0f) +
                        (statsH > 0f ? statsH + gap * 0.5f : 0f) + (i.ChainH > 0f ? Math.Min(i.ChainH, S(t.ChainMinH)) + gap * 0.5f : 0f);
-            Requirements(o, i.Requirements, new Box(d.X, d.Y, d.W, d.H), S(t.ReqW), S(t.ReqH), S(t.ReqMinW), (int)Math.Max(1f, t.ReqMaxRows), gap * 0.75f, Math.Max(0f, d.H - keep));
+            Requirements(o, i.Requirements, new Box(d.X, d.Y, d.W, d.H), S(t.ReqW), S(t.ReqH), Math.Max(S(t.ReqMinW), S(t.ReqMinH) * t.ReqW / Math.Max(1f, t.ReqH)), (int)Math.Max(1f, t.ReqMaxRows), gap * 0.75f, Math.Max(0f, d.H - keep));
             if (o.RequirementRows > 0)
             {
                 var rh = o.Requirements.H;
@@ -492,6 +494,9 @@ namespace Morgott.UI.CraftingScreen
         // Line height of the body face in em (PT Sans: ascender + descender + gap ~1.3): a text box shorter than size x
         // LineEm holds no line.
         public const float LineEm = 1.3f;
+
+        // Share of a requirement cell's height its count band takes (CraftingSkin.StyleSocket res_amount 0.02-0.27).
+        public const float AmountBand = 0.25f;
 
         public static string CountLabel(int count, int cap) => "\u00D7" + Math.Max(0, count) + (count >= cap ? "+" : "");
 

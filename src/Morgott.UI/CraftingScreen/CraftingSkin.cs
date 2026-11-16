@@ -1626,8 +1626,10 @@ namespace Morgott.UI.CraftingScreen
                         if (c.TryGetComponent<Image>(out var i) && !i.preserveAspect) i.preserveAspect = true;
                         break;
                     case "res_amount":
-                        Anchors(rt, new Vector2(0.05f, 0.02f), new Vector2(0.95f, 0.27f), Vector2.zero, Vector2.zero);
-                        if (c.TryGetComponent<TMP_Text>(out var a)) Label(a, TextAlignmentOptions.Center, ThemeTokens.GetFloat("size.craft.font.amount", 16f) * k);
+                        Anchors(rt, new Vector2(0.05f, 0.02f), new Vector2(0.95f, 0.02f + CraftingMath.AmountBand), Vector2.zero, Vector2.zero);
+                        // One line that always draws (Label's Ellipsis drops a line taller than its band: "0/1" vanished
+                        // at 82-unit cells, run 20261116-163644).
+                        if (c.TryGetComponent<TMP_Text>(out var a)) StatText(a, TextAlignmentOptions.Center, ThemeTokens.GetFloat("size.craft.font.amount", 16f) * k);
                         break;
                 }
             }

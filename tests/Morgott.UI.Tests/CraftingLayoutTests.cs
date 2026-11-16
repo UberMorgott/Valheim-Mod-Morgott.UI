@@ -59,10 +59,11 @@ namespace Morgott.UI.Tests
             Assert.Equal(3, o.RequirementRows);
             Assert.Equal(68f, o.RequirementCells[0].W, 2);
             Assert.True(o.Icon.H >= 112f - 0.01f && o.Description.H >= 48f - 0.01f);
-            // ... a short window has no such room: the cells shrink to fit two rows (floor ReqMinW)
-            var shortWin = CraftingMath.Compute(Input(10, h: 640f), new CraftingTokens());
-            Assert.Equal(2, shortWin.RequirementRows);
-            Assert.True(shortWin.RequirementCells[0].W < 68f && shortWin.RequirementCells[0].W >= 52f);
+            // ... a short window has no such room: the cells shrink, never below the height whose count band holds the amount
+            // line (ReqMinH; 52-wide cells lost "0/1", run 20261116-164446), then the rows grow
+            var tok = new CraftingTokens();
+            var shortWin = CraftingMath.Compute(Input(10, h: 640f), tok);
+            Assert.True(shortWin.RequirementCells[0].W < 68f && shortWin.RequirementCells[0].H >= tok.ReqMinH - 0.01f, $"cell {shortWin.RequirementCells[0]}");
             // Past the floor the rows grow instead (every requirement stays visible, no paging).
             var many = CraftingMath.Compute(Input(14), new CraftingTokens());
             Assert.Equal(14, many.RequirementCells.Length);
@@ -381,6 +382,9 @@ namespace Morgott.UI.Tests
             Assert.True(o2.Icon.H >= 48f, o2.ToString());
             Assert.True(o2.Description.H >= t.DescriptionMinH - 0.01f, o2.ToString());
             Assert.Equal(7 * t.StatRowH, o2.Stats.H, 3);
+            // Every cell keeps a count band that holds one amount line (run 20261116-164446: "0/1" gone at 82-unit cells).
+            Assert.All(o2.RequirementCells, c => Assert.True(c.H * CraftingMath.AmountBand >= 16f * CraftingMath.LineEm - 0.01f, $"cell {c}"));
+            Assert.True(o2.RequirementCells.Length == 4);
             Assert.Equal(72f, o2.Chain.H, 3);
             Assert.True(o2.Icon.Bottom <= o2.Description.Y + 0.01f && o2.Description.Bottom <= o2.Stats.Y && o2.Stats.Bottom <= o2.Chain.Y &&
                         o2.Chain.Bottom <= o2.Requirements.Y && o2.Requirements.Bottom <= o2.Detail.Bottom + 0.01f, o2.ToString());
