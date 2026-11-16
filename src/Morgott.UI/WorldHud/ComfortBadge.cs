@@ -23,6 +23,14 @@ namespace Morgott.UI.WorldHud
         private static Sprite _sprite;
         private static bool _warned;
         private static Color _valueColor = Color.white;
+        private static Material _grey;
+
+        private static Material GreyMaterial()
+        {
+            if (_grey) return _grey;
+            var shader = Morgott.UI.Api.VfxProvider.Instance?.UiGrey();
+            return _grey = shader ? new Material(shader) { name = "ComfortBadgeGrey" } : null;
+        }
 
         public static void Apply(BuildUiPieceButton button)
         {
@@ -48,7 +56,11 @@ namespace Morgott.UI.WorldHud
             // Grey = this comfort is already counted at the player's spot (another piece of its group / name in range).
             var counted = ComfortBadgeMath.Counted((int)button.Piece.m_comfortGroup, button.Piece.m_name, comfort, Nearby);
             var grey = ThemeTokens.GetColor("color.state.disabled", Color.grey);
-            badge.GetComponentInChildren<Image>(true).color = counted ? grey : Color.white;
+            // The Rested icon is pure red: a multiply tint only darkens it, the grey shader drops its hue (tint = fallback).
+            var icon = badge.GetComponentInChildren<Image>(true);
+            var mat = GreyMaterial();
+            icon.material = counted ? mat : null;
+            icon.color = counted && !mat ? grey : Color.white;
             value.color = counted ? grey : _valueColor;
             badge.gameObject.SetActive(true);
         }
