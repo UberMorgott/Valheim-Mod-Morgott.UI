@@ -5,7 +5,7 @@ using Xunit;
 
 namespace Morgott.UI.Tests
 {
-    // STORAGE tab rules: take amount bounds, Russian plural forms, grid filter.
+    // STORAGE tab rules: take amount bounds, Russian plural forms, grid rows, selection by identity, take bar mode.
     public class StorageMathTests
     {
         [Theory]
@@ -80,29 +80,46 @@ namespace Morgott.UI.Tests
             Assert.Equal("87", StorageMath.Count(87));
         }
 
-        [Fact]
-        public void FilterKeepsStockedItemsOfTheCategory()
+        private sealed class Row
         {
-            var ix = new BrowserIndex();
-            ix.Add(new Entry { Id = "Wood", Name = "Wood", Type = EntryType.Item, Category = ItemCategory.Materials });
-            ix.Add(new Entry { Id = "Stone", Name = "Stone", Type = EntryType.Item, Category = ItemCategory.Materials });
-            ix.Add(new Entry { Id = "Raspberry", Name = "Raspberries", Type = EntryType.Item, Category = ItemCategory.Food });
-            ix.Add(new Entry { Id = "Flint", Name = "Flint", Type = EntryType.Item, Category = ItemCategory.Materials });
-            ix.Add(new Entry { Id = "forge", Name = "Forge", Type = EntryType.Station });
-            var stock = new Dictionary<string, int> { ["Wood"] = 1240, ["Raspberry"] = 38, ["Flint"] = 0, ["forge"] = 1 };
-            List<string> Ids(string q, int cat) => ix.Search(q, EntryType.Item, StorageMath.Filter(stock, cat), s => s, _ => null).Select(e => e.Id).OrderBy(s => s).ToList();
-            Assert.Equal(new[] { "Raspberry", "Wood" }, Ids("", -1)); // Stone not stored, Flint at 0, station not an item
-            Assert.Equal(new[] { "Wood" }, Ids("", (int)ItemCategory.Materials));
-            Assert.Equal(new[] { "Raspberry" }, Ids("rasp", -1));
+            public string Prefab, Name;
+            public int Quality;
+            public object Key;
         }
 
         [Fact]
-        public void SameComparesCounts()
+        public void RowsKeepShownPrefabsByNameThenQualityDesc()
         {
-            var a = new Dictionary<string, int> { ["Wood"] = 5 };
-            Assert.True(StorageMath.Same(a, new Dictionary<string, int> { ["Wood"] = 5 }));
-            Assert.False(StorageMath.Same(a, new Dictionary<string, int> { ["Wood"] = 4 }));
-            Assert.False(StorageMath.Same(a, new Dictionary<string, int>()));
+            var stock = new[]
+            {
+                new Row { Prefab = "SwordIron", Name = "Iron sword", Quality = 1, Key = "a" },
+                new Row { Prefab = "Wood", Name = "Wood", Quality = 1, Key = "w" },
+                new Row { Prefab = "SwordIron", Name = "Iron sword", Quality = 3, Key = "b" },
+                new Row { Prefab = "Stone", Name = "Stone", Quality = 1, Key = "s" },
+                new Row { Prefab = "SwordIron", Name = "Iron sword", Quality = 1, Key = "c" }, // same name + quality: provider order
+            };
+            var rows = StorageMath.Rows(stock, r => r.Prefab, new HashSet<string> { "SwordIron", "Wood" }, r => r.Name, r => r.Quality);
+            Assert.Equal(new object[] { "b", "a", "c", "w" }, rows.Select(r => r.Key).ToArray()); // Stone not shown
+        }
+
+        [Fact]
+        public void PickFindsTheSameIdentityInANewStock()
+        {
+            var fresh = new[] { new Row { Key = (1, "SwordIron", 2) }, new Row { Key = (2, "Wood", 1) } };
+            Assert.Same(fresh[0], StorageMath.Pick(fresh, (1, "SwordIron", 2), r => r.Key)); // equal key, new object
+            Assert.Null(StorageMath.Pick(fresh, (1, "SwordIron", 3), r => r.Key)); // gone
+            Assert.Null(StorageMath.Pick(fresh, null, r => r.Key)); // nothing selected
+        }
+
+        [Theory]
+        [InlineData(1, 1, true, false)] // one sword: only "Take", no count
+        [InlineData(1, 50, true, true)] // one wood: only "Take", stackable shows its count
+        [InlineData(2, 1, false, true)] // defensive: Core lists non-stackables one per entry
+        [InlineData(240, 50, false, true)]
+        public void TakeBarAndBadgeFollowCountAndStack(int count, int maxStack, bool single, bool badge)
+        {
+            Assert.Equal(single, StorageMath.Single(count));
+            Assert.Equal(badge, StorageMath.Badge(count, maxStack));
         }
     }
 }

@@ -1,10 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Morgott.UI.ItemBrowser
 {
     // Pure rules of the STORAGE tab (network chest browser, BrowserPanel storage mode): take amount bounds, Russian
-    // plural forms, the grid filter. No Unity, unit-tested.
+    // plural forms, grid rows / selection by item identity, take bar mode. No Unity, unit-tested.
     public static class StorageMath
     {
         /// <summary>Most units one take can move: what the network holds and what the inventory can still fit.</summary>
@@ -34,17 +35,20 @@ namespace Morgott.UI.ItemBrowser
         /// (1 = _1, anything else = _5; languages without own words fall back to the English ones).</summary>
         public static int Form(int n, string language) => language == "Russian" ? Plural(n) : Math.Abs(n) == 1 ? 1 : 5;
 
-        /// <summary>Grid filter: in stock, and in the category when one is picked (search is BrowserIndex.Search's).</summary>
-        public static Func<Entry, bool> Filter(IReadOnlyDictionary<string, int> stock, int cat) =>
-            e => stock.TryGetValue(e.Id, out var c) && c > 0 && (cat < 0 || (int)e.Category == cat);
+        /// <summary>Grid rows: stock entries whose prefab <paramref name="shown"/> holds (BrowserIndex.Search hits for the
+        /// query + category), by name, then quality high to low; equal ones keep the provider's order (stable sort).</summary>
+        public static List<T> Rows<T>(IEnumerable<T> stock, Func<T, string> prefab, ICollection<string> shown, Func<T, string> name, Func<T, int> quality) =>
+            stock.Where(e => shown.Contains(prefab(e))).OrderBy(name, StringComparer.OrdinalIgnoreCase).ThenByDescending(quality).ToList();
 
-        public static bool Same(IReadOnlyDictionary<string, int> a, IReadOnlyDictionary<string, int> b)
-        {
-            if (a.Count != b.Count) return false;
-            foreach (var kv in a)
-                if (!b.TryGetValue(kv.Key, out var v) || v != kv.Value) return false;
-            return true;
-        }
+        /// <summary>Entry of <paramref name="stock"/> with identity <paramref name="key"/> (Equals), null when gone.</summary>
+        public static T Pick<T>(IEnumerable<T> stock, object key, Func<T, object> keyOf) where T : class =>
+            key == null ? null : stock.FirstOrDefault(e => Equals(keyOf(e), key));
+
+        /// <summary>A single item (Count 1): the take bar shows only "Take", no stack / amount / all.</summary>
+        public static bool Single(int count) => count <= 1;
+
+        /// <summary>Cell count badge: several items, or a stackable (as the inventory shows n/max on stackables).</summary>
+        public static bool Badge(int count, int maxStack) => count > 1 || maxStack > 1;
 
         /// <summary>Count with a space between thousands ("1 240", mockup network-storage-v2).</summary>
         public static string Count(int n) => n.ToString("#,0", Groups);

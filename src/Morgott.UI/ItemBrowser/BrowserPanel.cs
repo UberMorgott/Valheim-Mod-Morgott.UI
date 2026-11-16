@@ -91,6 +91,7 @@ namespace Morgott.UI.ItemBrowser
             public TMP_Text A, B, D;
             public string Id;
             public int Quality = 1;
+            public StorageEntry Store; // storage mode grid cell: the item it shows (icon, tooltip, selection)
         }
 
         private sealed class Pool<T> where T : class
@@ -587,12 +588,12 @@ namespace Morgott.UI.ItemBrowser
             Hook(s, e =>
             {
                 if (s.Id == null) return;
-                if (_storage) { if (e.button == PointerEventData.InputButton.Left) Select(s.Id); return; }
+                if (_storage) { if (e.button == PointerEventData.InputButton.Left) Select(s.Store); return; }
                 if (e.button == PointerEventData.InputButton.Right) TakeUI(s.Id, s.Quality, 0);
                 else if (e.button == PointerEventData.InputButton.Middle) { Browser.ToggleFavorite(s.Id); _resultsGen = -1; _dirty = true; }
                 else OpenPage(s.Id);
             });
-            Tip(s.Back.gameObject, () => s.Id, () => s.Quality);
+            Tip(s.Back.gameObject, () => s.Id, () => s.Quality, () => s.Store?.Item);
             return s;
         }
 
@@ -606,7 +607,9 @@ namespace Morgott.UI.ItemBrowser
         private static void Hook(Slot s, Action<PointerEventData> click) => s.Back.gameObject.AddComponent<Hit>().Click = click;
 
         // Vanilla tooltip (UITooltip + the player grid's tooltip prefab), text filled on enter from the vanilla path.
-        private void Tip(GameObject go, Func<string> id, Func<int> quality)
+        // A real item (storage cell) gets the inventory's own tooltip, InventoryGrid.CreateItemTooltip (InventoryGrid.cs:411):
+        // its quality, crafter, custom data (Epic Loot magic) show.
+        private void Tip(GameObject go, Func<string> id, Func<int> quality, Func<ItemDrop.ItemData> item = null)
         {
             var hit = go.GetComponent<Hit>() ?? go.AddComponent<Hit>();
             hit.Id = id;
@@ -615,6 +618,7 @@ namespace Morgott.UI.ItemBrowser
             tip.m_tooltipPrefab = _tooltipPrefab;
             hit.Enter = () =>
             {
+                if (item?.Invoke() is ItemDrop.ItemData real) { tip.Set(real.m_shared.m_name, real.GetTooltip()); return; }
                 var e = id() is string s && Browser.Index != null && Browser.Index.Entries.TryGetValue(s, out var x) ? x : null;
                 if (e == null) { tip.Set("", ""); return; }
                 Browser.Tooltip(e, quality(), out var topic, out var text);
@@ -657,9 +661,10 @@ namespace Morgott.UI.ItemBrowser
             if (Mathf.Abs(t.fontSize - fs) > 0.05f) t.fontSize = fs;
         }
 
-        private static void SetIcon(Image image, string id)
+        private static void SetIcon(Image image, string id) => SetSprite(image, id != null ? Browser.Icon(id, out _) : null);
+
+        private static void SetSprite(Image image, Sprite s)
         {
-            var s = id != null ? Browser.Icon(id, out _) : null;
             if (image.sprite != s) image.sprite = s;
             if (image.enabled != (bool)s) image.enabled = s;
         }
@@ -707,9 +712,9 @@ namespace Morgott.UI.ItemBrowser
             var cat = _type == 1 || _storage ? _cat : -1;
             if (_resultsGen == Browser.Generation && _resultsQuery == _query && _resultsType == _type && _resultsCat == cat && _resultsKnownOnly == known && _resultsDev == dev) return _results;
             var fav = _type == 5 ? Browser.Favorites() : null;
-            // Storage: items in network stock only (StoreTick / mode switch reset _resultsGen when it changes).
+            // Storage: one cell per network stock entry (StoreTick / mode switch reset _resultsGen).
             _results = _storage
-                ? Browser.Index.Search(_query, EntryType.Item, StorageMath.Filter(_stock, cat), L, Browser.ModName, dev)
+                ? StoreResults(cat, dev)
                 : Browser.Index.Search(_query, TypeOf[_type],
                     e => (cat < 0 || (int)e.Category == cat) && (!known || Browser.Known(e)) && (fav == null || fav.Contains(e.Id)), L, Browser.ModName, dev);
             _resultsDev = dev;
@@ -789,7 +794,7 @@ namespace Morgott.UI.ItemBrowser
             Fit(_caption, $"{what} · {list.Count}", 20f);
 
             var top = capY + 37f;
-            var bottom = store ? StoreBar(list, h) : h;
+            var bottom = store ? StoreBar(h) : h;
             var rows = Math.Max(1, (int)((bottom - top + 4f) / CellPitchY));
             var per = rows * 6;
             var total = (list.Count + 5) / 6;
@@ -802,23 +807,26 @@ namespace Morgott.UI.ItemBrowser
             {
                 var c = _cells[i];
                 var n = _gridScroll * 6 + i;
-                if (i >= per || n >= list.Count) { c.Id = null; Off(c.Back); Off(c.A); continue; }
+                if (i >= per || n >= list.Count) { c.Id = null; c.Store = null; Off(c.Back); Off(c.A); continue; }
                 c.Id = list[n].Id;
+                var row = c.Store = store ? _rows[n] : null;
                 float cx = i % 6 * CellPitchX, cy = top + i / 6 * CellPitchY;
                 Put(c.Back, cx, cy, CellW, CellH);
                 Put(c.Icon, cx + 8f, cy + 5f, CellW - 16f, CellH - 10f);
-                SetIcon(c.Icon, c.Id);
+                if (row != null) SetSprite(c.Icon, row.Item.GetIcon());
+                else SetIcon(c.Icon, c.Id);
+                // Top-right: favorite star; storage = the item's quality as the inventory draws it (InventoryGrid.cs:365).
                 Put(c.D, cx + CellW - 22f, cy + 2f, 18f, 18f);
-                Text(c.D, "★", 16f);
-                c.D.enabled = !store && fav.Contains(c.Id);
+                Text(c.D, row != null ? row.Item.m_quality.ToString() : "★", 16f);
+                c.D.enabled = row != null ? row.Item.m_shared.m_maxQuality > 1 : !store && fav.Contains(c.Id);
                 // Storage: network count bottom-right (mockup), the selected cell glows.
-                if (store && _stock.TryGetValue(c.Id, out var count))
+                if (row != null && StorageMath.Badge(row.Count, row.Item.m_shared.m_maxStackSize))
                 {
                     Put(c.B, cx + 4f, cy + CellH - 28f, CellW - 9f, 26f);
-                    Text(c.B, StorageMath.Count(count), 19f);
+                    Text(c.B, StorageMath.Count(row.Count), 19f);
                 }
                 else Off(c.B);
-                if (store && c.Id == _sel)
+                if (row != null && row == _sel)
                 {
                     // Mockup: cyan rim (slot_cell_selected, as a selected ib.square) on the socket, glow behind it.
                     Put(_selHalo, cx - 8f, cy - 8f, CellW + 16f, CellH + 16f);
