@@ -221,6 +221,10 @@ namespace Morgott.UI.CraftingScreen
             t.raycastTarget = false;
             t.color = ThemeTokens.GetColor("color.text.body", Color.white);
             t.text = value;
+            // Own text, laid out by this screen: unmarked, the network row label (inside its Button) was classified as a
+            // plate label and PlateLabelFit's 4 px pads left a 20 px line box under the 16 px font's line height, so TMP's
+            // Ellipsis overflow emptied it (run 20261116-104928-2, nothing drawn).
+            SkinMark.Own(t.gameObject, "content", "crafting screen text (own layout)");
             return t;
         }
 
