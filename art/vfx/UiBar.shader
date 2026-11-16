@@ -21,6 +21,7 @@ Shader "Morgott/UI Bar"
         _HexMinPx ("Segment: min hex cell px", Float) = 4
         _HexLine ("Segment: hex outline strength", Float) = 0.8
         _Round ("Segment: rounded ends", Float) = 0
+        _Gloss ("Segment: top highlight band", Float) = 1
         _Fill ("Fill share", Range(0,1)) = 1
         _Lag ("Lag share", Range(0,1)) = 1
         _Shield ("Shield share", Range(0,1)) = 0
@@ -113,7 +114,7 @@ Shader "Morgott/UI Bar"
             fixed4 _Color;
             float4 _ClipRect;
             float _Mode, _Fill, _Lag, _Shield, _Aspect, _HiPos, _HiWidth, _HiAmount, _Bottom, _Depth, _Rim, _GlowWidth;
-            float _HexCells, _HexMinPx, _HexLine, _Round;
+            float _HexCells, _HexMinPx, _HexLine, _Round, _Gloss;
             fixed4 _FillColor, _LagColor, _MissingColor, _SheenColor, _GlowColor, _ClotColor;
             float _RuneSkinFxClock;   // global shader clock, written once per frame by BarFxConfig.TickClock
             float _Pool, _FxOn, _FxIntensity, _FxSpeed, _FxClock, _HitAt, _HitSize, _HealAt, _PulseAt, _Regen, _Exhaust;
@@ -506,7 +507,7 @@ Shader "Morgott/UI Bar"
                 float shade = lerp(0.5, 1.0, smoothstep(0.0, 0.62, v)) * lerp(1.0, 0.85, smoothstep(0.93, 1.0, v));
                 float hi = exp(-pow((v - 0.8) / 0.07, 2.0));
                 float3 body = tint.rgb * shade;
-                body = lerp(body, lerp(tint.rgb, float3(1, 1, 1), 0.7), hi * 0.75);
+                body = lerp(body, lerp(tint.rgb, float3(1, 1, 1), 0.7), hi * 0.75 * _Gloss);   // _Gloss 0: the dark track (a lit band read as a grey line)
                 float3 lineC = saturate(tint.rgb * 1.5 + 0.06) * shade;
                 body = lerp(body, lineC, outline * _HexLine * (0.75 + 0.25 * breathe));
                 float a = tint.a;

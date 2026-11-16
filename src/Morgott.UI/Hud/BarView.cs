@@ -661,7 +661,7 @@ namespace Morgott.UI.PlayerHud
             if (!shader) return null;
             var m = SegMats[kind] = FxMaterial(shader, "Morgott shield segment " + kind, 2f);
             m.SetFloat("_Round", kind > 0 ? 1f : 0f);
-            if (kind == 2) m.SetFloat("_HexLine", 0f);
+            if (kind == 2) { m.SetFloat("_HexLine", 0f); m.SetFloat("_Gloss", 0f); }
             return m;
         }
 
