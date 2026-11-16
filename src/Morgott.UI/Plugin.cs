@@ -18,12 +18,12 @@ namespace Morgott.UI
     // Morgott.UI (was RuneSkin): clean-room UI skin that restyles live vanilla uGUI from theme tokens (no prefab swaps, no
     // transpilers). Awake: config -> theme + asset bundle -> ownership frozen -> ITheme registered -> Harmony patches of owned families.
     [BepInPlugin(Contracts.UiGuid, "Morgott.UI", Version)]
-    [BepInDependency(Contracts.CoreGuid, "0.14.0")] // IPortalIcons + PortalStyle (0.14.0), IChainCraft (0.5.1: IItemBrowser), ICreatureInfo.IsNemesis (0.7.0), IWebVfx (0.9.0), IPortalPicker (0.11.0), IPetCollar (0.12.0)
+    [BepInDependency(Contracts.CoreGuid, "0.15.0")] // IOverlayVfx (0.15.0), IPortalIcons + PortalStyle (0.14.0), IChainCraft (0.5.1: IItemBrowser), ICreatureInfo.IsNemesis (0.7.0), IWebVfx (0.9.0), IPortalPicker (0.11.0), IPetCollar (0.12.0)
     [BepInDependency(Jotunn.Main.ModGuid)]
     [BepInProcess("valheim.exe")]
     public sealed class Plugin : BaseUnityPlugin
     {
-        public const string Version = "0.33.17";
+        public const string Version = "0.34.0";
 
         public static ManualLogSource Log { get; private set; }
         // Our Jotunn localization (Translations\*.json): Compat\ModText re-adds words a mod overwrites in English.
@@ -139,6 +139,7 @@ namespace Morgott.UI
             {
                 Services.Register<IVfx>(VfxProvider.Instance = new VfxProvider(System.IO.Path.GetDirectoryName(Info.Location)));
                 Services.Register<IWebVfx>(VfxProvider.Instance);
+                Services.Register<IOverlayVfx>(VfxProvider.Instance);
             }
             if (!CoreApi.Headless) Services.Register<IItemBrowser>(ItemBrowser.BrowserService.Instance); // inactive (false) until the ITEMS tab exists
             // Icons and compat text do not depend on the theme either (MorgottTweaks moved them here, TASKS 4.5).
@@ -285,6 +286,7 @@ namespace Morgott.UI
             {
                 Services.Unregister<IVfx>(VfxProvider.Instance);
                 Services.Unregister<IWebVfx>(VfxProvider.Instance);
+                Services.Unregister<IOverlayVfx>(VfxProvider.Instance);
             }
             Services.Unregister<IItemBrowser>(ItemBrowser.BrowserService.Instance);
             if (MapScreen.PortalPickerService.Registered) Services.Unregister<IPortalPicker>(MapScreen.PortalPickerService.Instance);
