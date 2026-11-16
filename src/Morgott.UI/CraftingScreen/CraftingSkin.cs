@@ -1373,12 +1373,9 @@ namespace Morgott.UI.CraftingScreen
                 var bg = icon.parent ? icon.parent.Find("magicItemIconBG") as RectTransform : null;
                 if (bg) Geo.Place(_canvas, bg, o.Icon);
             }
-            var description = o.Description;
-            var chain = Chain(o);
-            if (!chain.IsEmpty && o.Chain.IsEmpty) // not reserved yet (first frame): the description ends above it
-                description = new Box(description.X, description.Y, description.W, Mathf.Max(0f, Mathf.Min(description.Bottom, chain.Y - _t.Gap * k * 0.5f) - description.Y));
+            Chain(o);
             StatTable(o.Stats);
-            DescriptionView(description, k);
+            DescriptionView(o.Description, k);
         }
 
         // ---------------------------------------------------------------- description scroll
@@ -1465,13 +1462,21 @@ namespace Morgott.UI.CraftingScreen
             var unit = Geo.WorldPerUnit(_canvas) / Mathf.Max(_chain.lossyScale.y, 1e-6f);
             // Reserved: exactly the layout's box (RecipeChainsUi sizes it to the description's last line, which now ends
             // above the stat table: it collapsed). Else (first frame) capped at its own height as before.
-            var h = !o.Chain.IsEmpty ? o.Chain.H
-                : CraftingMath.ChainHeight(box.H, box.Bottom, (o.Icon.IsEmpty ? o.Description.Y : o.Icon.Bottom) + ThemeTokens.GetFloat("size.craft.description.min", 48f) * k,
-                    ThemeTokens.GetFloat("size.craft.chain.max", 150f) * k, ThemeTokens.GetFloat("size.craft.chain.min", 72f) * k);
-            if (Mathf.Abs(box.H - h) > 0.5f && (!o.Chain.IsEmpty || box.H > h))
+            if (!o.Chain.IsEmpty)
             {
-                _chain.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, h * unit);
-                box = Geo.BoxOf(_canvas, _chain);
+                // Reserved: exactly the layout's box, every frame (RecipeChainsUi re-docks and re-sizes it in UpdateRecipe).
+                Geo.Place(_canvas, _chain, o.Chain);
+                box = o.Chain;
+            }
+            else
+            {
+                var h = CraftingMath.ChainHeight(box.H, box.Bottom, (o.Icon.IsEmpty ? o.Description.Y : o.Icon.Bottom) + ThemeTokens.GetFloat("size.craft.description.min", 48f) * k,
+                    ThemeTokens.GetFloat("size.craft.chain.max", 150f) * k, ThemeTokens.GetFloat("size.craft.chain.min", 72f) * k);
+                if (box.H > h + 0.5f)
+                {
+                    _chain.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, h * unit);
+                    box = Geo.BoxOf(_canvas, _chain);
+                }
             }
             // The tree text is the scroll content: its full height (RecipeChainsUi cut it to the box it gave).
             if (_chain.Find("Text") is RectTransform text && text.TryGetComponent<TMP_Text>(out var tree))
@@ -1489,9 +1494,10 @@ namespace Morgott.UI.CraftingScreen
         {
             if (!_chain) _chain = _crafting.Find(Morgott.Core.Contracts.ChainTree) as RectTransform;
             if (!_chain || !_chain.gameObject.activeInHierarchy || !(_chain.Find("Text") is RectTransform text) || !text.TryGetComponent<TMP_Text>(out var tree)) return 0f;
-            var unit = Geo.WorldPerUnit(_canvas) / Mathf.Max(_chain.lossyScale.y, 1e-6f);
-            var chrome = Mathf.Max(0f, _chain.rect.height - text.rect.height);
-            var need = Mathf.Round((chrome + tree.preferredHeight) / Mathf.Max(unit, 1e-6f));
+            // Canvas units from the text's own scale (no feedback through the box sizes RecipeChainsUi and we both write);
+            // chrome = RecipeChainsUi's pads above / below the text (size.craft.chain.pad, its Pad 10 x 2).
+            var perUnit = Mathf.Max(Geo.WorldPerUnit(_canvas), 1e-6f);
+            var need = Mathf.Round(tree.preferredHeight * text.lossyScale.y / perUnit + ThemeTokens.GetFloat("size.craft.chain.pad", 20f) * _chain.lossyScale.y / perUnit);
             return Mathf.Min(need, ThemeTokens.GetFloat("size.craft.chain.max", 150f) * _in.Scale);
         }
 

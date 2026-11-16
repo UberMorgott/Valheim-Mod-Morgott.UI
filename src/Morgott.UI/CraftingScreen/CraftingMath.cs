@@ -20,7 +20,7 @@ namespace Morgott.UI.CraftingScreen
         public float ListShare = 0.4f, ListMinW = 204f, RowH = 46f, ScrollbarW = 10f;
         public float TitleH = 32f, CraftTypeH = 24f, IconH = 112f, QualityH = 44f, DescriptionMinH = 48f;
         public float ReqW = 68f, ReqH = 88f, ReqMinW = 52f, ReqMaxRows = 2f;
-        public float ButtonH = 64f, StatRowH = 19f;
+        public float ButtonH = 64f, StatRowH = 19f, ChainMinH = 72f;
         public float WellPad = 10f;
     }
 
@@ -71,7 +71,7 @@ namespace Morgott.UI.CraftingScreen
 
         public override string ToString() =>
             $"header {Header} tabs {TabRow}({Tabs.Visible}/{Tabs.Cells.Length}{(Tabs.Scroll ? " scroll" : "")}) cats {CategoryRow}({Categories.Visible}/{Categories.Cells.Length}) subs {SubCategoryRow}({SubCategories.Visible}/{SubCategories.Cells.Length}) " +
-            $"list {List} detail {Detail} req {Requirements} {RequirementColumns}x{RequirementRows} buttons {ButtonRow}";
+            $"list {List} detail {Detail} icon {Icon} desc {Description} stats {Stats} chain {Chain} req {Requirements} {RequirementColumns}x{RequirementRows} buttons {ButtonRow}";
     }
 
     // Craft row parts (canvas boxes): idle = Minus | Field | Plus | Button, progress = Bar | Cancel.
@@ -289,7 +289,7 @@ namespace Morgott.UI.CraftingScreen
             // Height the grid may take while the title / type, the full icon, the description minimum and the quality row keep theirs.
             var statsH = i.StatLines > 0 ? S(t.StatRowH) * i.StatLines : 0f;
             var keep = (top - d.Y) + S(t.IconH) + gap * 0.5f + S(t.DescriptionMinH) + gap + (i.Quality ? S(t.QualityH) + gap * 0.5f : 0f) +
-                       (statsH > 0f ? statsH + gap * 0.5f : 0f) + (i.ChainH > 0f ? i.ChainH + gap * 0.5f : 0f);
+                       (statsH > 0f ? statsH + gap * 0.5f : 0f) + (i.ChainH > 0f ? Math.Min(i.ChainH, S(t.ChainMinH)) + gap * 0.5f : 0f);
             Requirements(o, i.Requirements, new Box(d.X, d.Y, d.W, d.H), S(t.ReqW), S(t.ReqH), S(t.ReqMinW), (int)Math.Max(1f, t.ReqMaxRows), gap * 0.75f, Math.Max(0f, d.H - keep));
             if (o.RequirementRows > 0)
             {
@@ -309,7 +309,11 @@ namespace Morgott.UI.CraftingScreen
             }
             if (i.ChainH > 0f)
             {
-                o.Chain = new Box(d.X, bottom - i.ChainH, d.W, i.ChainH);
+                // The missing box takes what the title, the description minimum and the stat table leave (the icon may go):
+                // at least its header + a line + the hint (ChainMinH), its tree scrolls inside.
+                var free = bottom - top - S(t.DescriptionMinH) - gap - (statsH > 0f ? statsH + gap * 0.5f : 0f) - gap * 0.5f;
+                var ch = Math.Min(i.ChainH, Math.Max(Math.Min(i.ChainH, S(t.ChainMinH)), free));
+                o.Chain = new Box(d.X, bottom - ch, d.W, ch);
                 bottom = o.Chain.Y - gap * 0.5f;
             }
             if (statsH > 0f)

@@ -357,6 +357,30 @@ namespace Morgott.UI.Tests
                         o.Chain.Bottom <= o.Requirements.Y && o.Requirements.Bottom <= o.Detail.Bottom + 0.01f,
                 $"icon {o.Icon} desc {o.Description} stats {o.Stats} chain {o.Chain} req {o.Requirements} detail {o.Detail}");
         }
+        // Run 20261116-155947: a 7-line tree (need 150) on a ~575-unit detail well covered the stat table and the description.
+        // The box takes only what the description minimum and the full table leave, never less than header + line + hint.
+        [Fact]
+        public void TallChainTreeNeverCoversTableOrDescription()
+        {
+            var t = new CraftingTokens();
+            var o = CraftingMath.Compute(new CraftingInput
+            {
+                Panel = new Box(0f, 0f, 628f, 930f),
+                WindowHeaderH = 40f,
+                Tabs = 3,
+                Network = true,
+                Categories = 4,
+                Search = true,
+                Controls = true,
+                Requirements = 4,
+                StatLines = 8,
+                ChainH = 150f
+            }, t);
+            Assert.Equal(8 * t.StatRowH, o.Stats.H, 3);
+            Assert.True(o.Chain.H >= t.ChainMinH && o.Chain.H <= 150f, $"chain {o.Chain}");
+            Assert.True(o.Description.H >= t.DescriptionMinH - 0.01f, $"desc {o.Description} icon {o.Icon} detail {o.Detail}");
+            Assert.True(o.Description.Bottom <= o.Stats.Y && o.Stats.Bottom <= o.Chain.Y && o.Chain.Bottom <= o.Requirements.Y, o.ToString());
+        }
         // Controls on: search at list width, the controls row across both columns, list and detail start under it.
         [Fact]
         public void ControlsRowSpansBothColumns()
