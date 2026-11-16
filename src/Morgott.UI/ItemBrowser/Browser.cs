@@ -22,7 +22,7 @@ namespace Morgott.UI.ItemBrowser
         public static double BuildMs { get; private set; }
         public static IReadOnlyDictionary<string, string> ProviderErrors => ItemSources.Errors;
 
-        private static int _fingerprint;
+        private static Parts _fingerprint;
         private static Dictionary<string, string> _mods = new Dictionary<string, string>();
 
         public static void Bind(ConfigFile cfg)
@@ -58,7 +58,11 @@ namespace Morgott.UI.ItemBrowser
         {
             if (!ObjectDB.instance || !ZNetScene.instance) return Generation;
             var fp = Fingerprint();
-            if (Index != null && fp == _fingerprint) return Generation;
+            if (Index != null && fp.Equals(_fingerprint)) return Generation;
+            var perRecipe = new Dictionary<string, int>(StringComparer.Ordinal);
+            fp = Fingerprint(perRecipe); // rebuilds only: names the mutated recipes in the log
+            var why = Index == null ? "first" : FingerprintDiff(_fingerprint, fp, _recipeHashes, perRecipe);
+            _recipeHashes = perRecipe;
             var sw = Stopwatch.StartNew();
             var mods = new Dictionary<string, string>(StringComparer.Ordinal);
             try
@@ -77,28 +81,59 @@ namespace Morgott.UI.ItemBrowser
             Generation++;
             _tips.Clear();
             BuildMs = sw.Elapsed.TotalMilliseconds;
-            Plugin.Log.LogInfo($"[Morgott.UI] item browser index #{Generation}: {ix.Entries.Count} entries, {ix.Relations.Count} relations, {BuildMs:F1} ms" +
+            Plugin.Log.LogInfo($"[Morgott.UI] item browser index #{Generation}: {ix.Entries.Count} entries, {ix.Relations.Count} relations, {BuildMs:F1} ms ({why})" +
                 (ItemSources.Errors.Count > 0 ? $", provider errors: {string.Join("; ", ItemSources.Errors)}" : ""));
             return Generation;
         }
 
         // World session + prefab / item counts + recipe content (in-place edits keep counts) + provider revision.
-        private static int Fingerprint()
+        // Kept per part so a rebuild log names what changed (world / prefabs / items / sources / recipes).
+        internal readonly struct Parts : IEquatable<Parts>
         {
-            var h = BrowserIndex.Mix(BrowserIndex.Seed, ZNet.instance ? ZNet.instance.GetWorldUID().GetHashCode() : 0);
-            h = BrowserIndex.Mix(h, ZNetScene.instance.m_namedPrefabs.Count);
-            h = BrowserIndex.Mix(h, ObjectDB.instance.m_items.Count);
-            h = BrowserIndex.Mix(h, ItemSources.Revision);
+            public readonly int World, Prefabs, Items, Sources, Recipes;
+            public Parts(int world, int prefabs, int items, int sources, int recipes) { World = world; Prefabs = prefabs; Items = items; Sources = sources; Recipes = recipes; }
+            public bool Equals(Parts o) => World == o.World && Prefabs == o.Prefabs && Items == o.Items && Sources == o.Sources && Recipes == o.Recipes;
+        }
+
+        internal static string FingerprintDiff(Parts a, Parts b, IReadOnlyDictionary<string, int> recipesA = null, IReadOnlyDictionary<string, int> recipesB = null)
+        {
+            var d = new List<string>();
+            if (a.World != b.World) d.Add("world");
+            if (a.Prefabs != b.Prefabs) d.Add($"prefabs {a.Prefabs}->{b.Prefabs}");
+            if (a.Items != b.Items) d.Add($"items {a.Items}->{b.Items}");
+            if (a.Sources != b.Sources) d.Add($"source revision {a.Sources}->{b.Sources}");
+            if (a.Recipes != b.Recipes)
+                d.Add(recipesA != null && recipesB != null ? $"recipe content: {BrowserIndex.ChangedKeys(recipesA, recipesB, 8)}" : "recipe content");
+            return "changed: " + string.Join(", ", d);
+        }
+
+        private static Dictionary<string, int> _recipeHashes = new Dictionary<string, int>(StringComparer.Ordinal);
+
+        private static Parts Fingerprint(Dictionary<string, int> perRecipe = null)
+        {
+            var h = BrowserIndex.Seed;
             foreach (var r in ObjectDB.instance.m_recipes)
             {
-                if (!r) continue;
-                h = BrowserIndex.Mix(BrowserIndex.Mix(h, r.name), (r.m_enabled ? 1 : 0) | (r.m_requireOnlyOneIngredient ? 2 : 0) | (r.m_noCraftOnlyUpgrade ? 4 : 0));
-                h = BrowserIndex.Mix(BrowserIndex.Mix(h, r.m_item ? r.m_item.name : null), r.m_amount * 31 + r.m_minStationLevel);
-                h = BrowserIndex.Mix(BrowserIndex.Mix(h, r.m_craftingStation ? r.m_craftingStation.name : null), r.m_repairStation ? r.m_repairStation.name : null);
-                if (r.m_resources == null) continue;
-                foreach (var q in r.m_resources)
-                    if (q?.m_resItem) h = BrowserIndex.Mix(BrowserIndex.Mix(BrowserIndex.Mix(h, q.m_resItem.name), q.m_amount), q.m_amountPerLevel);
+                // VanillaScan.Recipe reads only enabled recipes with a result: other recipes never reach the index.
+                if (!r || !r.m_enabled || !r.m_item) continue;
+                var rh = RecipeHash(r);
+                h = BrowserIndex.Mix(h, rh);
+                if (perRecipe != null) perRecipe[r.name] = perRecipe.TryGetValue(r.name, out var dup) ? BrowserIndex.Mix(dup, rh) : rh;
             }
+            return new Parts(ZNet.instance ? ZNet.instance.GetWorldUID().GetHashCode() : 0, ZNetScene.instance.m_namedPrefabs.Count,
+                ObjectDB.instance.m_items.Count, ItemSources.Revision, h);
+        }
+
+        // The recipe fields VanillaScan.Recipe reads: result + max quality, flags, amount, station (repair only without a
+        // crafting one, Recipe.GetRequiredStation), level, requirements with what Piece.Requirement.GetAmount reads.
+        private static int RecipeHash(Recipe r)
+        {
+            var h = BrowserIndex.Mix(BrowserIndex.Mix(BrowserIndex.Seed, r.name), (r.m_requireOnlyOneIngredient ? 2 : 0) | (r.m_noCraftOnlyUpgrade ? 4 : 0));
+            h = BrowserIndex.Mix(BrowserIndex.Mix(BrowserIndex.Mix(h, r.m_item.name), r.m_item.m_itemData.m_shared.m_maxQuality), r.m_amount * 31 + r.m_minStationLevel);
+            h = BrowserIndex.Mix(h, r.m_craftingStation ? r.m_craftingStation.name : r.m_repairStation ? "~" + r.m_repairStation.name : null);
+            if (r.m_resources != null)
+                foreach (var q in r.m_resources)
+                    if (q?.m_resItem) h = BrowserIndex.Mix(BrowserIndex.Mix(BrowserIndex.Mix(BrowserIndex.Mix(h, q.m_resItem.name), q.m_amount), q.m_amountPerLevel), q.m_upgraderResource ? 1 : 0);
             return h;
         }
 
