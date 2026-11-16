@@ -388,6 +388,7 @@ namespace Morgott.UI.GameScreens
                 {
                     Font(l, size, TextAnchor.MiddleLeft);
                     lt.horizontalOverflow = HorizontalWrapMode.Overflow;
+                    lt.verticalOverflow = VerticalWrapMode.Overflow;
                     ((RectTransform)l).sizeDelta = new Vector2(Mathf.Ceil(lt.preferredWidth) + 2f, 22f);
                 }
         }
@@ -412,6 +413,8 @@ namespace Morgott.UI.GameScreens
                 if (!(e.Find("Amount") is RectTransform a) || !a.TryGetComponent<Text>(out var amount)) continue;
                 Font(a, size, TextAnchor.MiddleLeft);
                 amount.horizontalOverflow = HorizontalWrapMode.Overflow;
+                // Epic Loot's Truncate drops the whole line once 20 px glyphs outgrow the 24 px strip (run 20261116-151458).
+                amount.verticalOverflow = VerticalWrapMode.Overflow;
                 if (e.Find("Icon") is RectTransform ic) Anchored(ic, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), Vector2.zero, new Vector2(20f, 20f));
                 a.anchorMin = Vector2.zero;
                 a.anchorMax = Vector2.one;
