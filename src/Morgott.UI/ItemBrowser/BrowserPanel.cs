@@ -18,7 +18,7 @@ namespace Morgott.UI.ItemBrowser
     // of m_tabUpgrade in the tab row as VNEI does (MainVneiHandler.GetTabButton); up = RecipeList + Decription off, this
     // panel over the crafting body (CraftingSkin.Apply). Laid out in mockup units: the panel is 550 units wide (mockup px
     // x 0.905), every box below is scaled by the body width.
-    public sealed class BrowserPanel : MonoBehaviour
+    public sealed partial class BrowserPanel : MonoBehaviour
     {
         public const string TabName = "MorgottItemsTab";
         private const float UnitW = 550f;
@@ -88,7 +88,7 @@ namespace Morgott.UI.ItemBrowser
         {
             public RectTransform Rt;
             public Image Back, Icon, Badge;
-            public TMP_Text A, D;
+            public TMP_Text A, B, D;
             public string Id;
             public int Quality = 1;
         }
@@ -146,17 +146,9 @@ namespace Morgott.UI.ItemBrowser
             _gui = gui;
             var canvas = gui.GetComponentInParent<Canvas>();
             _canvas = canvas ? (RectTransform)canvas.rootCanvas.transform : null;
-            var src = gui.m_tabUpgrade;
-            _tab = Instantiate(src, src.transform.parent);
-            _tab.name = TabName;
-            _tab.onClick = new Button.ButtonClickedEvent(); // drops the persistent OnTabUpgradePressed too
-            _tab.onClick.AddListener(Open);
-            foreach (var l in _tab.GetComponentsInChildren<Localize>(true)) Destroy(l);
-            var label = _tab.GetComponentInChildren<TMP_Text>(true);
-            if (label) label.text = Browser.Localize("$ib_tab");
-            _tab.transform.SetSiblingIndex(src.transform.GetSiblingIndex() + 1);
-            _tab.gameObject.SetActive(true);
-            _tab.interactable = true;
+            _tab = NewTab(gui.m_tabUpgrade, TabName, "$ib_tab", Open);
+            _storeTab = NewTab(_tab, StoreTabName, "$ib_store_tab", () => Open(true));
+            _storeTab.gameObject.SetActive(false); // StoreTick shows it while the station is in a network
             var tip = gui.m_playerGrid && gui.m_playerGrid.m_elementPrefab ? gui.m_playerGrid.m_elementPrefab.GetComponentInChildren<UITooltip>(true) : null;
             _tooltipPrefab = tip ? tip.m_tooltipPrefab : null;
             _root = (RectTransform)new GameObject("MorgottItemBrowser", typeof(RectTransform)).transform;
@@ -166,14 +158,42 @@ namespace Morgott.UI.ItemBrowser
             Api.ScreenRegistry.Restyle(gui.m_crafting); // the new tab takes the crafting tab look
         }
 
+        private static Button NewTab(Button src, string name, string token, UnityEngine.Events.UnityAction click)
+        {
+            var tab = Instantiate(src, src.transform.parent);
+            tab.name = name;
+            tab.onClick = new Button.ButtonClickedEvent(); // drops the persistent OnTabUpgradePressed too
+            tab.onClick.AddListener(click);
+            foreach (var l in tab.GetComponentsInChildren<Localize>(true)) Destroy(l);
+            var label = tab.GetComponentInChildren<TMP_Text>(true);
+            if (label) label.text = Browser.Localize(token);
+            tab.transform.SetSiblingIndex(src.transform.GetSiblingIndex() + 1);
+            tab.gameObject.SetActive(true);
+            tab.interactable = true;
+            return tab;
+        }
+
         private void OnDestroy()
         {
             Block(false);
             if (Instance == this) Instance = null;
         }
 
-        public void Open()
+        public void Open() => Open(false);
+
+        private void Open(bool storage)
         {
+            if (_storage != storage)
+            {
+                // Each mode starts on its own list: no page, all categories, top row.
+                _storage = storage;
+                _pageId = null;
+                _history.Clear();
+                _cat = -1;
+                _gridScroll = 0;
+                _resultsGen = -1;
+            }
+            if (storage) _stockNext = 0f; // fresh stock on open
             if (!_up)
             {
                 // The vanilla tab selection (selected = not interactable) comes back on Close (Codex review: a workbench
@@ -200,6 +220,7 @@ namespace Morgott.UI.ItemBrowser
             UITooltip.HideTooltip();
             Browser.DropQueue();
             if (_tab) _tab.interactable = true;
+            if (_storeTab) _storeTab.interactable = true;
             _gui.m_tabCraft.interactable = _craftWas;
             _gui.m_tabUpgrade.interactable = _upgradeWas;
             SetBody(true);
@@ -210,7 +231,9 @@ namespace Morgott.UI.ItemBrowser
         internal void Enforce()
         {
             if (!_up) return;
-            if (_tab.interactable) _tab.interactable = false;
+            Button mine = _storage ? _storeTab : _tab, other = _storage ? _tab : _storeTab;
+            if (mine.interactable) mine.interactable = false;
+            if (!other.interactable) other.interactable = true;
             if (_gui.m_tabCraft.gameObject.activeSelf && !_gui.m_tabCraft.interactable) _gui.m_tabCraft.interactable = true;
             if (_gui.m_tabUpgrade.gameObject.activeSelf && !_gui.m_tabUpgrade.interactable) _gui.m_tabUpgrade.interactable = true;
             SetBody(false);
@@ -242,6 +265,7 @@ namespace Morgott.UI.ItemBrowser
             }
             if (InventoryGui.IsVisible()) HoverKeys();
             FoundInScan.UnloadWhenSafe(_up);
+            if (InventoryGui.IsVisible()) StoreTick();
             if (!_up) return;
             if (!InventoryGui.IsVisible())
             {
@@ -401,7 +425,13 @@ namespace Morgott.UI.ItemBrowser
             for (var i = 0; i < _types.Length; i++)
             {
                 var n = i;
-                _types[i] = Btn(g, "Type" + i, "ib.square", out _typeLabels[i], () => { _type = n; _gridScroll = 0; _dirty = true; });
+                _types[i] = Btn(g, "Type" + i, "ib.square", out _typeLabels[i], () =>
+                {
+                    if (_storage) _cat = -1; // storage mode shows only "All" (Type0) in front of the categories
+                    else _type = n;
+                    _gridScroll = 0;
+                    _dirty = true;
+                });
             }
             _typeStar = Img(_types[5].transform, "Star", "ib.star.type");
             for (var i = 0; i < _cats.Length; i++)
@@ -438,6 +468,7 @@ namespace Morgott.UI.ItemBrowser
             _grip.raycastTarget = true;
             DollCell.Mark(_grip, "content", "item browser scrollbar hit area");
             _grip.gameObject.AddComponent<Grip>().Move = GripMove;
+            BuildStore(g);
 
             _pageView = Child("Page").gameObject;
             var p = _pageView.transform;
@@ -499,7 +530,7 @@ namespace Morgott.UI.ItemBrowser
         }
 
         // Button with a plate role and a label (arrows: glyph only).
-        private static Button Btn(Transform parent, string name, string role, out TMP_Text label, Action click)
+        private static Button Btn(Transform parent, string name, string role, out TMP_Text label, Action click, string labelRole = "text.body")
         {
             var image = InfoArt.OwnImage(parent, name, role, "item browser button " + name);
             image.preserveAspect = role.StartsWith("craft.arrow", StringComparison.Ordinal);
@@ -510,7 +541,7 @@ namespace Morgott.UI.ItemBrowser
             b.onClick.AddListener(() => click());
             // Styled after the Button exists: the role's sprite states go on its targetGraphic (CraftingSkin.StepButton).
             if (image.GetComponent<SkinMark>() is SkinMark m) m.Outcome = Restyler.Apply(image, m, ThemeTokens.Role(role)) ? Outcome.Styled : Outcome.Degraded;
-            label = role.StartsWith("craft.arrow", StringComparison.Ordinal) ? null : Txt(image.transform, "Label", "text.body", TextAlignmentOptions.Center);
+            label = role.StartsWith("craft.arrow", StringComparison.Ordinal) ? null : Txt(image.transform, "Label", labelRole, TextAlignmentOptions.Center);
             return b;
         }
 
@@ -556,6 +587,7 @@ namespace Morgott.UI.ItemBrowser
             Hook(s, e =>
             {
                 if (s.Id == null) return;
+                if (_storage) { if (e.button == PointerEventData.InputButton.Left) Select(s.Id); return; }
                 if (e.button == PointerEventData.InputButton.Right) TakeUI(s.Id, s.Quality, 0);
                 else if (e.button == PointerEventData.InputButton.Middle) { Browser.ToggleFavorite(s.Id); _resultsGen = -1; _dirty = true; }
                 else OpenPage(s.Id);
@@ -672,11 +704,14 @@ namespace Morgott.UI.ItemBrowser
         {
             var known = Browser.KnownFilter;
             var dev = Browser.Devcommands;
-            var cat = _type == 1 ? _cat : -1;
+            var cat = _type == 1 || _storage ? _cat : -1;
             if (_resultsGen == Browser.Generation && _resultsQuery == _query && _resultsType == _type && _resultsCat == cat && _resultsKnownOnly == known && _resultsDev == dev) return _results;
             var fav = _type == 5 ? Browser.Favorites() : null;
-            _results = Browser.Index.Search(_query, TypeOf[_type],
-                e => (cat < 0 || (int)e.Category == cat) && (!known || Browser.Known(e)) && (fav == null || fav.Contains(e.Id)), L, Browser.ModName, dev);
+            // Storage: items in network stock only (StoreTick / mode switch reset _resultsGen when it changes).
+            _results = _storage
+                ? Browser.Index.Search(_query, EntryType.Item, StorageMath.Filter(_stock, cat), L, Browser.ModName, dev)
+                : Browser.Index.Search(_query, TypeOf[_type],
+                    e => (cat < 0 || (int)e.Category == cat) && (!known || Browser.Known(e)) && (fav == null || fav.Contains(e.Id)), L, Browser.ModName, dev);
             _resultsDev = dev;
             _resultsGen = Browser.Generation;
             _resultsQuery = _query;
@@ -692,19 +727,34 @@ namespace Morgott.UI.ItemBrowser
             Put(_gridView.transform, 0f, 0f, UnitW, _a.H / _k);
             if (Browser.Index == null) return;
             var h = _a.H / _k;
-            Put(_searchBack, 0f, 0f, UnitW, 36f);
-            Put(_searchGlyph, 10f, 7f, 22f, 22f);
-            Put(_search.textViewport, 40f, 2f, 500f, 32f);
-            foreach (var t in _search.textViewport.GetComponentsInChildren<TMP_Text>(true)) { Put(t, 40f, 2f, 500f, 32f); Text(t, t.text, 20f); }
+            var store = _storage;
+            // Storage (mockup network-storage-v2): network line on top, everything below moves down by it.
+            var y0 = store ? 38f : 0f;
+            if (store) NetLine();
+            else StoreOff();
+            Put(_searchBack, 0f, y0, UnitW, 36f);
+            Put(_searchGlyph, 10f, y0 + 7f, 22f, 22f);
+            Put(_search.textViewport, 40f, y0 + 2f, 500f, 32f);
+            foreach (var t in _search.textViewport.GetComponentsInChildren<TMP_Text>(true)) { Put(t, 40f, y0 + 2f, 500f, 32f); Text(t, t.text, 20f); }
             if (_query.Length == 0 && !_search.isFocused)
             {
-                Put(_hint, 40f, 2f, 500f, 32f);
+                Put(_hint, 40f, y0 + 2f, 500f, 32f);
                 Text(_hint, L("$ib_search"), 20f);
             }
             else Off(_hint);
             var x = 0f;
+            var catY = store ? y0 + 47f : CatY;
             for (var i = 0; i < _types.Length; i++)
             {
+                if (store)
+                {
+                    // Storage: only "All", as the first square of the category row.
+                    if (i > 0) { Off(_types[i]); if (_halos.TryGetValue(_types[i], out var ht)) Off(ht); continue; }
+                    Square(_types[0], _cat < 0, 0f, catY, StoreAllW, CatH);
+                    Put(_typeLabels[0], 3f, catY, StoreAllW - 6f, CatH);
+                    Fit(_typeLabels[0], L(TypeTokens[0]), 19f);
+                    continue;
+                }
                 Square(_types[i], i == _type, x, TypeY, TypeW[i], TypeH);
                 if (i == 5) Put(_typeStar, x + 7f, TypeY + 6f, TypeW[i] - 14f, TypeH - 12f);
                 else
@@ -714,32 +764,40 @@ namespace Morgott.UI.ItemBrowser
                 }
                 x += TypeW[i] + 14f;
             }
-            var items = _type == 1;
+            var items = store || _type == 1;
+            var cx0 = store ? StoreAllW + 8f : 0f;
             for (var i = 0; i < _cats.Length; i++)
             {
                 if (!items) { Off(_cats[i]); if (_halos.TryGetValue(_cats[i], out var hc)) Off(hc); continue; }
-                var cx = i * (UnitW - CatH) / (_cats.Length - 1);
-                Square(_cats[i], i == _cat, cx, CatY, CatH, CatH);
-                Put(i == 0 ? _catGlyphs[i].transform.parent : _catGlyphs[i].transform, cx + 7f, CatY + 7f, CatH - 14f, CatH - 14f);
+                var cx = cx0 + i * (UnitW - cx0 - CatH) / (_cats.Length - 1);
+                Square(_cats[i], i == _cat, cx, catY, CatH, CatH);
+                Put(i == 0 ? _catGlyphs[i].transform.parent : _catGlyphs[i].transform, cx + 7f, catY + 7f, CatH - 14f, CatH - 14f);
             }
             var list = Results();
-            var capY = items ? 149f : CatY;
+            var capY = items ? catY + 52f : CatY;
             Put(_caption, 0f, capY, UnitW - 304f, 26f);
-            Put(_unknownLabel, UnitW - 300f, capY, 266f, 26f);
-            Fit(_unknownLabel, L("$ib_show_unknown"), 18f);
-            Put(_unknownBox, UnitW - 26f, capY, 26f, 26f);
-            if (Browser.ShowUnknown.Value) Put(_unknownCheck, UnitW - 22f, capY + 4f, 18f, 18f);
-            else Off(_unknownCheck);
-            Fit(_caption, $"{(items && _cat >= 0 ? CatName((ItemCategory)_cat) : _type == 5 ? L("$ib_type_favorites") : L(TypeTokens[_type]))} · {list.Count}", 20f);
+            if (store) { Off(_unknownLabel); Off(_unknownBox); Off(_unknownCheck); }
+            else
+            {
+                Put(_unknownLabel, UnitW - 300f, capY, 266f, 26f);
+                Fit(_unknownLabel, L("$ib_show_unknown"), 18f);
+                Put(_unknownBox, UnitW - 26f, capY, 26f, 26f);
+                if (Browser.ShowUnknown.Value) Put(_unknownCheck, UnitW - 22f, capY + 4f, 18f, 18f);
+                else Off(_unknownCheck);
+            }
+            var what = items && _cat >= 0 ? CatName((ItemCategory)_cat) : store ? L(TypeTokens[0]) : _type == 5 ? L("$ib_type_favorites") : L(TypeTokens[_type]);
+            Fit(_caption, $"{what} · {list.Count}", 20f);
 
             var top = capY + 37f;
-            var rows = Math.Max(1, (int)((h - top + 4f) / CellPitchY));
+            var bottom = store ? StoreBar(list, h) : h;
+            var rows = Math.Max(1, (int)((bottom - top + 4f) / CellPitchY));
             var per = rows * 6;
             var total = (list.Count + 5) / 6;
             _gridScrollMax = Math.Max(0, total - rows);
             _gridScroll = Mathf.Clamp(_gridScroll, 0, _gridScrollMax);
             while (_cells.Count < per) _cells.Add(GridCell(_cells.Count));
             var fav = Browser.Favorites();
+            var halo = false;
             for (var i = 0; i < _cells.Count; i++)
             {
                 var c = _cells[i];
@@ -752,7 +810,15 @@ namespace Morgott.UI.ItemBrowser
                 SetIcon(c.Icon, c.Id);
                 Put(c.D, cx + CellW - 22f, cy + 2f, 18f, 18f);
                 Text(c.D, "★", 16f);
-                c.D.enabled = fav.Contains(c.Id);
+                c.D.enabled = !store && fav.Contains(c.Id);
+                // Storage: network count bottom-right (mockup), the selected cell glows.
+                if (store && _stock.TryGetValue(c.Id, out var count))
+                {
+                    Put(c.B, cx + 4f, cy + CellH - 28f, CellW - 9f, 26f);
+                    Text(c.B, StorageMath.Count(count), 19f);
+                }
+                else Off(c.B);
+                if (store && c.Id == _sel) { Put(_selHalo, cx - 8f, cy - 8f, CellW + 16f, CellH + 16f); halo = true; }
                 // Tame badge: bottom-left, 3 units in from the socket frame (approved mockup, art v1); gold = tameable, blue =
                 // summon; cells are reused.
                 var paw = Browser.TameableBadge.Value && list[n].Type == EntryType.Creature ? Browser.TameBadge(Browser.Tameable(c.Id, out _)) : null;
@@ -778,7 +844,8 @@ namespace Morgott.UI.ItemBrowser
             }
             else { Off(_track); Off(_thumb); Off(_grip); }
             // Undiscovered hidden (checkbox off): an empty list names the checkbox.
-            if (list.Count == 0 && Browser.KnownFilter)
+            if (!halo) Off(_selHalo);
+            if (list.Count == 0 && Browser.KnownFilter && !store)
             {
                 Put(_empty, 20f, top + 20f, UnitW - 40f, 80f);
                 Fit(_empty, L("$ib_empty_known"), 18f);
@@ -803,6 +870,8 @@ namespace Morgott.UI.ItemBrowser
             s.D = Txt(s.Rt, "FavStar", "text.ember", TextAlignmentOptions.Center);
             s.D.raycastTarget = false;
             s.Badge = Img(s.Rt, "TameBadge", "content");
+            s.B = Txt(s.Rt, "Count", "text.body", TextAlignmentOptions.BottomRight, FontStyles.Bold);
+            s.B.raycastTarget = false;
             // Name under the socket, a sibling of it: as a child CellFit.KeepTexts pulls it into the cell (467b038).
             s.A = Txt(_gridView.transform, "CellName" + i, "text.body", TextAlignmentOptions.Top);
             s.A.textWrappingMode = TextWrappingModes.Normal;
