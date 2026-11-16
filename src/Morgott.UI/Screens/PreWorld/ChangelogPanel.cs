@@ -33,6 +33,10 @@ namespace Morgott.UI.PreWorld
 
         // Layout (window units, from the window's top-left).
         private const float W = 1050f, H = 676f;
+        // The drawn frame (RuneSkin panel stack) reaches past the window by these (run 20261116-125447: stack 1170 x 776
+        // around a 1050 x 676 window, 20 more on top): the window is the frame minus them, the layout below is in frame
+        // units (mockup frame = 1047 x 675 at 1920; run 20261116-133823 drew the frame 120 x 100 too big, Codex 7/10).
+        private const float PadX = 60f, PadT = 60f, PadB = 40f;
         private const float SideX = 36f, SideW = 260f, ListX = 342f, ListY = 124f, ListW = 641f, ListBottom = 616f;
         private const float DateH = 48f, ModH = 38f, LineH = 37f, TagH = 24f, TagGap = 12f, ModRowH = 23f, ModListY = 530f;
         private static readonly string[] TypeColors = { "#9FD66B", "#E0413A", "#4FE0E6", "#E8B64A", "#8AB4F0", "#8E7BB8" };
@@ -45,7 +49,7 @@ namespace Morgott.UI.PreWorld
         private Canvas _canvas;
         private bool _addedCanvas, _addedRaycaster, _gameTab, _laidOut, _dirty = true;
         private (bool over, int layer, int order) _canvasOrig;
-        private GameObject _scrim;
+        private GameObject _scrim, _blur;
 
         // data
         private List<ChangelogEntry> _all = new List<ChangelogEntry>();
@@ -63,12 +67,14 @@ namespace Morgott.UI.PreWorld
         private TMP_Text _title, _tabPackLabel, _tabGameLabel, _empty, _footer;
         private readonly List<TMP_Text> _serif = new List<TMP_Text>();
         private Image _underline, _thumb, _track;
+        private Image[][] _tabRims;
         private TMP_InputField _from, _to;
         private readonly Button[] _presets = new Button[3];
         private readonly Image[][] _presetRims = new Image[3][];
         private readonly TMP_Text[] _presetLabels = new TMP_Text[3];
         private readonly Button[] _chips = new Button[6];
         private readonly Image[][] _chipRims = new Image[6][];
+        private readonly Image[] _chipFills = new Image[6];
         private readonly TMP_Text[] _chipLabels = new TMP_Text[6], _chipCounts = new TMP_Text[6], _chipDots = new TMP_Text[6];
         private readonly Pool _dates = new Pool(), _modHeads = new Pool(), _lines = new Pool();
         private readonly List<ModRow> _modRows = new List<ModRow>();
@@ -169,21 +175,21 @@ namespace Morgott.UI.PreWorld
             _vanillaSize = _window.sizeDelta;
             _window.anchorMin = _window.anchorMax = _window.pivot = new Vector2(0.5f, 0.5f);
             _window.anchoredPosition = Vector2.zero;
-            _window.sizeDelta = new Vector2(ThemeTokens.GetFloat("size.changelog.w", W), ThemeTokens.GetFloat("size.changelog.h", H));
+            _window.sizeDelta = new Vector2(ThemeTokens.GetFloat("size.changelog.w", W) - 2f * PadX, ThemeTokens.GetFloat("size.changelog.h", H) - PadT - PadB);
             _topic = _window.Find("Topic") as RectTransform;
             _scrollPanel = _window.Find("ScrollPanel") as RectTransform;
             _scrollbar = _window.TryGetComponent<ChangeLog>(out var log) && log.m_scrollbar ? (RectTransform)log.m_scrollbar.transform : _window.Find("PatchlogScroll") as RectTransform;
             foreach (var rt in new[] { _topic, _scrollPanel, _scrollbar })
                 if (rt) _vanilla.Add((rt, rt.anchorMin, rt.anchorMax, rt.offsetMin, rt.offsetMax, rt.gameObject.activeSelf));
             // Valheim tab: the vanilla text fills the content area under the tabs, its scrollbar at the right edge.
-            if (_scrollPanel) Stretch(_scrollPanel, 40f, ListY + 6f, 64f, 40f);
+            if (_scrollPanel) Stretch(_scrollPanel, SideX - PadX, ListY + 6f - PadT, 64f - PadX, 40f - PadB);
             if (_scrollbar)
             {
                 _scrollbar.anchorMin = new Vector2(1f, 0f);
                 _scrollbar.anchorMax = Vector2.one;
                 _scrollbar.pivot = new Vector2(1f, 0.5f);
-                _scrollbar.offsetMin = new Vector2(-36f - ThemeTokens.GetFloat("size.scrollbar.w", 16f), 40f);
-                _scrollbar.offsetMax = new Vector2(-36f, -(ListY + 6f));
+                _scrollbar.offsetMin = new Vector2(-36f + PadX - ThemeTokens.GetFloat("size.scrollbar.w", 16f), 40f - PadB);
+                _scrollbar.offsetMax = new Vector2(-36f + PadX, -(ListY + 6f - PadT));
             }
 
             // Backdrop: first child, reaching far past the window over the whole screen, drawn under the window.
@@ -200,11 +206,35 @@ namespace Morgott.UI.PreWorld
                 if (_fejd && _fejd.m_changeLog && _fejd.m_changeLog.activeInHierarchy) _fejd.OnButtonShowChangelog();
             };
             _scrim = scrim.gameObject;
+            // Mockup: the menu behind is blurred. The vanilla GUI blur material (grab pass; InventoryGui "blur" images,
+            // InfoPage) under the dim when the game has it loaded at the menu; else the dim alone.
+            Material blurMat = null;
+            foreach (var m in Resources.FindObjectsOfTypeAll<Material>())
+                if (m && m.shader && m.name.IndexOf("blur", StringComparison.OrdinalIgnoreCase) >= 0 && m.shader.name.IndexOf("blur", StringComparison.OrdinalIgnoreCase) >= 0) { blurMat = m; break; } // a UI blur, not a post effect by name only
+            if (blurMat)
+            {
+                var blur = new GameObject("MorgottChangelogBlur", typeof(RectTransform)).AddComponent<Image>();
+                blur.rectTransform.SetParent(_window, false);
+                blur.rectTransform.SetAsFirstSibling();
+                Stretch(blur.rectTransform, -6000f, -6000f, -6000f, -6000f);
+                blur.material = blurMat;
+                blur.raycastTarget = false;
+                DollCell.Mark(blur, "content", "changelog backdrop blur");
+                _blur = blur.gameObject;
+            }
+            Plugin.Log.LogInfo($"[Morgott.UI] changelog backdrop blur: {(blurMat ? blurMat.name + " / " + blurMat.shader.name : "none loaded at the menu")}");
 
             _root = NewRect(RootName, _window);
-            Stretch(_root, 0f, 0f, 0f, 0f);
-            // Below the close button (ChangelogClose adds it as the last sibling).
-            if (_window.Find(ChangelogClose.ButtonName) is Transform close) _root.SetSiblingIndex(close.GetSiblingIndex());
+            Stretch(_root, -PadX, -PadT, -PadX, -PadB); // root = the drawn frame (layout units)
+            // Below the close button (ChangelogClose adds it as the last sibling); the button at the mockup spot (frame
+            // x 923..967, y 18..53), in the frame band beside the title.
+            if (_window.Find(ChangelogClose.ButtonName) is RectTransform close)
+            {
+                _root.SetSiblingIndex(close.GetSiblingIndex());
+                close.anchorMin = close.anchorMax = close.pivot = Vector2.one;
+                close.anchoredPosition = new Vector2(-(W - 967f - PadX), PadT - 16f);
+                close.sizeDelta = new Vector2(38f, 38f);
+            }
 
             _title = Txt(_root, "Title", "window.title", TextAlignmentOptions.Center, 31f);
             _title.characterSpacing = 14f;
@@ -217,6 +247,7 @@ namespace Morgott.UI.PreWorld
             _tabPackLabel.text = L("$ui_changelog_tab_pack");
             _tabGameLabel.text = "Valheim";
             foreach (var t in new[] { _tabPackLabel, _tabGameLabel }) { t.fontSize = ThemeTokens.GetFloat("size.startgame.tab.font", 21f) + 1f; _serif.Add(t); }
+            _tabRims = new[] { Rim(_tabPack.transform), Rim(_tabGame.transform) };
             Put(_tabPack, 52f, 62f, 232f, 42f);
             Put(_tabGame, 300f, 62f, 222f, 42f);
             _underline = Rule(_root, "TabUnderline", Hex("#4FE0E6"));
@@ -283,12 +314,13 @@ namespace Morgott.UI.PreWorld
                 _chipRims[i] = Rim(_chips[i].transform);
                 _chipLabels[i].alignment = TextAlignmentOptions.Left;
                 _chipLabels[i].text = L("$ui_changelog_type_" + ChangelogModel.Types[i]);
-                _chipLabels[i].fontSize = 16f;
+                _chipLabels[i].fontSize = 17f;
+                _chipFills[i] = Fill(_chips[i].transform);
                 Stretch(_chipLabels[i].rectTransform, 30f, 0f, 50f, 0f);
                 _chipDots[i] = Txt(_chips[i].transform, "Dot", "text.body", TextAlignmentOptions.Center, 16f);
                 _chipDots[i].text = "●";
                 Put(_chipDots[i], 6f, 0f, 20f, 25f);
-                _chipCounts[i] = Txt(_chips[i].transform, "Count", "text.body", TextAlignmentOptions.Right, 16f);
+                _chipCounts[i] = Txt(_chips[i].transform, "Count", "text.body", TextAlignmentOptions.Right, 17f);
                 Put(_chipCounts[i], SideW - 70f, 0f, 60f, 25f);
                 Put(_chips[i], SideX, 288f + i * 29.4f, SideW, 25f);
             }
@@ -485,6 +517,7 @@ namespace Morgott.UI.PreWorld
                 var on = _filter.Types[i];
                 var c = TypeColor(i);
                 SetRim(_chipRims[i], on ? c : new Color(Muted.r, Muted.g, Muted.b, 0.5f));
+                _chipFills[i].color = on ? new Color(c.r, c.g, c.b, 0.22f) : Color.clear; // style sheet: active chip ~25% accent
                 _chipDots[i].color = on ? c : Muted;
                 _chipLabels[i].color = on ? Body : Muted;
                 _chipCounts[i].text = _view.TypeCounts[i].ToString();
@@ -544,6 +577,9 @@ namespace Morgott.UI.PreWorld
             var gold = ThemeTokens.GetColor("color.text.active", Hex("#E8B64A"));
             _tabPackLabel.color = _gameTab ? Body : gold;
             _tabGameLabel.color = _gameTab ? gold : Body;
+            // Selected tab: gold rim (mockup tabs-c glass + rune).
+            SetRim(_tabRims[0], _gameTab ? Color.clear : gold);
+            SetRim(_tabRims[1], _gameTab ? gold : Color.clear);
             return changed;
         }
 
@@ -593,7 +629,7 @@ namespace Morgott.UI.PreWorld
             Put(box, 0f, 2f, 18f, 18f);
             r.Check = Img(box.transform, "Check", "toggle.check");
             Stretch(r.Check.rectTransform, 2f, 2f, 2f, 2f);
-            r.Label = Txt(hit.transform, "Label", "text.body", TextAlignmentOptions.Left, 16f);
+            r.Label = Txt(hit.transform, "Label", "text.body", TextAlignmentOptions.Left, 17f);
             Put(r.Label, 30f, 0f, SideW - 50f, ModRowH);
             return r;
         }
@@ -667,6 +703,8 @@ namespace Morgott.UI.PreWorld
                         var r = Next(_lines, NewLineRow);
                         var c = TypeColor(e.Type);
                         SetRim(r.Rim, c);
+                        r.Rule.color = new Color(c.r, c.g, c.b, 0.18f); // style sheet: accent text on accent @ 0.18
+                        r.B.color = c;
                         r.B.text = L("$ui_changelog_type_" + ChangelogModel.Types[e.Type]);
                         var tagW = r.B.GetPreferredValues(r.B.text).x + 22f;
                         r.A.text = e.Text(russian);
@@ -721,9 +759,10 @@ namespace Morgott.UI.PreWorld
             var r = new Row { Rt = NewRect("Line" + n, _list) };
             r.Tag = Img(r.Rt, "Tag", "field");
             r.Rim = Rim(r.Tag.transform);
+            r.Rule = Fill(r.Tag.transform); // tag fill (Rule slot unused on line rows)
             r.B = Txt(r.Rt, "B", "text.body", TextAlignmentOptions.Center, 16f);
             r.B.color = Body;
-            r.A = Txt(r.Rt, "A", "text.body", TextAlignmentOptions.TopLeft, 17f);
+            r.A = Txt(r.Rt, "A", "text.body", TextAlignmentOptions.TopLeft, 18f);
             r.A.textWrappingMode = TextWrappingModes.Normal;
             r.A.color = Body;
             r.A.richText = false; // entry text is data, never markup
@@ -753,6 +792,19 @@ namespace Morgott.UI.PreWorld
             return rim;
         }
 
+        // Translucent accent fill inside a plate (chips, tags): plain quad, no role (a role restyle keeps its colour off).
+        private static Image Fill(Transform host)
+        {
+            var img = new GameObject("Fill", typeof(RectTransform)).AddComponent<Image>();
+            img.rectTransform.SetParent(host, false);
+            img.rectTransform.SetSiblingIndex(0);
+            Stretch(img.rectTransform, 2f, 2f, 2f, 2f);
+            img.color = Color.clear;
+            img.raycastTarget = false;
+            DollCell.Mark(img, "content", "changelog chip / tag fill");
+            return img;
+        }
+
         private static void SetRim(Image[] rim, Color c)
         {
             foreach (var l in rim) if (l.color != c) l.color = c;
@@ -772,14 +824,14 @@ namespace Morgott.UI.PreWorld
             const float PrefixW = 26f; // "с" / "по" / "from": measured width was 0 at menu build (run 20261116-122424)
             var back = Img(parent, name, "field", true);
             Put(back, SideX, y, SideW, 30f);
-            var prefix = Txt(back.transform, "Prefix", "text.body", TextAlignmentOptions.Left, 16f);
+            var prefix = Txt(back.transform, "Prefix", "text.body", TextAlignmentOptions.Left, 17f);
             prefix.text = L(prefixToken);
             prefix.overflowMode = TextOverflowModes.Overflow;
             Put(prefix, 12f, 0f, PrefixW, 30f);
             var area = new GameObject("Text Area", typeof(RectTransform), typeof(RectMask2D)).GetComponent<RectTransform>();
             area.SetParent(back.rectTransform, false);
             Stretch(area, 12f + PrefixW + 6f, 0f, 10f, 0f);
-            var text = Txt(area, "Text", "text.body", TextAlignmentOptions.Left, 16f);
+            var text = Txt(area, "Text", "text.body", TextAlignmentOptions.Left, 17f);
             Stretch(text.rectTransform, 0f, 0f, 0f, 0f);
             var f = back.gameObject.AddComponent<TMP_InputField>();
             f.textViewport = area;
@@ -911,6 +963,7 @@ namespace Morgott.UI.PreWorld
             if (_addedCanvas && _canvas) Destroy(_canvas);
             else if (_canvas) (_canvas.overrideSorting, _canvas.sortingLayerID, _canvas.sortingOrder) = _canvasOrig;
             if (_scrim) Destroy(_scrim);
+            if (_blur) Destroy(_blur);
             if (_root) Destroy(_root.gameObject);
             Destroy(this);
         }
