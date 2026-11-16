@@ -1,0 +1,1 @@
+Codex image gen (lead, 2026-11-16, craft food filter mockup-v2): three white icon masks on pure black, 1536x512, one per 512 cell: funnel (filter toggle) | lightning bolt (stamina on recipe rows) | down arrow over a bar (sort direction).

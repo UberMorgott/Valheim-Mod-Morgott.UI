@@ -5266,6 +5266,75 @@
       "notes": "M4 wind rune-arrow (points up = wind toward north); rotate; tint rune_glow"
     },
     {
+      "name": "glyph_filter",
+      "file": "glyph_filter.png",
+      "size": [
+        48,
+        48
+      ],
+      "border": {
+        "left": 0,
+        "bottom": 0,
+        "right": 0,
+        "top": 0
+      },
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "imageType": "Simple",
+      "fillCenter": true,
+      "token": "glyph.filter",
+      "notes": "crafting Create tab: funnel = 'new only' filter toggle; tint text_body (on: rune_glow)",
+      "atlas": "hires"
+    },
+    {
+      "name": "glyph_stamina_bolt",
+      "file": "glyph_stamina_bolt.png",
+      "size": [
+        48,
+        48
+      ],
+      "border": {
+        "left": 0,
+        "bottom": 0,
+        "right": 0,
+        "top": 0
+      },
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "imageType": "Simple",
+      "fillCenter": true,
+      "token": "glyph.stamina.bolt",
+      "notes": "crafting recipe row stamina stat; tint stamina yellow",
+      "atlas": "hires"
+    },
+    {
+      "name": "glyph_sort_desc",
+      "file": "glyph_sort_desc.png",
+      "size": [
+        48,
+        48
+      ],
+      "border": {
+        "left": 0,
+        "bottom": 0,
+        "right": 0,
+        "top": 0
+      },
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "imageType": "Simple",
+      "fillCenter": true,
+      "token": "glyph.sort.desc",
+      "notes": "crafting Create tab sort direction: down = descending, flipped (scale y -1) = ascending; tint text_body",
+      "atlas": "hires"
+    },
+    {
       "name": "glyph_chevron_down",
       "file": "glyph_chevron_down.png",
       "size": [

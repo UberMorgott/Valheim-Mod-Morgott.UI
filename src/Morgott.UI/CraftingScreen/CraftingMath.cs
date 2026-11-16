@@ -14,7 +14,7 @@ namespace Morgott.UI.CraftingScreen
     {
         public float Pad = 18f, Gap = 8f;
         public float HeaderH = 80f, TabH = 36f, TabW = 150f, TabMinW = 96f, ArrowW = 28f;
-        public float CategoryH = 44f, SubCategoryH = 44f, SearchH = 38f, NetworkH = 28f;
+        public float CategoryH = 44f, SubCategoryH = 44f, SearchH = 38f, NetworkH = 28f, ControlsH = 32f;
         // ListMinW: the list column never narrower than this while the detail keeps half the body (0.24.0 list at the
         // 576 window; layout A docks crafting at the room right of the hotbar-locked centre column, 536 at 16:9).
         public float ListShare = 0.4f, ListMinW = 204f, RowH = 46f, ScrollbarW = 10f;
@@ -34,6 +34,8 @@ namespace Morgott.UI.CraftingScreen
         // CraftingFilter sub-group tabs (second row under the categories, MT_CraftFilter/Subs); 0 = no row.
         public int SubCategories;
         public bool Search, Repair, CraftType, Quality;
+        // Create tab view controls (sort / direction / new filter / availability) under the search, full width (Core ICraftingAvailability).
+        public bool Controls;
         // Station network checkbox row under the mode tabs (at a station while Core IStationNetwork is registered).
         public bool Network;
         // First visible tab / category of a scrolled row (row arrows).
@@ -55,7 +57,7 @@ namespace Morgott.UI.CraftingScreen
     public sealed class CraftingLayout
     {
         public Box Content, Header, StationIcon, Title, Level;
-        public Box TabRow, NetworkRow, CategoryRow, SubCategoryRow, Search, List, ListView, ListScrollbar;
+        public Box TabRow, NetworkRow, CategoryRow, SubCategoryRow, Search, Controls, List, ListView, ListScrollbar;
         public Box Detail, DetailTitle, CraftType, Icon, Description, Quality, Requirements, ButtonRow, Repair, Craft;
         public RowFit Tabs = new RowFit(), Categories = new RowFit(), SubCategories = new RowFit();
         public Box[] RequirementCells = Array.Empty<Box>();
@@ -230,12 +232,19 @@ namespace Morgott.UI.CraftingScreen
                 y += sh + gap;
             }
 
-            // Body: list column (search + list well) | detail column (detail well + button row).
+            // Body: list column (search + list well) | detail column (detail well + button row). With the view controls
+            // (approved mockup craftfilter mockup-v2): search at list width, then the controls row across both columns.
+            var listW = (float)Math.Floor(Math.Max(c.W * Clamp(t.ListShare, 0.25f, 0.6f), Math.Min(S(t.ListMinW), c.W * 0.5f)));
+            if (i.Search && i.Controls)
+            {
+                o.Search = new Box(c.X, y, listW, S(t.SearchH));
+                o.Controls = new Box(c.X, o.Search.Bottom + gap, c.W, S(t.ControlsH));
+                y = o.Controls.Bottom + gap;
+            }
             var body = new Box(c.X, y, c.W, Math.Max(0f, c.Bottom - y));
-            var listW = (float)Math.Floor(Math.Max(body.W * Clamp(t.ListShare, 0.25f, 0.6f), Math.Min(S(t.ListMinW), body.W * 0.5f)));
             var lx = body.X;
             var ly = body.Y;
-            if (i.Search)
+            if (i.Search && !i.Controls)
             {
                 o.Search = new Box(lx, ly, listW, S(t.SearchH));
                 ly += o.Search.H + gap;
@@ -434,20 +443,27 @@ namespace Morgott.UI.CraftingScreen
             return ClampAmount(n, max);
         }
 
-        // Largest n in [1, cap] with ok(n) true, ok monotonic (true up to some n, false above); 0 when ok(1) is false.
-        public static int LargestOk(int cap, Func<int, bool> ok)
+        // Controls row split (mockup-v2): sort dropdown at the list column width | direction square | filter button
+        // (1.4 squares) | availability segments take the rest.
+        public static (Box Sort, Box Direction, Box Filter, Box Show) ControlRow(Box row, float sortW, float gap)
         {
-            if (cap < 1 || !ok(1)) return 0;
-            int lo = 1, hi = cap;
-            while (lo < hi)
-            {
-                var mid = lo + (hi - lo + 1) / 2;
-                if (ok(mid)) lo = mid;
-                else hi = mid - 1;
-            }
-            return lo;
+            var h = row.H;
+            var sort = new Box(row.X, row.Y, Math.Max(0f, Math.Min(sortW, row.W - 2.4f * h - 3f * gap)), h);
+            var dir = new Box(sort.Right + gap, row.Y, h, h);
+            var filter = new Box(dir.Right + gap, row.Y, h * 1.4f, h);
+            return (sort, dir, filter, new Box(filter.Right + gap, row.Y, Math.Max(0f, row.Right - filter.Right - gap), h));
         }
 
+        // Row / detail count: "x6", "x99+" at the cap (the count search stops there).
+        public static string CountLabel(int count, int cap) => "\u00D7" + Math.Max(0, count) + (count >= cap ? "+" : "");
+
+        // Active filters on the funnel badge: availability other than All, plus "new only".
+        public static int ActiveFilters(int show, bool newOnly) => (show != 0 ? 1 : 0) + (newOnly ? 1 : 0);
+
+        // Bonus portion chance per craft in whole percent (InventoryGui.DoCrafting :1810-1818: skill factor x
+        // m_craftBonusChance, stackable output at a station with a crafting skill only); 0 = no bonus line.
+        public static int BonusPercent(float skillFactor, float bonusChance, int maxStack, bool stationSkill) =>
+            stationSkill && maxStack > 1 ? (int)Math.Round(100f * Clamp(skillFactor * bonusChance, 0f, 1f)) : 0;
         private static int Columns(float width, float cell, float gap) => cell <= 0f ? 1 : Math.Max(1, (int)Math.Floor((width + gap) / (cell + gap)));
 
         private static float Clamp(float v, float min, float max) => v < min ? min : v > max ? max : v;

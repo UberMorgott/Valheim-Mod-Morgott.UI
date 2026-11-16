@@ -283,13 +283,53 @@ namespace Morgott.UI.Tests
             Assert.Equal(want, CraftingMath.ParseAmount(text, fallback, max));
 
         [Theory]
-        [InlineData(0, 0)]
-        [InlineData(1, 1)]
-        [InlineData(17, 17)]
-        [InlineData(99, 99)]
-        [InlineData(150, 99)]
-        public void LargestOkFindsTheLimit(int limit, int want) =>
-            Assert.Equal(want, CraftingMath.LargestOk(99, n => n <= limit));
+        [InlineData(6, 99, "\u00D76")]
+        [InlineData(0, 99, "\u00D70")]
+        [InlineData(99, 99, "\u00D799+")]
+        public void CountLabelMarksTheCap(int count, int cap, string want) => Assert.Equal(want, CraftingMath.CountLabel(count, cap));
+
+        [Theory]
+        [InlineData(0, false, 0)]
+        [InlineData(1, false, 1)]
+        [InlineData(2, true, 2)]
+        [InlineData(0, true, 1)]
+        public void FunnelBadgeCountsActiveFilters(int show, bool newOnly, int want) => Assert.Equal(want, CraftingMath.ActiveFilters(show, newOnly));
+
+        [Theory]
+        [InlineData(0.48f, 0.25f, 20, true, 12)] // mockup: cooking 48 at a cauldron -> 12 %
+        [InlineData(1f, 0.25f, 1, true, 0)] // not stackable (DoCrafting :1810)
+        [InlineData(1f, 0.25f, 20, false, 0)] // station without a crafting skill
+        [InlineData(9f, 0.25f, 20, true, 100)]
+        public void BonusPercentFollowsDoCrafting(float factor, float chance, int maxStack, bool skill, int want) =>
+            Assert.Equal(want, CraftingMath.BonusPercent(factor, chance, maxStack, skill));
+
+        // Mockup-v2 controls row: dropdown = list column width, then direction, funnel, segments to the right edge.
+        [Fact]
+        public void ControlRowSplitsLikeTheMockup()
+        {
+            var (sort, dir, filter, show) = CraftingMath.ControlRow(new Box(0f, 0f, 500f, 30f), 195f, 8f);
+            Assert.Equal(195f, sort.W);
+            Assert.Equal((203f, 30f), (dir.X, dir.W));
+            Assert.Equal((241f, 42f), (filter.X, filter.W));
+            Assert.Equal(500f, show.Right, 3);
+            Assert.True(show.W > 150f);
+        }
+
+        // Controls on: search at list width, the controls row across both columns, list and detail start under it.
+        [Fact]
+        public void ControlsRowSpansBothColumns()
+        {
+            var t = new CraftingTokens();
+            var o = CraftingMath.Compute(new CraftingInput { Panel = new Box(0f, 0f, 560f, 900f), Tabs = 2, Categories = 3, Search = true, Controls = true }, t);
+            Assert.Equal(o.List.W, o.Search.W);
+            Assert.Equal(o.Content.W, o.Controls.W);
+            Assert.True(o.Controls.Y >= o.Search.Bottom);
+            Assert.True(o.List.Y >= o.Controls.Bottom && o.Detail.Y >= o.Controls.Bottom);
+            Assert.Equal(o.List.Y, o.Detail.Y);
+            var off = CraftingMath.Compute(new CraftingInput { Panel = new Box(0f, 0f, 560f, 900f), Tabs = 2, Categories = 3, Search = true }, t);
+            Assert.True(off.Controls.IsEmpty);
+            Assert.Equal(off.Search.Y, off.Detail.Y);
+        }
 
         // Live 0.25.11 at 1280x720: header 40 x 0.8 = 32-unit slot, root canvas scale ~0.56 -> star ~18 px, digit box
         // ~8 px: no line fitted and the star showed no level. The star grows until its digit meets the readable floor.

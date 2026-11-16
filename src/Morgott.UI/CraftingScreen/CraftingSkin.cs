@@ -21,7 +21,7 @@ namespace Morgott.UI.CraftingScreen
     // res_name / res_amount), MorgottTweaks CraftingFilter (MT_CraftFilter under RecipeList) and RecipeChains
     // (MT_ChainTree docks above the highest active requirement cell). Geometry runs in LateUpdate, after the
     // InventoryGui animator and every Update-phase writer, change-only (Geo.Place).
-    public sealed class CraftingSkin : MonoBehaviour
+    public sealed partial class CraftingSkin : MonoBehaviour
     {
         public const string ScreenId = "Crafting";
         private const string Prefix = "RuneSkinCraft";
@@ -781,6 +781,7 @@ namespace Morgott.UI.CraftingScreen
             i.CraftType = _gui.m_itemCraftType && _gui.m_itemCraftType.gameObject.activeSelf;
             i.Quality = _gui.m_qualityPanel && _gui.m_qualityPanel.gameObject.activeSelf;
             i.Network = Network() != null && Station();
+            i.Controls = i.Search && View() is Morgott.Core.ICraftingAvailability view && view.ControlsShown;
             i.TabOffset = _tabOffset;
             i.CategoryOffset = _catOffset;
             i.SubCategoryOffset = _subOffset;
@@ -798,7 +799,7 @@ namespace Morgott.UI.CraftingScreen
                 h = h * 31 + i.WindowHeaderH.GetHashCode();
                 h = h * 31 + i.Tabs;
                 h = h * 31 + i.Categories * 7 + i.Requirements * 101;
-                h = h * 31 + (i.Search ? 1 : 0) + (i.Repair ? 2 : 0) + (i.CraftType ? 4 : 0) + (i.Quality ? 8 : 0) + (i.Network ? 16 : 0);
+                h = h * 31 + (i.Search ? 1 : 0) + (i.Repair ? 2 : 0) + (i.CraftType ? 4 : 0) + (i.Quality ? 8 : 0) + (i.Network ? 16 : 0) + (i.Controls ? 32 : 0);
                 h = h * 31 + i.TabOffset * 13 + i.CategoryOffset;
                 h = h * 31 + i.SubCategories * 17 + i.SubCategoryOffset;
                 h = h * 31 + ThemeTokens.Revision;
@@ -820,7 +821,7 @@ namespace Morgott.UI.CraftingScreen
             t.Pad = F("size.craft.pad", t.Pad); t.Gap = F("size.craft.gap", t.Gap); t.HeaderH = F("size.craft.header", t.HeaderH);
             t.TabH = F("size.craft.tab.h", t.TabH); t.TabW = F("size.craft.tab.w", t.TabW); t.TabMinW = F("size.craft.tab.min", t.TabMinW);
             t.NetworkH = F("size.craft.network", t.NetworkH);
-            t.ArrowW = F("size.craft.arrow", t.ArrowW); t.CategoryH = F("size.craft.category", t.CategoryH); t.SubCategoryH = F("size.craft.subcategory", t.SubCategoryH); t.SearchH = F("size.craft.search", t.SearchH);
+            t.ArrowW = F("size.craft.arrow", t.ArrowW); t.CategoryH = F("size.craft.category", t.CategoryH); t.SubCategoryH = F("size.craft.subcategory", t.SubCategoryH); t.SearchH = F("size.craft.search", t.SearchH); t.ControlsH = F("size.craft.controls", t.ControlsH);
             t.ListShare = F("share.craft.list", t.ListShare); t.ListMinW = F("size.craft.list.min", t.ListMinW); t.RowH = F("size.craft.row", t.RowH); t.ScrollbarW = F("size.craft.scrollbar", t.ScrollbarW);
             t.TitleH = F("size.craft.title", t.TitleH); t.CraftTypeH = F("size.craft.crafttype", t.CraftTypeH); t.IconH = F("size.craft.icon", t.IconH);
             t.QualityH = F("size.craft.quality", t.QualityH); t.DescriptionMinH = F("size.craft.description.min", t.DescriptionMinH);
@@ -841,6 +842,7 @@ namespace Morgott.UI.CraftingScreen
             Tabs(o);
             NetworkRow(o);
             Categories(o);
+            Controls(o);
             List(o);
             Detail(o);
             Buttons(o);
@@ -1209,6 +1211,7 @@ namespace Morgott.UI.CraftingScreen
                 RestyleRows(rows);
                 ChainRows(rows);
             }
+            RowViews(rows); // after StyleRow (name box) and the row restyle (text colours)
             // Content bounds changed after vanilla SetRecipe may have centred the selection: reveal it once more.
             var sel = _gui.GetSelectedRecipeIndex();
             if (_gui.m_recipeEnsureVisible && sel >= 0 && sel < rows.Count && rows[sel].InterfaceElement)
@@ -1365,7 +1368,7 @@ namespace Morgott.UI.CraftingScreen
             var description = o.Description;
             var chain = Chain(o);
             if (!chain.IsEmpty) description = new Box(description.X, description.Y, description.W, Mathf.Max(0f, chain.Y - _t.Gap * k * 0.5f - description.Y));
-            DescriptionView(description, k);
+            DescriptionView(StatTable(description, k), k);
         }
 
         // ---------------------------------------------------------------- description scroll
@@ -1884,10 +1887,8 @@ namespace Morgott.UI.CraftingScreen
             Arm();
         }
 
-        // Most the player can craft of the selected recipe now: requirements (Player.HaveRequirements with the batch
-        // multiplier, InventoryGui.cs:1556; ValheimPlus CraftFromChest patches it to count chests) and room for the
-        // result (OnCraftPressed :2062-2064: Recipe.GetAmount + Inventory.CanAddItem), at most size.craft.amount.max.
-        // Free crafting (NoCostCheat / NoCraftCost, :1559) skips the requirement half.
+        // Most the player can craft of the selected recipe now (requirements incl. chests and chains, room for the result;
+        // rules: Morgott.Patcher), at most size.craft.amount.max; 1 without that service.
         public int MaxAmount()
         {
             var recipe = _gui.m_selectedRecipe.Recipe;
@@ -1896,15 +1897,9 @@ namespace Morgott.UI.CraftingScreen
             if (recipe == _maxRecipe && Time.unscaledTime < _maxAt) return _max;
             _maxRecipe = recipe;
             _maxAt = Time.unscaledTime + 0.25f;
-            var cap = Mathf.Max(1, Mathf.RoundToInt(ThemeTokens.GetFloat("size.craft.amount.max", 99f)));
-            var free = player.NoCostCheat() || ZoneSystem.instance && ZoneSystem.instance.GetGlobalKey(GlobalKeys.NoCraftCost);
-            var inv = player.GetInventory();
-            var prefab = recipe.m_item ? recipe.m_item.gameObject : null;
-            // Core IChainCraft (Morgott.Patcher): Create also crafts missing intermediates, so a chain amount is craftable too.
-            Morgott.Core.Services.TryGet<Morgott.Core.IChainCraft>(out var chain);
-            _max = CraftingMath.LargestOk(cap, n =>
-                (free || player.HaveRequirements(recipe, false, 1, n) || chain != null && chain.CanCraft(recipe, n)) &&
-                (!prefab || inv == null || inv.CanAddItem(prefab, recipe.GetAmount(1, out _, out _, n))));
+            // The rules live with the owner (Core ICraftingAvailability, Morgott.Patcher): stepper, row counts and Craft agree.
+            var view = View();
+            _max = view != null ? view.GetMaxCrafts(recipe, 1, CountCap()) : 1;
             return _max;
         }
 
