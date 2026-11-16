@@ -22,7 +22,7 @@ namespace Morgott.UI.ItemBrowser
         public static double BuildMs { get; private set; }
         public static IReadOnlyDictionary<string, string> ProviderErrors => ItemSources.Errors;
 
-        private static int _fingerprint;
+        private static Parts _fingerprint;
         private static Dictionary<string, string> _mods = new Dictionary<string, string>();
 
         public static void Bind(ConfigFile cfg)
@@ -58,7 +58,8 @@ namespace Morgott.UI.ItemBrowser
         {
             if (!ObjectDB.instance || !ZNetScene.instance) return Generation;
             var fp = Fingerprint();
-            if (Index != null && fp == _fingerprint) return Generation;
+            if (Index != null && fp.Equals(_fingerprint)) return Generation;
+            var why = Index == null ? "first" : FingerprintDiff(_fingerprint, fp);
             var sw = Stopwatch.StartNew();
             var mods = new Dictionary<string, string>(StringComparer.Ordinal);
             try
@@ -77,18 +78,34 @@ namespace Morgott.UI.ItemBrowser
             Generation++;
             _tips.Clear();
             BuildMs = sw.Elapsed.TotalMilliseconds;
-            Plugin.Log.LogInfo($"[Morgott.UI] item browser index #{Generation}: {ix.Entries.Count} entries, {ix.Relations.Count} relations, {BuildMs:F1} ms" +
+            Plugin.Log.LogInfo($"[Morgott.UI] item browser index #{Generation}: {ix.Entries.Count} entries, {ix.Relations.Count} relations, {BuildMs:F1} ms ({why})" +
                 (ItemSources.Errors.Count > 0 ? $", provider errors: {string.Join("; ", ItemSources.Errors)}" : ""));
             return Generation;
         }
 
         // World session + prefab / item counts + recipe content (in-place edits keep counts) + provider revision.
-        private static int Fingerprint()
+        // Kept per part so a rebuild log names what changed (world / prefabs / items / sources / recipes).
+        internal readonly struct Parts : IEquatable<Parts>
         {
-            var h = BrowserIndex.Mix(BrowserIndex.Seed, ZNet.instance ? ZNet.instance.GetWorldUID().GetHashCode() : 0);
-            h = BrowserIndex.Mix(h, ZNetScene.instance.m_namedPrefabs.Count);
-            h = BrowserIndex.Mix(h, ObjectDB.instance.m_items.Count);
-            h = BrowserIndex.Mix(h, ItemSources.Revision);
+            public readonly int World, Prefabs, Items, Sources, Recipes;
+            public Parts(int world, int prefabs, int items, int sources, int recipes) { World = world; Prefabs = prefabs; Items = items; Sources = sources; Recipes = recipes; }
+            public bool Equals(Parts o) => World == o.World && Prefabs == o.Prefabs && Items == o.Items && Sources == o.Sources && Recipes == o.Recipes;
+        }
+
+        internal static string FingerprintDiff(Parts a, Parts b)
+        {
+            var d = new List<string>();
+            if (a.World != b.World) d.Add("world");
+            if (a.Prefabs != b.Prefabs) d.Add($"prefabs {a.Prefabs}->{b.Prefabs}");
+            if (a.Items != b.Items) d.Add($"items {a.Items}->{b.Items}");
+            if (a.Sources != b.Sources) d.Add($"source revision {a.Sources}->{b.Sources}");
+            if (a.Recipes != b.Recipes) d.Add("recipe content");
+            return "changed: " + string.Join(", ", d);
+        }
+
+        private static Parts Fingerprint()
+        {
+            var h = BrowserIndex.Seed;
             foreach (var r in ObjectDB.instance.m_recipes)
             {
                 if (!r) continue;
@@ -99,7 +116,8 @@ namespace Morgott.UI.ItemBrowser
                 foreach (var q in r.m_resources)
                     if (q?.m_resItem) h = BrowserIndex.Mix(BrowserIndex.Mix(BrowserIndex.Mix(h, q.m_resItem.name), q.m_amount), q.m_amountPerLevel);
             }
-            return h;
+            return new Parts(ZNet.instance ? ZNet.instance.GetWorldUID().GetHashCode() : 0, ZNetScene.instance.m_namedPrefabs.Count,
+                ObjectDB.instance.m_items.Count, ItemSources.Revision, h);
         }
 
         public static string Localize(string token) =>

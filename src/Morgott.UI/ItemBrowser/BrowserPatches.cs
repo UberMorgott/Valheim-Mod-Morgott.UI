@@ -22,8 +22,8 @@ namespace Morgott.UI.ItemBrowser
 
         // Index built behind the loading screen, not on the first ITEMS open (~280 ms hitch): Game.FixedUpdate runs
         // UpdateRespawn while m_requestRespawn holds (Game.cs:684-697, 728-742) and Hud.UpdateBlackScreen keeps the
-        // loading screen up until the player exists (Hud.cs:573). Once per respawn wait; a later fingerprint change
-        // still rebuilds on open as before.
+        // loading screen up until the player exists (Hud.cs:573). Once per respawn wait; changes before the fade are caught
+        // by UpdateBlackScreen_Prefix, later ones still rebuild on open.
         private static bool _waiting;
 
         [HarmonyPatch(typeof(Game), nameof(Game.UpdateRespawn))]
@@ -35,6 +35,20 @@ namespace Morgott.UI.ItemBrowser
                 try { Browser.EnsureReady(); }
                 catch (System.Exception e) { Plugin.Log.LogWarning($"[Morgott.UI] item browser prebuild failed (builds on open): {e.Message}"); }
             _waiting = waiting;
+        }
+
+        // Registrations keep landing after the respawn wait (spawn-time module passes, config sync); the last fully black
+        // frame re-checks the fingerprint so the first ITEMS open finds a current index. Vanilla fades out from the first
+        // frame its cover condition fails (Hud.UpdateBlackScreen :573/:620-626); no-op unless something changed.
+        [HarmonyPatch(typeof(Hud), nameof(Hud.UpdateBlackScreen))]
+        [HarmonyPrefix]
+        private static void UpdateBlackScreen_Prefix(Hud __instance, Player player)
+        {
+            var screen = __instance.m_loadingScreen;
+            if (!screen || !screen.gameObject.activeSelf || screen.alpha < 1f) return;
+            if (player == null || player.IsDead() || player.IsTeleporting() || Game.instance.IsShuttingDown() || player.IsSleeping()) return;
+            try { Browser.EnsureReady(); }
+            catch (System.Exception e) { Plugin.Log.LogWarning($"[Morgott.UI] item browser re-check failed (builds on open): {e.Message}"); }
         }
 
         [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.OnTabCraftPressed))]
