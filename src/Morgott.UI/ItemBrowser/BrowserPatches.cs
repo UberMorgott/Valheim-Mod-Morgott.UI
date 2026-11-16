@@ -20,6 +20,23 @@ namespace Morgott.UI.ItemBrowser
             catch (System.Exception e) { Plugin.Log.LogError($"[Morgott.UI] item browser tab failed (no ITEMS tab): {e}"); }
         }
 
+        // Index built behind the loading screen, not on the first ITEMS open (~280 ms hitch): Game.FixedUpdate runs
+        // UpdateRespawn while m_requestRespawn holds (Game.cs:684-697, 728-742) and Hud.UpdateBlackScreen keeps the
+        // loading screen up until the player exists (Hud.cs:573). Once per respawn wait; a later fingerprint change
+        // still rebuilds on open as before.
+        private static bool _waiting;
+
+        [HarmonyPatch(typeof(Game), nameof(Game.UpdateRespawn))]
+        [HarmonyPrefix]
+        private static void UpdateRespawn_Prefix(Game __instance)
+        {
+            var waiting = __instance.WaitingForRespawn();
+            if (waiting && !_waiting)
+                try { Browser.EnsureReady(); }
+                catch (System.Exception e) { Plugin.Log.LogWarning($"[Morgott.UI] item browser prebuild failed (builds on open): {e.Message}"); }
+            _waiting = waiting;
+        }
+
         [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.OnTabCraftPressed))]
         [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.OnTabUpgradePressed))]
         [HarmonyPrefix]
