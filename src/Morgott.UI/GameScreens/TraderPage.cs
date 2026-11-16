@@ -401,15 +401,11 @@ namespace Morgott.UI.GameScreens
             foreach (Transform e in strip)
             {
                 if (!e.gameObject.activeSelf) continue;
-                // A caption in the strip (bounty "Награды:" RewardLabel): same size, its own width.
-                if (e.TryGetComponent<Text>(out var caption))
+                // The bounty "Награды:" caption (RewardLabel) is not in the mockup v2 row (icons + amounts only; the tooltip
+                // lists the rewards) and squeezed the target name out of the row (run 20261116-143533-2).
+                if (e.TryGetComponent<Text>(out _))
                 {
-                    Font(e, size, TextAnchor.MiddleLeft);
-                    caption.horizontalOverflow = HorizontalWrapMode.Overflow;
-                    var cw = Mathf.Ceil(caption.preferredWidth) + 2f;
-                    ((RectTransform)e).sizeDelta = new Vector2(cw, 24f);
-                    w += cw;
-                    n++;
+                    e.gameObject.SetActive(false);
                     continue;
                 }
                 if (!(e.Find("Amount") is RectTransform a) || !a.TryGetComponent<Text>(out var amount)) continue;
