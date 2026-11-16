@@ -81,6 +81,7 @@
     <Compile Include="..\..\src\Morgott.UI\ItemBrowser\BrowserIndex.cs" Link="Linked\BrowserIndex.cs" />
     <Compile Include="..\..\src\Morgott.UI\ItemBrowser\SourceNames.cs" Link="Linked\SourceNames.cs" />
     <Compile Include="..\..\src\Morgott.UI\ItemBrowser\PageModel.cs" Link="Linked\PageModel.cs" />
+    <Compile Include="..\..\src\Morgott.UI\ItemBrowser\StorageMath.cs" Link="Linked\StorageMath.cs" />
     <Compile Include="..\..\src\Morgott.UI\ItemBrowser\FoundIn.cs" Link="Linked\FoundIn.cs" />
     <Compile Include="..\..\src\Morgott.UI\ItemBrowser\FoundInTable.cs" Link="Linked\FoundInTable.cs" />
     <Compile Include="..\..\src\Morgott.UI\Icons\ModStatusIconMap.cs" Link="Linked\ModStatusIconMap.cs" />

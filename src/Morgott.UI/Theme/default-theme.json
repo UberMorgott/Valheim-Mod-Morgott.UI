@@ -1496,6 +1496,7 @@
     { "role": "text.accent", "font": "font.body", "textColor": "color.text.accent" },
     { "role": "text.ember", "font": "font.body", "textColor": "color.text.ember" },
     { "role": "ib.rule", "color": "color.ib.rule" },
+    { "role": "ib.rim", "sprite": "sprite.slot.cell.selected", "keepColor": true, "imageType": "Sliced", "fillCenter": "false" },
     { "role": "ib.halo", "sprite": "sprite.hud.strip.glow", "color": "color.ib.halo", "imageType": "Simple" },
     { "role": "ib.square", "sprite": "sprite.slot.cell", "color": "color.frame", "imageType": "Sliced", "fillCenter": "true", "spriteHover": "sprite.slot.cell.selected", "spriteSelected": "sprite.slot.cell.selected", "spriteDisabled": "sprite.slot.cell.selected" },
     { "role": "craft.button", "sprite": "sprite.craft.plate.normal", "color": "color.frame", "imageType": "Tiled", "fillCenter": "true", "ppuMultiplier": 0.6,
