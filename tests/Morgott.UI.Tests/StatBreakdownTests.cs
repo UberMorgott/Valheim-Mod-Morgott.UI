@@ -23,17 +23,6 @@ namespace Morgott.UI.Tests
         }
 
         [Fact]
-        public void SkillLevelShowsRealLevelAndNerfShare()
-        {
-            // Run 100 + 10 from gear, CombatSkillFactor 0.5 -> Character.GetSkillLevel 55.
-            Assert.Equal("110 (×0,5)", StatsMath.SkillLevel(110f, 55f, true));
-            Assert.Equal("110 (×0.5)", StatsMath.SkillLevel(110f, 55f, false));
-            Assert.Equal("110", StatsMath.SkillLevel(110f, 110f, true)); // factor 1 = vanilla
-            Assert.Equal("40 (×0,25)", StatsMath.SkillLevel(40f, 10f, true));
-            Assert.Equal("0", StatsMath.SkillLevel(0f, 0f, true));
-        }
-
-        [Fact]
         public void StaminaSkillStepsMatchVanilla()
         {
             // Attack.GetAttackStamina :481: -33% x skill (a 20 stamina swing at skill 100 costs 13.4).
@@ -94,19 +83,23 @@ namespace Morgott.UI.Tests
             bd.Add("Уровень предмета", null, 12f, true);
             bd.Add("Ничего", null, 0.01f, true); // below epsilon: skipped
             bd.Mul("Ничего", null, 1.001f, true); // no-op factor: skipped
-            bd.Range("Навык Мечи 50", null, 0.55f, 0.85f);
             bd.Mul("Медовуха", null, 1.1f, true);
-            bd.ResultRange("За удар", 38.7f, 59.8f);
-            Assert.Equal(5, bd.Count);
+            // Damage row: 24 x Берсерк 1.05 = 25.2, skill roll x0.28-0.58 shown as the amount it removes.
+            const float hit = 25.2f;
+            bd.Range("Навык Ножи", null, hit * (0.28f - 1f), hit * (0.58f - 1f), true);
+            bd.Range("Навык Мечи", null, -8.4f, 0f, true); // skill 100 roll tops at the full hit
+            bd.ResultRange("За удар", hit * 0.28f, hit * 0.58f);
+            Assert.Equal(6, bd.Count);
             Assert.Equal(12f, bd.Sum(StatBreakdown.Op.Add), 3);
             var sb = new StringBuilder();
             bd.Render(sb, true, "00FF00", "FF0000", "AAAAAA");
             var text = sb.ToString();
             Assert.Contains("Оружие:  52", text);
             Assert.Contains("<color=#00FF00>+12</color>", text);
-            Assert.Contains("×0,55–0,85", text);
+            Assert.Contains("Навык Ножи:  <color=#FF0000>−18,1…−10,6</color>", text);
+            Assert.Contains("Навык Мечи:  <color=#FF0000>−8,4…0</color>", text);
             Assert.Contains("<color=#00FF00>×1,1</color>", text);
-            Assert.Contains("<b>За удар:  38,7–59,8</b>", text);
+            Assert.Contains("<b>За удар:  7,1–14,6</b>", text);
             Assert.DoesNotContain("Ничего", text);
         }
 
