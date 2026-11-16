@@ -6,6 +6,18 @@ Finished work: History below (one line per milestone); details in `git log` / ta
 
 ## Open
 
+### Pack changelog window (0.35.0, mockup `docs/mockups/2026-11-16-changelog/02-sidebar.png`, Codex 8/10)
+
+- [ ] Art: rounded pill sprite (9-slice, white rim + dark glass) for type chips / line tags; they use the square
+  `field_search` plate + 4 rim lines now (`ChangelogPanel.Rim`).
+- [ ] Art: small rune glyph sprite for the selected tab (mockup "Сборка" tab, left of the label); no centred rune
+  sprite or runic font exists.
+- [ ] Chip / tag accent fills render brighter than their 0.22 / 0.18 alpha (run 20261116-134647, Codex: mockup =
+  dark plates; yellow tag text on the ochre fill reads weakly): tune after checking the UI colour space.
+- [ ] Backdrop blur: no GUI blur material is loaded at the main menu (log "changelog backdrop blur: none"); dim only.
+- [ ] Codex 8/10 leftovers: body / title / mod-name faces read smaller and narrower than the mockup; inner glass flat
+  (mockup has a faint dark gradient).
+
 ### Item icons
 
 - [x] Build strip: piece description glyphs 1-6 px into the display-face name (`m6-build-help-clear`, thatch roof 45,
