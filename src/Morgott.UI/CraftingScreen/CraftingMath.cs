@@ -20,7 +20,7 @@ namespace Morgott.UI.CraftingScreen
         public float ListShare = 0.4f, ListMinW = 204f, RowH = 46f, ScrollbarW = 10f;
         public float TitleH = 32f, CraftTypeH = 24f, IconH = 112f, QualityH = 44f, DescriptionMinH = 48f;
         public float ReqW = 68f, ReqH = 88f, ReqMinW = 52f, ReqMaxRows = 2f;
-        public float ButtonH = 64f;
+        public float ButtonH = 64f, StatRowH = 22f;
         public float WellPad = 10f;
     }
 
@@ -36,6 +36,8 @@ namespace Morgott.UI.CraftingScreen
         public bool Search, Repair, CraftType, Quality;
         // Create tab view controls (sort / direction / new filter / availability) under the search, full width (Core ICraftingAvailability).
         public bool Controls;
+        // Lines of the detail stat table (food stats, yield, count, bonus chance); 0 = none. Reserved like the quality row.
+        public int StatLines;
         // Station network checkbox row under the mode tabs (at a station while Core IStationNetwork is registered).
         public bool Network;
         // First visible tab / category of a scrolled row (row arrows).
@@ -58,7 +60,7 @@ namespace Morgott.UI.CraftingScreen
     {
         public Box Content, Header, StationIcon, Title, Level;
         public Box TabRow, NetworkRow, CategoryRow, SubCategoryRow, Search, Controls, List, ListView, ListScrollbar;
-        public Box Detail, DetailTitle, CraftType, Icon, Description, Quality, Requirements, ButtonRow, Repair, Craft;
+        public Box Detail, DetailTitle, CraftType, Icon, Description, Stats, Quality, Requirements, ButtonRow, Repair, Craft;
         public RowFit Tabs = new RowFit(), Categories = new RowFit(), SubCategories = new RowFit();
         public Box[] RequirementCells = Array.Empty<Box>();
         public int RequirementColumns, RequirementRows;
@@ -282,7 +284,9 @@ namespace Morgott.UI.CraftingScreen
             top += gap * 0.5f;
             var bottom = d.Bottom;
             // Height the grid may take while the title / type, the full icon, the description minimum and the quality row keep theirs.
-            var keep = (top - d.Y) + S(t.IconH) + gap * 0.5f + S(t.DescriptionMinH) + gap + (i.Quality ? S(t.QualityH) + gap * 0.5f : 0f);
+            var statsH = i.StatLines > 0 ? S(t.StatRowH) * i.StatLines : 0f;
+            var keep = (top - d.Y) + S(t.IconH) + gap * 0.5f + S(t.DescriptionMinH) + gap + (i.Quality ? S(t.QualityH) + gap * 0.5f : 0f) +
+                       (statsH > 0f ? statsH + gap * 0.5f : 0f);
             Requirements(o, i.Requirements, new Box(d.X, d.Y, d.W, d.H), S(t.ReqW), S(t.ReqH), S(t.ReqMinW), (int)Math.Max(1f, t.ReqMaxRows), gap * 0.75f, Math.Max(0f, d.H - keep));
             if (o.RequirementRows > 0)
             {
@@ -299,6 +303,11 @@ namespace Morgott.UI.CraftingScreen
             {
                 o.Quality = new Box(d.X, bottom - S(t.QualityH), d.W, S(t.QualityH));
                 bottom = o.Quality.Y - gap * 0.5f;
+            }
+            if (statsH > 0f)
+            {
+                o.Stats = new Box(d.X, bottom - statsH, d.W, statsH);
+                bottom = o.Stats.Y - gap * 0.5f;
             }
             var room = Math.Max(0f, bottom - top);
             var icon = Math.Max(0f, Math.Min(S(t.IconH), room - S(t.DescriptionMinH) - gap * 0.5f));

@@ -315,6 +315,20 @@ namespace Morgott.UI.Tests
             Assert.True(show.W > 150f);
         }
 
+        // Review P2: the stat table (8 lines with the bonus) is reserved like the quality row: requirements shrink first, the
+        // description keeps its minimum, nothing overlaps.
+        [Fact]
+        public void StatTableIsReservedAboveTheRequirements()
+        {
+            var t = new CraftingTokens();
+            var o = CraftingMath.Compute(new CraftingInput { Panel = new Box(0f, 0f, 560f, 900f), Tabs = 2, Categories = 3, Search = true, Controls = true, Requirements = 6, StatLines = 8 }, t);
+            Assert.Equal(8 * t.StatRowH, o.Stats.H, 3);
+            Assert.True(o.Description.H >= t.DescriptionMinH - 0.01f, $"description {o.Description} icon {o.Icon} stats {o.Stats} req {o.Requirements}");
+            Assert.True(o.Description.Bottom <= o.Stats.Y && o.Stats.Bottom <= o.Requirements.Y, $"desc {o.Description} stats {o.Stats} req {o.Requirements}");
+            var none = CraftingMath.Compute(new CraftingInput { Panel = new Box(0f, 0f, 560f, 900f), Tabs = 2, Categories = 3, Search = true, Controls = true, Requirements = 6 }, t);
+            Assert.True(none.Stats.IsEmpty);
+        }
+
         // Controls on: search at list width, the controls row across both columns, list and detail start under it.
         [Fact]
         public void ControlsRowSpansBothColumns()

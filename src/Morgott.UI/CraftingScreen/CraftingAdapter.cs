@@ -47,6 +47,12 @@ namespace Morgott.UI.CraftingScreen
             if (skin) skin.RowsRebuilt();
         }
 
+        // An open sort dropdown list takes the gamepad (its items are EventSystem-selected): vanilla's DPad recipe walk
+        // (InventoryGui.UpdateRecipeGamepadInput :1396-1409, crafting group active) must not move the selection under it.
+        [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.UpdateRecipeGamepadInput))]
+        [HarmonyPrefix]
+        private static bool UpdateRecipeGamepadInput_Prefix() => !(CraftingSkin.Instance && CraftingSkin.Instance.SortListOpen);
+
         [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.SetupRequirementList))]
         [HarmonyPrefix]
         [HarmonyPriority(Priority.First)]

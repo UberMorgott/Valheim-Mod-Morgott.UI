@@ -63,13 +63,37 @@ namespace Morgott.UI.CraftingScreen
         private readonly TMP_Text[] _showLabels = new TMP_Text[3];
         private string _sortLang;
 
+        private UIGroupHandler _ctlGroup;
+
+        // Gamepad route: one row, left / right between the controls (EventSystem navigation inside our UIGroupHandler).
+        private static readonly Navigation RowNav = new Navigation { mode = Navigation.Mode.Horizontal };
+
+        public bool SortListOpen => _sortDrop && _sortDrop.IsExpanded;
+
+        // The controls' own gamepad group, appended to InventoryGui.m_uiGroups (vanilla indexes 0-3 stay): JoyTabRight from
+        // the crafting list (group 3) reaches it (InventoryGui.UpdateGamepad :591-611, SetActiveGroup cycles the array),
+        // the sort dropdown is its default element; SetActiveGroup toggles it like the vanilla groups.
+        private void JoinGamepadGroups()
+        {
+            var groups = _gui.m_uiGroups;
+            if (groups == null || groups.Length < 4) return;
+            _ctlGroup = _ctl.gameObject.AddComponent<UIGroupHandler>();
+            _ctlGroup.m_defaultElement = _sortDrop.gameObject;
+            _ctlGroup.m_groupPriority = groups[3].m_groupPriority;
+            var grown = new UIGroupHandler[groups.Length + 1];
+            Array.Copy(groups, grown, groups.Length);
+            grown[groups.Length] = _ctlGroup;
+            _gui.m_uiGroups = grown;
+            _ctlGroup.SetActive(_gui.m_activeGroup == groups.Length);
+        }
+
         private Button PlateButton(string name, Action click, out Image plate)
         {
             plate = new GameObject(name, typeof(RectTransform)).AddComponent<Image>();
             plate.rectTransform.SetParent(_ctl, false);
             var button = plate.gameObject.AddComponent<Button>();
             button.targetGraphic = plate;
-            button.navigation = new Navigation { mode = Navigation.Mode.None };
+            button.navigation = RowNav;
             Styled(plate, "craft.category", "crafting view control plate (square tab: selected = interactable off)");
             button.onClick.AddListener(() => click());
             return button;
@@ -96,7 +120,7 @@ namespace Morgott.UI.CraftingScreen
             drop.name = Prefix + "Sort";
             drop.transform.SetParent(_ctl, false);
             _sortDrop = drop.GetComponent<TMP_Dropdown>();
-            _sortDrop.navigation = new Navigation { mode = Navigation.Mode.None };
+            _sortDrop.navigation = RowNav;
             foreach (var t in drop.GetComponentsInChildren<TMP_Text>(true))
             {
                 if (src)
@@ -145,6 +169,7 @@ namespace Morgott.UI.CraftingScreen
                 _showButtons[i] = PlateButton(Prefix + "Show" + key, () => { if (View() is ICraftingAvailability v) v.Show = key; }, out var plate);
                 _showLabels[i] = NewText("Label", plate.rectTransform, "", "text.body");
             }
+            JoinGamepadGroups();
             Plugin.Log.LogInfo("[Morgott.UI] crafting view controls built");
         }
 
@@ -153,7 +178,10 @@ namespace Morgott.UI.CraftingScreen
             var view = View();
             if (o.Controls.IsEmpty || view == null)
             {
-                if (_ctl && _ctl.gameObject.activeSelf) _ctl.gameObject.SetActive(false);
+                if (!_ctl || !_ctl.gameObject.activeSelf) return;
+                // A hidden group would hold the gamepad on nothing (Upgrade tab): hand it back to the recipe list.
+                if (_ctlGroup && _gui.m_activeGroup == Array.IndexOf(_gui.m_uiGroups, _ctlGroup)) _gui.SetActiveGroup(_gui.m_uiGroups[3], false);
+                _ctl.gameObject.SetActive(false);
                 return;
             }
             if (!_ctl) BuildControls();
@@ -236,8 +264,19 @@ namespace Morgott.UI.CraftingScreen
         {
             public RectTransform Root;
             public TMP_Text Health, Stamina, Eitr, Count, New;
-            public Image HealthIcon, StaminaIcon, EitrIcon, Chain;
+            public Image HealthIcon, StaminaIcon, EitrIcon, Chain, NewTag;
         }
+
+        // Row data (counts, NEW, chain) changes without a list rebuild: any inventory / chest change (StockChanged), a
+        // picked row (its NEW clears), and chests of other players unseen: a slow poll.
+        private Recipe _rowSel;
+        private int _rowStock = -1;
+        private float _rowPollAt;
+        private readonly Dictionary<Recipe, int> _rowCounts = new Dictionary<Recipe, int>();
+
+        private bool RowDataDue() =>
+            View() is ICraftingAvailability view && view.ControlsShown &&
+            (_gui.m_selectedRecipe.Recipe != _rowSel || _rowStock != _stockEpoch || Time.unscaledTime >= _rowPollAt);
 
         private readonly Dictionary<GameObject, RowView> _rowViews = new Dictionary<GameObject, RowView>();
         private readonly List<GameObject> _rowViewsGone = new List<GameObject>();
@@ -276,7 +315,9 @@ namespace Morgott.UI.CraftingScreen
             v.Eitr = RowText(v, "Eitr", TextAlignmentOptions.MidlineLeft);
             v.EitrIcon = RowIcon(v, "EitrIcon", "craft.stat.eitr");
             v.Count = RowText(v, "Count", TextAlignmentOptions.MidlineRight);
-            v.New = RowText(v, "New", TextAlignmentOptions.MidlineRight);
+            v.NewTag = RowIcon(v, "NewTag", "craft.tag.new");
+            v.NewTag.preserveAspect = false;
+            v.New = RowText(v, "New", TextAlignmentOptions.Center);
             v.Chain = RowIcon(v, "Chain", "craft.glyph.chain");
             return v;
         }
@@ -309,12 +350,19 @@ namespace Morgott.UI.CraftingScreen
             return x + w + side + 8f;
         }
 
-        // After every Rows() pass that touched the rows (rebuild, pitch, theme): the Create tab rows get the sub-line
-        // (food stats, count), NEW and the chain link, the name moves to the upper part; other rows / tabs lose it.
-        private void RowViews(List<InventoryGui.RecipeDataPair> rows)
+        // After every Rows() pass that touched the rows (rebuild, pitch, theme) and when the row data is due (RowDataDue):
+        // the Create tab rows get the sub-line (food stats, count), NEW and the chain link, the name moves to the upper part;
+        // other rows / tabs lose it. A count that changed without a rebuild while the filter or the order depends on it
+        // rebuilds the list (vanilla UpdateCraftingPanel keeps the selection, :1140-1150).
+        private void RowViews(List<InventoryGui.RecipeDataPair> rows, bool rebuilt)
         {
             var view = View();
             var on = view != null && view.ControlsShown;
+            _rowSel = _gui.m_selectedRecipe.Recipe;
+            _rowStock = _stockEpoch;
+            _rowPollAt = Time.unscaledTime + 2f;
+            if (rebuilt) _rowCounts.Clear();
+            var regroup = false;
             if (_rowViews.Count > 4 * Mathf.Max(64, rows.Count))
             {
                 foreach (var key in _rowViews.Keys) if (!key) _rowViewsGone.Add(key);
@@ -351,6 +399,10 @@ namespace Morgott.UI.CraftingScreen
                 Stat(v.Eitr, v.EitrIcon, food && shared.m_foodEitr > 0f, Value(shared.m_foodEitr, "color.craft.stat.eitr", sort == CraftSort.Eitr), x, 2f, subH, size);
 
                 var count = view.GetMaxCrafts(r.Recipe, 1, cap);
+                if (_rowCounts.TryGetValue(r.Recipe, out var was) && was != count &&
+                    (view.Sort == CraftSort.Craftable || view.Show != CraftShow.All && (was > 0) != (count > 0)))
+                    regroup = true;
+                _rowCounts[r.Recipe] = count;
                 var countText = "<color=" + Hex(count > 0 ? "color.stats.good" : "color.state.disabled", Color.white) + ">" + CraftingMath.CountLabel(count, cap) + "</color>";
                 v.Count.fontSize = size;
                 if (v.Count.text != countText) v.Count.text = countText;
@@ -359,14 +411,18 @@ namespace Morgott.UI.CraftingScreen
                 // Top right: NEW (gold), the chain link left of it.
                 var isNew = view.IsNew(r.Recipe);
                 Shown(v.New, isNew);
+                Shown(v.NewTag, isNew && v.NewTag.enabled);
                 var right = 6f;
                 if (isNew)
                 {
+                    // Gold-framed tag (mockup-v2): the timer plate tinted gold (role craft.tag.new) under the gold word.
                     var tag = "<color=" + Hex("color.text.display.gold", Color.yellow) + ">" + newText + "</color>";
-                    v.New.fontSize = size * 0.85f;
+                    v.New.fontSize = size * 0.75f;
                     if (v.New.text != tag) v.New.text = tag;
-                    var w = v.New.GetPreferredValues(tag).x + 2f;
-                    At(v.New.rectTransform, Vector2.one, -right, -3f, w, h * 0.38f);
+                    var tagH = h * 0.4f;
+                    var w = v.New.GetPreferredValues(tag).x + tagH * 0.7f;
+                    At(v.NewTag.rectTransform, Vector2.one, -right, -2f, w, tagH);
+                    At(v.New.rectTransform, Vector2.one, -right, -2f, w, tagH);
                     right += w + 4f;
                 }
                 var chain = RowStock(row) == CraftingMath.Stock.Chain;
@@ -380,6 +436,7 @@ namespace Morgott.UI.CraftingScreen
                 if (row.Find("name") is RectTransform name)
                     Anchors(name, new Vector2(0f, 0.42f), Vector2.one, new Vector2(left, 0f), new Vector2(-right, -2f));
             }
+            if (regroup && !rebuilt) _gui.UpdateCraftingPanel();
         }
 
         // ---------------------------------------------------------------- detail stat table
@@ -391,20 +448,37 @@ namespace Morgott.UI.CraftingScreen
         private readonly List<(string Label, string Value)> _statLines = new List<(string, string)>();
         private string _bonusText = "";
 
-        // Food stats, yield and the craftable count under the description (above the chain box / requirements), plus the
-        // bonus portion chance line; returns the description's remaining box.
-        private Box StatTable(Box d, float k)
+        // What the stat table shows for the selection (Create tab): food stats, count, bonus portion chance in percent.
+        private bool StatsFor(out Recipe recipe, out bool food, out int count, out int bonus)
         {
+            recipe = _gui.m_selectedRecipe.Recipe;
+            food = false;
+            count = bonus = 0;
             var view = View();
-            var recipe = _gui.m_selectedRecipe.Recipe;
             var player = Player.m_localPlayer;
-            if (view == null || !view.ControlsShown || !recipe || !recipe.m_item || _gui.m_selectedRecipe.ItemData != null || !player)
+            if (view == null || !view.ControlsShown || !recipe || !recipe.m_item || _gui.m_selectedRecipe.ItemData != null || !player) return false;
+            var shared = recipe.m_item.m_itemData.m_shared;
+            food = IsFood(shared);
+            count = view.GetMaxCrafts(recipe, 1, CountCap());
+            var station = Station();
+            var skill = station && station.m_craftingSkill != Skills.SkillType.None;
+            bonus = CraftingMath.BonusPercent(skill ? player.GetSkillFactor(station.m_craftingSkill) : 0f, _gui.m_craftBonusChance, shared.m_maxStackSize, skill);
+            return true;
+        }
+
+        // Lines the layout reserves (CraftingInput.StatLines): 5 food stats, yield, count, the bonus line.
+        private int StatLines() => StatsFor(out _, out var food, out _, out var bonus) ? (food ? 5 : 0) + 2 + (bonus > 0 ? 1 : 0) : 0;
+
+        // The table in its reserved box (CraftingLayout.Stats, moved onto the chain box by Detail): one line per row.
+        private void StatTable(Box box)
+        {
+            if (box.IsEmpty || !StatsFor(out var recipe, out var food, out var count, out var bonus))
             {
                 if (_stats && _stats.gameObject.activeSelf) _stats.gameObject.SetActive(false);
-                return d;
+                return;
             }
             var detail = _crafting.Find("Decription") as RectTransform;
-            if (!detail) return d;
+            if (!detail) return;
             if (!_stats)
             {
                 _stats = (RectTransform)new GameObject(Prefix + "Stats", typeof(RectTransform)).transform;
@@ -412,13 +486,8 @@ namespace Morgott.UI.CraftingScreen
                 _bonus = NewText("Bonus", _stats, "", "content");
             }
             if (!_stats.gameObject.activeSelf) _stats.gameObject.SetActive(true);
-
             var shared = recipe.m_item.m_itemData.m_shared;
             var cap = CountCap();
-            var count = view.GetMaxCrafts(recipe, 1, cap);
-            var station = Station();
-            var skill = station && station.m_craftingSkill != Skills.SkillType.None;
-            var bonus = CraftingMath.BonusPercent(skill ? player.GetSkillFactor(station.m_craftingSkill) : 0f, _gui.m_craftBonusChance, shared.m_maxStackSize, skill);
             var key = ((recipe.GetInstanceID() * 31 + count) * 31 + bonus) * 31 + Localization.instance.GetSelectedLanguage().GetHashCode() + ThemeTokens.Revision * 7;
             if (key != _statKey)
             {
@@ -426,7 +495,7 @@ namespace Morgott.UI.CraftingScreen
                 _statLines.Clear();
                 string L(string token) => Localization.instance.Localize(token);
                 string C(string token, string text) => "<color=" + Hex(token, Color.white) + ">" + text + "</color>";
-                if (IsFood(shared))
+                if (food)
                 {
                     _statLines.Add((L("$ui_craft_stat_health"), C("color.hud.health", Num(shared.m_food))));
                     _statLines.Add((L("$ui_craft_stat_stamina"), C("color.hud.stamina", Num(shared.m_foodStamina))));
@@ -435,7 +504,7 @@ namespace Morgott.UI.CraftingScreen
                         shared.m_foodRegen.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture))));
                     _statLines.Add((L("$ui_craft_stat_duration"), Localization.instance.Localize("$ui_craft_minutes", Num(shared.m_foodBurnTime / 60f))));
                 }
-                _statLines.Add((L("$ui_craft_stat_yield"), "×" + Mathf.Max(1, recipe.m_amount)));
+                _statLines.Add((L("$ui_craft_stat_yield"), "\u00D7" + Mathf.Max(1, recipe.m_amount)));
                 _statLines.Add((L("$ui_craft_stat_craftable"), C(count > 0 ? "color.stats.good" : "color.state.disabled", CraftingMath.CountLabel(count, cap))));
                 _bonusText = bonus > 0 ? C("color.text.accent", Localization.instance.Localize("$ui_craft_bonus", bonus.ToString(System.Globalization.CultureInfo.InvariantCulture))) : "";
                 while (_statRows.Count < _statLines.Count)
@@ -447,21 +516,20 @@ namespace Morgott.UI.CraftingScreen
                     Shown(_statRows[i].Value, on);
                     if (!on) continue;
                     _statRows[i].Label.text = _statLines[i].Label;
-                    _statRows[i].Value.text = _statLines[i].Value;
                     _statRows[i].Value.richText = true;
+                    _statRows[i].Value.text = _statLines[i].Value;
                 }
                 _bonus.richText = true;
                 _bonus.text = _bonusText;
             }
 
-            var size = ThemeTokens.GetFloat("size.craft.font.body", 16f) * k;
-            var rowH = size * 1.4f;
             var lines = _statLines.Count + (_bonusText.Length > 0 ? 1 : 0);
-            var top = Mathf.Max(d.Y, d.Bottom - lines * rowH);
-            Geo.Place(_canvas, _stats, new Box(d.X, top, d.W, d.Bottom - top));
+            var rowH = box.H / Mathf.Max(1, lines);
+            var size = Mathf.Min(ThemeTokens.GetFloat("size.craft.font.body", 16f) * _in.Scale, rowH * 0.75f);
+            Geo.Place(_canvas, _stats, box);
             for (var i = 0; i < _statLines.Count; i++)
             {
-                var b = new Box(d.X, top + i * rowH, d.W, rowH);
+                var b = new Box(box.X, box.Y + i * rowH, box.W, rowH);
                 Geo.Place(_canvas, _statRows[i].Label.rectTransform, b);
                 Label(_statRows[i].Label, TextAlignmentOptions.MidlineLeft, size);
                 Geo.Place(_canvas, _statRows[i].Value.rectTransform, b);
@@ -470,10 +538,9 @@ namespace Morgott.UI.CraftingScreen
             Shown(_bonus, _bonusText.Length > 0);
             if (_bonusText.Length > 0)
             {
-                Geo.Place(_canvas, _bonus.rectTransform, new Box(d.X, top + _statLines.Count * rowH, d.W, rowH));
+                Geo.Place(_canvas, _bonus.rectTransform, new Box(box.X, box.Y + _statLines.Count * rowH, box.W, rowH));
                 Label(_bonus, TextAlignmentOptions.MidlineLeft, size);
             }
-            return new Box(d.X, d.Y, d.W, Mathf.Max(0f, top - _t.Gap * k * 0.5f - d.Y));
         }
     }
 }

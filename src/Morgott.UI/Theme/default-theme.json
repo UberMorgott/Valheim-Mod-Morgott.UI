@@ -1428,6 +1428,7 @@
     { "role": "info.title", "font": "font.display", "textColor": "color.text.header" },
     { "role": "craft.glyph.filter", "sprite": "sprite.glyph.filter", "color": "color.text.body", "imageType": "Simple", "preserveAspect": true },
     { "role": "craft.glyph.sort.desc", "sprite": "sprite.glyph.sort.desc", "color": "color.text.body", "imageType": "Simple", "preserveAspect": true },
+    { "role": "craft.tag.new", "sprite": "sprite.hud.plate.timer", "color": "color.text.display.gold", "imageType": "Sliced", "fillCenter": "true" },
     { "role": "craft.glyph.chain", "sprite": "sprite.glyph.link", "color": "color.text.body", "imageType": "Simple", "preserveAspect": true },
     { "role": "craft.stat.health", "sprite": "sprite.stats.icon.heart", "color": "color.frame", "imageType": "Simple", "preserveAspect": true },
     { "role": "craft.stat.stamina", "sprite": "sprite.glyph.stamina.bolt", "color": "color.hud.stamina", "imageType": "Simple", "preserveAspect": true },

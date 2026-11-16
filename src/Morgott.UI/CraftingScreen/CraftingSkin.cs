@@ -782,6 +782,7 @@ namespace Morgott.UI.CraftingScreen
             i.Quality = _gui.m_qualityPanel && _gui.m_qualityPanel.gameObject.activeSelf;
             i.Network = Network() != null && Station();
             i.Controls = i.Search && View() is Morgott.Core.ICraftingAvailability view && view.ControlsShown;
+            i.StatLines = StatLines();
             i.TabOffset = _tabOffset;
             i.CategoryOffset = _catOffset;
             i.SubCategoryOffset = _subOffset;
@@ -800,6 +801,7 @@ namespace Morgott.UI.CraftingScreen
                 h = h * 31 + i.Tabs;
                 h = h * 31 + i.Categories * 7 + i.Requirements * 101;
                 h = h * 31 + (i.Search ? 1 : 0) + (i.Repair ? 2 : 0) + (i.CraftType ? 4 : 0) + (i.Quality ? 8 : 0) + (i.Network ? 16 : 0) + (i.Controls ? 32 : 0);
+                h = h * 31 + i.StatLines;
                 h = h * 31 + i.TabOffset * 13 + i.CategoryOffset;
                 h = h * 31 + i.SubCategories * 17 + i.SubCategoryOffset;
                 h = h * 31 + ThemeTokens.Revision;
@@ -826,7 +828,7 @@ namespace Morgott.UI.CraftingScreen
             t.TitleH = F("size.craft.title", t.TitleH); t.CraftTypeH = F("size.craft.crafttype", t.CraftTypeH); t.IconH = F("size.craft.icon", t.IconH);
             t.QualityH = F("size.craft.quality", t.QualityH); t.DescriptionMinH = F("size.craft.description.min", t.DescriptionMinH);
             t.ReqW = F("size.craft.req.w", t.ReqW); t.ReqH = F("size.craft.req.h", t.ReqH); t.ReqMinW = F("size.craft.req.min", t.ReqMinW);
-            t.ReqMaxRows = F("size.craft.req.rows", t.ReqMaxRows); t.ButtonH = F("size.craft.button", t.ButtonH); t.WellPad = F("size.craft.well.pad", t.WellPad);
+            t.ReqMaxRows = F("size.craft.req.rows", t.ReqMaxRows); t.ButtonH = F("size.craft.button", t.ButtonH); t.StatRowH = F("size.craft.stat.row", t.StatRowH); t.WellPad = F("size.craft.well.pad", t.WellPad);
         }
 
         // ---------------------------------------------------------------- placement
@@ -1183,7 +1185,11 @@ namespace Morgott.UI.CraftingScreen
             var first = rows.Count > 0 && rows[0].InterfaceElement ? rows[0].InterfaceElement.GetInstanceID() : 0;
             var rebuilt = _rowsRebuilt || rows.Count != _rowCount || first != _rowFirst;
             var changed = rebuilt || !Mathf.Approximately(pitch, _rowPitch) || _rowsTheme != ThemeTokens.Revision;
-            if (!changed) return;
+            if (!changed)
+            {
+                if (RowDataDue()) RowViews(rows, false); // counts / NEW / selection changed without a list rebuild
+                return;
+            }
             _rowsRebuilt = false;
             _rowPitch = pitch;
             _rowCount = rows.Count;
@@ -1211,7 +1217,7 @@ namespace Morgott.UI.CraftingScreen
                 RestyleRows(rows);
                 ChainRows(rows);
             }
-            RowViews(rows); // after StyleRow (name box) and the row restyle (text colours)
+            RowViews(rows, rebuilt); // after StyleRow (name box) and the row restyle (text colours)
             // Content bounds changed after vanilla SetRecipe may have centred the selection: reveal it once more.
             var sel = _gui.GetSelectedRecipeIndex();
             if (_gui.m_recipeEnsureVisible && sel >= 0 && sel < rows.Count && rows[sel].InterfaceElement)
@@ -1366,9 +1372,21 @@ namespace Morgott.UI.CraftingScreen
             if (_gui.m_qualityPanel && !o.Quality.IsEmpty) Geo.Place(_canvas, (RectTransform)_gui.m_qualityPanel, o.Quality);
             RequirementGrid(o);
             var description = o.Description;
+            var stats = o.Stats;
             var chain = Chain(o);
-            if (!chain.IsEmpty) description = new Box(description.X, description.Y, description.W, Mathf.Max(0f, chain.Y - _t.Gap * k * 0.5f - description.Y));
-            DescriptionView(StatTable(description, k), k);
+            if (!chain.IsEmpty)
+            {
+                // The chain box docks above the requirements (RecipeChainsUi): the stat table sits on it, the description above.
+                var bottom = chain.Y - _t.Gap * k * 0.5f;
+                if (!stats.IsEmpty)
+                {
+                    stats = new Box(stats.X, bottom - stats.H, stats.W, stats.H);
+                    bottom = stats.Y - _t.Gap * k * 0.5f;
+                }
+                description = new Box(description.X, description.Y, description.W, Mathf.Max(0f, bottom - description.Y));
+            }
+            StatTable(stats);
+            DescriptionView(description, k);
         }
 
         // ---------------------------------------------------------------- description scroll
@@ -1452,7 +1470,8 @@ namespace Morgott.UI.CraftingScreen
             if (!_chain || !_chain.gameObject.activeInHierarchy) return default;
             var k = _in.Scale;
             var box = Geo.BoxOf(_canvas, _chain);
-            var top = (o.Icon.IsEmpty ? o.Description.Y : o.Icon.Bottom) + ThemeTokens.GetFloat("size.craft.description.min", 48f) * k;
+            var top = (o.Icon.IsEmpty ? o.Description.Y : o.Icon.Bottom) + ThemeTokens.GetFloat("size.craft.description.min", 48f) * k +
+                      (o.Stats.IsEmpty ? 0f : o.Stats.H + _t.Gap * k * 0.5f); // the stat table keeps its lines above the chain box
             var h = CraftingMath.ChainHeight(box.H, box.Bottom, top, ThemeTokens.GetFloat("size.craft.chain.max", 150f) * k, ThemeTokens.GetFloat("size.craft.chain.min", 72f) * k);
             if (box.H > h + 0.5f)
             {
