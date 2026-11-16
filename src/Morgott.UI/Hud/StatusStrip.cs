@@ -424,6 +424,7 @@ namespace Morgott.UI.PlayerHud
             Top(c.Back.rectTransform, t.Icon * 0.8f, Mathf.Max(1.5f, t.Icon * 0.04f), -t.Icon - 0.5f);
             Line(c.Name.rectTransform, t, t.Line);
             Line(c.Timer.rectTransform, t, 0f);
+            c.ShownText = null; // new width: re-fit the icon text on the next tick
         }
 
         private static void Top(RectTransform rt, float w, float h, float y)
@@ -483,7 +484,8 @@ namespace Morgott.UI.PlayerHud
                 if (!ReferenceEquals(text, c.ShownText) && text != c.ShownText)
                 {
                     c.ShownText = text;
-                    c.Timer.text = text ?? "";
+                    // labelled tile: a line too long for the tile keeps its value, not "Comf..." (HudMath.IconValue)
+                    c.Timer.text = c.Name && text != null && c.Timer.GetPreferredValues(text, 0f, 0f).x > c.Timer.rectTransform.rect.width ? HudMath.IconValue(text) : text ?? "";
                     Plate(c, !string.IsNullOrEmpty(text));
                 }
                 return;
