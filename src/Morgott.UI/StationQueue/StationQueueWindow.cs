@@ -35,7 +35,10 @@ namespace Morgott.UI.StationQueue
         public static string LastScreen { get; private set; } = "";
         public static bool IsOpen => _instance && _instance._station && _instance._root && _instance._root.gameObject.activeSelf;
         public static void Open(Component station) { if (_instance) _instance.Show(station); }
-        public static void Close() { if (_instance) _instance.Hide(); }
+        public static void Close() { if (_instance) _instance.Hide("Close()"); }
+
+        /// <summary>Harness: why the window last closed or failed to open ("" = never).</summary>
+        public static string LastCloseReason { get; private set; } = "";
         public static void OpenEditor(int index) { if (_instance && IsOpen) _instance.EditorOpen(index, null); }
 
         // Harness: the multi window's title badge text ("" when not shown), the shown header / status line, the card being
@@ -51,7 +54,7 @@ namespace Morgott.UI.StationQueue
         {
             get
             {
-                if (!IsOpen) return "closed";
+                if (!IsOpen) return "closed (" + LastCloseReason + ")";
                 var root = _instance._root;
                 if (!root.gameObject.activeInHierarchy) return "inactive in hierarchy";
                 foreach (var c in root.GetComponentsInParent<Canvas>(true))
@@ -229,17 +232,19 @@ namespace Morgott.UI.StationQueue
             }
             if (!IsOpen) return;
             var p = Player.m_localPlayer;
-            if (!_station || !p || p.IsDead() || !StationQueueMath.KeepsOpen(Surface(p, _station), p.m_maxInteractDistance) ||
-                InventoryGui.IsVisible() || Minimap.IsOpen() || Menu.IsVisible())
+            var why = !_station ? "station gone" : !p ? "no player" : p.IsDead() ? "player dead" :
+                !StationQueueMath.KeepsOpen(Surface(p, _station), p.m_maxInteractDistance) ? $"out of reach: surface {Surface(p, _station):0.0} m > {p.m_maxInteractDistance + StationQueueMath.ReachMargin:0.0} m" :
+                InventoryGui.IsVisible() ? "inventory open" : Minimap.IsOpen() ? "map open" : Menu.IsVisible() ? "menu open" : null;
+            if (why != null)
             {
-                Hide();
+                Hide(why);
                 return;
             }
             if (ZInput.GetKeyDown(KeyCode.Escape, false))
             {
                 if (_picker.gameObject.activeSelf) _picker.gameObject.SetActive(false);
                 else if (_editing) EditorClose();
-                else Hide();
+                else Hide("Esc");
                 return;
             }
             if (ZInput.GetKeyDown(KeyCode.Return, false) || ZInput.GetKeyDown(KeyCode.KeypadEnter, false))
@@ -278,8 +283,14 @@ namespace Morgott.UI.StationQueue
 
         private void Show(Component station)
         {
-            if (!station || _queue == null || !EnsureBuilt()) return;
-            if (!_queue.Read(station, _state)) return;
+            var fail = !station ? "no station" : _queue == null ? "no IStationQueue" : !EnsureBuilt() ? "not built: " + _buildFail :
+                !_queue.Read(station, _state) ? "Read refused" : null;
+            if (fail != null)
+            {
+                LastCloseReason = "open failed: " + fail;
+                Plugin.Log.LogWarning("[StationQueue] window " + LastCloseReason);
+                return;
+            }
             _station = station;
             _inScroll = _cardScroll = 0;
             _editing = false;
@@ -289,8 +300,13 @@ namespace Morgott.UI.StationQueue
             RefreshAll();
         }
 
-        private void Hide()
+        private void Hide(string why)
         {
+            if (IsOpen)
+            {
+                LastCloseReason = why;
+                Plugin.Log.LogInfo($"[StationQueue] window closed: {why}");
+            }
             if (_root && _root.gameObject.activeSelf) _closedFrame = Time.frameCount;
             _station = null;
             _editing = false;
@@ -307,7 +323,7 @@ namespace Morgott.UI.StationQueue
             _nextRead = Time.unscaledTime + RefreshEvery;
             if (_queue == null || !_station || !_queue.Read(_station, _state))
             {
-                Hide();
+                Hide("refresh: Read refused or station gone");
                 return;
             }
             RefreshAll();
@@ -634,15 +650,22 @@ namespace Morgott.UI.StationQueue
 
         // ---------------------------------------------------------------- build
 
+        private string _buildFail;
+
+        private static string Path(Transform t) => t ? (t.parent ? Path(t.parent) + "/" : "") + t.name : "";
+
         private bool EnsureBuilt()
         {
             if (_root) return true;
             // Next to Inventory_screen / HUD under IngameGui (_GameMain/LoadingGUI/PixelFix/IngameGui): the GUI that is
             // drawn. Run 20261117-184423 parented it to the root canvas (LoadingGUI) instead: open, but never on screen.
-            var gui = InventoryGui.instance;
-            var host = gui ? gui.transform.parent : null;
-            if (!host || !host.GetComponentInParent<Canvas>()) return false;
+            // Anchored on the HUD (drawn whenever the player is in the world), not on InventoryGui (its own state while
+            // closed: run 20261117-185937 never opened, no log).
+            var host = Hud.instance ? Hud.instance.transform.parent : null;
+            _buildFail = !Hud.instance ? "no Hud" : !host ? "Hud has no parent" : !host.GetComponentInParent<Canvas>(true) ? "no canvas above " + host.name : null;
+            if (_buildFail != null) return false;
             _root = NewRect(RootName, host);
+            Plugin.Log.LogInfo($"[StationQueue] window built under {Path(host)} (layer {host.gameObject.layer})");
             _root.SetAsLastSibling();
             Stretch(_root, 0f, 0f, 0f, 0f);
             _root.gameObject.SetActive(false);
@@ -723,7 +746,7 @@ namespace Morgott.UI.StationQueue
         private void BuildMulti()
         {
             const float W0 = 1100f, H0 = 680f;
-            _multi = Panel(_root, "Multi", W0, H0, "station.queue", Hide,
+            _multi = Panel(_root, "Multi", W0, H0, "station.queue", () => Hide("close button"),
                 Hint("Esc", W("close")) + "      " + Hint("LMB", W("drag")) + "      " + Hint("Del", W("delete")));
             var badge = Img(Header(_multi).transform, "QueueBadge", "button.primary");
             badge.preserveAspect = false;
@@ -936,7 +959,7 @@ namespace Morgott.UI.StationQueue
         private void BuildSingle()
         {
             const float W0 = 720f, H0 = 620f;
-            _single = Panel(_root, "Single", W0, H0, "station.queue.single", Hide, Hint("Esc", W("close")));
+            _single = Panel(_root, "Single", W0, H0, "station.queue.single", () => Hide("close button"), Hint("Esc", W("close")));
             // recipe row: input -> output | fuel (counts = network)
             _sIn = SlotIcon(_single, 80f, 70f, 100f, out _sInCount);
             _sInName = CellName(_single, 50f);
