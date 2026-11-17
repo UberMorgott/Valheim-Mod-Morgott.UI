@@ -585,7 +585,7 @@
   "ui_sq_inputs": "Inputs",
   "ui_sq_queue": "Queue",
   "ui_sq_unknown_hidden": "Unknown inputs hidden",
-  "ui_sq_add_hint": "+ Press + next to an input",
+  "ui_sq_add_hint": "+ Drag an input here or press +",
   "ui_sq_order": "Order: top to bottom",
   "ui_sq_pause": "Pause",
   "ui_sq_resume": "Resume",
@@ -626,5 +626,14 @@
   "ui_sq_save": "Save",
   "ui_sq_close": "Close",
   "ui_sq_search": "Search...",
-  "ui_sq_from_network": "Inputs come from the chest network"
+  "ui_sq_from_network": "Inputs come from the chest network",
+  "ui_sq_loaded_furnace": "In the furnace: {0}/{1}",
+  "ui_sq_loaded_machine": "In the machine: {0}/{1}",
+  "ui_sq_loaded_barrel": "In the barrel: {0}/{1}",
+  "ui_sq_loaded_fire": "On the fire: {0}/{1}",
+  "ui_sq_drag": "Drag",
+  "ui_sq_badge": "Queue",
+  "ui_sq_unit_SoftTissue": "tissue",
+  "ui_sq_unit_Barley": "barley",
+  "ui_sq_unit_Flax": "flax"
 }

@@ -25,7 +25,7 @@ namespace Morgott.UI.StationQueue
     {
         public const string RootName = "MorgottStationQueue";
         private const float MaxDistance = 5f, RefreshEvery = 0.5f;
-        private const int InputRows = 5, CardRows = 5, PickerRows = 6;
+        private const int InputRows = 5, CardRows = 4, PickerRows = 6;
 
         private static StationQueueWindow _instance;
         private static int _closedFrame = -1;
@@ -37,6 +37,12 @@ namespace Morgott.UI.StationQueue
         public static void Open(Component station) { if (_instance) _instance.Show(station); }
         public static void Close() { if (_instance) _instance.Hide(); }
         public static void OpenEditor(int index) { if (_instance && IsOpen) _instance.EditorOpen(index, null); }
+
+        // Harness: the multi window's title badge text ("" when not shown), the shown header / status line, the card being
+        // dragged (-1 = none).
+        public static string BadgeText => IsOpen && _instance._badge && _instance._badge.gameObject.activeInHierarchy ? _instance._badgeLabel.text : "";
+        public static string StatusLine => !IsOpen ? "" : _instance._multi.gameObject.activeSelf ? _instance._mStatus.text : _instance._sStatus.text;
+        public static int DraggingCard => _instance ? _instance._dragCard : -1;
 
         // Menu.Update skips the frame Esc closed (or would close) this window, so Esc never opens the pause menu too.
         internal static bool EatsEscape() =>
@@ -55,6 +61,9 @@ namespace Morgott.UI.StationQueue
         private readonly StationQueueState _state = new StationQueueState();
         private readonly Dictionary<string, ItemDrop> _items = new Dictionary<string, ItemDrop>(StringComparer.Ordinal);
         private int _inScroll, _cardScroll;
+        private int _dragCard = -1, _hoverCard = -1;
+        private string _dragItem;
+        private Image _ghost;
 
         // editor: index of the edited entry (-1 = new), draft; open flag
         private bool _editing;
@@ -67,7 +76,8 @@ namespace Morgott.UI.StationQueue
         private TMP_Text _mStatus, _mHidden, _mPause, _sStatus, _sPause;
         private readonly List<InputRow> _rows = new List<InputRow>();
         private readonly List<Card> _cards = new List<Card>();
-        private RectTransform _rowsRt, _cardsRt, _addHint;
+        private RectTransform _rowsRt, _cardsRt, _addHint, _badge;
+        private TMP_Text _badgeLabel;
 
         private sealed class InputRow
         {
@@ -86,6 +96,7 @@ namespace Morgott.UI.StationQueue
             public RectTransform Trough;
             public TMP_Text Num, Text, Pct, Fed, Chip;
             public Image[] ChipRim;
+            public Image ChipIcon;
             public int Index;
         }
 
@@ -123,6 +134,31 @@ namespace Morgott.UI.StationQueue
             public TMP_InputField Field;
             public Func<int> Get;
             public Action<int> Set;
+        }
+
+        // LMB drag (Begin false = not draggable now).
+        private sealed class DragHandle : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler
+        {
+            public Func<PointerEventData, bool> Begin;
+            public Action<PointerEventData> Move, End;
+            private bool _on;
+
+            public void OnBeginDrag(PointerEventData e) => _on = e.button == PointerEventData.InputButton.Left && Begin != null && Begin(e);
+            public void OnDrag(PointerEventData e) { if (_on) Move?.Invoke(e); }
+
+            public void OnEndDrag(PointerEventData e)
+            {
+                if (!_on) return;
+                _on = false;
+                End?.Invoke(e);
+            }
+        }
+
+        private sealed class Hover : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
+        {
+            public Action<bool> Set;
+            public void OnPointerEnter(PointerEventData e) => Set?.Invoke(true);
+            public void OnPointerExit(PointerEventData e) => Set?.Invoke(false);
         }
 
         // Mouse wheel over a list.
@@ -183,7 +219,21 @@ namespace Morgott.UI.StationQueue
                 else if (_editing) EditorSave();
                 return;
             }
-            if (Time.unscaledTime >= _nextRead) Reload();
+            if (!_editing && _hoverCard >= 0 && ZInput.GetKeyDown(KeyCode.Delete, false))
+            {
+                RemoveCard(_hoverCard);
+                return;
+            }
+            if (Time.unscaledTime >= _nextRead && _dragCard < 0 && _dragItem == null) Reload();
+        }
+
+        private void RemoveCard(int index)
+        {
+            var list = Entries();
+            if (index < 0 || index >= list.Count) return;
+            list.RemoveAt(index);
+            _hoverCard = -1;
+            Commit(list, _state.Paused);
         }
 
         private void Show(Component station)
@@ -204,6 +254,10 @@ namespace Morgott.UI.StationQueue
             if (_root && _root.gameObject.activeSelf) _closedFrame = Time.frameCount;
             _station = null;
             _editing = false;
+            _dragCard = -1;
+            _dragItem = null;
+            _hoverCard = -1;
+            if (_ghost) _ghost.gameObject.SetActive(false);
             if (_root) _root.gameObject.SetActive(false);
             LastScreen = "";
         }
@@ -289,7 +343,7 @@ namespace Morgott.UI.StationQueue
             Header(_multi).Text(_state.Name);
             var first = _state.Inputs.Count > 0 && _state.Inputs[0].Output ? _state.Inputs[0].Output : null;
             _mStatus.text = StationQueueMath.Join(
-                StationQueueMath.Format(W("loaded"), _state.Loaded, _state.Capacity),
+                StationQueueMath.Loaded(W(StationQueueMath.LoadedKey(_state.Name)), _state.Loaded, _state.Capacity, null),
                 first ? StationQueueMath.Format(W("output_net"), Name(first), StationQueueMath.Group(Net(first.name))) : null,
                 NetworkPart());
             _mPause.text = _state.Paused ? W("resume") : W("pause");
@@ -325,10 +379,10 @@ namespace Morgott.UI.StationQueue
                 SetActive(card.Rt, k < entries.Count);
                 if (k >= entries.Count) continue;
                 shown++;
+                Put(card.Rt, 0f, c * CardStep, CardW, CardH); // back in its slot after a drag
                 FillCard(card, k, entries[k]);
             }
-            SetActive(_addHint, shown < CardRows);
-            if (_addHint.gameObject.activeSelf) Put(_addHint, 0f, shown * CardStep, CardW, 56f);
+            Put(_addHint, 0f, shown * CardStep, CardW, 56f);
         }
 
         private const float CardW = 604f, CardH = 74f, CardStep = 82f;
@@ -358,6 +412,11 @@ namespace Morgott.UI.StationQueue
             var chip = e.Mode == StationQueueMode.Count ? Cyan : Gold;
             card.Chip.color = chip;
             SetRim(card.ChipRim, chip);
+            // until chip: "Пока" + the condition item's icon (mockup coal cloud)
+            var until = e.Mode == StationQueueMode.Until;
+            card.ChipIcon.sprite = until ? Icon(Item(e.Condition)) : null;
+            card.ChipIcon.enabled = card.ChipIcon.sprite;
+            Stretch(card.Chip.rectTransform, 2f, 0f, card.ChipIcon.enabled ? 28f : 2f, 0f);
         }
 
         private void RefreshSingle()
@@ -372,8 +431,10 @@ namespace Morgott.UI.StationQueue
             if (_state.Fuel) Cell(_sFuel, _sFuelCount, _sFuelName, _state.Fuel, Net(_state.Fuel.name));
             _sFuelLabel.text = W("fuel");
             var status = "<color=#" + ColorUtility.ToHtmlStringRGB(Cyan) + ">" + StatusWord() + "</color>";
+            var unit = id != null ? Words.Get("$ui_sq_unit_" + id) : null;
+            if (unit != null && unit.StartsWith("[", StringComparison.Ordinal)) unit = null; // no unit word for this input
             _sStatus.text = StationQueueMath.Join(
-                StationQueueMath.Format(W("loaded"), _state.Loaded, _state.Capacity),
+                StationQueueMath.Loaded(W(StationQueueMath.LoadedKey(_state.Name)), _state.Loaded, _state.Capacity, unit),
                 _state.Fuel ? Name(_state.Fuel) + " " + Mathf.FloorToInt(_state.FuelLevel) + "/" + _state.FuelMax : null,
                 _state.InNetwork ? null : W("no_network"),
                 status);
@@ -565,13 +626,20 @@ namespace Morgott.UI.StationQueue
             block.raycastTarget = true;
             DollCell.Mark(block, "content", "station queue panel click blocker");
             var decor = PanelDecor.Ensure(p, "size.panel.glass.inset", glass: true, plaque: false);
-            var header = RuneWindowHeader.Ensure(p, moveId, p);
+            // Title band = the panel top minus the close cap's column: the cap sits right of the plaque (mockups).
+            var band = NewRect("TitleBand", p);
+            band.anchorMin = new Vector2(0f, 1f);
+            band.anchorMax = Vector2.one;
+            band.pivot = new Vector2(0.5f, 1f);
+            band.offsetMin = new Vector2(0f, -80f);
+            band.offsetMax = new Vector2(-CloseColumn, 0f);
+            var header = RuneWindowHeader.Ensure(band, moveId, p);
             header.Frame = decor;
+            header.Stretch();
             var x = Btn(p, "Close", "button.icon", out var xl, close);
             xl.text = "×";
             xl.fontSize = 26f;
-            header.CloseButton = x;
-            header.Stretch(WindowHeaderMath.IconShare);
+            Put(x, w - CloseColumn + 4f, 10f, 40f, 40f);
             MovableWindow.Ensure(p, moveId);
             _headers[p] = header;
             var hint = Txt(p, "Hints", "text.body", TextAlignmentOptions.Center, 21f);
@@ -581,12 +649,47 @@ namespace Morgott.UI.StationQueue
             return p;
         }
 
+        private const float CloseColumn = 58f, BadgeW = 150f;
+        private float _badgeShare;
+
+        // Multi window: the "Очередь" badge in the header's aux slot (right end of the plaque, kiln.png).
+        private void LateUpdate()
+        {
+            if (!IsOpen || !_multi.gameObject.activeSelf || !_badge) return;
+            var h = Header(_multi);
+            var rt = (RectTransform)h.transform;
+            var hh = rt.rect.height;
+            if (!(hh > 0f)) return;
+            var share = BadgeW / hh;
+            if (Mathf.Abs(share - _badgeShare) > 0.001f)
+            {
+                _badgeShare = share;
+                h.Stretch(share);
+            }
+            var aux = h.AuxLocal;
+            SetActive(_badge, aux.width > 0f);
+            if (aux.width <= 0f) return;
+            _badge.anchorMin = _badge.anchorMax = _badge.pivot = new Vector2(0.5f, 0.5f);
+            var pos = aux.center - rt.rect.center;
+            if ((_badge.anchoredPosition - pos).sqrMagnitude > 0.01f) _badge.anchoredPosition = pos;
+            if ((_badge.sizeDelta - aux.size).sqrMagnitude > 0.01f) _badge.sizeDelta = aux.size;
+        }
+
         private static string Hint(string key, string word) => StationQueueMath.KeyHint(key, word, ColorUtility.ToHtmlStringRGB(Gold));
 
         private void BuildMulti()
         {
             const float W0 = 1100f, H0 = 680f;
-            _multi = Panel(_root, "Multi", W0, H0, "station.queue", Hide, Hint("Esc", W("close")));
+            _multi = Panel(_root, "Multi", W0, H0, "station.queue", Hide,
+                Hint("Esc", W("close")) + "      " + Hint("LMB", W("drag")) + "      " + Hint("Del", W("delete")));
+            var badge = Img(Header(_multi).transform, "QueueBadge", "button.primary");
+            badge.preserveAspect = false;
+            _badge = badge.rectTransform;
+            SetRim(Rim(_badge), Gold);
+            _badgeLabel = Txt(_badge, "Label", "text.accent", TextAlignmentOptions.Center, 22f);
+            _badgeLabel.text = W("badge");
+            _badgeLabel.color = Gold;
+            Stretch(_badgeLabel.rectTransform, 4f, 0f, 4f, 0f);
             _mStatus = Txt(_multi, "Status", "text.body", TextAlignmentOptions.Center, 22f);
             Put(_mStatus, 40f, 62f, W0 - 80f, 32f);
             Put(Rule(_multi, "TopRule", Dim), 28f, 102f, W0 - 56f, 1f);
@@ -610,12 +713,17 @@ namespace Morgott.UI.StationQueue
             WheelOn(_cardsRt, d => { _cardScroll -= Math.Sign(d); RefreshAll(); });
             for (var i = 0; i < CardRows; i++) _cards.Add(NewCard(_cardsRt, i));
             _addHint = NewRect("AddHint", _cardsRt);
-            var addRim = Rim(_addHint);
-            SetRim(addRim, Dim);
+            Dashes(_addHint, CardW, 56f, new Color(Dim.r, Dim.g, Dim.b, 0.9f));
             var addText = Txt(_addHint, "Text", "text.muted", TextAlignmentOptions.Center, 20f);
             addText.text = W("add_hint");
             addText.color = Muted;
             Stretch(addText.rectTransform, 0f, 0f, 0f, 0f);
+
+            // drag ghost of an input row (dropped on the queue = appended)
+            _ghost = IconIn(_root, 0f);
+            _ghost.rectTransform.anchorMin = _ghost.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
+            _ghost.rectTransform.sizeDelta = new Vector2(64f, 64f);
+            _ghost.gameObject.SetActive(false);
 
             // footer
             Put(Rule(_multi, "BottomRule", Dim), 28f, 612f, W0 - 56f, 1f);
@@ -644,6 +752,35 @@ namespace Morgott.UI.StationQueue
         {
             var row = new InputRow { Rt = NewRect("Row" + i, parent) };
             Put(row.Rt, 0f, i * 84f, 400f, 80f);
+            var hit = row.Rt.gameObject.AddComponent<Image>(); // drag source (LMB onto the queue appends)
+            hit.color = Color.clear;
+            hit.raycastTarget = true;
+            DollCell.Mark(hit, "content", "station queue input row drag area");
+            var drag = row.Rt.gameObject.AddComponent<DragHandle>();
+            drag.Begin = e =>
+            {
+                if (row.Item == null) return false;
+                _dragItem = row.Item;
+                _ghost.sprite = row.Icon.sprite;
+                _ghost.transform.SetAsLastSibling();
+                _ghost.gameObject.SetActive(_ghost.sprite);
+                return true;
+            };
+            drag.Move = e =>
+            {
+                if (RectTransformUtility.ScreenPointToLocalPointInRectangle(_root, e.position, e.pressEventCamera, out var lp))
+                    _ghost.rectTransform.anchoredPosition = lp - _root.rect.center;
+            };
+            drag.End = e =>
+            {
+                var item = _dragItem;
+                _dragItem = null;
+                _ghost.gameObject.SetActive(false);
+                if (item == null || !RectTransformUtility.RectangleContainsScreenPoint(_cardsRt, e.position, e.pressEventCamera)) return;
+                var list = Entries();
+                list.Add(StationQueueMath.NewEntry(item, StationQueueMode.Count, OutputOf(item)));
+                Commit(list, _state.Paused);
+            };
             row.Group = row.Rt.gameObject.AddComponent<CanvasGroup>();
             row.Icon = SlotIcon(row.Rt, 0f, 6f, 68f, out row.Badge);
             row.Name = Txt(row.Rt, "Name", "text.body", TextAlignmentOptions.Left, 21f);
@@ -673,10 +810,39 @@ namespace Morgott.UI.StationQueue
             card.Rt = (RectTransform)plate.transform;
             Put(card.Rt, 0f, i * CardStep, CardW, CardH);
             card.Rim = Rim(card.Rt);
-            var grip = Txt(card.Rt, "Grip", "text.muted", TextAlignmentOptions.Center, 22f);
-            grip.text = "⋮⋮";
-            grip.color = Muted;
-            Put(grip, 6f, 0f, 22f, CardH);
+            // grip: 2 x 3 dots, LMB drag reorders
+            var grip = Img(card.Rt, "Grip", "ib.rule", true);
+            grip.color = Color.clear;
+            Put(grip, 4f, 0f, 26f, CardH);
+            for (var d = 0; d < 6; d++) Put(Rule(grip.transform, "Dot" + d, Muted), 7f + d % 2 * 8f, CardH / 2f - 11f + d / 2 * 8f, 4f, 4f);
+            var gd = grip.gameObject.AddComponent<DragHandle>();
+            gd.Begin = e =>
+            {
+                _dragCard = card.Index;
+                card.Rt.SetAsLastSibling();
+                return true;
+            };
+            gd.Move = e =>
+            {
+                if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(_cardsRt, e.position, e.pressEventCamera, out var lp)) return;
+                var y = _cardsRt.rect.yMax - lp.y - CardH / 2f;
+                Put(card.Rt, 0f, Mathf.Clamp(y, 0f, (CardRows - 1) * CardStep), CardW, CardH);
+            };
+            gd.End = e =>
+            {
+                var from = _dragCard;
+                _dragCard = -1;
+                var list = Entries();
+                if (RectTransformUtility.ScreenPointToLocalPointInRectangle(_cardsRt, e.position, e.pressEventCamera, out var lp) &&
+                    StationQueueMath.MoveTo(list, from, StationQueueMath.SlotAt(_cardsRt.rect.yMax - lp.y, CardStep, _cardScroll)))
+                    Commit(list, _state.Paused);
+                else RefreshAll();
+            };
+            card.Rt.gameObject.AddComponent<Hover>().Set = on =>
+            {
+                if (on) _hoverCard = card.Index;
+                else if (_hoverCard == card.Index) _hoverCard = -1;
+            };
             card.Num = Txt(card.Rt, "Num", "text.body", TextAlignmentOptions.Center, 22f);
             Put(card.Num, 28f, 0f, 30f, CardH);
             card.Icon = SlotIcon(card.Rt, 62f, 8f, 58f, out var badge);
@@ -695,6 +861,8 @@ namespace Morgott.UI.StationQueue
             var chipRt = NewRect("Chip", card.Rt);
             Put(chipRt, 364f, 14f, 92f, 30f);
             card.ChipRim = Rim(chipRt);
+            card.ChipIcon = IconIn(chipRt, 0f);
+            Put(card.ChipIcon, 66f, 4f, 22f, 22f);
             card.Chip = Txt(chipRt, "Label", "text.body", TextAlignmentOptions.Center, 18f);
             Stretch(card.Chip.rectTransform, 2f, 0f, 2f, 0f);
             Arrow(card, "Up", "▲", 466f, () => Reorder(card.Index, -1));
@@ -947,6 +1115,7 @@ namespace Morgott.UI.StationQueue
             Put(Rule(_editor, "Rule1", Dim), 28f, 514f, W0 - 56f, 1f);
             _eDelete = Btn(_editor, "Delete", "button.danger", out var dl, EditorDelete);
             dl.text = W("delete");
+            dl.color = ThemeTokens.GetColor("color.text.missing", Hex("#E0413A"));
             dl.fontSize = 22f;
             Put(_eDelete, 40f, 528f, 160f, 44f);
             var cancel = Btn(_editor, "Cancel", "button", out var cl, EditorClose);
@@ -978,6 +1147,10 @@ namespace Morgott.UI.StationQueue
             _picker.sizeDelta = new Vector2(290f, 52f + PickerRows * 34f);
             _pSearch = InputBox(_picker, "Search", "$ui_sq_search");
             Put(_pSearch, 8f, 8f, 274f, 36f);
+            var glass = Img(_pSearch.transform, "Glyph", "craft.glyph.search");
+            glass.color = Muted;
+            Put(glass, 10f, 8f, 20f, 20f);
+            _pSearch.textViewport.offsetMin = new Vector2(38f, 0f);
             _pSearch.onValueChanged.AddListener(_ => { _pScroll = 0; PickerFill(); });
             for (var i = 0; i < PickerRows; i++)
             {
@@ -1102,6 +1275,24 @@ namespace Morgott.UI.StationQueue
                 rt.offsetMax = horizontal ? new Vector2(-4f, i == 0 ? -0.5f : 2f) : new Vector2(i == 3 ? -0.5f : 2f, -4f);
             }
             return rim;
+        }
+
+        // Dashed outline (drop zone): 10-unit dashes, 6-unit gaps.
+        private static void Dashes(RectTransform host, float w, float h, Color c)
+        {
+            const float Dash = 10f, Gap = 6f, T = 1.5f;
+            for (var x = 4f; x < w - 4f; x += Dash + Gap)
+            {
+                var len = Mathf.Min(Dash, w - 4f - x);
+                Put(Rule(host, "DashT", c), x, 0f, len, T);
+                Put(Rule(host, "DashB", c), x, h - T, len, T);
+            }
+            for (var y = 4f; y < h - 4f; y += Dash + Gap)
+            {
+                var len = Mathf.Min(Dash, h - 4f - y);
+                Put(Rule(host, "DashL", c), 0f, y, T, len);
+                Put(Rule(host, "DashR", c), w - T, y, T, len);
+            }
         }
 
         private static void SetRim(Image[] rim, Color c)

@@ -664,7 +664,7 @@
   "ui_sq_inputs": "Сырьё",
   "ui_sq_queue": "Очередь",
   "ui_sq_unknown_hidden": "Неизвестное сырьё скрыто",
-  "ui_sq_add_hint": "+ Нажмите + у сырья",
+  "ui_sq_add_hint": "+ Перетащите сырьё или нажмите +",
   "ui_sq_order": "Порядок: сверху вниз",
   "ui_sq_pause": "Пауза",
   "ui_sq_resume": "Продолжить",
@@ -705,5 +705,14 @@
   "ui_sq_save": "Сохранить",
   "ui_sq_close": "Закрыть",
   "ui_sq_search": "Поиск...",
-  "ui_sq_from_network": "Сырьё берётся из сети сундуков"
+  "ui_sq_from_network": "Сырьё берётся из сети сундуков",
+  "ui_sq_loaded_furnace": "В печи: {0}/{1}",
+  "ui_sq_loaded_machine": "В машине: {0}/{1}",
+  "ui_sq_loaded_barrel": "В бочке: {0}/{1}",
+  "ui_sq_loaded_fire": "На огне: {0}/{1}",
+  "ui_sq_drag": "Перетащить",
+  "ui_sq_badge": "Очередь",
+  "ui_sq_unit_SoftTissue": "ткани",
+  "ui_sq_unit_Barley": "ячменя",
+  "ui_sq_unit_Flax": "льна"
 }

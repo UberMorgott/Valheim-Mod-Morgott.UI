@@ -123,6 +123,43 @@ namespace Morgott.UI.StationQueue
             return true;
         }
 
+        // Drag-reorder: entry `from` taken out and put at `to` (clamped); false when nothing moves.
+        public static bool MoveTo(List<StationQueueEntry> list, int from, int to)
+        {
+            if (from < 0 || from >= list.Count) return false;
+            to = to < 0 ? 0 : to >= list.Count ? list.Count - 1 : to;
+            if (to == from) return false;
+            var e = list[from];
+            list.RemoveAt(from);
+            list.Insert(to, e);
+            return true;
+        }
+
+        // Card slot under a pointer `y` units below the list top (rows `step` apart, first shown = scroll).
+        public static int SlotAt(float y, float step, int scroll) => scroll + (int)Math.Floor(Math.Max(0f, y) / step);
+
+        // Header "loaded" word per station kind, from its piece name token (lowercased): furnace "В печи", machine
+        // "В машине", barrel "В бочке", fire "На огне"; anything else the generic "Загружено".
+        public static string LoadedKey(string nameToken)
+        {
+            var n = (nameToken ?? "").ToLowerInvariant();
+            if (Has(n, "kiln", "smelter", "blastfurnace", "furnace", "oven")) return "loaded_furnace";
+            if (Has(n, "eitr", "refinery", "windmill", "spinning")) return "loaded_machine";
+            if (n.Contains("fermenter")) return "loaded_barrel";
+            if (n.Contains("cooking")) return "loaded_fire";
+            return "loaded";
+        }
+
+        private static bool Has(string s, params string[] parts)
+        {
+            foreach (var p in parts) if (s.Contains(p)) return true;
+            return false;
+        }
+
+        // "Loaded: 4/20" + the input unit when the language has one ("ткани").
+        public static string Loaded(string template, int loaded, int capacity, string unit) =>
+            Format(template, loaded, capacity) + (string.IsNullOrEmpty(unit) ? "" : " " + unit);
+
         // Editor save: replaces entry `index` (still there and the same input), else appends the draft.
         public static List<StationQueueEntry> Save(IList<StationQueueEntry> entries, int index, StationQueueEntry draft)
         {

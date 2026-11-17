@@ -105,6 +105,43 @@ namespace Morgott.UI.Tests
         }
 
         [Fact]
+        public void DragMoveTo()
+        {
+            var list = new List<StationQueueEntry>();
+            foreach (var id in new[] { "A", "B", "C", "D" }) list.Add(StationQueueMath.NewEntry(id, StationQueueMode.Count, null));
+            Assert.True(StationQueueMath.MoveTo(list, 0, 2));
+            Assert.Equal("BCAD", string.Concat(list.ConvertAll(e => e.Item)));
+            Assert.True(StationQueueMath.MoveTo(list, 3, -5));
+            Assert.Equal("DBCA", string.Concat(list.ConvertAll(e => e.Item)));
+            Assert.False(StationQueueMath.MoveTo(list, 1, 1));
+            Assert.Equal(0, StationQueueMath.SlotAt(-3f, 82f, 0));
+            Assert.Equal(3, StationQueueMath.SlotAt(170f, 82f, 1));
+        }
+
+        [Theory]
+        [InlineData("$piece_charcoalkiln", "loaded_furnace")]
+        [InlineData("$piece_smelter", "loaded_furnace")]
+        [InlineData("$piece_blastfurnace", "loaded_furnace")]
+        [InlineData("$piece_oven", "loaded_furnace")]
+        [InlineData("$piece_eitrrefinery", "loaded_machine")]
+        [InlineData("$piece_windmill", "loaded_machine")]
+        [InlineData("$piece_spinningwheel", "loaded_machine")]
+        [InlineData("$piece_fermenter", "loaded_barrel")]
+        [InlineData("$piece_cookingstation", "loaded_fire")]
+        [InlineData("$piece_bathtub", "loaded")]
+        public void LoadedWordPerStation(string token, string key) => Assert.Equal(key, StationQueueMath.LoadedKey(token));
+
+        [Fact]
+        public void HeaderLinesMatchMockups()
+        {
+            var kiln = StationQueueMath.Join(StationQueueMath.Loaded("В печи: {0}/{1}", 12, 25, null), "Уголь в сети: 46",
+                "Сеть: 3 " + StationQueueMath.Plural(3, "сундук", "сундука", "сундуков"));
+            Assert.Equal("В печи: 12/25 · Уголь в сети: 46 · Сеть: 3 сундука", kiln);
+            var eitr = StationQueueMath.Join(StationQueueMath.Loaded("В машине: {0}/{1}", 4, 20, "ткани"), "Живица 9/20", "Работает");
+            Assert.Equal("В машине: 4/20 ткани · Живица 9/20 · Работает", eitr);
+        }
+
+        [Fact]
         public void SingleWritesOneOrNone()
         {
             var e = StationQueueMath.NewEntry("SoftTissue", StationQueueMode.Until, "Eitr");
