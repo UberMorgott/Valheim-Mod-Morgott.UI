@@ -15,6 +15,13 @@ namespace Morgott.UI.StationQueue
         // One input = the single-input window (eitr refinery, windmill, spinning wheel); more = the queue window.
         public static bool IsSingle(int inputs) => inputs == 1;
 
+        // Steps back from the hover reach before the window closes.
+        public const float ReachMargin = 1.5f;
+
+        // Open while the eye is within the hover reach (+ margin) of the station's nearest surface point: anything the
+        // hotkey could open (hover within m_maxInteractDistance) stays open, whatever the station's size.
+        public static bool KeepsOpen(float eyeToSurface, float maxInteractDistance) => eyeToSurface <= maxInteractDistance + ReachMargin;
+
         public static string CompareText(StationQueueCompare c) => c == StationQueueCompare.Less ? "<" : "≥";
 
         // "1 240": thousands grouped by a space (mockup counts).

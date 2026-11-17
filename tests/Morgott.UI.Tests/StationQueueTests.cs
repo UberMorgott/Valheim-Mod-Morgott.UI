@@ -9,6 +9,16 @@ namespace Morgott.UI.Tests
     {
         private const string Until = "{0} — пока\n{1} в сети {2} {3}";
 
+        // Run 20261117-183057: the window closed in the frame after it opened because it judged the station centre (5 m
+        // cap) while the hotkey opens anything hovered within reach of its surface (Player.cs:4296, m_maxInteractDistance 5).
+        [Fact]
+        public void EverythingTheHotkeyCanOpenStaysOpen()
+        {
+            Assert.True(StationQueueMath.KeepsOpen(5f, 5f)); // hovered at the edge of reach
+            Assert.True(StationQueueMath.KeepsOpen(6.4f, 5f)); // one step back
+            Assert.False(StationQueueMath.KeepsOpen(7f, 5f)); // walked away
+        }
+
         [Fact]
         public void SingleOnlyForOneInput()
         {

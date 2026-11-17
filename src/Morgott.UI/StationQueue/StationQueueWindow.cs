@@ -18,13 +18,13 @@ namespace Morgott.UI.StationQueue
     // entry-editor.png = editor; DESIGN.md "User decisions 2026-11-17"). Data and edits through Core IStationQueue (owner
     // Morgott.Patcher [StationQueue]): Read every RefreshEvery s while open, Write on every change (false = no ward access:
     // vanilla "$msg_privatezone" message, the window shows the Read state again). Opened by the service's OpenRequested
-    // (Patcher hotkey on the hovered station); closed by Esc, the close cap, > MaxDistance from the station or the station
+    // (Patcher hotkey on the hovered station); closed by Esc, the close cap, out of reach of the station (StationQueueMath.KeepsOpen) or the station
     // gone. Built once under the in-game GUI canvas on the modal band (ModalLayer); panels = RuneSkin panel stack +
     // window header (drag band, WindowMove). Player input off and cursor shown while open (StationQueueInput).
     public sealed class StationQueueWindow : MonoBehaviour
     {
         public const string RootName = "MorgottStationQueue";
-        private const float MaxDistance = 5f, RefreshEvery = 0.5f;
+        private const float RefreshEvery = 0.5f;
         private const int InputRows = 5, CardRows = 4, PickerRows = 6;
 
         private static StationQueueWindow _instance;
@@ -200,7 +200,7 @@ namespace Morgott.UI.StationQueue
             }
             if (!IsOpen) return;
             var p = Player.m_localPlayer;
-            if (!_station || !p || p.IsDead() || Vector3.Distance(p.transform.position, _station.transform.position) > MaxDistance ||
+            if (!_station || !p || p.IsDead() || !StationQueueMath.KeepsOpen(Surface(p, _station), p.m_maxInteractDistance) ||
                 InventoryGui.IsVisible() || Minimap.IsOpen() || Menu.IsVisible())
             {
                 Hide();
@@ -225,6 +225,17 @@ namespace Morgott.UI.StationQueue
                 return;
             }
             if (Time.unscaledTime >= _nextRead && _dragCard < 0 && _dragItem == null) Reload();
+        }
+
+        // Eye to the nearest point of the station's rendered bounds (its collider hull, near enough): vanilla hovers a station by its collider hit within m_maxInteractDistance
+        // of the eye (Player.cs:4296), and a big station's centre lies metres behind that point.
+        private static float Surface(Player p, Component station)
+        {
+            var eye = p.m_eye ? p.m_eye.position : p.transform.position;
+            var best = float.MaxValue;
+            foreach (var r in station.GetComponentsInChildren<Renderer>())
+                if (r && r.enabled) best = Mathf.Min(best, Vector3.Distance(eye, r.bounds.ClosestPoint(eye)));
+            return best < float.MaxValue ? best : Vector3.Distance(eye, station.transform.position);
         }
 
         private void RemoveCard(int index)
