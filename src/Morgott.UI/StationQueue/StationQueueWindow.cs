@@ -44,6 +44,35 @@ namespace Morgott.UI.StationQueue
         public static string StatusLine => !IsOpen ? "" : _instance._multi.gameObject.activeSelf ? _instance._mStatus.text : _instance._sStatus.text;
         public static int DraggingCard => _instance ? _instance._dragCard : -1;
 
+        /// <summary>Harness: "" when the open window is on screen, else why not (state checks alone passed while nothing
+        /// was drawn, run 20261117-184423): every canvas above enabled, no CanvasGroup at alpha 0, the shown panel's
+        /// rect inside the screen, under the GUI the HUD is drawn in.</summary>
+        public static string VisibleWhy
+        {
+            get
+            {
+                if (!IsOpen) return "closed";
+                var root = _instance._root;
+                if (!root.gameObject.activeInHierarchy) return "inactive in hierarchy";
+                foreach (var c in root.GetComponentsInParent<Canvas>(true))
+                    if (!c.enabled) return "canvas off: " + c.name;
+                foreach (var g in root.GetComponentsInParent<CanvasGroup>(true))
+                    if (g.alpha <= 0.01f) return "alpha 0: " + g.name;
+                var hudHost = Hud.instance ? Hud.instance.transform.parent : null;
+                if (hudHost && !root.IsChildOf(hudHost)) return "not in the GUI the HUD is drawn in (" + hudHost.name + ")";
+                var panel = _instance._editing ? _instance._editor : _instance._multi.gameObject.activeSelf ? _instance._multi : _instance._single;
+                var canvas = root.GetComponentInParent<Canvas>();
+                var cam = canvas && canvas.rootCanvas.renderMode != RenderMode.ScreenSpaceOverlay ? canvas.rootCanvas.worldCamera : null;
+                var corners = new Vector3[4];
+                panel.GetWorldCorners(corners);
+                var a = RectTransformUtility.WorldToScreenPoint(cam, corners[0]);
+                var b = RectTransformUtility.WorldToScreenPoint(cam, corners[2]);
+                if (b.x - a.x < 50f || b.y - a.y < 50f) return $"panel {b.x - a.x:0}x{b.y - a.y:0} px";
+                if (a.x < -1f || a.y < -1f || b.x > Screen.width + 1f || b.y > Screen.height + 1f) return $"panel off screen ({a}..{b})";
+                return "";
+            }
+        }
+
         // Menu.Update skips the frame Esc closed (or would close) this window, so Esc never opens the pause menu too.
         internal static bool EatsEscape() =>
             (IsOpen || _closedFrame == Time.frameCount) && ZInput.GetKeyDown(KeyCode.Escape, false);
@@ -608,10 +637,13 @@ namespace Morgott.UI.StationQueue
         private bool EnsureBuilt()
         {
             if (_root) return true;
+            // Next to Inventory_screen / HUD under IngameGui (_GameMain/LoadingGUI/PixelFix/IngameGui): the GUI that is
+            // drawn. Run 20261117-184423 parented it to the root canvas (LoadingGUI) instead: open, but never on screen.
             var gui = InventoryGui.instance;
-            var canvas = gui ? gui.GetComponentInParent<Canvas>() : null;
-            if (!canvas) return false;
-            _root = NewRect(RootName, canvas.rootCanvas.transform);
+            var host = gui ? gui.transform.parent : null;
+            if (!host || !host.GetComponentInParent<Canvas>()) return false;
+            _root = NewRect(RootName, host);
+            _root.SetAsLastSibling();
             Stretch(_root, 0f, 0f, 0f, 0f);
             _root.gameObject.SetActive(false);
             ModalLayer.Ensure(_root);
@@ -1384,6 +1416,7 @@ namespace Morgott.UI.StationQueue
         {
             var rt = (RectTransform)new GameObject(name, typeof(RectTransform)).transform;
             rt.SetParent(parent, false);
+            rt.gameObject.layer = parent.gameObject.layer; // UI layer, as the GUI camera culls by layer
             return rt;
         }
 
