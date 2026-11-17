@@ -28,6 +28,13 @@ namespace Morgott.UI.Tests
         }
 
         [Fact]
+        public void ShownTargetDefaultsWhenUnset()
+        {
+            Assert.Equal(StationQueueMath.DefaultCount, StationQueueMath.ShownTarget(0));
+            Assert.Equal(50, StationQueueMath.ShownTarget(50));
+        }
+
+        [Fact]
         public void CardTextPerMode()
         {
             var e = StationQueueMath.NewEntry("FineWood", StationQueueMode.Count, "Coal");

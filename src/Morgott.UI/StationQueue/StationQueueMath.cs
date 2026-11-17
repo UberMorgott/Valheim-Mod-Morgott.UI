@@ -101,6 +101,9 @@ namespace Morgott.UI.StationQueue
 
         public static int Clamp(int v) => v < 1 ? 1 : v > MaxValue ? MaxValue : v;
 
+        // Count field of an entry stored without a count (infinite / until entries keep Target 0): the new-entry default.
+        public static int ShownTarget(int target) => target > 0 ? target : DefaultCount;
+
         // Stepper: 1 per click, 10 with Shift.
         public static int Step(int v, int dir, bool big) => Clamp(v + dir * (big ? 10 : 1));
 

@@ -51,6 +51,10 @@ namespace Morgott.UI.Restyle
 
         // Title face token (default the rune display face; the full-screen info pages use font.body.bold, mockup 02).
         public string FaceToken = "font.display";
+
+        // Stretched band height as a multiple of the standard header (own windows whose mockup draws a bigger plaque,
+        // station queue 1.5); every plate / title / aux size follows the height.
+        public float HeightScale = 1f;
         private string _fallback = "", _fallbackKey, _static, _staticKey, _staticLang, _staticText;
         private int _styled = -1;
         private float _stretch, _iconShare, _auxShare;
@@ -306,7 +310,7 @@ namespace Morgott.UI.Restyle
             var canvas = GetComponentInParent<Canvas>();
             var root = canvas ? canvas.rootCanvas.transform : null;
             var k = root && parent && Mathf.Abs(parent.lossyScale.y) > 1e-6f ? root.lossyScale.y / parent.lossyScale.y : 1f;
-            var h = WindowHeaderMath.HeaderHeight(ThemeTokens.GetFloat("size.win.header", 40f), Responsive.ResponsiveContext.SkinScale) * k;
+            var h = WindowHeaderMath.HeaderHeight(ThemeTokens.GetFloat("size.win.header", 40f), Responsive.ResponsiveContext.SkinScale) * k * HeightScale;
             var min = new Vector2(0f, 1f);
             if (rt.anchorMin != min) rt.anchorMin = min;
             if (rt.anchorMax != Vector2.one) rt.anchorMax = Vector2.one;

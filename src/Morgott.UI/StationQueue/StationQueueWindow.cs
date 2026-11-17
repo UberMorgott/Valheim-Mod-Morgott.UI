@@ -388,6 +388,8 @@ namespace Morgott.UI.StationQueue
             SetActive(_multi, !single);
             SetActive(_single, single);
             SetActive(_editorLayer, _editing);
+            SetActive(_multi.Find(HintsName), !_editing); // entry-editor.png: only the dialog's hints under it
+            Stamp();
             if (!_editing && _picker.gameObject.activeSelf && !single) _picker.gameObject.SetActive(false);
             LastScreen = _editing ? "editor" : single ? "single" : "multi";
             if (single) RefreshSingle();
@@ -397,7 +399,7 @@ namespace Morgott.UI.StationQueue
 
         private void RefreshMulti()
         {
-            Header(_multi).Text(_state.Name);
+            Header(_multi).Text(Title(_state.Name));
             var first = _state.Inputs.Count > 0 && _state.Inputs[0].Output ? _state.Inputs[0].Output : null;
             _mStatus.text = StationQueueMath.Join(
                 StationQueueMath.Loaded(W(StationQueueMath.LoadedKey(_state.Name)), _state.Loaded, _state.Capacity, null),
@@ -478,7 +480,7 @@ namespace Morgott.UI.StationQueue
 
         private void RefreshSingle()
         {
-            Header(_single).Text(_state.Name);
+            Header(_single).Text(Title(_state.Name));
             var input = _state.Inputs[0];
             var id = input.Item ? input.Item.name : null;
             var e = StationQueueMath.SingleEntry(_state.Entries, id);
@@ -525,7 +527,7 @@ namespace Morgott.UI.StationQueue
                 SetField(_sThreshold, e.Threshold);
                 var now = Net(e.Condition);
                 _sNow.text = StationQueueMath.Format(W("now"), StationQueueMath.Group(now), StationQueueMath.Group(e.Threshold));
-                Put(_sNowFill, 0f, 0f, _sNowTrough.rect.width * StationQueueMath.Share(now, e.Threshold), 16f);
+                Put(_sNowFill, 0f, 0f, _sNowTrough.rect.width * StationQueueMath.Share(now, e.Threshold), 20f);
             }
         }
 
@@ -605,6 +607,7 @@ namespace Morgott.UI.StationQueue
         private void EditorMode(StationQueueMode m)
         {
             _draft.Mode = m;
+            if (m == StationQueueMode.Count) _draft.Target = StationQueueMath.ShownTarget(_draft.Target);
             if (m == StationQueueMode.Until && _draft.Condition == null) _draft.Condition = OutputOf(_draft.Item) ?? _draft.Item;
             RefreshEditor();
         }
@@ -630,7 +633,7 @@ namespace Morgott.UI.StationQueue
             Group(_eCountGroup, _draft.Mode == StationQueueMode.Count);
             Group(_eUntilGroup, _draft.Mode == StationQueueMode.Until);
             SetRim(_eUntilRim, _draft.Mode == StationQueueMode.Until ? Cyan : Dim);
-            SetField(_eCount, _draft.Target);
+            SetField(_eCount, StationQueueMath.ShownTarget(_draft.Target));
             SetField(_eThreshold, _draft.Threshold);
             var cond = Item(_draft.Condition);
             _eCondIcon.sprite = Icon(cond);
@@ -702,6 +705,9 @@ namespace Morgott.UI.StationQueue
             band.offsetMax = new Vector2(-CloseColumn, 0f);
             var header = RuneWindowHeader.Ensure(band, moveId, p);
             header.Frame = decor;
+            // mockups: wide serif caps title on a plaque 1.5 standard headers tall
+            header.HeightScale = 1.5f;
+            header.FaceToken = Serif;
             header.Stretch();
             var x = Btn(p, "Close", "button.icon", out var xl, close);
             xl.text = "×";
@@ -709,14 +715,25 @@ namespace Morgott.UI.StationQueue
             Put(x, w - CloseColumn + 4f, 10f, 40f, 40f);
             MovableWindow.Ensure(p, moveId);
             _headers[p] = header;
-            var hint = Txt(p, "Hints", "text.body", TextAlignmentOptions.Center, 21f);
+            var hint = Txt(p, HintsName, "text.body", TextAlignmentOptions.Center, 21f);
             hint.richText = true;
             hint.text = hints;
             Put(hint, 0f, h + 14f, w, 30f);
             return p;
         }
 
-        private const float CloseColumn = 58f, BadgeW = 150f;
+        private const string HintsName = "Hints", Serif = "font.map.header";
+        private const float CloseColumn = 58f, BadgeW = 150f, MultiH = 680f;
+        private readonly List<TMP_Text> _serif = new List<TMP_Text>();
+
+        // Section heads + titles in the serif face (ChangelogPanel.Stamp: the face is late-bound, set once it exists).
+        private void Stamp()
+        {
+            var face = ThemeTokens.GetFont(Serif);
+            if (face) foreach (var t in _serif) if (t && t.font != face) t.font = face;
+        }
+
+        private static string Title(string key) => Words.Get(key).ToUpperInvariant();
         private float _badgeShare;
 
         // Multi window: the "Очередь" badge in the header's aux slot (right end of the plaque, kiln.png).
@@ -746,7 +763,7 @@ namespace Morgott.UI.StationQueue
 
         private void BuildMulti()
         {
-            const float W0 = 1100f, H0 = 680f;
+            const float W0 = 1100f, H0 = MultiH;
             _multi = Panel(_root, "Multi", W0, H0, "station.queue", () => Hide("close button"),
                 Hint("Esc", W("close")) + "      " + Hint("LMB", W("drag")) + "      " + Hint("Del", W("delete")));
             var badge = Img(Header(_multi).transform, "QueueBadge", "button.primary");
@@ -758,25 +775,25 @@ namespace Morgott.UI.StationQueue
             _badgeLabel.color = Gold;
             Stretch(_badgeLabel.rectTransform, 4f, 0f, 4f, 0f);
             _mStatus = Txt(_multi, "Status", "text.body", TextAlignmentOptions.Center, 22f);
-            Put(_mStatus, 40f, 62f, W0 - 80f, 32f);
-            Put(Rule(_multi, "TopRule", Dim), 28f, 102f, W0 - 56f, 1f);
+            Put(_mStatus, 40f, 70f, W0 - 80f, 32f);
+            Put(Rule(_multi, "TopRule", Dim), 28f, 108f, W0 - 56f, 1f);
 
             // inputs column
-            Section(_multi, "InputsLabel", W("inputs"), 28f, 110f);
+            Section(_multi, "InputsLabel", W("inputs"), 28f, 116f);
             _rowsRt = NewRect("Inputs", _multi);
-            Put(_rowsRt, 28f, 152f, 400f, InputRows * 84f);
+            Put(_rowsRt, 28f, 158f, 400f, InputRows * 84f);
             WheelOn(_rowsRt, d => { _inScroll -= Math.Sign(d); RefreshAll(); });
             for (var i = 0; i < InputRows; i++) _rows.Add(NewInputRow(_rowsRt, i));
             _mHidden = Txt(_multi, "UnknownHidden", "text.muted", TextAlignmentOptions.Center, 18f);
             _mHidden.text = W("unknown_hidden");
             _mHidden.color = Muted;
-            Put(_mHidden, 28f, 152f + InputRows * 84f + 4f, 400f, 26f);
-            Put(Rule(_multi, "SideRule", Dim), 446f, 110f, 1f, 480f);
+            Put(_mHidden, 28f, 158f + InputRows * 84f + 4f, 400f, 26f);
+            Put(Rule(_multi, "SideRule", Dim), 446f, 116f, 1f, 480f);
 
             // queue column
-            Section(_multi, "QueueLabel", W("queue"), 468f, 110f);
+            Section(_multi, "QueueLabel", W("queue"), 468f, 116f);
             _cardsRt = NewRect("Queue", _multi);
-            Put(_cardsRt, 468f, 152f, CardW, 450f);
+            Put(_cardsRt, 468f, 158f, CardW, 446f);
             WheelOn(_cardsRt, d => { _cardScroll -= Math.Sign(d); RefreshAll(); });
             for (var i = 0; i < CardRows; i++) _cards.Add(NewCard(_cardsRt, i));
             _addHint = NewRect("AddHint", _cardsRt);
@@ -794,10 +811,10 @@ namespace Morgott.UI.StationQueue
 
             // footer
             Put(Rule(_multi, "BottomRule", Dim), 28f, 612f, W0 - 56f, 1f);
-            var pause = Btn(_multi, "Pause", "button", out _mPause, () => Commit(Entries(), !_state.Paused));
+            var pause = PlainBtn(_multi, "Pause", out _mPause, () => Commit(Entries(), !_state.Paused), Light);
             _mPause.fontSize = 22f;
             Put(pause, 60f, 624f, 150f, 42f);
-            var clear = Btn(_multi, "Clear", "button", out var clearLabel, () => Commit(new List<StationQueueEntry>(), _state.Paused));
+            var clear = PlainBtn(_multi, "Clear", out var clearLabel, () => Commit(new List<StationQueueEntry>(), _state.Paused), Light);
             clearLabel.text = W("clear");
             clearLabel.fontSize = 22f;
             Put(clear, 226f, 624f, 250f, 42f);
@@ -809,9 +826,10 @@ namespace Morgott.UI.StationQueue
 
         private void Section(Transform parent, string name, string text, float x, float y)
         {
-            var t = Txt(parent, name, "text.header", TextAlignmentOptions.Left, 26f);
+            var t = Txt(parent, name, "text.header", TextAlignmentOptions.Left, 28f);
             t.text = text;
             t.color = ThemeTokens.GetColor("color.text.header", Hex("#D9DCE0"));
+            _serif.Add(t);
             Put(t, x, y, 300f, 36f);
         }
 
@@ -959,29 +977,26 @@ namespace Morgott.UI.StationQueue
 
         private void BuildSingle()
         {
-            const float W0 = 720f, H0 = 620f;
+            const float W0 = 720f, H0 = 636f;
             _single = Panel(_root, "Single", W0, H0, "station.queue.single", () => Hide("close button"), Hint("Esc", W("close")));
             // recipe row: input -> output | fuel (counts = network)
-            _sIn = SlotIcon(_single, 80f, 70f, 100f, out _sInCount);
-            _sInName = CellName(_single, 50f);
-            var arrow = Txt(_single, "Arrow", "text.accent", TextAlignmentOptions.Center, 40f);
-            arrow.text = "→";
-            arrow.color = Cyan;
-            Put(arrow, 196f, 92f, 80f, 50f);
-            _sOut = SlotIcon(_single, 292f, 70f, 100f, out _sOutCount);
-            _sOutName = CellName(_single, 262f);
+            _sIn = SlotIcon(_single, 80f, 84f, 100f, out _sInCount);
+            _sInName = CellName(_single, "InName", 50f);
+            ArrowGlyph(_single, 206f, 134f, 60f);
+            _sOut = SlotIcon(_single, 292f, 84f, 100f, out _sOutCount);
+            _sOutName = CellName(_single, "OutName", 262f);
             _sFuelBox = NewRect("Fuel", _single);
-            Put(_sFuelBox, 440f, 36f, 260f, 190f);
+            Put(_sFuelBox, 440f, 50f, 260f, 190f);
             Put(Rule(_sFuelBox, "Rule", Dim), 0f, 30f, 1f, 110f);
             _sFuelLabel = Txt(_sFuelBox, "Label", "text.body", TextAlignmentOptions.Center, 20f);
             Put(_sFuelLabel, 60f, 0f, 160f, 30f);
             _sFuel = SlotIcon(_sFuelBox, 90f, 34f, 100f, out _sFuelCount);
-            _sFuelName = CellName(_sFuelBox, 60f, 140f);
+            _sFuelName = CellName(_sFuelBox, "FuelName", 60f, 140f);
             _sStatus = Txt(_single, "Status", "text.body", TextAlignmentOptions.Center, 20f);
             _sStatus.richText = true;
-            Put(_sStatus, 28f, 228f, W0 - 56f, 30f);
-            Put(Rule(_single, "Rule1", Dim), 28f, 264f, W0 - 56f, 1f);
-            Section(_single, "ModeLabel", W("mode"), 28f, 270f);
+            Put(_sStatus, 28f, 242f, W0 - 56f, 30f);
+            Put(Rule(_single, "Rule1", Dim), 28f, 278f, W0 - 56f, 1f);
+            Section(_single, "ModeLabel", W("mode"), 28f, 284f);
             var modes = new[] { StationQueueMode.Infinite, StationQueueMode.Count, StationQueueMode.Until };
             for (var i = 0; i < 3; i++)
             {
@@ -989,13 +1004,13 @@ namespace Morgott.UI.StationQueue
                 _sModes[i] = Btn(_single, "Mode" + i, "field", out _sModeLabels[i], () => SingleEdit(null, m));
                 _sModeLabels[i].fontSize = 22f;
                 _sModeRims[i] = Rim(_sModes[i].transform);
-                Put(_sModes[i], 28f + i * 226f, 310f, 212f, 46f);
+                Put(_sModes[i], 28f + i * 226f, 324f, 212f, 46f);
             }
 
             // detail boxes of the selected mode
             var box = Img(_single, "Detail", "well");
             box.preserveAspect = false;
-            Put(box, 28f, 370f, W0 - 56f, 170f);
+            Put(box, 28f, 384f, W0 - 56f, 170f);
             _sCountBox = NewRect("Count", box.transform);
             Stretch(_sCountBox, 0f, 0f, 0f, 0f);
             Label(_sCountBox, W("count_label"), 20f, 10f);
@@ -1029,34 +1044,54 @@ namespace Morgott.UI.StationQueue
             _sNow = Txt(_sUntilBox, "Now", "text.body", TextAlignmentOptions.Left, 20f);
             Put(_sNow, 20f, 104f, 400f, 28f);
             _sNowTrough = Img(_sUntilBox, "Trough", "craft.progress.trough").rectTransform;
-            Put(_sNowTrough, 20f, 136f, W0 - 56f - 40f, 16f);
+            Put(_sNowTrough, 20f, 136f, W0 - 56f - 40f, 20f);
             _sNowFill = Img(_sNowTrough, "Fill", "craft.progress.fill");
             _sNowFill.preserveAspect = false;
 
-            Put(Rule(_single, "Rule2", Dim), 28f, 556f, W0 - 56f, 1f);
-            var pause = Btn(_single, "Pause", "button", out _sPause, () => Commit(Entries(), !_state.Paused));
+            Put(Rule(_single, "Rule2", Dim), 28f, 570f, W0 - 56f, 1f);
+            var pause = PlainBtn(_single, "Pause", out _sPause, () => Commit(Entries(), !_state.Paused), Light);
             _sPause.fontSize = 22f;
-            Put(pause, 40f, 566f, 150f, 42f);
-            var reset = Btn(_single, "Reset", "button", out var rl, () => Commit(new List<StationQueueEntry>(), _state.Paused));
+            Put(pause, 40f, 582f, 150f, 42f);
+            var reset = PlainBtn(_single, "Reset", out var rl, () => Commit(new List<StationQueueEntry>(), _state.Paused), Light);
             rl.text = W("reset");
             rl.fontSize = 22f;
-            Put(reset, 206f, 566f, 170f, 42f);
-            var from = Txt(_single, "FromNetwork", "text.muted", TextAlignmentOptions.Right, 18f);
+            Put(reset, 206f, 582f, 170f, 42f);
+            // two lines inside the frame (eitr-refinery.png), clear of its right border
+            var from = Txt(_single, "FromNetwork", "text.muted", TextAlignmentOptions.TopLeft, 20f);
             from.text = W("from_network");
             from.color = Muted;
             from.textWrappingMode = TextWrappingModes.Normal;
-            Put(from, 390f, 562f, W0 - 418f, 50f);
+            from.overflowMode = TextOverflowModes.Overflow;
+            Put(from, 450f, 578f, 230f, 52f);
         }
 
         private StationQueueEntry CurrentSingle() =>
             _state.Inputs.Count > 0 && _state.Inputs[0].Item ? StationQueueMath.SingleEntry(_state.Entries, _state.Inputs[0].Item.name) : null;
 
-        private TMP_Text CellName(Transform parent, float x, float w = 160f)
+        // Own name per cell: Txt reuses a same-named child (InfoArt.RowText), so one shared "Name" left the input unnamed.
+        private TMP_Text CellName(Transform parent, string name, float x, float w = 160f)
         {
-            var t = Txt(parent, "Name", "text.body", TextAlignmentOptions.Top, 19f);
+            var t = Txt(parent, name, "text.body", TextAlignmentOptions.Top, 19f);
             t.textWrappingMode = TextWrappingModes.Normal;
-            Put(t, x, parent == _single ? 176f : 140f, w, 50f);
+            Put(t, x, parent == _single ? 190f : 140f, w, 50f);
             return t;
+        }
+
+        // Thin cyan "→" between input and output (eitr-refinery.png), drawn from rules: no font glyph to go missing.
+        private static void ArrowGlyph(Transform parent, float x, float yMid, float w)
+        {
+            const float T = 3f, Head = 16f;
+            var a = NewRect("Arrow", parent);
+            Put(a, x, yMid - Head / 2f, w, Head);
+            Put(Rule(a, "Shaft", Cyan), 0f, Head / 2f - T / 2f, w - 1f, T);
+            foreach (var deg in new[] { 40f, -40f })
+            {
+                var rt = Rule(a, "Head", Cyan).rectTransform;
+                rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(1f, 0.5f);
+                rt.sizeDelta = new Vector2(Head, T);
+                rt.anchoredPosition = Vector2.zero;
+                rt.localRotation = Quaternion.Euler(0f, 0f, deg);
+            }
         }
 
         private TMP_Text Label(Transform parent, string text, float x, float y)
@@ -1073,7 +1108,7 @@ namespace Morgott.UI.StationQueue
             for (var i = 0; i < values.Length; i++)
             {
                 var v = values[i];
-                var b = Btn(parent, "Chip" + i, "button", out var l, () => set(StationQueueMath.Clamp(v > 0 ? v : all())));
+                var b = PlainBtn(parent, "Chip" + i, out var l, () => set(StationQueueMath.Clamp(v > 0 ? v : all())), Light);
                 l.text = v > 0 ? v.ToString(System.Globalization.CultureInfo.InvariantCulture) : W("all");
                 l.fontSize = 20f;
                 Put(b, x + i * 70f, y, 62f, 40f);
@@ -1115,24 +1150,28 @@ namespace Morgott.UI.StationQueue
 
         private void BuildEditor()
         {
-            const float W0 = 620f, H0 = 600f;
+            const float W0 = 620f, H0 = 576f;
             _editorLayer = NewRect("EditorLayer", _root);
             Stretch(_editorLayer, 0f, 0f, 0f, 0f);
             var dim = _editorLayer.gameObject.AddComponent<Image>();
-            dim.color = new Color(0f, 0f, 0f, 0.55f);
+            // The game blends in linear space (ChangelogPanel scrim note): 0.55 black kept ~70 % sRGB light and the queue
+            // window read as undimmed (run 20261117-192839); 0.85 = the mockup's dimmed parent.
+            dim.color = new Color(0f, 0f, 0f, 0.85f);
             dim.raycastTarget = true; // the queue window under the editor takes no clicks
             DollCell.Mark(dim, "content", "station queue editor backdrop");
             _editor = Panel(_editorLayer, "Editor", W0, H0, "station.queue.editor", EditorClose, Hint("Enter", W("save")) + "      " + Hint("Esc", W("cancel")));
-            Header(_editor).Text("$ui_sq_editor_title");
+            // its hints on the queue window's hint line (both centred): under the queue window's footer, not over it
+            Put(_editor.Find(HintsName), 0f, H0 + (MultiH - H0) / 2f + 14f, W0, 30f);
+            Header(_editor).Text(Title("$ui_sq_editor_title"));
 
-            _eIcon = SlotIcon(_editor, 28f, 60f, 76f, out _eBadge);
+            _eIcon = SlotIcon(_editor, 28f, 72f, 76f, out _eBadge);
             _eName = Txt(_editor, "Name", "text.accent", TextAlignmentOptions.Left, 26f);
             _eName.color = Gold;
-            Put(_eName, 120f, 62f, W0 - 150f, 34f);
+            Put(_eName, 120f, 74f, W0 - 150f, 34f);
             _eNet = Txt(_editor, "Net", "text.body", TextAlignmentOptions.Left, 20f);
-            Put(_eNet, 120f, 98f, W0 - 150f, 28f);
-            Put(Rule(_editor, "Rule0", Dim), 28f, 146f, W0 - 56f, 1f);
-            Section(_editor, "ModeLabel", W("mode"), 28f, 150f);
+            Put(_eNet, 120f, 110f, W0 - 150f, 28f);
+            Put(Rule(_editor, "Rule0", Dim), 28f, 158f, W0 - 56f, 1f);
+            Section(_editor, "ModeLabel", W("mode"), 28f, 162f);
             var modes = new[] { StationQueueMode.Count, StationQueueMode.Infinite, StationQueueMode.Until };
             for (var i = 0; i < 3; i++)
             {
@@ -1140,16 +1179,16 @@ namespace Morgott.UI.StationQueue
                 _eModes[i] = Btn(_editor, "Mode" + i, "field", out _eModeLabels[i], () => EditorMode(m));
                 _eModeLabels[i].fontSize = 20f;
                 _eModeRims[i] = Rim(_eModes[i].transform);
-                Put(_eModes[i], 28f + i * 190f, 188f, 178f, 40f);
+                Put(_eModes[i], 28f + i * 190f, 200f, 178f, 40f);
             }
             var countRt = NewRect("Count", _editor);
-            Put(countRt, 28f, 240f, W0 - 56f, 44f);
+            Put(countRt, 28f, 252f, W0 - 56f, 44f);
             _eCountGroup = countRt.gameObject.AddComponent<CanvasGroup>();
-            _eCount = NewStepper(countRt, 0f, 0f, () => _draft.Target, v => { _draft.Target = v; RefreshEditor(); });
+            _eCount = NewStepper(countRt, 0f, 0f, () => StationQueueMath.ShownTarget(_draft.Target), v => { _draft.Target = v; RefreshEditor(); });
             Chips(countRt, 270f, 0f, v => { _draft.Target = v; RefreshEditor(); }, () => Net(_draft.Item));
 
             var until = NewRect("Until", _editor);
-            Put(until, 28f, 296f, W0 - 56f, 140f);
+            Put(until, 28f, 308f, W0 - 56f, 108f);
             _eUntilGroup = until.gameObject.AddComponent<CanvasGroup>();
             _eUntilRim = Rim(until);
             var ut = Section2(until, W("until_net"));
@@ -1178,28 +1217,40 @@ namespace Morgott.UI.StationQueue
 
             _eSummary = Txt(_editor, "Summary", "text.body", TextAlignmentOptions.TopLeft, 19f);
             _eSummary.textWrappingMode = TextWrappingModes.Normal;
-            Put(_eSummary, 36f, 448f, W0 - 72f, 56f);
-            Put(Rule(_editor, "Rule1", Dim), 28f, 514f, W0 - 56f, 1f);
-            _eDelete = Btn(_editor, "Delete", "button.danger", out var dl, EditorDelete);
+            Put(_eSummary, 36f, 428f, W0 - 72f, 56f);
+            Put(Rule(_editor, "Rule1", Dim), 28f, 492f, W0 - 56f, 1f);
+            var red = ThemeTokens.GetColor("color.text.missing", Hex("#E0413A"));
+            _eDelete = PlainBtn(_editor, "Delete", out var dl, EditorDelete, red);
             dl.text = W("delete");
-            dl.color = ThemeTokens.GetColor("color.text.missing", Hex("#E0413A"));
+            dl.color = red;
             dl.fontSize = 22f;
-            Put(_eDelete, 40f, 528f, 160f, 44f);
-            var cancel = Btn(_editor, "Cancel", "button", out var cl, EditorClose);
+            Put(_eDelete, 40f, 506f, 160f, 44f);
+            var cancel = PlainBtn(_editor, "Cancel", out var cl, EditorClose, Light);
             cl.text = W("cancel");
             cl.fontSize = 22f;
-            Put(cancel, 230f, 528f, 160f, 44f);
-            var save = Btn(_editor, "Save", "button.primary", out var sl, EditorSave);
+            Put(cancel, 230f, 506f, 160f, 44f);
+            var save = PlainBtn(_editor, "Save", out var sl, EditorSave, Gold);
             sl.text = W("save");
             sl.fontSize = 22f;
             sl.color = Gold;
-            Put(save, 420f, 528f, 160f, 44f);
+            Put(save, 420f, 506f, 160f, 44f);
         }
+
+        // Plain rimmed plate (mockups: footer / dialog buttons are flat rectangles with a coloured rim, no knotwork).
+        private static Button PlainBtn(Transform parent, string name, out TMP_Text label, Action click, Color rim)
+        {
+            var b = Btn(parent, name, "field", out label, click);
+            SetRim(Rim(b.transform), rim);
+            return b;
+        }
+
+        private static Color Light => new Color(0.62f, 0.68f, 0.72f, 0.75f);
 
         private TMP_Text Section2(Transform parent, string text)
         {
-            var t = Txt(parent, "Title", "text.header", TextAlignmentOptions.Left, 22f);
+            var t = Txt(parent, "Title", "text.header", TextAlignmentOptions.Left, 24f);
             t.text = text;
+            _serif.Add(t);
             return t;
         }
 
@@ -1301,16 +1352,19 @@ namespace Morgott.UI.StationQueue
             host.gameObject.AddComponent<Wheel>().Scroll = scroll;
         }
 
-        // Slot cell with the item icon and a count badge (bottom right).
+        // Slot cell with the item icon and a big count over its bottom (mockups). The count is the cell's sibling, drawn
+        // after it: as a child, CellFit's zone rule filed the cell-sized box in the top band and shrank it to the band
+        // height (run 20261117-192839: tiny top-right numbers).
         private static Image SlotIcon(Transform parent, float x, float y, float size, out TMP_Text badge)
         {
             var cell = Img(parent, "Cell", "slot.cell");
             cell.preserveAspect = false;
             Put(cell, x, y, size, size);
             var icon = IconIn(cell.transform, size * 0.12f);
-            badge = Txt(cell.transform, "Badge", "text.body", TextAlignmentOptions.BottomRight, size * 0.24f);
+            badge = Txt(parent, "Badge" + cell.transform.GetSiblingIndex(), "text.body", TextAlignmentOptions.BottomRight, size * 0.3f);
             badge.fontStyle = FontStyles.Bold;
-            Stretch(badge.rectTransform, 2f, 2f, 6f, 2f);
+            badge.overflowMode = TextOverflowModes.Overflow;
+            Put(badge, x + 2f, y + size * 0.5f, size - 8f, size * 0.5f - 2f);
             return icon;
         }
 
