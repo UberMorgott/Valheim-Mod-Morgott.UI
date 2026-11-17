@@ -19,7 +19,7 @@ namespace Morgott.UI.StationQueue
     // Morgott.Patcher [StationQueue]): Read every RefreshEvery s while open, Write on every change (false = no ward access:
     // vanilla "$msg_privatezone" message, the window shows the Read state again). Opened by the service's OpenRequested
     // (Patcher hotkey on the hovered station); closed by Esc, the close cap, out of reach of the station (StationQueueMath.KeepsOpen) or the station
-    // gone. Built once under the in-game GUI canvas on the modal band (ModalLayer); panels = RuneSkin panel stack +
+    // gone. Built once under the HUD root (as HudCluster) on the modal band (ModalLayer); panels = RuneSkin panel stack +
     // window header (drag band, WindowMove). Player input off and cursor shown while open (StationQueueInput).
     public sealed class StationQueueWindow : MonoBehaviour
     {
@@ -61,8 +61,9 @@ namespace Morgott.UI.StationQueue
                     if (!c.enabled) return "canvas off: " + c.name;
                 foreach (var g in root.GetComponentsInParent<CanvasGroup>(true))
                     if (g.alpha <= 0.01f) return "alpha 0: " + g.name;
-                var hudHost = Hud.instance ? Hud.instance.transform.parent : null;
-                if (hudHost && !root.IsChildOf(hudHost)) return "not in the GUI the HUD is drawn in (" + hudHost.name + ")";
+                var hudHost = Hud.instance && Hud.instance.m_rootObject ? Hud.instance.m_rootObject.transform : null;
+                if (hudHost && !root.IsChildOf(hudHost)) return "not under the HUD root (" + hudHost.name + ")";
+                if (Hud.instance && !Hud.instance.IsVisible()) return "HUD hidden";
                 var panel = _instance._editing ? _instance._editor : _instance._multi.gameObject.activeSelf ? _instance._multi : _instance._single;
                 var canvas = root.GetComponentInParent<Canvas>();
                 var cam = canvas && canvas.rootCanvas.renderMode != RenderMode.ScreenSpaceOverlay ? canvas.rootCanvas.worldCamera : null;
@@ -657,12 +658,12 @@ namespace Morgott.UI.StationQueue
         private bool EnsureBuilt()
         {
             if (_root) return true;
-            // Next to Inventory_screen / HUD under IngameGui (_GameMain/LoadingGUI/PixelFix/IngameGui): the GUI that is
-            // drawn. Run 20261117-184423 parented it to the root canvas (LoadingGUI) instead: open, but never on screen.
-            // Anchored on the HUD (drawn whenever the player is in the world), not on InventoryGui (its own state while
-            // closed: run 20261117-185937 never opened, no log).
-            var host = Hud.instance ? Hud.instance.transform.parent : null;
-            _buildFail = !Hud.instance ? "no Hud" : !host ? "Hud has no parent" : !host.GetComponentInParent<Canvas>(true) ? "no canvas above " + host.name : null;
+            // Same host as HudCluster (Hud/HudCluster.cs:58, our HUD drawn in every in-world shot): Hud.m_rootObject, the
+            // HUD's own drawn root (vanilla hides the HUD by moving it off screen, Hud.cs:448). Guessed hosts failed in game:
+            // the root canvas (run 20261117-184423, never drawn), InventoryGui (185937, never opened), IngameGui (192310,
+            // no canvas above it).
+            var host = Hud.instance && Hud.instance.m_rootObject ? Hud.instance.m_rootObject.transform : null;
+            _buildFail = !Hud.instance ? "no Hud" : !host ? "Hud has no root object" : !host.GetComponentInParent<Canvas>(true) ? "no canvas above " + Path(host) : null;
             if (_buildFail != null) return false;
             _root = NewRect(RootName, host);
             Plugin.Log.LogInfo($"[StationQueue] window built under {Path(host)} (layer {host.gameObject.layer})");
