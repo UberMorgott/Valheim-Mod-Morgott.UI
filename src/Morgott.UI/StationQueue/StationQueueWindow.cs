@@ -1,0 +1,1241 @@
+using System;
+using System.Collections.Generic;
+using HarmonyLib;
+using Morgott.Core;
+using Morgott.UI.Classify;
+using Morgott.UI.InfoScreens;
+using Morgott.UI.InventoryScreen;
+using Morgott.UI.Restyle;
+using Morgott.UI.Theme;
+using TMPro;
+using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.UI;
+
+namespace Morgott.UI.StationQueue
+{
+    // Station processing-queue window (mockups docs\mockups\station-queue: kiln.png = multi, eitr-refinery.png = single,
+    // entry-editor.png = editor; DESIGN.md "User decisions 2026-11-17"). Data and edits through Core IStationQueue (owner
+    // Morgott.Patcher [StationQueue]): Read every RefreshEvery s while open, Write on every change (false = no ward access:
+    // vanilla "$msg_privatezone" message, the window shows the Read state again). Opened by the service's OpenRequested
+    // (Patcher hotkey on the hovered station); closed by Esc, the close cap, > MaxDistance from the station or the station
+    // gone. Built once under the in-game GUI canvas on the modal band (ModalLayer); panels = RuneSkin panel stack +
+    // window header (drag band, WindowMove). Player input off and cursor shown while open (StationQueueInput).
+    public sealed class StationQueueWindow : MonoBehaviour
+    {
+        public const string RootName = "MorgottStationQueue";
+        private const float MaxDistance = 5f, RefreshEvery = 0.5f;
+        private const int InputRows = 5, CardRows = 5, PickerRows = 6;
+
+        private static StationQueueWindow _instance;
+        private static int _closedFrame = -1;
+
+        // ---------------------------------------------------------------- harness entry points (reflection)
+
+        public static string LastScreen { get; private set; } = "";
+        public static bool IsOpen => _instance && _instance._station && _instance._root && _instance._root.gameObject.activeSelf;
+        public static void Open(Component station) { if (_instance) _instance.Show(station); }
+        public static void Close() { if (_instance) _instance.Hide(); }
+        public static void OpenEditor(int index) { if (_instance && IsOpen) _instance.EditorOpen(index, null); }
+
+        // Menu.Update skips the frame Esc closed (or would close) this window, so Esc never opens the pause menu too.
+        internal static bool EatsEscape() =>
+            (IsOpen || _closedFrame == Time.frameCount) && ZInput.GetKeyDown(KeyCode.Escape, false);
+
+        public static void Attach(GameObject host)
+        {
+            if (!_instance) _instance = host.AddComponent<StationQueueWindow>();
+        }
+
+        // ---------------------------------------------------------------- state
+
+        private IStationQueue _queue;
+        private float _nextPoll, _nextRead;
+        private Component _station;
+        private readonly StationQueueState _state = new StationQueueState();
+        private readonly Dictionary<string, ItemDrop> _items = new Dictionary<string, ItemDrop>(StringComparer.Ordinal);
+        private int _inScroll, _cardScroll;
+
+        // editor: index of the edited entry (-1 = new), draft; open flag
+        private bool _editing;
+        private int _editIndex;
+        private StationQueueEntry _draft;
+
+        // ---------------------------------------------------------------- widgets
+
+        private RectTransform _root, _multi, _single, _editorLayer, _editor;
+        private TMP_Text _mStatus, _mHidden, _mPause, _sStatus, _sPause;
+        private readonly List<InputRow> _rows = new List<InputRow>();
+        private readonly List<Card> _cards = new List<Card>();
+        private RectTransform _rowsRt, _cardsRt, _addHint;
+
+        private sealed class InputRow
+        {
+            public RectTransform Rt;
+            public CanvasGroup Group;
+            public Image Icon;
+            public TMP_Text Badge, Name, Count;
+            public string Item;
+        }
+
+        private sealed class Card
+        {
+            public RectTransform Rt;
+            public Image[] Rim;
+            public Image Icon, Fill;
+            public RectTransform Trough;
+            public TMP_Text Num, Text, Pct, Fed, Chip;
+            public Image[] ChipRim;
+            public int Index;
+        }
+
+        // single-input window
+        private Image _sIn, _sOut, _sFuel, _sCond;
+        private TMP_Text _sInCount, _sOutCount, _sFuelCount, _sInName, _sOutName, _sFuelName, _sFuelLabel, _sCondName, _sCompare, _sNow, _sFed;
+        private RectTransform _sFuelBox, _sCountBox, _sInfBox, _sUntilBox, _sNowTrough;
+        private Image _sNowFill;
+        private readonly Button[] _sModes = new Button[3];
+        private readonly Image[][] _sModeRims = new Image[3][];
+        private readonly TMP_Text[] _sModeLabels = new TMP_Text[3];
+        private Stepper _sCount, _sThreshold;
+
+        // editor
+        private Image _eIcon, _eCondIcon;
+        private TMP_Text _eBadge, _eName, _eNet, _eCondName, _eSummary;
+        private readonly Button[] _eModes = new Button[3];
+        private readonly Image[][] _eModeRims = new Image[3][];
+        private readonly TMP_Text[] _eModeLabels = new TMP_Text[3];
+        private Image[] _eLessRim, _eAtLeastRim, _eUntilRim;
+        private CanvasGroup _eCountGroup, _eUntilGroup;
+        private Stepper _eCount, _eThreshold;
+        private Button _eDelete;
+
+        // item picker (until-condition dropdown)
+        private RectTransform _picker;
+        private TMP_InputField _pSearch;
+        private readonly List<(Button b, Image icon, TMP_Text label)> _pRows = new List<(Button, Image, TMP_Text)>();
+        private readonly List<string> _pAll = new List<string>(), _pShown = new List<string>();
+        private int _pScroll;
+        private Action<string> _pPick;
+
+        private sealed class Stepper
+        {
+            public TMP_InputField Field;
+            public Func<int> Get;
+            public Action<int> Set;
+        }
+
+        // Mouse wheel over a list.
+        private sealed class Wheel : MonoBehaviour, IScrollHandler
+        {
+            public Action<float> Scroll;
+            public void OnScroll(PointerEventData e) => Scroll?.Invoke(e.scrollDelta.y);
+        }
+
+        private static Color Hex(string hex) => ColorUtility.TryParseHtmlString(hex, out var c) ? c : Color.white;
+        private static Color Gold => ThemeTokens.GetColor("color.text.active", Hex("#E8B64A"));
+        private static Color Cyan => ThemeTokens.GetColor("color.text.accent", Hex("#4FE0E6"));
+        private static Color Muted => ThemeTokens.GetColor("color.state.disabled", Hex("#8A9096"));
+        private static Color Dim => new Color(0.24f, 0.51f, 0.56f, 0.55f);
+        private static string W(string key) => Words.Get("$ui_sq_" + key);
+
+        // ---------------------------------------------------------------- lifecycle
+
+        private void Awake() => _instance = this;
+
+        private void OnDestroy()
+        {
+            if (_queue != null) _queue.OpenRequested -= Show;
+            if (_instance == this) _instance = null;
+            if (_root) Destroy(_root.gameObject);
+        }
+
+        private void Update()
+        {
+            // The service registers when Morgott.Patcher starts (maybe after us): looked up once a second until found.
+            if (_queue == null && Time.unscaledTime >= _nextPoll)
+            {
+                _nextPoll = Time.unscaledTime + 1f;
+                if (Services.TryGet<IStationQueue>(out var q))
+                {
+                    _queue = q;
+                    q.OpenRequested += Show;
+                }
+            }
+            if (!IsOpen) return;
+            var p = Player.m_localPlayer;
+            if (!_station || !p || p.IsDead() || Vector3.Distance(p.transform.position, _station.transform.position) > MaxDistance ||
+                InventoryGui.IsVisible() || Minimap.IsOpen() || Menu.IsVisible())
+            {
+                Hide();
+                return;
+            }
+            if (ZInput.GetKeyDown(KeyCode.Escape, false))
+            {
+                if (_picker.gameObject.activeSelf) _picker.gameObject.SetActive(false);
+                else if (_editing) EditorClose();
+                else Hide();
+                return;
+            }
+            if (ZInput.GetKeyDown(KeyCode.Return, false) || ZInput.GetKeyDown(KeyCode.KeypadEnter, false))
+            {
+                if (_picker.gameObject.activeSelf) PickerChoose(0); // Enter in the search = first match
+                else if (_editing) EditorSave();
+                return;
+            }
+            if (Time.unscaledTime >= _nextRead) Reload();
+        }
+
+        private void Show(Component station)
+        {
+            if (!station || _queue == null || !EnsureBuilt()) return;
+            if (!_queue.Read(station, _state)) return;
+            _station = station;
+            _inScroll = _cardScroll = 0;
+            _editing = false;
+            _picker.gameObject.SetActive(false);
+            _root.gameObject.SetActive(true);
+            _nextRead = Time.unscaledTime + RefreshEvery;
+            RefreshAll();
+        }
+
+        private void Hide()
+        {
+            if (_root && _root.gameObject.activeSelf) _closedFrame = Time.frameCount;
+            _station = null;
+            _editing = false;
+            if (_root) _root.gameObject.SetActive(false);
+            LastScreen = "";
+        }
+
+        private void Reload()
+        {
+            _nextRead = Time.unscaledTime + RefreshEvery;
+            if (_queue == null || !_station || !_queue.Read(_station, _state))
+            {
+                Hide();
+                return;
+            }
+            RefreshAll();
+        }
+
+        // Write, then show what the station holds now (a refused write reverts the window to it).
+        private void Commit(List<StationQueueEntry> entries, bool paused)
+        {
+            if (_queue == null || !_station) return;
+            if (!_queue.Write(_station, entries, paused) && Player.m_localPlayer)
+                Player.m_localPlayer.Message(MessageHud.MessageType.Center, "$msg_privatezone");
+            Reload();
+        }
+
+        private List<StationQueueEntry> Entries() => StationQueueMath.Clone(_state.Entries);
+
+        // ---------------------------------------------------------------- items
+
+        private ItemDrop Item(string prefab)
+        {
+            if (string.IsNullOrEmpty(prefab)) return null;
+            if (_items.TryGetValue(prefab, out var d) && d) return d;
+            var go = ObjectDB.instance ? ObjectDB.instance.GetItemPrefab(prefab) : null;
+            d = go ? go.GetComponent<ItemDrop>() : null;
+            if (d) _items[prefab] = d;
+            return d;
+        }
+
+        private static string Name(ItemDrop d) => d ? Words.Get(d.m_itemData.m_shared.m_name) : "";
+        private string Name(string prefab) => Item(prefab) is ItemDrop d ? Name(d) : prefab ?? "";
+        private static Sprite Icon(ItemDrop d) => d ? d.m_itemData.GetIcon() : null;
+        private int Net(string prefab) => prefab != null && _state.Network.TryGetValue(prefab, out var n) ? n : 0;
+
+        private string OutputOf(string input)
+        {
+            foreach (var i in _state.Inputs) if (i.Item && i.Item.name == input) return i.Output ? i.Output.name : null;
+            return null;
+        }
+
+        private string StatusWord()
+        {
+            switch (_state.Status)
+            {
+                case StationQueueStatus.Working: return W("status_working");
+                case StationQueueStatus.Waiting: return W("status_waiting");
+                case StationQueueStatus.Paused: return W("status_paused");
+                default: return W("status_idle");
+            }
+        }
+
+        private string NetworkPart() => _state.InNetwork
+            ? StationQueueMath.Format(W("network"), _state.Chests, StationQueueMath.Plural(_state.Chests, W("chest_one"), W("chest_few"), W("chest_many")))
+            : W("no_network");
+
+        // ---------------------------------------------------------------- refresh
+
+        private void RefreshAll()
+        {
+            var single = StationQueueMath.IsSingle(_state.Inputs.Count);
+            if (single) _editing = false; // the single window edits its one entry in place
+            SetActive(_multi, !single);
+            SetActive(_single, single);
+            SetActive(_editorLayer, _editing);
+            if (!_editing && _picker.gameObject.activeSelf && !single) _picker.gameObject.SetActive(false);
+            LastScreen = _editing ? "editor" : single ? "single" : "multi";
+            if (single) RefreshSingle();
+            else RefreshMulti();
+            if (_editing) RefreshEditor();
+        }
+
+        private void RefreshMulti()
+        {
+            Header(_multi).Text(_state.Name);
+            var first = _state.Inputs.Count > 0 && _state.Inputs[0].Output ? _state.Inputs[0].Output : null;
+            _mStatus.text = StationQueueMath.Join(
+                StationQueueMath.Format(W("loaded"), _state.Loaded, _state.Capacity),
+                first ? StationQueueMath.Format(W("output_net"), Name(first), StationQueueMath.Group(Net(first.name))) : null,
+                NetworkPart());
+            _mPause.text = _state.Paused ? W("resume") : W("pause");
+
+            // inputs: known only (0 in the network = dimmed), unknown hidden with a footer note
+            var known = new List<StationQueueInput>();
+            foreach (var i in _state.Inputs) if (i.Known && i.Item) known.Add(i);
+            _inScroll = Mathf.Clamp(_inScroll, 0, Mathf.Max(0, known.Count - InputRows));
+            for (var r = 0; r < InputRows; r++)
+            {
+                var row = _rows[r];
+                var k = r + _inScroll;
+                SetActive(row.Rt, k < known.Count);
+                if (k >= known.Count) continue;
+                var input = known[k];
+                row.Item = input.Item.name;
+                row.Icon.sprite = Icon(input.Item);
+                row.Icon.enabled = row.Icon.sprite;
+                row.Badge.text = row.Count.text = StationQueueMath.Group(input.Network);
+                row.Name.text = Name(input.Item);
+                row.Group.alpha = input.Network > 0 ? 1f : 0.5f;
+            }
+            SetActive(_mHidden, known.Count < _state.Inputs.Count);
+
+            // queue cards
+            var entries = _state.Entries;
+            _cardScroll = Mathf.Clamp(_cardScroll, 0, Mathf.Max(0, entries.Count - CardRows));
+            var shown = 0;
+            for (var c = 0; c < CardRows; c++)
+            {
+                var card = _cards[c];
+                var k = c + _cardScroll;
+                SetActive(card.Rt, k < entries.Count);
+                if (k >= entries.Count) continue;
+                shown++;
+                FillCard(card, k, entries[k]);
+            }
+            SetActive(_addHint, shown < CardRows);
+            if (_addHint.gameObject.activeSelf) Put(_addHint, 0f, shown * CardStep, CardW, 56f);
+        }
+
+        private const float CardW = 604f, CardH = 74f, CardStep = 82f;
+
+        private void FillCard(Card card, int index, StationQueueEntry e)
+        {
+            card.Index = index;
+            var item = Item(e.Item);
+            card.Num.text = (index + 1).ToString(System.Globalization.CultureInfo.InvariantCulture);
+            card.Icon.sprite = Icon(item);
+            card.Icon.enabled = card.Icon.sprite;
+            card.Text.text = StationQueueMath.CardText(e, item ? Name(item) : e.Item, Name(e.Condition), W("card_until"));
+            var active = StationQueueMath.IsActive(index, _state.Status);
+            SetRim(card.Rim, active ? Cyan : Dim);
+            SetActive(card.Trough, active);
+            SetActive(card.Fed, active && e.Mode == StationQueueMode.Count);
+            var textRt = card.Text.rectTransform;
+            Put(textRt, 126f, active ? 4f : 0f, 230f, active ? 44f : CardH);
+            if (active)
+            {
+                var share = StationQueueMath.Share(e, _state.Progress);
+                Put(card.Fill, 0f, 0f, 230f * share, 16f);
+                card.Pct.text = Mathf.RoundToInt(share * 100f) + "%";
+                card.Fed.text = StationQueueMath.Group(e.Fed) + " / " + StationQueueMath.Group(e.Target);
+            }
+            card.Chip.text = e.Mode == StationQueueMode.Count ? W("mode_count") : e.Mode == StationQueueMode.Infinite ? "∞" : W("mode_until");
+            var chip = e.Mode == StationQueueMode.Count ? Cyan : Gold;
+            card.Chip.color = chip;
+            SetRim(card.ChipRim, chip);
+        }
+
+        private void RefreshSingle()
+        {
+            Header(_single).Text(_state.Name);
+            var input = _state.Inputs[0];
+            var id = input.Item ? input.Item.name : null;
+            var e = StationQueueMath.SingleEntry(_state.Entries, id);
+            Cell(_sIn, _sInCount, _sInName, input.Item, input.Network);
+            Cell(_sOut, _sOutCount, _sOutName, input.Output, input.Output ? Net(input.Output.name) : 0);
+            SetActive(_sFuelBox, _state.Fuel);
+            if (_state.Fuel) Cell(_sFuel, _sFuelCount, _sFuelName, _state.Fuel, Net(_state.Fuel.name));
+            _sFuelLabel.text = W("fuel");
+            var status = "<color=#" + ColorUtility.ToHtmlStringRGB(Cyan) + ">" + StatusWord() + "</color>";
+            _sStatus.text = StationQueueMath.Join(
+                StationQueueMath.Format(W("loaded"), _state.Loaded, _state.Capacity),
+                _state.Fuel ? Name(_state.Fuel) + " " + Mathf.FloorToInt(_state.FuelLevel) + "/" + _state.FuelMax : null,
+                _state.InNetwork ? null : W("no_network"),
+                status);
+            _sPause.text = _state.Paused ? W("resume") : W("pause");
+
+            // modes: 0 = infinite, 1 = count, 2 = until (mockup order); none = empty queue
+            var mode = e == null ? -1 : e.Mode == StationQueueMode.Infinite ? 0 : e.Mode == StationQueueMode.Count ? 1 : 2;
+            for (var i = 0; i < 3; i++)
+            {
+                var on = i == mode;
+                SetRim(_sModeRims[i], on ? Cyan : Dim);
+                _sModeLabels[i].color = on ? Cyan : ThemeTokens.GetColor("color.text.body", Color.white);
+                _sModeLabels[i].text = (on ? "◉  " : "○  ") + (i == 0 ? W("mode_infinite") : i == 1 ? W("mode_count") : W("mode_until"));
+            }
+            SetActive(_sCountBox, mode == 1);
+            SetActive(_sInfBox, mode == 0 || mode < 0);
+            SetActive(_sUntilBox, mode == 2);
+            if (e == null) return;
+            if (mode == 1)
+            {
+                SetField(_sCount, e.Target);
+                _sFed.text = StationQueueMath.Format(W("fed"), StationQueueMath.Group(e.Fed), StationQueueMath.Group(e.Target));
+            }
+            if (mode == 2)
+            {
+                var cond = Item(e.Condition);
+                _sCond.sprite = Icon(cond);
+                _sCond.enabled = _sCond.sprite;
+                _sCondName.text = cond ? Name(cond) : e.Condition;
+                _sCompare.text = StationQueueMath.CompareText(e.Compare);
+                SetField(_sThreshold, e.Threshold);
+                var now = Net(e.Condition);
+                _sNow.text = StationQueueMath.Format(W("now"), StationQueueMath.Group(now), StationQueueMath.Group(e.Threshold));
+                Put(_sNowFill, 0f, 0f, _sNowTrough.rect.width * StationQueueMath.Share(now, e.Threshold), 16f);
+            }
+        }
+
+        private static void Cell(Image icon, TMP_Text count, TMP_Text name, ItemDrop item, int n)
+        {
+            icon.sprite = Icon(item);
+            icon.enabled = icon.sprite;
+            count.text = StationQueueMath.Group(n);
+            name.text = Name(item);
+        }
+
+        // The single window's one entry, edited and written (none yet = a new one in that mode).
+        private void SingleEdit(Action<StationQueueEntry> edit, StationQueueMode? mode = null)
+        {
+            var input = _state.Inputs.Count > 0 ? _state.Inputs[0] : null;
+            if (input == null || !input.Item) return;
+            var cur = StationQueueMath.SingleEntry(_state.Entries, input.Item.name);
+            if (cur == null && mode == null) return;
+            var e = cur != null ? cur.Clone() : StationQueueMath.NewEntry(input.Item.name, mode.Value, input.Output ? input.Output.name : null);
+            if (mode != null && e.Mode != mode.Value)
+            {
+                e.Mode = mode.Value;
+                e.Fed = 0;
+                if (e.Condition == null) e.Condition = input.Output ? input.Output.name : null;
+            }
+            edit?.Invoke(e);
+            Commit(StationQueueMath.Single(e), _state.Paused);
+        }
+
+        // ---------------------------------------------------------------- editor
+
+        private void EditorOpen(int index, string newItem)
+        {
+            if (StationQueueMath.IsSingle(_state.Inputs.Count)) return;
+            if (index >= 0 && index < _state.Entries.Count)
+            {
+                _editIndex = index;
+                _draft = _state.Entries[index].Clone();
+            }
+            else
+            {
+                if (newItem == null)
+                    foreach (var i in _state.Inputs)
+                        if (i.Known && i.Item) { newItem = i.Item.name; break; }
+                if (newItem == null) return;
+                _editIndex = -1;
+                _draft = StationQueueMath.NewEntry(newItem, StationQueueMode.Count, OutputOf(newItem));
+            }
+            _editing = true;
+            RefreshAll();
+        }
+
+        private void EditorClose()
+        {
+            _editing = false;
+            _picker.gameObject.SetActive(false);
+            RefreshAll();
+        }
+
+        private void EditorSave()
+        {
+            if (!_editing || _draft == null) return;
+            _editing = false;
+            _picker.gameObject.SetActive(false);
+            Commit(StationQueueMath.Save(_state.Entries, _editIndex, _draft), _state.Paused);
+        }
+
+        private void EditorDelete()
+        {
+            var list = Entries();
+            if (_editIndex >= 0 && _editIndex < list.Count && list[_editIndex].Item == _draft.Item) list.RemoveAt(_editIndex);
+            _editing = false;
+            _picker.gameObject.SetActive(false);
+            Commit(list, _state.Paused);
+        }
+
+        private void EditorMode(StationQueueMode m)
+        {
+            _draft.Mode = m;
+            if (m == StationQueueMode.Until && _draft.Condition == null) _draft.Condition = OutputOf(_draft.Item) ?? _draft.Item;
+            RefreshEditor();
+        }
+
+        private void RefreshEditor()
+        {
+            if (_draft == null) return;
+            var item = Item(_draft.Item);
+            _eIcon.sprite = Icon(item);
+            _eIcon.enabled = _eIcon.sprite;
+            var net = Net(_draft.Item);
+            _eBadge.text = StationQueueMath.Group(net);
+            _eName.text = item ? Name(item) : _draft.Item;
+            _eNet.text = StationQueueMath.Format(W("net_count"), StationQueueMath.Group(net));
+            var mode = (int)_draft.Mode; // Count, Infinite, Until = mockup order
+            for (var i = 0; i < 3; i++)
+            {
+                var on = i == mode;
+                SetRim(_eModeRims[i], on ? Cyan : Dim);
+                _eModeLabels[i].color = on ? Cyan : ThemeTokens.GetColor("color.text.body", Color.white);
+                _eModeLabels[i].text = (on ? "◉  " : "○  ") + (i == 0 ? W("mode_count") : i == 1 ? W("mode_infinite") : W("mode_until"));
+            }
+            Group(_eCountGroup, _draft.Mode == StationQueueMode.Count);
+            Group(_eUntilGroup, _draft.Mode == StationQueueMode.Until);
+            SetRim(_eUntilRim, _draft.Mode == StationQueueMode.Until ? Cyan : Dim);
+            SetField(_eCount, _draft.Target);
+            SetField(_eThreshold, _draft.Threshold);
+            var cond = Item(_draft.Condition);
+            _eCondIcon.sprite = Icon(cond);
+            _eCondIcon.enabled = _eCondIcon.sprite;
+            _eCondName.text = cond ? Name(cond) : _draft.Condition ?? "";
+            SetRim(_eLessRim, _draft.Compare == StationQueueCompare.Less ? Cyan : Dim);
+            SetRim(_eAtLeastRim, _draft.Compare == StationQueueCompare.AtLeast ? Cyan : Dim);
+            _eSummary.text = StationQueueMath.Summary(_draft, _eName.text, _eCondName.text, Net(_draft.Condition),
+                W("sum_count"), W("sum_infinite"), W("sum_until"));
+            SetActive(_eDelete, _editIndex >= 0);
+        }
+
+        private static void Group(CanvasGroup g, bool on)
+        {
+            g.alpha = on ? 1f : 0.45f;
+            g.interactable = on;
+        }
+
+        // ---------------------------------------------------------------- build
+
+        private bool EnsureBuilt()
+        {
+            if (_root) return true;
+            var gui = InventoryGui.instance;
+            var canvas = gui ? gui.GetComponentInParent<Canvas>() : null;
+            if (!canvas) return false;
+            _root = NewRect(RootName, canvas.rootCanvas.transform);
+            Stretch(_root, 0f, 0f, 0f, 0f);
+            _root.gameObject.SetActive(false);
+            ModalLayer.Ensure(_root);
+            BuildMulti();
+            BuildSingle();
+            BuildEditor();
+            BuildPicker();
+            return true;
+        }
+
+        private readonly Dictionary<RectTransform, RuneWindowHeader> _headers = new Dictionary<RectTransform, RuneWindowHeader>();
+
+        private RuneWindowHeader Header(RectTransform panel) => _headers[panel];
+
+        // Centred panel: panel stack, header band (title, drag, close cap), key hints under it.
+        private RectTransform Panel(Transform parent, string name, float w, float h, string moveId, Action close, string hints)
+        {
+            var p = NewRect(name, parent);
+            p.anchorMin = p.anchorMax = p.pivot = new Vector2(0.5f, 0.5f);
+            p.sizeDelta = new Vector2(w, h);
+            var block = p.gameObject.AddComponent<Image>(); // takes the clicks on the panel's empty parts
+            block.color = Color.clear;
+            block.raycastTarget = true;
+            DollCell.Mark(block, "content", "station queue panel click blocker");
+            var decor = PanelDecor.Ensure(p, "size.panel.glass.inset", glass: true, plaque: false);
+            var header = RuneWindowHeader.Ensure(p, moveId, p);
+            header.Frame = decor;
+            var x = Btn(p, "Close", "button.icon", out var xl, close);
+            xl.text = "×";
+            xl.fontSize = 26f;
+            header.CloseButton = x;
+            header.Stretch(WindowHeaderMath.IconShare);
+            MovableWindow.Ensure(p, moveId);
+            _headers[p] = header;
+            var hint = Txt(p, "Hints", "text.body", TextAlignmentOptions.Center, 21f);
+            hint.richText = true;
+            hint.text = hints;
+            Put(hint, 0f, h + 14f, w, 30f);
+            return p;
+        }
+
+        private static string Hint(string key, string word) => StationQueueMath.KeyHint(key, word, ColorUtility.ToHtmlStringRGB(Gold));
+
+        private void BuildMulti()
+        {
+            const float W0 = 1100f, H0 = 680f;
+            _multi = Panel(_root, "Multi", W0, H0, "station.queue", Hide, Hint("Esc", W("close")));
+            _mStatus = Txt(_multi, "Status", "text.body", TextAlignmentOptions.Center, 22f);
+            Put(_mStatus, 40f, 62f, W0 - 80f, 32f);
+            Put(Rule(_multi, "TopRule", Dim), 28f, 102f, W0 - 56f, 1f);
+
+            // inputs column
+            Section(_multi, "InputsLabel", W("inputs"), 28f, 110f);
+            _rowsRt = NewRect("Inputs", _multi);
+            Put(_rowsRt, 28f, 152f, 400f, InputRows * 84f);
+            WheelOn(_rowsRt, d => { _inScroll -= Math.Sign(d); RefreshAll(); });
+            for (var i = 0; i < InputRows; i++) _rows.Add(NewInputRow(_rowsRt, i));
+            _mHidden = Txt(_multi, "UnknownHidden", "text.muted", TextAlignmentOptions.Center, 18f);
+            _mHidden.text = W("unknown_hidden");
+            _mHidden.color = Muted;
+            Put(_mHidden, 28f, 152f + InputRows * 84f + 4f, 400f, 26f);
+            Put(Rule(_multi, "SideRule", Dim), 446f, 110f, 1f, 480f);
+
+            // queue column
+            Section(_multi, "QueueLabel", W("queue"), 468f, 110f);
+            _cardsRt = NewRect("Queue", _multi);
+            Put(_cardsRt, 468f, 152f, CardW, 450f);
+            WheelOn(_cardsRt, d => { _cardScroll -= Math.Sign(d); RefreshAll(); });
+            for (var i = 0; i < CardRows; i++) _cards.Add(NewCard(_cardsRt, i));
+            _addHint = NewRect("AddHint", _cardsRt);
+            var addRim = Rim(_addHint);
+            SetRim(addRim, Dim);
+            var addText = Txt(_addHint, "Text", "text.muted", TextAlignmentOptions.Center, 20f);
+            addText.text = W("add_hint");
+            addText.color = Muted;
+            Stretch(addText.rectTransform, 0f, 0f, 0f, 0f);
+
+            // footer
+            Put(Rule(_multi, "BottomRule", Dim), 28f, 612f, W0 - 56f, 1f);
+            var pause = Btn(_multi, "Pause", "button", out _mPause, () => Commit(Entries(), !_state.Paused));
+            _mPause.fontSize = 22f;
+            Put(pause, 60f, 624f, 150f, 42f);
+            var clear = Btn(_multi, "Clear", "button", out var clearLabel, () => Commit(new List<StationQueueEntry>(), _state.Paused));
+            clearLabel.text = W("clear");
+            clearLabel.fontSize = 22f;
+            Put(clear, 226f, 624f, 250f, 42f);
+            var order = Txt(_multi, "Order", "text.muted", TextAlignmentOptions.Right, 19f);
+            order.text = W("order");
+            order.color = Muted;
+            Put(order, W0 - 460f, 630f, 400f, 30f);
+        }
+
+        private void Section(Transform parent, string name, string text, float x, float y)
+        {
+            var t = Txt(parent, name, "text.header", TextAlignmentOptions.Left, 26f);
+            t.text = text;
+            t.color = ThemeTokens.GetColor("color.text.header", Hex("#D9DCE0"));
+            Put(t, x, y, 300f, 36f);
+        }
+
+        private InputRow NewInputRow(RectTransform parent, int i)
+        {
+            var row = new InputRow { Rt = NewRect("Row" + i, parent) };
+            Put(row.Rt, 0f, i * 84f, 400f, 80f);
+            row.Group = row.Rt.gameObject.AddComponent<CanvasGroup>();
+            row.Icon = SlotIcon(row.Rt, 0f, 6f, 68f, out row.Badge);
+            row.Name = Txt(row.Rt, "Name", "text.body", TextAlignmentOptions.Left, 21f);
+            row.Name.textWrappingMode = TextWrappingModes.Normal;
+            Put(row.Name, 84f, 0f, 200f, 80f);
+            row.Count = Txt(row.Rt, "Count", "text.body", TextAlignmentOptions.Right, 21f);
+            Put(row.Count, 284f, 0f, 60f, 80f);
+            var plus = Btn(row.Rt, "Add", "button.icon", out var pl, () =>
+            {
+                if (row.Item == null) return;
+                var list = Entries();
+                list.Add(StationQueueMath.NewEntry(row.Item, StationQueueMode.Count, OutputOf(row.Item)));
+                Commit(list, _state.Paused);
+            });
+            pl.text = "+";
+            pl.fontSize = 26f;
+            Put(plus, 354f, 20f, 40f, 40f);
+            Put(Rule(row.Rt, "Rule", new Color(Dim.r, Dim.g, Dim.b, 0.3f)), 84f, 81f, 316f, 1f);
+            return row;
+        }
+
+        private Card NewCard(RectTransform parent, int i)
+        {
+            var card = new Card();
+            var plate = Btn(parent, "Card" + i, "field", out var unused, () => EditorOpen(card.Index, null));
+            Destroy(unused.gameObject);
+            card.Rt = (RectTransform)plate.transform;
+            Put(card.Rt, 0f, i * CardStep, CardW, CardH);
+            card.Rim = Rim(card.Rt);
+            var grip = Txt(card.Rt, "Grip", "text.muted", TextAlignmentOptions.Center, 22f);
+            grip.text = "⋮⋮";
+            grip.color = Muted;
+            Put(grip, 6f, 0f, 22f, CardH);
+            card.Num = Txt(card.Rt, "Num", "text.body", TextAlignmentOptions.Center, 22f);
+            Put(card.Num, 28f, 0f, 30f, CardH);
+            card.Icon = SlotIcon(card.Rt, 62f, 8f, 58f, out var badge);
+            Destroy(badge.gameObject);
+            card.Text = Txt(card.Rt, "Text", "text.body", TextAlignmentOptions.Left, 19f);
+            card.Text.textWrappingMode = TextWrappingModes.Normal;
+            card.Trough = Img(card.Rt, "Trough", "craft.progress.trough").rectTransform;
+            Put(card.Trough, 126f, 50f, 230f, 16f);
+            card.Fill = Img(card.Trough, "Fill", "craft.progress.fill");
+            card.Fill.preserveAspect = false;
+            card.Pct = Txt(card.Trough, "Pct", "text.body", TextAlignmentOptions.Center, 15f);
+            Stretch(card.Pct.rectTransform, 0f, -2f, 0f, -2f);
+            card.Fed = Txt(card.Rt, "Fed", "text.accent", TextAlignmentOptions.Left, 18f);
+            card.Fed.color = Cyan;
+            Put(card.Fed, 364f, 46f, 100f, 24f);
+            var chipRt = NewRect("Chip", card.Rt);
+            Put(chipRt, 364f, 14f, 92f, 30f);
+            card.ChipRim = Rim(chipRt);
+            card.Chip = Txt(chipRt, "Label", "text.body", TextAlignmentOptions.Center, 18f);
+            Stretch(card.Chip.rectTransform, 2f, 0f, 2f, 0f);
+            Arrow(card, "Up", "▲", 466f, () => Reorder(card.Index, -1));
+            Arrow(card, "Down", "▼", 512f, () => Reorder(card.Index, 1));
+            Arrow(card, "Remove", "×", 558f, () =>
+            {
+                var list = Entries();
+                if (card.Index < list.Count) list.RemoveAt(card.Index);
+                Commit(list, _state.Paused);
+            });
+            return card;
+        }
+
+        private void Arrow(Card card, string name, string glyph, float x, Action click)
+        {
+            var b = Btn(card.Rt, name, "button.icon", out var l, click);
+            l.text = glyph;
+            l.fontSize = name == "Remove" ? 24f : 16f;
+            Put(b, x, 18f, 38f, 38f);
+        }
+
+        private void Reorder(int index, int delta)
+        {
+            var list = Entries();
+            if (StationQueueMath.Move(list, index, delta)) Commit(list, _state.Paused);
+        }
+
+        private void BuildSingle()
+        {
+            const float W0 = 720f, H0 = 620f;
+            _single = Panel(_root, "Single", W0, H0, "station.queue.single", Hide, Hint("Esc", W("close")));
+            // recipe row: input -> output | fuel (counts = network)
+            _sIn = SlotIcon(_single, 80f, 70f, 100f, out _sInCount);
+            _sInName = CellName(_single, 50f);
+            var arrow = Txt(_single, "Arrow", "text.accent", TextAlignmentOptions.Center, 40f);
+            arrow.text = "→";
+            arrow.color = Cyan;
+            Put(arrow, 196f, 92f, 80f, 50f);
+            _sOut = SlotIcon(_single, 292f, 70f, 100f, out _sOutCount);
+            _sOutName = CellName(_single, 262f);
+            _sFuelBox = NewRect("Fuel", _single);
+            Put(_sFuelBox, 440f, 36f, 260f, 190f);
+            Put(Rule(_sFuelBox, "Rule", Dim), 0f, 30f, 1f, 110f);
+            _sFuelLabel = Txt(_sFuelBox, "Label", "text.body", TextAlignmentOptions.Center, 20f);
+            Put(_sFuelLabel, 60f, 0f, 160f, 30f);
+            _sFuel = SlotIcon(_sFuelBox, 90f, 34f, 100f, out _sFuelCount);
+            _sFuelName = CellName(_sFuelBox, 60f, 140f);
+            _sStatus = Txt(_single, "Status", "text.body", TextAlignmentOptions.Center, 20f);
+            _sStatus.richText = true;
+            Put(_sStatus, 28f, 228f, W0 - 56f, 30f);
+            Put(Rule(_single, "Rule1", Dim), 28f, 264f, W0 - 56f, 1f);
+            Section(_single, "ModeLabel", W("mode"), 28f, 270f);
+            var modes = new[] { StationQueueMode.Infinite, StationQueueMode.Count, StationQueueMode.Until };
+            for (var i = 0; i < 3; i++)
+            {
+                var m = modes[i];
+                _sModes[i] = Btn(_single, "Mode" + i, "field", out _sModeLabels[i], () => SingleEdit(null, m));
+                _sModeLabels[i].fontSize = 22f;
+                _sModeRims[i] = Rim(_sModes[i].transform);
+                Put(_sModes[i], 28f + i * 226f, 310f, 212f, 46f);
+            }
+
+            // detail boxes of the selected mode
+            var box = Img(_single, "Detail", "well");
+            box.preserveAspect = false;
+            Put(box, 28f, 370f, W0 - 56f, 170f);
+            _sCountBox = NewRect("Count", box.transform);
+            Stretch(_sCountBox, 0f, 0f, 0f, 0f);
+            Label(_sCountBox, W("count_label"), 20f, 10f);
+            _sCount = NewStepper(_sCountBox, 20f, 50f, () => CurrentSingle()?.Target ?? 0, v => SingleEdit(e => e.Target = v));
+            Chips(_sCountBox, 330f, 50f, v => SingleEdit(e => e.Target = v), () => _state.Inputs.Count > 0 ? _state.Inputs[0].Network : 0);
+            _sFed = Txt(_sCountBox, "Fed", "text.body", TextAlignmentOptions.Left, 20f);
+            Put(_sFed, 20f, 110f, 400f, 30f);
+            _sInfBox = NewRect("Infinite", box.transform);
+            Stretch(_sInfBox, 0f, 0f, 0f, 0f);
+            var note = Label(_sInfBox, W("infinite_note"), 20f, 60f);
+            note.color = Muted;
+            _sUntilBox = NewRect("Until", box.transform);
+            Stretch(_sUntilBox, 0f, 0f, 0f, 0f);
+            Label(_sUntilBox, W("process_while"), 20f, 8f);
+            var condBtn = Btn(_sUntilBox, "Condition", "slot.cell", out var cl, null);
+            Destroy(cl.gameObject);
+            Put(condBtn, 20f, 42f, 56f, 56f);
+            _sCond = IconIn(condBtn.transform, 6f);
+            condBtn.onClick.AddListener(() => OpenPicker((RectTransform)condBtn.transform, id => SingleEdit(e => e.Condition = id)));
+            _sCondName = Txt(_sUntilBox, "CondName", "text.body", TextAlignmentOptions.Left, 19f);
+            _sCondName.textWrappingMode = TextWrappingModes.Normal;
+            Put(_sCondName, 84f, 42f, 150f, 56f);
+            var cmp = Btn(_sUntilBox, "Compare", "button.icon", out _sCompare,
+                () => SingleEdit(e => e.Compare = e.Compare == StationQueueCompare.Less ? StationQueueCompare.AtLeast : StationQueueCompare.Less));
+            _sCompare.fontSize = 22f;
+            Put(cmp, 242f, 50f, 44f, 40f);
+            _sThreshold = NewStepper(_sUntilBox, 300f, 50f, () => CurrentSingle()?.Threshold ?? 0, v => SingleEdit(e => e.Threshold = v));
+            var inNet = Txt(_sUntilBox, "InNet", "text.body", TextAlignmentOptions.Left, 20f);
+            inNet.text = W("in_network");
+            Put(inNet, 504f, 50f, 140f, 40f);
+            _sNow = Txt(_sUntilBox, "Now", "text.body", TextAlignmentOptions.Left, 20f);
+            Put(_sNow, 20f, 104f, 400f, 28f);
+            _sNowTrough = Img(_sUntilBox, "Trough", "craft.progress.trough").rectTransform;
+            Put(_sNowTrough, 20f, 136f, W0 - 56f - 40f, 16f);
+            _sNowFill = Img(_sNowTrough, "Fill", "craft.progress.fill");
+            _sNowFill.preserveAspect = false;
+
+            Put(Rule(_single, "Rule2", Dim), 28f, 556f, W0 - 56f, 1f);
+            var pause = Btn(_single, "Pause", "button", out _sPause, () => Commit(Entries(), !_state.Paused));
+            _sPause.fontSize = 22f;
+            Put(pause, 40f, 566f, 150f, 42f);
+            var reset = Btn(_single, "Reset", "button", out var rl, () => Commit(new List<StationQueueEntry>(), _state.Paused));
+            rl.text = W("reset");
+            rl.fontSize = 22f;
+            Put(reset, 206f, 566f, 170f, 42f);
+            var from = Txt(_single, "FromNetwork", "text.muted", TextAlignmentOptions.Right, 18f);
+            from.text = W("from_network");
+            from.color = Muted;
+            from.textWrappingMode = TextWrappingModes.Normal;
+            Put(from, 390f, 562f, W0 - 418f, 50f);
+        }
+
+        private StationQueueEntry CurrentSingle() =>
+            _state.Inputs.Count > 0 && _state.Inputs[0].Item ? StationQueueMath.SingleEntry(_state.Entries, _state.Inputs[0].Item.name) : null;
+
+        private TMP_Text CellName(Transform parent, float x, float w = 160f)
+        {
+            var t = Txt(parent, "Name", "text.body", TextAlignmentOptions.Top, 19f);
+            t.textWrappingMode = TextWrappingModes.Normal;
+            Put(t, x, parent == _single ? 176f : 140f, w, 50f);
+            return t;
+        }
+
+        private TMP_Text Label(Transform parent, string text, float x, float y)
+        {
+            var t = Txt(parent, "Label", "text.body", TextAlignmentOptions.Left, 20f);
+            t.text = text;
+            Put(t, x, y, 600f, 30f);
+            return t;
+        }
+
+        private void Chips(Transform parent, float x, float y, Action<int> set, Func<int> all)
+        {
+            var values = new[] { 10, 50, 100, -1 };
+            for (var i = 0; i < values.Length; i++)
+            {
+                var v = values[i];
+                var b = Btn(parent, "Chip" + i, "button", out var l, () => set(StationQueueMath.Clamp(v > 0 ? v : all())));
+                l.text = v > 0 ? v.ToString(System.Globalization.CultureInfo.InvariantCulture) : W("all");
+                l.fontSize = 20f;
+                Put(b, x + i * 70f, y, 62f, 40f);
+            }
+        }
+
+        private Stepper NewStepper(Transform parent, float x, float y, Func<int> get, Action<int> set)
+        {
+            var s = new Stepper { Get = get, Set = set };
+            var minus = Btn(parent, "Minus", "craft.amount.step", out var ml, () => s.Set(StationQueueMath.Step(s.Get(), -1, Shift())));
+            ml.text = "−";
+            ml.fontSize = 22f;
+            Put(minus, x, y, 40f, 40f);
+            s.Field = InputBox(parent, "Value", null);
+            s.Field.contentType = TMP_InputField.ContentType.IntegerNumber;
+            s.Field.characterLimit = 5;
+            s.Field.textComponent.alignment = TextAlignmentOptions.Center;
+            s.Field.onEndEdit.AddListener(text =>
+            {
+                if (int.TryParse(text, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var v)) s.Set(StationQueueMath.Clamp(v));
+                else SetField(s, s.Get());
+            });
+            Put(s.Field, x + 46f, y, 100f, 40f);
+            var plus = Btn(parent, "Plus", "craft.amount.step", out var pl, () => s.Set(StationQueueMath.Step(s.Get(), 1, Shift())));
+            pl.text = "+";
+            pl.fontSize = 22f;
+            Put(plus, x + 152f, y, 40f, 40f);
+            return s;
+        }
+
+        private static bool Shift() => ZInput.GetKey(KeyCode.LeftShift, false) || ZInput.GetKey(KeyCode.RightShift, false);
+
+        private static void SetField(Stepper s, int v)
+        {
+            if (s.Field.isFocused) return; // the player is typing
+            var text = v.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            if (s.Field.text != text) s.Field.SetTextWithoutNotify(text);
+        }
+
+        private void BuildEditor()
+        {
+            const float W0 = 620f, H0 = 600f;
+            _editorLayer = NewRect("EditorLayer", _root);
+            Stretch(_editorLayer, 0f, 0f, 0f, 0f);
+            var dim = _editorLayer.gameObject.AddComponent<Image>();
+            dim.color = new Color(0f, 0f, 0f, 0.55f);
+            dim.raycastTarget = true; // the queue window under the editor takes no clicks
+            DollCell.Mark(dim, "content", "station queue editor backdrop");
+            _editor = Panel(_editorLayer, "Editor", W0, H0, "station.queue.editor", EditorClose, Hint("Enter", W("save")) + "      " + Hint("Esc", W("cancel")));
+            Header(_editor).Text("$ui_sq_editor_title");
+
+            _eIcon = SlotIcon(_editor, 28f, 60f, 76f, out _eBadge);
+            _eName = Txt(_editor, "Name", "text.accent", TextAlignmentOptions.Left, 26f);
+            _eName.color = Gold;
+            Put(_eName, 120f, 62f, W0 - 150f, 34f);
+            _eNet = Txt(_editor, "Net", "text.body", TextAlignmentOptions.Left, 20f);
+            Put(_eNet, 120f, 98f, W0 - 150f, 28f);
+            Put(Rule(_editor, "Rule0", Dim), 28f, 146f, W0 - 56f, 1f);
+            Section(_editor, "ModeLabel", W("mode"), 28f, 150f);
+            var modes = new[] { StationQueueMode.Count, StationQueueMode.Infinite, StationQueueMode.Until };
+            for (var i = 0; i < 3; i++)
+            {
+                var m = modes[i];
+                _eModes[i] = Btn(_editor, "Mode" + i, "field", out _eModeLabels[i], () => EditorMode(m));
+                _eModeLabels[i].fontSize = 20f;
+                _eModeRims[i] = Rim(_eModes[i].transform);
+                Put(_eModes[i], 28f + i * 190f, 188f, 178f, 40f);
+            }
+            var countRt = NewRect("Count", _editor);
+            Put(countRt, 28f, 240f, W0 - 56f, 44f);
+            _eCountGroup = countRt.gameObject.AddComponent<CanvasGroup>();
+            _eCount = NewStepper(countRt, 0f, 0f, () => _draft.Target, v => { _draft.Target = v; RefreshEditor(); });
+            Chips(countRt, 270f, 0f, v => { _draft.Target = v; RefreshEditor(); }, () => Net(_draft.Item));
+
+            var until = NewRect("Until", _editor);
+            Put(until, 28f, 296f, W0 - 56f, 140f);
+            _eUntilGroup = until.gameObject.AddComponent<CanvasGroup>();
+            _eUntilRim = Rim(until);
+            var ut = Section2(until, W("until_net"));
+            Put(ut, 16f, 8f, 300f, 32f);
+            var drop = Btn(until, "Item", "dropdown.field", out _eCondName, null);
+            _eCondName.alignment = TextAlignmentOptions.Left;
+            Stretch(_eCondName.rectTransform, 50f, 0f, 34f, 0f);
+            Put(drop, 16f, 50f, 230f, 42f);
+            _eCondIcon = IconIn(drop.transform, 4f);
+            Put(_eCondIcon, 6f, 4f, 34f, 34f);
+            var arrow = Txt(drop.transform, "Arrow", "text.body", TextAlignmentOptions.Center, 16f);
+            arrow.text = "▼";
+            Put(arrow, 196f, 0f, 30f, 42f);
+            drop.onClick.AddListener(() => OpenPicker((RectTransform)drop.transform, id => { _draft.Condition = id; RefreshEditor(); }));
+            var less = Btn(until, "Less", "button.icon", out var ll, () => { _draft.Compare = StationQueueCompare.Less; RefreshEditor(); });
+            ll.text = "<";
+            ll.fontSize = 22f;
+            _eLessRim = Rim(less.transform);
+            Put(less, 256f, 51f, 40f, 40f);
+            var atLeast = Btn(until, "AtLeast", "button.icon", out var al, () => { _draft.Compare = StationQueueCompare.AtLeast; RefreshEditor(); });
+            al.text = "≥";
+            al.fontSize = 22f;
+            _eAtLeastRim = Rim(atLeast.transform);
+            Put(atLeast, 300f, 51f, 40f, 40f);
+            _eThreshold = NewStepper(until, 356f, 51f, () => _draft.Threshold, v => { _draft.Threshold = v; RefreshEditor(); });
+
+            _eSummary = Txt(_editor, "Summary", "text.body", TextAlignmentOptions.TopLeft, 19f);
+            _eSummary.textWrappingMode = TextWrappingModes.Normal;
+            Put(_eSummary, 36f, 448f, W0 - 72f, 56f);
+            Put(Rule(_editor, "Rule1", Dim), 28f, 514f, W0 - 56f, 1f);
+            _eDelete = Btn(_editor, "Delete", "button.danger", out var dl, EditorDelete);
+            dl.text = W("delete");
+            dl.fontSize = 22f;
+            Put(_eDelete, 40f, 528f, 160f, 44f);
+            var cancel = Btn(_editor, "Cancel", "button", out var cl, EditorClose);
+            cl.text = W("cancel");
+            cl.fontSize = 22f;
+            Put(cancel, 230f, 528f, 160f, 44f);
+            var save = Btn(_editor, "Save", "button.primary", out var sl, EditorSave);
+            sl.text = W("save");
+            sl.fontSize = 22f;
+            sl.color = Gold;
+            Put(save, 420f, 528f, 160f, 44f);
+        }
+
+        private TMP_Text Section2(Transform parent, string text)
+        {
+            var t = Txt(parent, "Title", "text.header", TextAlignmentOptions.Left, 22f);
+            t.text = text;
+            return t;
+        }
+
+        // ---------------------------------------------------------------- picker
+
+        private void BuildPicker()
+        {
+            _picker = (RectTransform)Img(_root, "Picker", "dropdown.list", true).transform;
+            _picker.GetComponent<Image>().preserveAspect = false;
+            _picker.anchorMin = _picker.anchorMax = new Vector2(0.5f, 0.5f);
+            _picker.pivot = new Vector2(0f, 1f);
+            _picker.sizeDelta = new Vector2(290f, 52f + PickerRows * 34f);
+            _pSearch = InputBox(_picker, "Search", "$ui_sq_search");
+            Put(_pSearch, 8f, 8f, 274f, 36f);
+            _pSearch.onValueChanged.AddListener(_ => { _pScroll = 0; PickerFill(); });
+            for (var i = 0; i < PickerRows; i++)
+            {
+                var n = i;
+                var b = Btn(_picker, "Row" + i, "dropdown.item", out var label, () => PickerChoose(n));
+                label.alignment = TextAlignmentOptions.Left;
+                Stretch(label.rectTransform, 44f, 0f, 6f, 0f);
+                var icon = IconIn(b.transform, 0f);
+                Put(icon, 6f, 2f, 30f, 30f);
+                Put(b, 8f, 50f + i * 34f, 274f, 32f);
+                _pRows.Add((b, icon, label));
+            }
+            WheelOn(_picker, d => { _pScroll -= Math.Sign(d); PickerFill(); });
+            _picker.gameObject.SetActive(false);
+        }
+
+        // Candidates: every item in the station network + the station's inputs, outputs and fuel (names sorted).
+        private void OpenPicker(RectTransform anchor, Action<string> pick)
+        {
+            if (_picker.gameObject.activeSelf) { _picker.gameObject.SetActive(false); return; }
+            _pPick = pick;
+            var set = new HashSet<string>(_state.Network.Keys, StringComparer.Ordinal);
+            foreach (var i in _state.Inputs)
+            {
+                if (i.Item) set.Add(i.Item.name);
+                if (i.Output) set.Add(i.Output.name);
+            }
+            if (_state.Fuel) set.Add(_state.Fuel.name);
+            _pAll.Clear();
+            foreach (var id in set) if (Item(id)) _pAll.Add(id);
+            _pAll.Sort((a, b) => string.Compare(Name(a), Name(b), StringComparison.CurrentCultureIgnoreCase));
+            _pScroll = 0;
+            _pSearch.SetTextWithoutNotify("");
+            var c = new Vector3[4];
+            anchor.GetWorldCorners(c);
+            var local = (Vector2)_root.InverseTransformPoint(c[0]);
+            _picker.anchoredPosition = local - _root.rect.center + new Vector2(0f, -4f);
+            _picker.SetAsLastSibling();
+            _picker.gameObject.SetActive(true);
+            PickerFill();
+            _pSearch.ActivateInputField();
+        }
+
+        private void PickerFill()
+        {
+            _pShown.Clear();
+            foreach (var id in _pAll) if (StationQueueMath.Matches(Name(id), _pSearch.text)) _pShown.Add(id);
+            _pScroll = Mathf.Clamp(_pScroll, 0, Mathf.Max(0, _pShown.Count - PickerRows));
+            for (var i = 0; i < PickerRows; i++)
+            {
+                var k = i + _pScroll;
+                var (b, icon, label) = _pRows[i];
+                SetActive(b, k < _pShown.Count);
+                if (k >= _pShown.Count) continue;
+                var d = Item(_pShown[k]);
+                icon.sprite = Icon(d);
+                icon.enabled = icon.sprite;
+                label.text = Name(d);
+            }
+        }
+
+        private void PickerChoose(int row)
+        {
+            var k = row + _pScroll;
+            if (k < 0 || k >= _pShown.Count) return;
+            _picker.gameObject.SetActive(false);
+            _pPick?.Invoke(_pShown[k]);
+        }
+
+        // ---------------------------------------------------------------- widget helpers (ChangelogPanel house style)
+
+        private static void WheelOn(RectTransform host, Action<float> scroll)
+        {
+            var hit = new GameObject("WheelHit", typeof(RectTransform)).AddComponent<Image>();
+            hit.rectTransform.SetParent(host, false);
+            hit.rectTransform.SetAsFirstSibling();
+            Stretch(hit.rectTransform, 0f, 0f, 0f, 0f);
+            hit.color = Color.clear;
+            hit.raycastTarget = true;
+            DollCell.Mark(hit, "content", "station queue wheel area");
+            host.gameObject.AddComponent<Wheel>().Scroll = scroll;
+        }
+
+        // Slot cell with the item icon and a count badge (bottom right).
+        private static Image SlotIcon(Transform parent, float x, float y, float size, out TMP_Text badge)
+        {
+            var cell = Img(parent, "Cell", "slot.cell");
+            cell.preserveAspect = false;
+            Put(cell, x, y, size, size);
+            var icon = IconIn(cell.transform, size * 0.12f);
+            badge = Txt(cell.transform, "Badge", "text.body", TextAlignmentOptions.BottomRight, size * 0.24f);
+            badge.fontStyle = FontStyles.Bold;
+            Stretch(badge.rectTransform, 2f, 2f, 6f, 2f);
+            return icon;
+        }
+
+        private static Image IconIn(Transform parent, float inset)
+        {
+            var icon = new GameObject("Icon", typeof(RectTransform)).AddComponent<Image>();
+            icon.rectTransform.SetParent(parent, false);
+            Stretch(icon.rectTransform, inset, inset, inset, inset);
+            icon.preserveAspect = true;
+            icon.raycastTarget = false;
+            DollCell.Mark(icon, "content", "station queue item icon");
+            return icon;
+        }
+
+        // Thin coloured rim inside a plate (ChangelogPanel.Rim).
+        private static Image[] Rim(Transform host)
+        {
+            var rim = new Image[4];
+            for (var i = 0; i < 4; i++)
+            {
+                rim[i] = Rule(host, "Rim" + i, Color.clear);
+                var rt = rim[i].rectTransform;
+                var horizontal = i < 2;
+                var edge = i == 0 || i == 2 ? 1f : 0f;
+                rt.anchorMin = horizontal ? new Vector2(0f, edge) : new Vector2(i == 3 ? 1f : 0f, 0f);
+                rt.anchorMax = horizontal ? new Vector2(1f, edge) : new Vector2(i == 3 ? 1f : 0f, 1f);
+                rt.pivot = new Vector2(0.5f, 0.5f);
+                rt.offsetMin = horizontal ? new Vector2(4f, i == 0 ? -2f : 0.5f) : new Vector2(i == 3 ? -2f : 0.5f, 4f);
+                rt.offsetMax = horizontal ? new Vector2(-4f, i == 0 ? -0.5f : 2f) : new Vector2(i == 3 ? -0.5f : 2f, -4f);
+            }
+            return rim;
+        }
+
+        private static void SetRim(Image[] rim, Color c)
+        {
+            foreach (var l in rim) if (l.color != c) l.color = c;
+        }
+
+        private static Image Rule(Transform parent, string name, Color color)
+        {
+            var img = Img(parent, name, "ib.rule");
+            img.enabled = true;
+            img.preserveAspect = false;
+            img.color = color;
+            return img;
+        }
+
+        private static Image Img(Transform parent, string name, string role, bool raycast = false)
+        {
+            var image = InfoArt.OwnImage(parent, name, role, "station queue " + name);
+            image.raycastTarget = raycast;
+            return image;
+        }
+
+        private static TMP_Text Txt(Transform parent, string name, string role, TextAlignmentOptions align, float size)
+        {
+            var t = InfoArt.RowText(parent, name, role, align);
+            OwnFit.Claim(t);
+            t.textWrappingMode = TextWrappingModes.NoWrap;
+            t.overflowMode = TextOverflowModes.Ellipsis;
+            t.enableAutoSizing = false;
+            t.fontSize = size;
+            return t;
+        }
+
+        private static Button Btn(Transform parent, string name, string role, out TMP_Text label, Action click)
+        {
+            var image = InfoArt.OwnImage(parent, name, role, "station queue button " + name);
+            image.preserveAspect = false;
+            image.raycastTarget = true;
+            var b = image.gameObject.AddComponent<Button>();
+            b.targetGraphic = image;
+            b.navigation = new Navigation { mode = Navigation.Mode.None };
+            if (click != null) b.onClick.AddListener(() => click());
+            if (image.GetComponent<SkinMark>() is SkinMark m) m.Outcome = Restyler.Apply(image, m, ThemeTokens.Role(role)) ? Outcome.Styled : Outcome.Degraded;
+            label = Txt(image.transform, "Label", "text.body", TextAlignmentOptions.Center, 18f);
+            Stretch(label.rectTransform, 4f, 0f, 4f, 0f);
+            return b;
+        }
+
+        private static TMP_InputField InputBox(Transform parent, string name, string placeholderToken)
+        {
+            var back = Img(parent, name, "field", true);
+            back.preserveAspect = false;
+            var area = new GameObject("Text Area", typeof(RectTransform), typeof(RectMask2D)).GetComponent<RectTransform>();
+            area.SetParent(back.rectTransform, false);
+            Stretch(area, 10f, 0f, 10f, 0f);
+            var text = Txt(area, "Text", "text.body", TextAlignmentOptions.Left, 20f);
+            Stretch(text.rectTransform, 0f, 0f, 0f, 0f);
+            var f = back.gameObject.AddComponent<TMP_InputField>();
+            f.textViewport = area;
+            f.textComponent = text;
+            if (placeholderToken != null)
+            {
+                var ph = Txt(area, "Placeholder", "text.muted", TextAlignmentOptions.Left, 19f);
+                ph.text = Words.Get(placeholderToken);
+                ph.fontStyle = FontStyles.Italic;
+                ph.color = Muted;
+                Stretch(ph.rectTransform, 0f, 0f, 0f, 0f);
+                f.placeholder = ph;
+            }
+            f.targetGraphic = back;
+            f.transition = Selectable.Transition.None;
+            f.navigation = new Navigation { mode = Navigation.Mode.None };
+            return f;
+        }
+
+        private static RectTransform NewRect(string name, Transform parent)
+        {
+            var rt = (RectTransform)new GameObject(name, typeof(RectTransform)).transform;
+            rt.SetParent(parent, false);
+            return rt;
+        }
+
+        private static void SetActive(Component c, bool on)
+        {
+            if (c && c.gameObject.activeSelf != on) c.gameObject.SetActive(on);
+        }
+
+        // Top-left box (y down) inside the parent.
+        private static void Put(Component c, float x, float y, float w, float h)
+        {
+            var rt = (RectTransform)c.transform;
+            rt.anchorMin = rt.anchorMax = new Vector2(0f, 1f);
+            rt.pivot = new Vector2(0f, 1f);
+            rt.anchoredPosition = new Vector2(x, -y);
+            rt.sizeDelta = new Vector2(w, h);
+        }
+
+        private static void Stretch(RectTransform rt, float left, float top, float right, float bottom)
+        {
+            rt.anchorMin = Vector2.zero;
+            rt.anchorMax = Vector2.one;
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.offsetMin = new Vector2(left, bottom);
+            rt.offsetMax = new Vector2(-right, -top);
+        }
+    }
+
+    // Player input off and cursor free while the window is open (the vanilla gates an open inventory takes: Player /
+    // PlayerController TakeInput, GameCamera.UpdateMouseCapture); Esc closes the window, not the pause menu.
+    [HarmonyPatch]
+    internal static class StationQueueInputGate
+    {
+        [HarmonyPatch(typeof(Player), "TakeInput"), HarmonyPostfix]
+        private static void Player_TakeInput(ref bool __result)
+        {
+            if (StationQueueWindow.IsOpen) __result = false;
+        }
+
+        [HarmonyPatch(typeof(PlayerController), "TakeInput"), HarmonyPostfix]
+        private static void Controller_TakeInput(ref bool __result)
+        {
+            if (StationQueueWindow.IsOpen) __result = false;
+        }
+
+        [HarmonyPatch(typeof(GameCamera), nameof(GameCamera.UpdateMouseCapture)), HarmonyPostfix]
+        private static void UpdateMouseCapture_Postfix()
+        {
+            if (!StationQueueWindow.IsOpen) return;
+            ZCursor.LockState = CursorLockMode.None;
+            ZCursor.Show();
+        }
+
+        [HarmonyPatch(typeof(Menu), "Update"), HarmonyPrefix]
+        private static bool Menu_Update() => !StationQueueWindow.EatsEscape();
+    }
+}

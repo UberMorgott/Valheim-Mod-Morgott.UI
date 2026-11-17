@@ -248,6 +248,7 @@ namespace Morgott.UI
                 MapScreen.PortalPickerService.Registered = Services.Register<IPortalPicker>(MapScreen.PortalPickerService.Instance);
 
             gameObject.AddComponent<ResponsiveContext>();
+            if (!CoreApi.Headless) StationQueue.StationQueueWindow.Attach(gameObject); // Core IStationQueue window (service polled)
             if (WatchTheme.Value) ThemeWatcher.Attach(gameObject);
 
             var patchStart = Stopwatch.GetTimestamp();
