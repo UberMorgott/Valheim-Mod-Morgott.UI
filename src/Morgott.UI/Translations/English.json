@@ -500,6 +500,7 @@
   "ui_vp_enabled": "enabled",
   "ui_vp_disabled": "disabled",
   "ui_tip_quality": "Qual.",
+  "ui_tip_attack_rate": "Base attacks/s",
   "ui_tip_magic": "Magic properties",
   "ui_tip_set": "Set:",
   "ui_tip_sockets": "Sockets",

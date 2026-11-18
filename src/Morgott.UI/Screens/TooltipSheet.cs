@@ -72,6 +72,7 @@ namespace Morgott.UI.Screens
             "se_sneakstamina", "se_runstamina", "item_maxadrenaline", "item_food_health", "item_food_stamina", "item_food_eitr",
             "item_food_duration", "item_food_regen", "item_crafter",
             "adventurebackpacks_contents_weight", // AdventureBackpacks fork ItemDataGetTooltipPatch
+            "ui_tip_attack_rate", // WeaponAttackRate
         };
 
         // Shown from structured data (header / footer): their raw lines are dropped.

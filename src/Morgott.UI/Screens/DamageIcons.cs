@@ -97,6 +97,8 @@ namespace Morgott.UI.Screens
                     __result = InfoScreens.StatsMath.FoodTooltipPerSecond(__result, appended.m_foodRegen, comma, "$ui_stats_per_second");
                 // Trinkets: what fills adrenaline, the bar size, the full-bar effect per second and the decay.
                 if (!appending) __result = AdrenalineTooltip.Append(item, __result);
+                if (!appending && item.IsWeapon() && item.m_shared.m_attack != null && global::Version.CurrentVersion == AttackTimingsVersion)
+                    __result = WeaponAttackRate.InsertRow(__result, WeaponAttackRate.PerSecond(BaseAttack(item.m_shared.m_attack)), comma);
             }
             if (_inRecipe && crafting && !appending) __result = DamageIconText.Decorate(__result, _tags);
             // Item tooltip sheet (Variant A): every outermost non-crafting item tooltip (inventory, containers, HUD strip,
@@ -107,6 +109,23 @@ namespace Morgott.UI.Screens
                 catch (System.Exception e) { Plugin.Log.LogWarning($"[Morgott.UI] tooltip sheet for {item?.m_shared?.m_name}: {e.GetType().Name}: {e.Message} (plain text kept)"); }
             }
         }
+
+        // The game version WeaponAttackRate's animator timings were baked from: another version shows no rate.
+        private static readonly GameVersion AttackTimingsVersion = new GameVersion(1, 0, 21);
+
+        // Skill 0 values: full draw (Humanoid.GetAttackDrawPercentage :367), full reload (ItemData.GetWeaponLoadingTime :770).
+        private static WeaponAttackRate.Attack BaseAttack(Attack a) => new WeaponAttackRate.Attack
+        {
+            Animation = a.m_attackAnimation,
+            ReloadAnimation = a.m_reloadAnimation,
+            ChainLevels = a.m_attackChainLevels,
+            RandomAnimations = a.m_attackRandomAnimations,
+            Looping = a.m_loopingAttack,
+            BowDraw = a.m_bowDraw,
+            RequiresReload = a.m_requiresReload,
+            DrawSeconds = a.m_drawDurationMin,
+            ReloadSeconds = a.m_reloadTime,
+        };
 
         // Built once per theme revision (sprites / colours are theme tokens). False = no icon resolved (vanilla text).
         private static bool Ensure()
