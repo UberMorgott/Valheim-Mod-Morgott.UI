@@ -34,7 +34,7 @@ namespace Morgott.UI.Screens
                 d.Blocks.Add(new TooltipSheet.EffectBlock
                 {
                     Label = TooltipSheet.EffectLabel,
-                    Name = equip.m_name != s.m_name ? equip.m_name : null,
+                    Name = NameOf(equip, s),
                     Printed = equip.m_name + "\n" + text,
                     Text = text,
                 });
@@ -46,12 +46,16 @@ namespace Morgott.UI.Screens
                 d.Blocks.Add(new TooltipSheet.EffectBlock
                 {
                     Label = TooltipSheet.FullAdrenalineLabel,
-                    Name = full.m_name != s.m_name ? full.m_name : null,
+                    Name = NameOf(full, s),
                     Printed = "$item_fulladrenaline: " + text,
                     Text = text + "\n" + SkillDamage(full),
                 });
             }
         }
+
+        // Different tokens can read the same (Andvaranaut, Wishbone, every trinket): the header already says it.
+        private static string NameOf(StatusEffect effect, ItemDrop.ItemData.SharedData s) =>
+            Localization.instance.Localize(effect.m_name) == Localization.instance.Localize(s.m_name) ? null : effect.m_name;
 
         private static string SkillDamage(StatusEffect effect)
         {
