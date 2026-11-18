@@ -537,7 +537,7 @@ namespace Morgott.UI.ItemBrowser
             r.Chest = Img(g, "RowChest" + n, "ib.glyph.chest");
             r.Ocean = Img(g, "RowOcean" + n, "ib.glyph.ocean");
             r.Tag = Img(g, "RowTag" + n, "ib.rule");
-            r.TagText = Txt(r.Tag.transform, "Text", "text.body", TextAlignmentOptions.Center, FontStyles.Bold);
+            r.TagText = Txt(g, "RowTagText" + n, "text.body", TextAlignmentOptions.Center, FontStyles.Bold); // Put places in grid space: a child of the tag would land off the row
             string[] roles = { "ib.stat.health", "ib.stat.stamina", "ib.stat.eitr" };
             for (var i = 0; i < 3; i++)
             {
@@ -562,6 +562,7 @@ namespace Morgott.UI.ItemBrowser
             Off(r.Chest);
             Off(r.Ocean);
             Off(r.Tag);
+            Off(r.TagText);
             for (var i = 0; i < 3; i++) { Off(r.Stat[i]); Off(r.StatText[i]); }
         }
 
@@ -615,20 +616,24 @@ namespace Morgott.UI.ItemBrowser
             var nameW = Marker(r, StageScan.Info(e.Id), y) - 8f - nameX; // name and sub line use all the room the marker leaves
             var entryName = L(e.Name);
             var tagged = e.Type == EntryType.Creature && StageScan.Data != null && StageScan.Data.Solver != null && IsBoss(e.Id);
-            var shownW = Mathf.Min(MeasureF(entryName, 19f) + 3f, nameW - (tagged ? 56f : e.Type == EntryType.Creature ? 26f : 0f));
+            var shownW = Mathf.Min(MeasureF(entryName, 19f) + 3f, nameW - (tagged ? 60f : e.Type == EntryType.Creature ? 26f : 0f));
             Put(c.A, nameX, y + 3f, shownW, 25f);
             c.A.alignment = TextAlignmentOptions.Left;
             c.A.textWrappingMode = TextWrappingModes.NoWrap;
             Text(c.A, entryName, 19f);
             if (tagged)
             {
-                Put(r.Tag, nameX + shownW + 6f, y + 7f, 46f, 17f);
+                Put(r.Tag, nameX + shownW + 6f, y + 6f, 50f, 19f);
                 r.Tag.color = ThemeTokens.GetColor("color.text.active", Color.yellow);
-                Put(r.TagText, nameX + shownW + 6f, y + 6f, 46f, 19f);
+                Put(r.TagText, nameX + shownW + 6f, y + 6f, 50f, 19f);
                 Text(r.TagText, $"<color=#141414>{L("$ib_tag_boss")}</color>", 16f);
             }
-            else Off(r.Tag);
-            Paw(c, e, nameX + shownW + (tagged ? 58f : 5f), y + 5f);
+            else
+            {
+                Off(r.Tag);
+                Off(r.TagText);
+            }
+            Paw(c, e, nameX + shownW + (tagged ? 62f : 5f), y + 5f);
             var sx = nameX;
             if (e.Category == ItemCategory.Food && e.Type == EntryType.Item && Food(e.Id, out var hp, out var st, out var ei))
             {
