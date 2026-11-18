@@ -118,7 +118,11 @@ namespace Morgott.UI.ItemBrowser
                     at = key;
                     loads++;
                     foreach (var y in Lazy(r, x => s = x)) yield return y;
-                    if (s == null) yield break;
+                    if (s == null)
+                    {
+                        d.World.Complete = false;
+                        yield break;
+                    }
                     cache[ckey] = s;
                     cacheDirty = true;
                     if (owner == null) _vanilla[key] = s;
@@ -251,7 +255,7 @@ namespace Morgott.UI.ItemBrowser
             }
             if (go.TryGetComponent<DungeonGenerator>(out var g)) s.Themes |= (int)g.m_themes;
             if (go.GetComponent<Pickable>() || go.GetComponent<Container>() || go.GetComponent<MineRock>() || go.GetComponent<MineRock5>() || go.GetComponent<TreeBase>() ||
-                go.GetComponent<TreeLog>() || go.GetComponent<Destructible>() || go.GetComponent<DropOnDestroyed>() || go.GetComponent<ItemDrop>() || go.GetComponent<Trader>() || sa)
+                go.GetComponent<ResourceRoot>() || go.GetComponent<TreeLog>() || go.GetComponent<Destructible>() || go.GetComponent<DropOnDestroyed>() || go.GetComponent<ItemDrop>() || go.GetComponent<Trader>() || sa)
                 s.AddObject(Utils.GetPrefabName(go));
         }
 

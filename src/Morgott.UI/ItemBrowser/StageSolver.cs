@@ -56,8 +56,9 @@ namespace Morgott.UI.ItemBrowser
 
     /// <summary>
     /// Least fixed point from "unknown": entry = MIN over paths, path = MAX over requirements, so a cycle never starts
-    /// itself. Three passes, each freezing what it resolved: real paths; incidental ones (only for entries with no other
-    /// path); authored fallbacks. A rarity item (Magic) with none of these has no biome: it reads as Magic, never as unknown. No Unity calls: <see cref="Step"/> is time-sliced by the caller.
+    /// itself. Passes, each freezing what it resolved: real paths; incidental ones (only for entries with no other path);
+    /// authored fallbacks, which describe their own item only and never feed a dependent. A rarity item (Magic) has no
+    /// biome and gives none. No Unity calls: <see cref="Step"/> is time-sliced by the caller.
     /// </summary>
     public sealed class StageSolver
     {
@@ -92,7 +93,7 @@ namespace Morgott.UI.ItemBrowser
         /// <summary>Authored biome 0..7 (the fallback; a derived value always wins).</summary>
         public void SetAuthored(string id, int biome) => N(id).Authored = biome * 2;
 
-        /// <summary>Rarity item: shown as Magic unless a real stage exists for it.</summary>
+        /// <summary>Rarity item: always shown as Magic, no biome (user decision 4).</summary>
         public void SetMagic(string id) => N(id).Magic = true;
 
         private void Compile()
@@ -150,7 +151,7 @@ namespace Morgott.UI.ItemBrowser
 
         private void Push(Node n)
         {
-            if (n.Frozen || n.Queued || n.Paths.Count == 0) return;
+            if (n.Frozen || n.Queued || n.Magic || n.Paths.Count == 0) return;
             n.Queued = true;
             _queue.Enqueue(n);
         }
@@ -174,7 +175,7 @@ namespace Morgott.UI.ItemBrowser
                         n.Via = StageVia.Authored;
                         n.Frozen = true;
                     }
-            foreach (var n in _nodes.Values) Push(n);
+            if (_phase < 2) foreach (var n in _nodes.Values) Push(n);
         }
 
         /// <summary>Processes up to <paramref name="budget"/> nodes; true when solved.</summary>
@@ -227,7 +228,8 @@ namespace Morgott.UI.ItemBrowser
         public StageInfo Result(string id)
         {
             if (!_nodes.TryGetValue(id, out var n)) return StageInfo.None;
-            if (n.Value == Inf) return n.Magic ? new StageInfo { Stage = -1, Via = StageVia.Magic } : StageInfo.None;
+            if (n.Magic) return new StageInfo { Stage = -1, Via = StageVia.Magic };
+            if (n.Value == Inf) return StageInfo.None;
             return new StageInfo { Stage = n.Value, Via = n.Via, Ocean = OceanOf(this, n, 0), Kind = n.Win?.Kind ?? "authored" };
         }
 
@@ -248,8 +250,10 @@ namespace Morgott.UI.ItemBrowser
                 foreach (var g in p.Groups)
                 {
                     if (Kth(g) != Inf) continue;
-                    foreach (var m in g.Nodes)
-                        if (Missing(m, seen) is string why) return why;
+                    // Members with a source first: any-of tool groups also list dev items nothing provides.
+                    for (var sourced = 1; sourced >= 0; sourced--)
+                        foreach (var m in g.Nodes)
+                            if (m.Paths.Count > 0 == (sourced == 1) && Missing(m, seen) is string why) return why;
                 }
             return null;
         }

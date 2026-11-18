@@ -83,6 +83,24 @@ namespace Morgott.UI.ItemBrowser
 
         public static bool PassesStrip(int plaques, StageInfo i) => plaques == 0 || (plaques & (1 << Plaque(i))) != 0;
 
+        /// <summary>Class facet: a melee skill counts only on an item that deals damage (tankards carry Swords, no damage);
+        /// staves and farming tools work without weapon damage.</summary>
+        public static bool HasWeaponClass(Skills.SkillType skill, bool deals)
+        {
+            switch (skill)
+            {
+                case Skills.SkillType.None: return false;
+                case Skills.SkillType.Swords:
+                case Skills.SkillType.Knives:
+                case Skills.SkillType.Clubs:
+                case Skills.SkillType.Polearms:
+                case Skills.SkillType.Spears:
+                case Skills.SkillType.Axes:
+                case Skills.SkillType.Unarmed: return deals;
+                default: return true;
+            }
+        }
+
         /// <summary>Food focus: eitr if largest, balanced when health and stamina are within 20 %, else the larger.</summary>
         public static string FoodFocus(float health, float stamina, float eitr)
         {
@@ -199,15 +217,18 @@ namespace Morgott.UI.ItemBrowser
 
     public static class ListBlocks
     {
-        /// <summary>Stable bucket order by stage group; list keeps the search order inside a group.</summary>
-        public static List<Entry> Order(List<Entry> list, Func<string, StageInfo> info)
+        /// <summary>Stable bucket order by stage group; inside a group <paramref name="first"/> entries (bosses, mockup 04)
+        /// lead, the rest keeps the search order.</summary>
+        public static List<Entry> Order(List<Entry> list, Func<string, StageInfo> info, Func<Entry, bool> first = null)
         {
             var buckets = new List<Entry>[StageRules.Groups];
-            foreach (var e in list)
-            {
-                var g = StageRules.Group(info(e.Id));
-                (buckets[g] ??= new List<Entry>()).Add(e);
-            }
+            for (var pass = first != null ? 0 : 1; pass < 2; pass++)
+                foreach (var e in list)
+                {
+                    if (first != null && first(e) != (pass == 0)) continue;
+                    var g = StageRules.Group(info(e.Id));
+                    (buckets[g] ??= new List<Entry>()).Add(e);
+                }
             var r = new List<Entry>(list.Count);
             foreach (var b in buckets) if (b != null) r.AddRange(b);
             return r;

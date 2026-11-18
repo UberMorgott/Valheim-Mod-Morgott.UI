@@ -44,6 +44,11 @@ namespace Morgott.UI.ItemBrowser
         public readonly List<(string Boss, string Item, Heightmap.Biome Altar)> Summons = new List<(string, string, Heightmap.Biome)>();
         public readonly List<(string Item, string Creature)> ItemSpawns = new List<(string, string)>(); // an item's attack summons it
         public readonly List<StageTool> Tools = new List<StageTool>();
+        public readonly List<(string Item, string Producer, string Root)> Tapped = new List<(string, string, string)>(); // SapCollector on its root
+
+        /// <summary>False when a location or room could not be read with its placed objects: a source may be missing, so
+        /// the MIN over the known paths could be a wrong, too late biome.</summary>
+        public bool Complete = true;
 
         public void Anchor(string prefab, Heightmap.Biome biomes, bool open, string key = null)
         {
@@ -99,6 +104,18 @@ namespace Morgott.UI.ItemBrowser
         /// <summary>Adds everything to a new solver; yields so the caller can spread the work over frames.</summary>
         public static IEnumerable<object> Build(BrowserIndex ix, StageWorld w, IEnumerable<ItemFact> facts, StageSolver s, int chunk = 500)
         {
+            if (w.Complete)
+                foreach (var y in Derived(ix, w, s, chunk)) yield return y;
+            if (facts != null)
+                foreach (var f in facts)
+                {
+                    if (f.Magic) s.SetMagic(f.Prefab);
+                    else if (f.Biome >= 0) s.SetAuthored(f.Prefab, f.Biome);
+                }
+        }
+
+        private static IEnumerable<object> Derived(BrowserIndex ix, StageWorld w, StageSolver s, int chunk)
+        {
             var tiers = new HashSet<string>(StringComparer.Ordinal);
             var n = 0;
             foreach (var r in ix.Relations)
@@ -130,6 +147,7 @@ namespace Morgott.UI.ItemBrowser
                 s.Add(boss, p);
             }
             foreach (var (item, creature) in w.ItemSpawns) s.Add(creature, new StagePath { Kind = "summon" }.Need(item));
+            foreach (var (item, producer, root) in w.Tapped) s.Add(item, new StagePath { Kind = "produce" }.Need(producer).Need(root));
             foreach (var kv in w.Defeats)
                 foreach (var who in kv.Value)
                     s.Add("@key:" + kv.Key, new StagePath { Kind = "key", AfterBoss = w.Bosses.Contains(who) }.Need(who));
@@ -143,12 +161,6 @@ namespace Morgott.UI.ItemBrowser
                 if (tools.Count > 0) s.Add(id, new StagePath { Kind = "tool" }.NeedAny(tools.ToArray()));
             }
             yield return null;
-            if (facts != null)
-                foreach (var f in facts)
-                {
-                    if (f.Magic) s.SetMagic(f.Prefab);
-                    else if (f.Biome >= 0) s.SetAuthored(f.Prefab, f.Biome);
-                }
         }
 
         private static StagePath Path(Relation r, BrowserIndex ix, StageWorld w, HashSet<string> tiers)

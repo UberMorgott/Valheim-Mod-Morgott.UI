@@ -112,7 +112,7 @@ namespace Morgott.UI.Tests
         }
 
         [Fact]
-        public void Authored_fills_gaps_visibly_and_reaches_dependents()
+        public void Authored_fills_its_own_gap_visibly_and_stops_there()
         {
             var s = new StageSolver();
             s.SetAuthored("Set", 4);
@@ -121,11 +121,12 @@ namespace Morgott.UI.Tests
             Solved(s);
             Assert.Equal(StageVia.Authored, s.Result("Set").Via);
             Assert.Equal(8, s.Result("Set").Stage);
-            Assert.Equal(StageVia.Authored, s.Result("Upgrade").Via);
+            Assert.Equal(StageVia.Unknown, s.Result("Upgrade").Via);
+            Assert.Equal(-1, s.Result("Upgrade").Stage);
         }
 
         [Fact]
-        public void Magic_applies_only_without_a_derivable_stage()
+        public void Magic_never_has_a_biome()
         {
             var s = new StageSolver();
             s.Add("Dust", new StagePath().Need("Nothing"));
@@ -138,8 +139,8 @@ namespace Morgott.UI.Tests
             Assert.Equal(-1, s.Result("Dust").Stage);
             Assert.Null(s.Missing("Dust"));
             Assert.Equal(StageVia.Unknown, s.Result("Needs").Via);
-            Assert.Equal(StageVia.Derived, s.Result("Shard").Via); // keeps its biome
-            Assert.Equal(2, s.Result("Shard").Stage);
+            Assert.Equal(StageVia.Magic, s.Result("Shard").Via); // even with a derivable path (user decision 4)
+            Assert.Equal(-1, s.Result("Shard").Stage);
         }
 
         [Fact]
@@ -296,6 +297,116 @@ namespace Morgott.UI.Tests
         }
     }
 
+    // v0.40.1 showed Copper / forge in Mistlands and Bronze in Ashlands (run 20261118-225750).
+    public class StageCorrectnessTests
+    {
+        private static Relation R(RelationKind kind, string source, string output, string station, params string[] inputs) => new Relation
+        {
+            Kind = kind,
+            Source = source,
+            Station = station,
+            Quality = kind == RelationKind.Craft ? 1 : 0,
+            Inputs = inputs.Select(i => new Stack(i)).ToArray(),
+            Outputs = new[] { new Stack(output) }
+        };
+
+        // The vanilla bronze chain, plus the late side paths that produced the wrong biomes.
+        private static (BrowserIndex, FoundIn) Chain()
+        {
+            var ix = new BrowserIndex();
+            var d = new FoundIn();
+            var w = d.World;
+            w.Anchor("Pickable_Stone", Heightmap.Biome.Meadows, true);
+            ix.Add(R(RelationKind.Pickable, "Pickable_Stone", "Stone", null));
+            ix.Add(R(RelationKind.Craft, "Recipe_Hammer", "Hammer", null, "Stone"));
+            ix.Add(R(RelationKind.Craft, "Recipe_PickaxeAntler", "PickaxeAntler", null, "Stone"));
+            w.Tools.Add(new StageTool("PickaxeAntler", true, false, 2));
+            w.Anchor("Greydwarf", Heightmap.Biome.BlackForest, true);
+            ix.Add(R(RelationKind.CreatureDrop, "Greydwarf", "SurtlingCore", null));
+            ix.Add(R(RelationKind.Build, "Hammer", "smelter", null, "SurtlingCore"));
+            ix.Add(new Relation { Kind = RelationKind.Mine, Source = "MineRock_Copper", MinToolTier = 2, Outputs = new[] { new Stack("CopperOre") } });
+            ix.Add(new Relation { Kind = RelationKind.Mine, Source = "MineRock_Tin", MinToolTier = 2, Outputs = new[] { new Stack("TinOre") } });
+            ix.Add(R(RelationKind.Conversion, "smelter", "Copper", "smelter", "CopperOre"));
+            ix.Add(R(RelationKind.Conversion, "smelter", "Tin", "smelter", "TinOre"));
+            ix.Add(R(RelationKind.Build, "Hammer", "forge", null, "Stone", "Copper"));
+            ix.Add(R(RelationKind.Craft, "Recipe_Bronze", "Bronze", "forge", "Copper", "Tin"));
+            ix.Add(R(RelationKind.Craft, "Recipe_SwordBronze", "SwordBronze", "forge", "Bronze"));
+            // Late side paths: rubble in the Ashlands drops Bronze, a Mistlands-tier item recycles into Copper.
+            w.Anchor("Ashlands_Rubble", Heightmap.Biome.AshLands, true);
+            ix.Add(R(RelationKind.Destroy, "Ashlands_Rubble", "Bronze", null));
+            ix.Add(R(RelationKind.Conversion, "smelter", "Copper", "smelter", "MistRelic"));
+            return (ix, d);
+        }
+
+        private static readonly ItemFact[] Facts = { new ItemFact { Prefab = "MistRelic", Biome = 5 } };
+
+        private static StageSolver Solve(BrowserIndex ix, FoundIn d)
+        {
+            var s = new StageSolver();
+            foreach (var _ in StageGraph.Build(ix, d.World, Facts, s)) { }
+            s.Solve();
+            return s;
+        }
+
+        [Fact]
+        public void An_authored_stage_describes_only_its_own_item()
+        {
+            var (ix, d) = Chain();
+            var s = Solve(ix, d);
+            Assert.Equal(10, s.Result("MistRelic").Stage);
+            Assert.Equal(StageVia.Authored, s.Result("MistRelic").Via);
+            Assert.Equal(-1, s.Result("Copper").Stage);
+            Assert.Equal(-1, s.Result("forge").Stage);
+        }
+
+        [Fact]
+        public void Without_the_placed_objects_of_every_location_no_stage_is_derived()
+        {
+            var (ix, d) = Chain();
+            d.Place(new Scanned(), Heightmap.Biome.BlackForest); // a table line from before the objects column
+            var s = Solve(ix, d);
+            Assert.Equal(-1, s.Result("Bronze").Stage);
+            Assert.Equal(-1, s.Result("Stone").Stage);
+            Assert.Equal(10, s.Result("MistRelic").Stage); // authored data describes its item either way
+        }
+
+        [Fact]
+        public void With_the_ore_deposits_placed_the_bronze_chain_lands_in_the_black_forest()
+        {
+            var (ix, d) = Chain();
+            d.Place(new Scanned { Objects = new List<string> { "MineRock_Copper", "MineRock_Tin" } }, Heightmap.Biome.BlackForest);
+            var s = Solve(ix, d);
+            foreach (var id in new[] { "Copper", "Tin", "forge", "Bronze", "SwordBronze" })
+            {
+                Assert.Equal(2, s.Result(id).Stage);
+                Assert.Equal(StageVia.Derived, s.Result(id).Via);
+            }
+        }
+
+        [Fact]
+        public void Magic_beats_a_derived_biome_and_gives_none_to_what_needs_it()
+        {
+            var s = new StageSolver();
+            s.Add("Rune", new StagePath { Kind = "creaturedrop" });
+            s.SetMagic("Rune");
+            s.Add("Enchanted", new StagePath { Kind = "craft" }.Need("Rune"));
+            s.Solve();
+            Assert.Equal(StageVia.Magic, s.Result("Rune").Via);
+            Assert.Equal(-1, s.Result("Rune").Stage);
+            Assert.Equal(-1, s.Result("Enchanted").Stage);
+        }
+
+        [Fact]
+        public void Missing_prefers_a_tool_that_has_a_source_over_a_dev_item_without_one()
+        {
+            var s = new StageSolver();
+            s.Add("PickaxeIron", new StagePath { Kind = "craft" }.Need("Iron"));
+            s.Add("Ore", new StagePath { Kind = "mine" }.NeedAny(new[] { "SwordCheat", "PickaxeIron" }));
+            s.Solve();
+            Assert.Equal("Iron", s.Missing("Ore"));
+        }
+    }
+
     public class FacetTests
     {
         private static FacetTable Table()
@@ -405,25 +516,62 @@ namespace Morgott.UI.Tests
         }
 
         [Fact]
-        public void Embedded_table_lines_without_objects_still_place_creatures_and_boss_altars()
+        public void Table_lines_without_objects_leave_derived_stages_unknown()
         {
             var old = FoundInTable.Parse("L:Altar\t0\t0\tBonemass:b,Draugr:w\n", out _, out _)["L:Altar"];
             Assert.Null(old.Objects); // no prefab load is owed for it: FoundInScan.Lookup only loads missing entries
             var d = new FoundIn();
             d.Place(old, Heightmap.Biome.Swamp);
-            Assert.Equal(("Bonemass", "", Heightmap.Biome.Swamp), d.World.Summons.Single());
-            Assert.True(d.World.Anchors.ContainsKey("Draugr"));
-            Assert.False(d.World.Anchors.ContainsKey("Bonemass"));
-            d.World.Bosses.Add("Bonemass");
+            Assert.False(d.World.Complete);
             var ix = new BrowserIndex();
             ix.Add(new Relation { Kind = RelationKind.CreatureDrop, Source = "Bonemass", Outputs = new[] { new Stack("Wishbone") } });
             ix.Add(new Relation { Kind = RelationKind.Pickable, Source = "ChestOnlyInLocation", Outputs = new[] { new Stack("Thing") } });
             var s = new StageSolver();
             foreach (var _ in StageGraph.Build(ix, d.World, new[] { new ItemFact { Prefab = "Thing", Biome = 2 } }, s)) { }
             s.Solve();
-            Assert.Equal(4, s.Result("Bonemass").Stage);
-            Assert.Equal(5, s.Result("Wishbone").Stage);
-            Assert.Equal(StageVia.Authored, s.Result("Thing").Via); // placed objects unknown: falls through to the authored stage
+            Assert.Equal(-1, s.Result("Wishbone").Stage);
+            Assert.Equal(StageVia.Authored, s.Result("Thing").Via);
+        }
+
+        [Theory]
+        [InlineData(Skills.SkillType.Swords, false, false)] // tankards
+        [InlineData(Skills.SkillType.Knives, false, false)] // butcher knife
+        [InlineData(Skills.SkillType.Swords, true, true)]
+        [InlineData(Skills.SkillType.BloodMagic, false, true)] // summoning staves
+        [InlineData(Skills.SkillType.Farming, false, true)]
+        [InlineData(Skills.SkillType.None, true, false)]
+        public void Weapon_class_needs_damage_on_melee_skills(Skills.SkillType skill, bool deals, bool want) => Assert.Equal(want, StageRules.HasWeaponClass(skill, deals));
+
+        [Fact]
+        public void Bosses_lead_their_stage_and_rich_text_does_not_decide_the_name_order()
+        {
+            var ix = new BrowserIndex();
+            ix.Add(new Entry { Id = "Hildir_Boss", Name = "<color=orange>Гейрафа</color>", Type = EntryType.Creature });
+            ix.Add(new Entry { Id = "Wolf", Name = "Волк", Type = EntryType.Creature });
+            ix.Add(new Entry { Id = "Dragon", Name = "Матерь", Type = EntryType.Creature });
+            var found = ix.Search("", EntryType.Creature, null, n => n, m => m);
+            Assert.Equal(new[] { "Wolf", "Hildir_Boss", "Dragon" }, found.Select(e => e.Id));
+            Assert.Empty(ix.Search("orange", EntryType.Creature, null, n => n, m => m));
+            var ordered = ListBlocks.Order(found, _ => new StageInfo { Stage = 6, Via = StageVia.Derived }, e => e.Id == "Dragon");
+            Assert.Equal(new[] { "Dragon", "Wolf", "Hildir_Boss" }, ordered.Select(e => e.Id));
+        }
+
+        [Fact]
+        public void Sap_needs_the_collector_and_its_root_so_it_lands_where_the_root_grows()
+        {
+            var ix = new BrowserIndex();
+            var w = new StageWorld();
+            w.Anchor("piece_sapcollector", Heightmap.Biome.Meadows, true);
+            w.Tapped.Add(("Sap", "piece_sapcollector", "YggdrasilRoot"));
+            var s = new StageSolver();
+            foreach (var _ in StageGraph.Build(ix, w, null, s)) { }
+            s.Solve();
+            Assert.Equal(-1, s.Result("Sap").Stage);
+            w.Anchor("YggdrasilRoot", Heightmap.Biome.Mistlands, false);
+            s = new StageSolver();
+            foreach (var _ in StageGraph.Build(ix, w, null, s)) { }
+            s.Solve();
+            Assert.Equal(10, s.Result("Sap").Stage);
         }
 
         [Fact]

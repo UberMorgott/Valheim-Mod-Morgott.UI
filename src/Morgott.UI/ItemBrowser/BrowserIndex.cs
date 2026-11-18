@@ -118,7 +118,7 @@ namespace Morgott.UI.ItemBrowser
             foreach (var e in Entries.Values)
             {
                 if (e.Hidden != null && !(unlisted && e.Hidden == UnlistedReason) || type.HasValue && e.Type != type.Value || filter != null && !filter(e)) continue;
-                var name = localize(e.Name) ?? e.Id;
+                var name = NoTags(localize(e.Name) ?? e.Id);
                 if (Matches(words, name.ToLowerInvariant(), e.Id.ToLowerInvariant(), (e.Mod ?? "valheim").ToLowerInvariant() + " " + (modName(e.Mod) ?? "").ToLowerInvariant()))
                     hits.Add(new KeyValuePair<string, Entry>(name, e));
             }
@@ -131,6 +131,18 @@ namespace Morgott.UI.ItemBrowser
             var list = new List<Entry>(hits.Count);
             foreach (var h in hits) list.Add(h.Value);
             return list;
+        }
+
+        // Game names may carry rich text (<color=orange>...): it must not decide the order or match a search word.
+        private static string NoTags(string s)
+        {
+            for (var open = s.IndexOf('<'); open >= 0; open = s.IndexOf('<', open))
+            {
+                var close = s.IndexOf('>', open);
+                if (close < 0) break;
+                s = s.Remove(open, close - open + 1);
+            }
+            return s;
         }
 
         public static string[] Words(string query) => (query ?? "").ToLowerInvariant().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);

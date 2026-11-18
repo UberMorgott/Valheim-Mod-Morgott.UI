@@ -199,7 +199,7 @@ namespace Morgott.UI.ItemBrowser
                 _counts[StageRules.Plaque(info)]++; // the strip's own selection never changes its counts
                 if (StageRules.PassesStrip(_fs.Plaques, info)) kept.Add(e);
             }
-            var ordered = ListBlocks.Order(kept, InfoOf);
+            var ordered = ListBlocks.Order(kept, InfoOf, e => e.Type == EntryType.Creature && IsBoss(e.Id));
             _blocks = ListBlocks.Build(ordered, InfoOf, _listMode ? 1 : 6);
             _blockH.Clear();
             foreach (var b in _blocks) _blockH.Add(b.Header ? HeadH : _listMode ? ListRowH : CellPitchY);
@@ -516,9 +516,9 @@ namespace Morgott.UI.ItemBrowser
             });
             var color = GroupColor(b.Group);
             var text = $"{GroupName(b.Group).ToUpperInvariant()} · {-b.Count}";
-            var w = Mathf.Min(MeasureF(text, 18f) * 1.1f + 4f, UnitW - 60f); // bold runs wider than the measuring font
-            Put(head.Label, 0f, y + 3f, w, 25f);
             Text(head.Label, $"<color=#{ColorUtility.ToHtmlStringRGB(color)}>{text}</color>", 18f);
+            var w = Mathf.Min(head.Label.GetPreferredValues(text).x / Mathf.Max(_k * _f, 1e-6f) + 4f, UnitW - 60f); // measured in the label's own bold style
+            Put(head.Label, 0f, y + 3f, w, 25f);
             Put(head.Line, w + 8f, y + 15f, UnitW - 14f - w - 8f, 1.5f);
             head.Line.color = color;
         }
@@ -603,7 +603,7 @@ namespace Morgott.UI.ItemBrowser
             c.Id = r.Hit.Id = e.Id;
             c.Store = null;
             c.Quality = r.Hit.Quality = 1;
-            const float nameX = 67f, markW = 172f;
+            const float nameX = 67f;
             Put(r.Hit.Back, 0f, y, UnitW - 12f, ListRowH);
             Put(c.Back, 0f, y + 3f, 54f, 47f);
             Put(c.Icon, 4f, y + 6f, 46f, 41f);
@@ -612,7 +612,7 @@ namespace Morgott.UI.ItemBrowser
             Text(c.D, "★", 16f);
             c.D.enabled = fav.Contains(c.Id);
             Off(c.B);
-            var nameW = UnitW - nameX - markW - 16f;
+            var nameW = Marker(r, StageScan.Info(e.Id), y) - 8f - nameX; // name and sub line use all the room the marker leaves
             var entryName = L(e.Name);
             var tagged = e.Type == EntryType.Creature && StageScan.Data != null && StageScan.Data.Solver != null && IsBoss(e.Id);
             var shownW = Mathf.Min(MeasureF(entryName, 19f) + 3f, nameW - (tagged ? 56f : e.Type == EntryType.Creature ? 26f : 0f));
@@ -645,13 +645,13 @@ namespace Morgott.UI.ItemBrowser
             else for (var i = 0; i < 3; i++) { Off(r.Stat[i]); Off(r.StatText[i]); }
             Put(r.Sub, sx, y + 27f, nameX + nameW - sx, 22f);
             Fit(r.Sub, SubLine(e), 16f);
-            Marker(r, StageScan.Info(e.Id), y);
             Rule2(y + ListRowH - 1.5f);
         }
 
         private void Rule2(float y) => Put(_rowRules.Next(n => Img(_gridView.transform, "RowRule" + n, "ib.rule")), 0f, y, UnitW - 12f, 1.5f);
 
-        private void Marker(RowParts r, StageInfo i, float y)
+        // Returns the left edge of the marker with its glyphs.
+        private float Marker(RowParts r, StageInfo i, float y)
         {
             var group = StageRules.Group(i);
             var text = (i.Via == StageVia.Authored ? "≈ " : "") + GroupName(group);
@@ -667,6 +667,7 @@ namespace Morgott.UI.ItemBrowser
             else Off(r.Chest);
             if (i.Ocean) { x -= 19f; Put(r.Ocean, x, y + 18f, 16f, 16f); }
             else Off(r.Ocean);
+            return x;
         }
 
         // ---------------------------------------------------------------- row text

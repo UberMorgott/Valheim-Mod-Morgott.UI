@@ -67,6 +67,7 @@ namespace Morgott.UI.ItemBrowser
             }
             if (generation != _gen) yield break;
 
+            if (!w.Complete) Plugin.Log.LogWarning("[Morgott.UI] item browser stages: location data without placed objects, derived stages stay unknown; regenerate FoundInTable.txt");
             var facts = ItemFacts.Collect();
             var byPrefab = new Dictionary<string, ItemFact>(StringComparer.Ordinal);
             foreach (var f in facts) byPrefab[f.Prefab] = f;
@@ -124,6 +125,7 @@ namespace Morgott.UI.ItemBrowser
                 if (!string.IsNullOrEmpty(c.m_defeatSetGlobalKey)) StageWorld.Multi(w.Defeats, c.m_defeatSetGlobalKey, go.name);
             }
             if (go.TryGetComponent<StationExtension>(out var ext) && ext.m_craftingStation) StageWorld.Multi(w.Extensions, ext.m_craftingStation.gameObject.name, go.name);
+            if (go.TryGetComponent<SapCollector>(out var sap) && sap.m_spawnItem && sap.m_mustConnectTo) w.Tapped.Add((sap.m_spawnItem.gameObject.name, go.name, sap.m_mustConnectTo.gameObject.name));
             if (!go.TryGetComponent<ItemDrop>(out var d) || d.m_itemData?.m_shared is not ItemDrop.ItemData.SharedData s) return;
             bool pick = s.m_damages.m_pickaxe > 0f, chop = s.m_damages.m_chop > 0f;
             if (pick || chop) w.Tools.Add(new StageTool(go.name, pick, chop, s.m_toolTier));
@@ -175,7 +177,7 @@ namespace Morgott.UI.ItemBrowser
                 case ItemCategory.Weapons:
                     if (s.m_itemType == ItemDrop.ItemData.ItemType.Shield) t.Add("class", id, "shield", "$ib_f_shield");
                     else if (s.m_itemType == ItemDrop.ItemData.ItemType.Torch) t.Add("class", id, "torch", "$ib_f_torch");
-                    else if (s.m_skillType != Skills.SkillType.None) t.Add("class", id, s.m_skillType.ToString().ToLowerInvariant(), "$skill_" + s.m_skillType.ToString().ToLowerInvariant());
+                    else if (StageRules.HasWeaponClass(s.m_skillType, s.m_damages.GetTotalDamage() > 0f)) t.Add("class", id, s.m_skillType.ToString().ToLowerInvariant(), "$skill_" + s.m_skillType.ToString().ToLowerInvariant());
                     t.Add("grip", id, type, "$ib_itemtype_" + type);
                     var dmg = s.m_damages;
                     Damage(t, id, "blunt", dmg.m_blunt);
