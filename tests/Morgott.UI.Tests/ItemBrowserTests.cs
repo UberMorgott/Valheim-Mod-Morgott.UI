@@ -121,6 +121,8 @@ namespace Morgott.UI.Tests
         {
             var ix = Sample();
             Assert.Equal("unlisted", ix.Add(new Entry { Id = "CapeTest", Name = "$item_cape_test", Type = EntryType.Item }).Hidden);
+            Assert.Equal("unlisted", ix.Add(new Entry { Id = "IceShoes", Name = "$item_iceshoes", Type = EntryType.Item }).Hidden); // no recipe, no source (run 20261118-131013)
+            Assert.Equal("unlisted", ix.Add(new Entry { Id = "IceSkates", Name = "$item_iceskates", Type = EntryType.Item }).Hidden);
             Assert.Equal("no icon", ix.Add(new Entry { Id = "TorchMist", Name = "$item_torch", Type = EntryType.Item, Hidden = "no icon" }).Hidden); // first reason kept
             Assert.Null(ix.Add(new Entry { Id = "CapeLinen", Name = "$item_cape_linen", Type = EntryType.Item }).Hidden);
             Assert.Equal(new[] { "CapeLinen" }, ix.Search("cape", null, null, Loc, Mod).Select(e => e.Id));

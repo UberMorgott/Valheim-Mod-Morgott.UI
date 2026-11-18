@@ -38,7 +38,7 @@ namespace Morgott.UI.ItemBrowser
             "StaminaUpgrade_Greydwarf", "StaminaUpgrade_Troll", "StaminaUpgrade_Wraith", "IronOre", "MineRock_Iron",
             "Pickable_BogIronOre", "Trailership", "FirTree_oldLog", "TrophyDraugrFem", "CapeTest", "DvergerArbalest",
             "DvergerArbalest_shoot", "DvergerStaffSupport", "DvergerTest", "EvilHeart_Forest", "EvilHeart_Swamp",
-            "TorchMist", "FishAnglerRaw", "fallenvalkyrie_screech", "fallenvalkyrie_swoopattack", "fallenvalkyrie_wingspin",
+            "TorchMist", "FishAnglerRaw", "IceShoes", "IceSkates", "fallenvalkyrie_screech", "fallenvalkyrie_swoopattack", "fallenvalkyrie_wingspin",
         };
 
         /// <summary>Items a humanoid wears (default / random items and sets), filled by the vanilla scan.</summary>
