@@ -99,6 +99,12 @@ namespace Morgott.UI.StationQueue
         // "[Esc] Close" with the key in the accent colour (Latin key, localized word).
         public static string KeyHint(string key, string word, string hex) => $"<color=#{hex}>[{key}]</color> {word}";
 
+        // Mode button text: radio mark + word, the selected mark in the accent colour.
+        public static string ModeText(bool on, string word, string hex) => (on ? $"<color=#{hex}>◉</color>" : "○") + "  " + word;
+
+        // Downward shift of the centred editor dialog so its bottom hangs `overhang` below the centred parent window's.
+        public static float EditorDrop(float parentH, float dialogH, float overhang) => (parentH - dialogH) / 2f + overhang;
+
         public static int Clamp(int v) => v < 1 ? 1 : v > MaxValue ? MaxValue : v;
 
         // Count field of an entry stored without a count (infinite / until entries keep Target 0): the new-entry default.

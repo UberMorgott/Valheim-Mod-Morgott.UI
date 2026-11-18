@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Morgott.Core;
+using Morgott.UI.Restyle;
 using Morgott.UI.StationQueue;
 using Xunit;
 
@@ -176,6 +177,39 @@ namespace Morgott.UI.Tests
             Assert.True(StationQueueMath.Matches("Уголь", "уго"));
             Assert.True(StationQueueMath.Matches("Уголь", ""));
             Assert.False(StationQueueMath.Matches("Смола", "уго"));
+        }
+
+        [Fact]
+        public void SelectedModeMarkTakesTheAccent()
+        {
+            Assert.Equal("<color=#4FE0E6>◉</color>  Пока", StationQueueMath.ModeText(true, "Пока", "4FE0E6"));
+            Assert.Equal("○  Пока", StationQueueMath.ModeText(false, "Пока", "4FE0E6"));
+        }
+
+        [Fact]
+        public void EditorBottomHangsBelowTheQueueWindow()
+        {
+            var drop = StationQueueMath.EditorDrop(680f, 576f, 12f);
+            Assert.Equal(680f / 2f + 12f, drop + 576f / 2f);
+        }
+
+        [Fact]
+        public void LongTitleStaysBetweenTheKnots()
+        {
+            float left = 40f, right = 40f;
+            WindowHeaderMath.ClearOfKnots(600f, 10f, 10f, 105f, ref left, ref right);
+            Assert.Equal(115f, left);
+            Assert.Equal(115f, right);
+            Assert.True(WindowHeaderMath.FitFont(30f, 408f, 600f - left - right, WindowHeaderMath.TitleMinShare) < 30f);
+        }
+
+        [Fact]
+        public void KnotsSqueezeOnANarrowPlateAndKeepWiderInsets()
+        {
+            float left = 12f, right = 150f;
+            WindowHeaderMath.ClearOfKnots(120f, 10f, 10f, 105f, ref left, ref right);
+            Assert.Equal(60f, left); // plate 100: each knot squeezed to 50
+            Assert.Equal(150f, right);
         }
     }
 }

@@ -79,6 +79,15 @@ namespace Morgott.UI.Restyle
             if (!leftSlot && deficit > 0f) titleLeft -= Math.Min(deficit, Math.Max(0f, titleLeft - (plateLeft + edge)));
         }
 
+        // Title insets kept off the plate's end knots: a knot is the plate sprite's side border (`border` units), squeezed
+        // to half the plate when the plate is narrower than both (9-slice).
+        public static void ClearOfKnots(float width, float plateLeft, float plateRight, float border, ref float titleLeft, ref float titleRight)
+        {
+            var knot = Math.Min(border, Math.Max(0f, width - plateLeft - plateRight) / 2f);
+            titleLeft = Math.Max(titleLeft, plateLeft + knot);
+            titleRight = Math.Max(titleRight, plateRight + knot);
+        }
+
         // Smallest title size as a share of the header's one size (FitFont floor).
         public const float TitleMinShare = 0.6f;
 

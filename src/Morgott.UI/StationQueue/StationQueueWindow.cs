@@ -441,10 +441,11 @@ namespace Morgott.UI.StationQueue
                 Put(card.Rt, 0f, c * CardStep, CardW, CardH); // back in its slot after a drag
                 FillCard(card, k, entries[k]);
             }
-            Put(_addHint, 0f, shown * CardStep, CardW, 56f);
+            Put(_addHint, 0f, shown * CardStep, CardW, AddH);
         }
 
-        private const float CardW = 604f, CardH = 74f, CardStep = 82f;
+        // Heights fill the queue column down to the footer rule (kiln.png: no empty band under the add zone).
+        private const float CardW = 604f, CardH = 80f, CardStep = 88f, AddH = 66f, ChipH = 28f;
 
         private void FillCard(Card card, int index, StationQueueEntry e)
         {
@@ -459,23 +460,24 @@ namespace Morgott.UI.StationQueue
             SetActive(card.Trough, active);
             SetActive(card.Fed, active && e.Mode == StationQueueMode.Count);
             var textRt = card.Text.rectTransform;
-            Put(textRt, 126f, active ? 4f : 0f, 230f, active ? 44f : CardH);
+            Put(textRt, 126f, active ? 6f : 0f, 230f, active ? 44f : CardH);
             if (active)
             {
                 var share = StationQueueMath.Share(e, _state.Progress);
-                Put(card.Fill, 0f, 0f, 230f * share, 16f);
+                FillBar(card.Fill, card.Trough, share);
                 card.Pct.text = Mathf.RoundToInt(share * 100f) + "%";
                 card.Fed.text = StationQueueMath.Group(e.Fed) + " / " + StationQueueMath.Group(e.Target);
             }
             card.Chip.text = e.Mode == StationQueueMode.Count ? W("mode_count") : e.Mode == StationQueueMode.Infinite ? "∞" : W("mode_until");
             var chip = e.Mode == StationQueueMode.Count ? Cyan : Gold;
             card.Chip.color = chip;
-            SetRim(card.ChipRim, chip);
+            SetRim(card.ChipRim, new Color(chip.r, chip.g, chip.b, 0.7f));
+            Put(card.Chip.transform.parent, 372f, active ? 14f : (CardH - ChipH) / 2f, 84f, ChipH); // kiln.png: centred, on top of the running card
             // until chip: "Пока" + the condition item's icon (mockup coal cloud)
             var until = e.Mode == StationQueueMode.Until;
             card.ChipIcon.sprite = until ? Icon(Item(e.Condition)) : null;
             card.ChipIcon.enabled = card.ChipIcon.sprite;
-            Stretch(card.Chip.rectTransform, 2f, 0f, card.ChipIcon.enabled ? 28f : 2f, 0f);
+            Stretch(card.Chip.rectTransform, 2f, 0f, card.ChipIcon.enabled ? 26f : 2f, 0f);
         }
 
         private void RefreshSingle()
@@ -505,8 +507,7 @@ namespace Morgott.UI.StationQueue
             {
                 var on = i == mode;
                 SetRim(_sModeRims[i], on ? Cyan : Dim);
-                _sModeLabels[i].color = on ? Cyan : ThemeTokens.GetColor("color.text.body", Color.white);
-                _sModeLabels[i].text = (on ? "◉  " : "○  ") + (i == 0 ? W("mode_infinite") : i == 1 ? W("mode_count") : W("mode_until"));
+                ModeLabel(_sModeLabels[i], on, i == 0 ? W("mode_infinite") : i == 1 ? W("mode_count") : W("mode_until"));
             }
             SetActive(_sCountBox, mode == 1);
             SetActive(_sInfBox, mode == 0 || mode < 0);
@@ -527,7 +528,7 @@ namespace Morgott.UI.StationQueue
                 SetField(_sThreshold, e.Threshold);
                 var now = Net(e.Condition);
                 _sNow.text = StationQueueMath.Format(W("now"), StationQueueMath.Group(now), StationQueueMath.Group(e.Threshold));
-                Put(_sNowFill, 0f, 0f, _sNowTrough.rect.width * StationQueueMath.Share(now, e.Threshold), 20f);
+                FillBar(_sNowFill, _sNowTrough, StationQueueMath.Share(now, e.Threshold));
             }
         }
 
@@ -627,8 +628,7 @@ namespace Morgott.UI.StationQueue
             {
                 var on = i == mode;
                 SetRim(_eModeRims[i], on ? Cyan : Dim);
-                _eModeLabels[i].color = on ? Cyan : ThemeTokens.GetColor("color.text.body", Color.white);
-                _eModeLabels[i].text = (on ? "◉  " : "○  ") + (i == 0 ? W("mode_count") : i == 1 ? W("mode_infinite") : W("mode_until"));
+                ModeLabel(_eModeLabels[i], on, i == 0 ? W("mode_count") : i == 1 ? W("mode_infinite") : W("mode_until"));
             }
             Group(_eCountGroup, _draft.Mode == StationQueueMode.Count);
             Group(_eUntilGroup, _draft.Mode == StationQueueMode.Until);
@@ -644,6 +644,14 @@ namespace Morgott.UI.StationQueue
             _eSummary.text = StationQueueMath.Summary(_draft, _eName.text, _eCondName.text, Net(_draft.Condition),
                 W("sum_count"), W("sum_infinite"), W("sum_until"));
             SetActive(_eDelete, _editIndex >= 0);
+        }
+
+        // Mode button text (mockups): the selected one gold with a cyan radio mark.
+        private static void ModeLabel(TMP_Text label, bool on, string word)
+        {
+            label.richText = true;
+            label.color = on ? Gold : ThemeTokens.GetColor("color.text.body", Color.white);
+            label.text = StationQueueMath.ModeText(on, word, ColorUtility.ToHtmlStringRGB(Cyan));
         }
 
         private static void Group(CanvasGroup g, bool on)
@@ -696,18 +704,20 @@ namespace Morgott.UI.StationQueue
             block.raycastTarget = true;
             DollCell.Mark(block, "content", "station queue panel click blocker");
             var decor = PanelDecor.Ensure(p, "size.panel.glass.inset", glass: true, plaque: false);
-            // Title band = the panel top minus the close cap's column: the cap sits right of the plaque (mockups).
+            // Title band = the panel top minus the close cap's column on BOTH sides: plaque and title centred on the panel,
+            // the cap right of the plaque (mockups).
             var band = NewRect("TitleBand", p);
             band.anchorMin = new Vector2(0f, 1f);
             band.anchorMax = Vector2.one;
             band.pivot = new Vector2(0.5f, 1f);
-            band.offsetMin = new Vector2(0f, -80f);
+            band.offsetMin = new Vector2(CloseColumn, -80f);
             band.offsetMax = new Vector2(-CloseColumn, 0f);
             var header = RuneWindowHeader.Ensure(band, moveId, p);
             header.Frame = decor;
             // mockups: wide serif caps title on a plaque 1.5 standard headers tall
             header.HeightScale = 1.5f;
             header.FaceToken = Serif;
+            header.TitleClearsKnots = true; // long station names step down instead of running over the knotwork
             header.Stretch();
             var x = Btn(p, "Close", "button.icon", out var xl, close);
             xl.text = "×";
@@ -797,7 +807,7 @@ namespace Morgott.UI.StationQueue
             WheelOn(_cardsRt, d => { _cardScroll -= Math.Sign(d); RefreshAll(); });
             for (var i = 0; i < CardRows; i++) _cards.Add(NewCard(_cardsRt, i));
             _addHint = NewRect("AddHint", _cardsRt);
-            Dashes(_addHint, CardW, 56f, new Color(Dim.r, Dim.g, Dim.b, 0.9f));
+            Dashes(_addHint, CardW, AddH, new Color(Dim.r, Dim.g, Dim.b, 0.9f));
             var addText = Txt(_addHint, "Text", "text.muted", TextAlignmentOptions.Center, 20f);
             addText.text = W("add_hint");
             addText.color = Muted;
@@ -930,25 +940,23 @@ namespace Morgott.UI.StationQueue
             };
             card.Num = Txt(card.Rt, "Num", "text.body", TextAlignmentOptions.Center, 22f);
             Put(card.Num, 28f, 0f, 30f, CardH);
-            card.Icon = SlotIcon(card.Rt, 62f, 8f, 58f, out var badge);
+            card.Icon = SlotIcon(card.Rt, 62f, (CardH - 58f) / 2f, 58f, out var badge);
             Destroy(badge.gameObject);
             card.Text = Txt(card.Rt, "Text", "text.body", TextAlignmentOptions.Left, 19f);
             card.Text.textWrappingMode = TextWrappingModes.Normal;
-            card.Trough = Img(card.Rt, "Trough", "craft.progress.trough").rectTransform;
-            Put(card.Trough, 126f, 50f, 230f, 16f);
-            card.Fill = Img(card.Trough, "Fill", "craft.progress.fill");
-            card.Fill.preserveAspect = false;
+            card.Trough = Bar(card.Rt, out card.Fill);
+            Put(card.Trough, 126f, 54f, 230f, 16f);
             card.Pct = Txt(card.Trough, "Pct", "text.body", TextAlignmentOptions.Center, 15f);
             Stretch(card.Pct.rectTransform, 0f, -2f, 0f, -2f);
             card.Fed = Txt(card.Rt, "Fed", "text.accent", TextAlignmentOptions.Left, 18f);
             card.Fed.color = Cyan;
-            Put(card.Fed, 364f, 46f, 100f, 24f);
+            Put(card.Fed, 372f, 48f, 92f, 24f);
             var chipRt = NewRect("Chip", card.Rt);
-            Put(chipRt, 364f, 14f, 92f, 30f);
+            Put(chipRt, 372f, 14f, 84f, ChipH);
             card.ChipRim = Rim(chipRt);
             card.ChipIcon = IconIn(chipRt, 0f);
-            Put(card.ChipIcon, 66f, 4f, 22f, 22f);
-            card.Chip = Txt(chipRt, "Label", "text.body", TextAlignmentOptions.Center, 18f);
+            Put(card.ChipIcon, 60f, 3f, 22f, 22f);
+            card.Chip = Txt(chipRt, "Label", "text.body", TextAlignmentOptions.Center, 17f);
             Stretch(card.Chip.rectTransform, 2f, 0f, 2f, 0f);
             Arrow(card, "Up", "▲", 466f, () => Reorder(card.Index, -1));
             Arrow(card, "Down", "▼", 512f, () => Reorder(card.Index, 1));
@@ -966,7 +974,7 @@ namespace Morgott.UI.StationQueue
             var b = Btn(card.Rt, name, "button.icon", out var l, click);
             l.text = glyph;
             l.fontSize = name == "Remove" ? 24f : 16f;
-            Put(b, x, 18f, 38f, 38f);
+            Put(b, x, (CardH - 38f) / 2f, 38f, 38f);
         }
 
         private void Reorder(int index, int delta)
@@ -1043,10 +1051,8 @@ namespace Morgott.UI.StationQueue
             Put(inNet, 504f, 50f, 140f, 40f);
             _sNow = Txt(_sUntilBox, "Now", "text.body", TextAlignmentOptions.Left, 20f);
             Put(_sNow, 20f, 104f, 400f, 28f);
-            _sNowTrough = Img(_sUntilBox, "Trough", "craft.progress.trough").rectTransform;
-            Put(_sNowTrough, 20f, 136f, W0 - 56f - 40f, 20f);
-            _sNowFill = Img(_sNowTrough, "Fill", "craft.progress.fill");
-            _sNowFill.preserveAspect = false;
+            _sNowTrough = Bar(_sUntilBox, out _sNowFill);
+            Put(_sNowTrough, 20f, 134f, W0 - 56f - 40f, 22f);
 
             Put(Rule(_single, "Rule2", Dim), 28f, 570f, W0 - 56f, 1f);
             var pause = PlainBtn(_single, "Pause", out _sPause, () => Commit(Entries(), !_state.Paused), Light);
@@ -1160,8 +1166,8 @@ namespace Morgott.UI.StationQueue
             dim.raycastTarget = true; // the queue window under the editor takes no clicks
             DollCell.Mark(dim, "content", "station queue editor backdrop");
             _editor = Panel(_editorLayer, "Editor", W0, H0, "station.queue.editor", EditorClose, Hint("Enter", W("save")) + "      " + Hint("Esc", W("cancel")));
-            // its hints on the queue window's hint line (both centred): under the queue window's footer, not over it
-            Put(_editor.Find(HintsName), 0f, H0 + (MultiH - H0) / 2f + 14f, W0, 30f);
+            // entry-editor.png: the dialog hangs below the queue window's bottom edge, its hints right under it
+            _editor.anchoredPosition = new Vector2(0f, -StationQueueMath.EditorDrop(MultiH, H0, 12f));
             Header(_editor).Text(Title("$ui_sq_editor_title"));
 
             _eIcon = SlotIcon(_editor, 28f, 72f, 76f, out _eBadge);
@@ -1414,6 +1420,23 @@ namespace Morgott.UI.StationQueue
                 Put(Rule(host, "DashL", c), 0f, y, T, len);
                 Put(Rule(host, "DashR", c), w - T, y, T, len);
             }
+        }
+
+        private const float BarInset = 3f;
+
+        // Progress bar (mockups): dark track with a visible rim even at 0, flat cyan fill inside it.
+        private static RectTransform Bar(Transform parent, out Image fill)
+        {
+            var track = Rule(parent, "Trough", Hex("#0E191D"));
+            fill = Rule(track.transform, "Fill", Hex("#00D6E8"));
+            SetRim(Rim(track.transform), Hex("#4D6977"));
+            return track.rectTransform;
+        }
+
+        private static void FillBar(Image fill, RectTransform track, float share)
+        {
+            var r = track.rect;
+            Put(fill, BarInset, BarInset, Mathf.Max(0f, r.width - 2f * BarInset) * share, Mathf.Max(0f, r.height - 2f * BarInset));
         }
 
         private static void SetRim(Image[] rim, Color c)
