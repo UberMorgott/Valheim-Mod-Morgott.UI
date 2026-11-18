@@ -537,7 +537,7 @@ namespace Morgott.UI.ItemBrowser
             r.Chest = Img(g, "RowChest" + n, "ib.glyph.chest");
             r.Ocean = Img(g, "RowOcean" + n, "ib.glyph.ocean");
             r.Tag = Img(g, "RowTag" + n, "ib.rule");
-            r.TagText = Txt(g, "RowTagText" + n, "text.body", TextAlignmentOptions.Center, FontStyles.Bold); // Put places in grid space: a child of the tag would land off the row
+            r.TagText = Txt(g, "RowTagText" + n, "text.body", TextAlignmentOptions.Center, FontStyles.Bold);
             string[] roles = { "ib.stat.health", "ib.stat.stamina", "ib.stat.eitr" };
             for (var i = 0; i < 3; i++)
             {
@@ -625,7 +625,7 @@ namespace Morgott.UI.ItemBrowser
             {
                 Put(r.Tag, nameX + shownW + 6f, y + 6f, 50f, 19f);
                 r.Tag.color = ThemeTokens.GetColor("color.text.active", Color.yellow);
-                Put(r.TagText, nameX + shownW + 6f, y + 6f, 50f, 19f);
+                Put(r.TagText, nameX + shownW + 6f, y + 4f, 50f, 23f); // taller than the plate: an ellipsis text drops a line its box cannot hold
                 Text(r.TagText, $"<color=#141414>{L("$ib_tag_boss")}</color>", 16f);
             }
             else
