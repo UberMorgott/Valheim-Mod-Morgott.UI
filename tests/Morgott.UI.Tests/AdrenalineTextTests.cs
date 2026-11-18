@@ -34,7 +34,6 @@ namespace Morgott.UI.Tests
                          "\n$ui_adr_gain: $ui_adr_hit <color=orange>+1</color>, $ui_adr_block <color=orange>+2</color>, " +
                          "$ui_adr_parry <color=orange>+5</color>, $ui_adr_dodge <color=orange>+5</color>, " +
                          "$ui_adr_stagger <color=orange>+3</color>" +
-                         "\n$ui_adr_max: <color=orange>50</color>" +
                          "\n$ui_adr_full: <color=orange>$ui_adr_effect 60 $ui_stats_sec, $ui_adr_reset</color>" +
                          "\n  $ui_stats_health_regen: <color=orange>+0.15$ui_stats_per_second</color>" +
                          "\n$ui_adr_decay: <color=orange>−1–3$ui_stats_per_second</color> $ui_adr_after 2 $ui_stats_sec",
@@ -51,7 +50,7 @@ namespace Morgott.UI.Tests
             f.HealthPerSec = 0f;
             f.StaminaPerSec = 1.5f;
             var s = AdrenalineText.Append("", f, true);
-            Assert.Contains("<color=orange>50</color> ($ui_adr_worn 115)", s);
+            Assert.Contains("$ui_adr_max ($ui_adr_worn): <color=orange>115</color>", s);
             Assert.Contains("$ui_adr_power <color=orange>+10</color>, $ui_adr_miss <color=orange>−5</color>", s);
             Assert.Contains("$ui_stats_stamina_regen: <color=orange>$ui_stats_upto +1,5$ui_stats_per_second</color>", s);
             Assert.DoesNotContain("health_regen", s);

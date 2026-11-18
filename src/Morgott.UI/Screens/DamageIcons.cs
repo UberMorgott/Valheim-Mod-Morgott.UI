@@ -95,6 +95,8 @@ namespace Morgott.UI.Screens
                 var appended = item.m_shared.m_appendToolTip ? item.m_shared.m_appendToolTip.m_itemData?.m_shared : null;
                 if (appended != null)
                     __result = InfoScreens.StatsMath.FoodTooltipPerSecond(__result, appended.m_foodRegen, comma, "$ui_stats_per_second");
+                if (!appending) __result = AccessoryTooltip.Append(item, __result);
+
                 // Trinkets: what fills adrenaline, the bar size, the full-bar effect per second and the decay.
                 if (!appending) __result = AdrenalineTooltip.Append(item, __result);
                 if (!appending && item.IsWeapon() && item.m_shared.m_attack != null && global::Version.CurrentVersion == AttackTimingsVersion)

@@ -141,6 +141,94 @@ namespace Morgott.UI.Tests
             Assert.DoesNotContain("$item_total", r);
         }
 
+        private static string RowOf(string label, string value) =>
+            "<color=#" + S.Body + ">" + label + "</color><line-height=0>\n<align=right><color=#" + S.Value + ">" + value + "</color>";
+
+        private static int Count(string text, string part) => text.Split(part).Length - 1;
+
+        private static TooltipSheet.EffectBlock Equip(string name, string text) => new TooltipSheet.EffectBlock
+        {
+            Label = TooltipSheet.EffectLabel,
+            Name = name,
+            Printed = name + "\n" + text,
+            Text = text,
+        };
+
+        [Theory]
+        [InlineData("orange")]
+        [InlineData("#add8e6ff")] // Epic Loot's Finish recolours every orange / yellow tag
+        public void RingEffectBecomesRowsOnceInItsSection(string color)
+        {
+            const string se = "$se_eitrregen: <color=orange>+4%</color>\nStealth <color=orange>+5</color>\n$se_ttl: <color=orange>60</color>\n";
+            var raw = ("$d\n\n<color=orange>$item_utility</color>\n$item_weight: <color=orange>0.0</color>\n\n\n<color=orange>$se_ring</color>\n" + se +
+                       "\n" + TooltipSheet.SkillDamageLine("$skill_elementalmagic", 1.03f)).Replace("orange", color);
+            var d = new TooltipSheet.SheetData { Name = "$n", Description = "$d" };
+            d.DropExact.Add("$item_utility");
+            d.Blocks.Add(Equip("$se_ring", se));
+            var r = TooltipSheet.Compose(raw, d, S);
+
+            Assert.True(At(r, "$ui_tip_effect: $se_ring") < At(r, "<i>"));
+            Assert.Contains(RowOf("$se_eitrregen", "+4%"), r);
+            Assert.Contains(RowOf("Stealth", "+5"), r);
+            Assert.Contains(RowOf("$se_ttl", "60 $ui_stats_sec"), r);
+            Assert.Contains(RowOf("$ui_tip_skill_damage", "$skill_elementalmagic +3%"), r);
+            Assert.Equal(1, Count(r, "$se_ring"));
+            Assert.Equal(1, Count(r, "$se_eitrregen"));
+            Assert.DoesNotContain("$item_utility", r);
+        }
+
+        [Fact]
+        public void UnmatchedBlockKeepsTheRawText()
+        {
+            var d = new TooltipSheet.SheetData { Name = "$n" };
+            d.Blocks.Add(Equip("$se_x", "$se_healthregen: <color=orange>+9%</color>\n"));
+            var r = TooltipSheet.Compose("$d\n\nSome mod's line\n<color=orange>$se_x</color>\n$se_healthregen: <color=orange>+2%</color>", d, S);
+            Assert.Contains("Some mod's line", r);
+            Assert.Contains("$se_healthregen: <color=orange>+2%</color>", r); // the stale block is not invented, the raw one stays
+            Assert.DoesNotContain("$ui_tip_effect", r);
+            Assert.DoesNotContain("+9%", r);
+        }
+
+        [Fact]
+        public void EffectTextEqualToDescriptionShownOnce()
+        {
+            var d = new TooltipSheet.SheetData { Name = "$n", Description = "$d" };
+            d.Blocks.Add(new TooltipSheet.EffectBlock { Label = TooltipSheet.EffectLabel, Printed = "$n\n$d\n\n", Text = "$d\n\n" });
+            Assert.Equal(1, Count(TooltipSheet.Compose("$d\n\n<color=orange>$n</color>\n$d\n\n", d, S), "$d"));
+        }
+
+        [Fact]
+        public void FullAdrenalineWrappedBlockAndFactsGetSections()
+        {
+            const string se = "$se_x_description\n\n$se_health_upfront: <color=orange>100</color>\n";
+            var raw = "$d\n\n$item_maxadrenaline: <color=orange>50</color>\n$item_fulladrenaline: <color=orange>" + se + "</color>" +
+                      "\n\n<color=orange>$ui_adr_title</color>\n$ui_adr_full: <color=orange>$ui_adr_reset</color>";
+            var d = new TooltipSheet.SheetData { Name = "$n", Description = "$d" };
+            d.Blocks.Add(new TooltipSheet.EffectBlock { Label = TooltipSheet.FullAdrenalineLabel, Printed = "$item_fulladrenaline: " + se, Text = se });
+            var r = TooltipSheet.Compose(raw, d, S);
+            var order = new[] { "$item_maxadrenaline", "$ui_tip_full_adrenaline", "$se_x_description", "$se_health_upfront", "$ui_adr_title", "$ui_adr_full" }
+                .Select(p => At(r, p)).ToList();
+            Assert.Equal(order.OrderBy(i => i), order);
+            Assert.DoesNotContain("$item_fulladrenaline", r);
+            Assert.DoesNotContain("orange", r);
+        }
+
+        [Fact]
+        public void OwnerRowsMakeTheEffectSectionAndPetItemDropsHints()
+        {
+            var d = new TooltipSheet.SheetData { Name = "$n", Subtitle = "$ui_tip_type_utility" };
+            d.Hints.Add("[RMB] $ui_tip_equip");
+            d.Effects.Add(new TooltipSheet.Effect { Text = "<color=#808080>Fire $no</color>" });
+            var r = TooltipSheet.Compose("$su_collar_pet_health: <color=orange>+25%</color>\n$ui_tip_pet_item: <color=orange>$kind</color>\nUnknown line", d, S);
+            Assert.True(At(r, "$kind") < At(r, "$ui_tip_effect"));
+            Assert.Contains(RowOf("$su_collar_pet_health", "+25%"), r);
+            Assert.Contains("Unknown line", r);
+            Assert.DoesNotContain("$ui_tip_equip", r);
+            Assert.DoesNotContain("$ui_tip_type_utility", r);
+            Assert.DoesNotContain("#808080", r);
+            Assert.Contains("<color=#" + S.Dim + ">◆</color> <color=#" + S.Dim + ">Fire $no</color>", r);
+        }
+
         [Fact]
         public void TokenRules()
         {

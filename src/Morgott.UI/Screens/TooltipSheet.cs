@@ -32,8 +32,18 @@ namespace Morgott.UI.Screens
             public List<Bonus> Bonuses = new List<Bonus>();
         }
 
+        // One status effect of an accessory: its section, the block GetTooltip printed for it and the effect lines.
+        public sealed class EffectBlock
+        {
+            public string Label, Name; // section label; effect name after it, null = none
+            public string Printed;     // as printed in the raw text, colours aside; not found = the raw lines stay as they are
+            public string Text;        // GetTooltipString lines
+        }
+
         public sealed class SheetData
         {
+            public List<EffectBlock> Blocks = new List<EffectBlock>();
+            public HashSet<string> DropExact = new HashSet<string>(StringComparer.Ordinal); // raw lines equal to these (colours aside) are dropped
             public string Name, NameColor, Subtitle, Description;
             public int IconId = -1;                 // TooltipDecor icon cache id, -1 = none
             public int Quality, MaxQuality;
@@ -75,6 +85,31 @@ namespace Morgott.UI.Screens
             "ui_tip_attack_rate", // WeaponAttackRate
         };
 
+        // SE_Stats.GetTooltipString lines (SE_Stats.cs:490-698) without a RowTokens entry: rows inside an effect section only.
+        private static readonly HashSet<string> SeTokens = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "se_health_upfront", "se_health", "se_healthregen", "se_stamina_upfront", "se_stamina", "se_staminaregen",
+            "se_eitr_upfront", "se_eitr", "se_eitrregen", "se_max_carryweight", "se_noisemod", "se_sneakmod",
+            "item_swimspeed_modifier", "item_limitfallspeed", "item_falldamage", "se_jumpheight", "se_jumplength",
+            "se_blockstaminaflat", "se_blockstaminaflat_minus", "se_adrenaline_upfront", "se_adrenaline", "se_stagger",
+            "inventory_chop", "inventory_pickaxe", "se_ttl",
+        };
+
+        // Accessory effect lines our mods and AccessoryTooltip append to the raw text: moved into the effect section.
+        private static readonly HashSet<string> OwnerTokens = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "ui_tip_skill_damage", "ui_tip_ice",
+            "su_collar_pet_health", "su_collar_pet_damage", "su_collar_pet_attack", "su_collar_pet_move", // Morgott.Summons
+            "mt_tip_blink_distance", "mt_tip_blink_eitr", "mt_tip_arc_when", "mt_tip_arc_damage", "mt_tip_arc_range", // Morgott.Power
+            "mt_tip_set_extra", "mt_tip_set_extra_limit",
+        };
+
+        public const string EffectLabel = "$ui_tip_effect";
+        public const string FullAdrenalineLabel = "$ui_tip_full_adrenaline";
+        private const string AdrenalineTitle = "$ui_adr_title"; // AdrenalineText's block: its own section
+        private const string PetItem = "ui_tip_pet_item";       // "$ui_tip_pet_item: <type>" (Morgott.Summons): pet gear, the player cannot wear it
+        private const string InactiveTag = "<color=#808080>";   // Morgott.Summons CollarPatches: this magic effect does nothing here
+
         // Shown from structured data (header / footer): their raw lines are dropped.
         private static readonly HashSet<string> MetaTokens = new HashSet<string>(StringComparer.Ordinal)
         {
@@ -111,11 +146,22 @@ namespace Morgott.UI.Screens
                 if (at >= 0 && (at == 0 || body[at - 1] == '\n')) body = body.Remove(at, d.Description.Length);
             }
 
+            var lines = new List<string>(body.Split('\n'));
+            var sections = new List<KeyValuePair<string, List<string>>>();
+            foreach (var b in d.Blocks)
+            {
+                if (b.Printed != null && !Cut(lines, b.Printed)) continue;
+                var label = string.IsNullOrEmpty(b.Name) ? b.Label : b.Label + ": " + b.Name;
+                sections.Add(new KeyValuePair<string, List<string>>(label, EffectRows(b.Text, d.Description, s)));
+            }
+            var adrenaline = TakeAdrenaline(lines, s);
+
+            var owned = new List<string>();
             var rows = new List<string>();
             var reqs = new List<string>();
             var setLines = new List<string>();
             var inSet = false;
-            foreach (var line in body.Split('\n'))
+            foreach (var line in lines)
             {
                 var trimmed = line.Trim();
                 if (trimmed.Length == 0)
@@ -124,15 +170,28 @@ namespace Morgott.UI.Screens
                     if (rows.Count > 0 && rows[rows.Count - 1] != Spacer(s)) rows.Add(Spacer(s));
                     continue;
                 }
-                if (d.DropLines.Exists(trimmed.Contains)) continue; // string.Contains(string) is ordinal
+                if (d.DropLines.Exists(trimmed.Contains) || d.DropExact.Contains(Bare(trimmed))) continue; // string.Contains(string) is ordinal
                 if (inSet || trimmed.StartsWith(VanillaSet, StringComparison.Ordinal)) { inSet = true; setLines.Add(line); continue; }
                 var token = Token(trimmed);
                 if (token != null && MetaTokens.Contains(token)) continue;
-                if (token == Requirement) reqs.Add(Row(trimmed, s, s.Accent, s.Accent));
+                if (token == PetItem)
+                {
+                    if (d.MagicColor == null) d.Subtitle = Plain(trimmed.Substring(trimmed.IndexOf(':') + 1));
+                    d.Hints.Clear();
+                }
+                else if (token != null && OwnerTokens.Contains(token)) owned.Add(Row(trimmed, s, s.Body, s.Value));
+                else if (token == Requirement) reqs.Add(Row(trimmed, s, s.Accent, s.Accent));
                 else if (token != null && RowTokens.Contains(token)) rows.Add(Row(trimmed, s, s.Body, s.Value));
                 else rows.Add(line);
             }
             while (rows.Count > 0 && rows[rows.Count - 1] == Spacer(s)) rows.RemoveAt(rows.Count - 1);
+            if (owned.Count > 0)
+            {
+                if (sections.Count == 0 || !sections[0].Key.StartsWith(EffectLabel, StringComparison.Ordinal))
+                    sections.Insert(0, new KeyValuePair<string, List<string>>(EffectLabel, new List<string>()));
+                sections[0].Value.AddRange(owned);
+            }
+            if (adrenaline != null) sections.Add(new KeyValuePair<string, List<string>>(AdrenalineTitle, adrenaline));
 
             var sb = new StringBuilder(raw.Length + 1024).Append(Marker);
             Header(sb, d, s);
@@ -142,15 +201,23 @@ namespace Morgott.UI.Screens
                 foreach (var r in rows) sb.Append('\n').Append(r);
                 foreach (var r in reqs) sb.Append('\n').Append(r);
             }
+            foreach (var section in sections)
+            {
+                Section(sb, s, section.Key, s.Accent);
+                foreach (var r in section.Value) sb.Append('\n').Append(r);
+            }
             if (d.Effects.Count > 0 || d.Sockets != null)
             {
                 var magic = d.MagicColor ?? s.Accent;
+                var inactive = "<color=#" + s.Dim + ">";
                 Section(sb, s, "$ui_tip_magic", s.Accent);
                 foreach (var e in d.Effects)
-                    sb.Append("\n<color=#").Append(e.Color ?? magic).Append(">◆</color> ").Append(e.Text);
+                    sb.Append("\n<color=#").Append(e.Text.StartsWith(InactiveTag, StringComparison.Ordinal) ? s.Dim : e.Color ?? magic)
+                      .Append(">◆</color> ").Append(e.Text.Replace(InactiveTag, inactive));
                 if (d.Sockets != null) sb.Append("\n<color=#").Append(s.Dim).Append(">$ui_tip_sockets ").Append(d.Sockets).Append("</color>");
                 foreach (var e in d.SocketEffects)
-                    sb.Append("\n  <color=#").Append(e.Color ?? magic).Append(">◇ ").Append(e.Text).Append("</color>");
+                    sb.Append("\n  <color=#").Append(e.Text.StartsWith(InactiveTag, StringComparison.Ordinal) ? s.Dim : e.Color ?? magic)
+                      .Append(">◇ ").Append(e.Text.Replace(InactiveTag, inactive)).Append("</color>");
             }
             foreach (var set in d.Sets)
             {
@@ -177,6 +244,80 @@ namespace Morgott.UI.Screens
         }
 
         private static string Spacer(Style s) => "<size=" + s.RuleSize + "%>" + Nbsp + "</size>";
+
+        // "$ui_tip_skill_damage: <skill> +3%": SE_Stats.m_damageModifier / m_modifyAttackSkill (SE_Stats.cs:361-363), never printed by the game.
+        public static string SkillDamageLine(string skill, float modifier) =>
+            "$ui_tip_skill_damage: <color=orange>" + skill + " " +
+            ((modifier - 1f) * 100f).ToString("+0;-0", System.Globalization.CultureInfo.InvariantCulture) + "%</color>";
+
+        // The line without colour tags, trimmed: Epic Loot recolours every orange / yellow value (TooltipRenderer.Finish).
+        private static string Bare(string line) => StripColors(line).Trim();
+
+        // Removes the block's lines (blank lines inside it skipped); false = not there, nothing removed.
+        private static bool Cut(List<string> lines, string printed)
+        {
+            var want = new List<string>();
+            foreach (var l in printed.Split('\n'))
+                if (Bare(l).Length > 0) want.Add(Bare(l));
+            if (want.Count == 0) return false;
+            for (var start = 0; start < lines.Count; start++)
+            {
+                if (Bare(lines[start]) != want[0]) continue;
+                int i = start, matched = 0;
+                for (; i < lines.Count && matched < want.Count; i++)
+                {
+                    var b = Bare(lines[i]);
+                    if (b.Length == 0) continue;
+                    if (b != want[matched]) break;
+                    matched++;
+                }
+                if (matched < want.Count) continue;
+                lines.RemoveRange(start, i - start);
+                return true;
+            }
+            return false;
+        }
+
+        private static List<string> EffectRows(string text, string description, Style s)
+        {
+            var rows = new List<string>();
+            foreach (var line in (text ?? "").Split('\n'))
+            {
+                var t = line.Trim();
+                if (t.Length == 0 || (description != null && Bare(t) == Bare(description))) continue; // Wisplight: SE text = description
+                var row = EffectRow(t, s);
+                if (!rows.Contains(row)) rows.Add(row);
+            }
+            return rows;
+        }
+
+        private static string EffectRow(string line, Style s)
+        {
+            var token = Token(line);
+            if (token == "se_ttl") line += " $ui_stats_sec";
+            if (token != null && (RowTokens.Contains(token) || SeTokens.Contains(token) || OwnerTokens.Contains(token)))
+                return Row(line, s, s.Body, s.Value);
+            // Skill lines have no token: "<localized skill> <color=orange>+5</color>" (SE_Stats.cs:647-653).
+            var at = line.IndexOf(" <color=", StringComparison.Ordinal);
+            if (at <= 0 || !line.EndsWith("</color>", StringComparison.Ordinal)) return line;
+            var value = StripColors(line.Substring(at + 1)).Trim();
+            return value.StartsWith("+", StringComparison.Ordinal) || value.StartsWith("-", StringComparison.Ordinal)
+                ? "<color=#" + s.Body + ">" + line.Substring(0, at) + "</color>" + RightCell(value, s.Value)
+                : line;
+        }
+
+        // AdrenalineText's block (title line up to the next blank line), out of the raw lines; null = none.
+        private static List<string> TakeAdrenaline(List<string> lines, Style s)
+        {
+            var start = lines.FindIndex(l => Bare(l) == AdrenalineTitle);
+            if (start < 0) return null;
+            var end = start + 1;
+            var block = new List<string>();
+            for (; end < lines.Count && lines[end].Trim().Length > 0; end++)
+                block.Add(lines[end].Replace("<color=orange>", "<color=#" + s.Value + ">"));
+            lines.RemoveRange(start, end - start);
+            return block;
+        }
 
         private static void Header(StringBuilder sb, SheetData d, Style s)
         {
@@ -266,6 +407,11 @@ namespace Morgott.UI.Screens
             var lower = value.ToLowerInvariant();
             foreach (var keep in new[] { "<color=#ff", "<color=#9090" })
                 if (lower.Contains(keep)) return value;
+            return StripColors(value).Trim();
+        }
+
+        private static string StripColors(string value)
+        {
             var sb = new StringBuilder(value.Length);
             for (var i = 0; i < value.Length; i++)
             {
@@ -276,7 +422,7 @@ namespace Morgott.UI.Screens
                 }
                 sb.Append(value[i]);
             }
-            return sb.ToString().Trim();
+            return sb.ToString();
         }
 
         // Epic Loot's own effect and set blocks (TooltipRenderer.RenderEffects / RenderSets, 0.15.6) inside its text:

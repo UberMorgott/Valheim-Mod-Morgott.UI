@@ -94,6 +94,7 @@ namespace Morgott.UI.Screens
             d.Weight = item.GetWeight().ToString("0.0");
             if (s.m_value > 0) d.Value = item.GetValue().ToString();
 
+            AccessoryTooltip.Gather(item, quality, d);
             if (el != null) Apply(el, d, ref raw);
             if (_inGrid) Hints(item, d, el != null);
             return TooltipSheet.Compose(raw, d, Style());
@@ -130,7 +131,7 @@ namespace Morgott.UI.Screens
                     d.Sockets = el.Sockets.Used + "/" + el.Sockets.Count;
                     // as Epic Loot's TooltipRenderer: the gem's effect in its rarity colour, an inert shard / inactive rune dimmed
                     foreach (var so in el.Sockets.Entries)
-                        d.SocketEffects.Add(so.State == "InertShard" ? new TooltipSheet.Effect { Text = "$mod_epicloot_shard_noeffect", Color = so.Color }
+                        d.SocketEffects.Add(so.State == "InertShard" ? new TooltipSheet.Effect { Text = "$mod_epicloot_shard_noeffect", Color = Style().Dim }
                             : so.State == "InactiveRune" ? new TooltipSheet.Effect { Text = so.Text + " $mod_epicloot_socket_tip_runeinactive", Color = Style().Dim }
                             : new TooltipSheet.Effect { Text = so.Text, Color = so.Color });
                 }

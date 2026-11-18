@@ -63,13 +63,9 @@ namespace Morgott.UI.Screens
                     Range(sb, f.GainMin, f.GainMax, comma).Append(')');
                 }
             }
-            if (f.ItemMax > 0f)
-            {
-                sb.Append("\n$ui_adr_max: <color=orange>");
-                StatsMath.AppendFactor(sb, f.ItemMax, comma).Append("</color>");
-                if (f.TotalMax > 0f && Math.Abs(f.TotalMax - f.ItemMax) > 0.005f)
-                    StatsMath.AppendFactor(sb.Append(" ($ui_adr_worn "), f.TotalMax, comma).Append(')');
-            }
+            // The item's own size is the vanilla $item_maxadrenaline row; only the worn total is news here.
+            if (f.ItemMax > 0f && f.TotalMax > 0f && Math.Abs(f.TotalMax - f.ItemMax) > 0.005f)
+                StatsMath.AppendFactor(sb.Append("\n$ui_adr_max ($ui_adr_worn): <color=orange>"), f.TotalMax, comma).Append("</color>");
             sb.Append("\n$ui_adr_full: <color=orange>");
             if (!f.FullEffect) sb.Append("$ui_adr_stays");
             else if (f.Duration > 0f)

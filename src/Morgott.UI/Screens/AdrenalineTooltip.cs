@@ -22,7 +22,7 @@ namespace Morgott.UI.Screens
 
         private static void Effect(AdrenalineFacts f, SE_Stats se, Player p)
         {
-            f.Duration = se.m_ttl;
+            f.Duration = se.m_ttl > 1f ? 0f : se.m_ttl; // longer ones are the SE's own "$se_ttl" line (SE_Stats.cs:695-698)
             // SE_Stats.cs:245-256: m_staminaOverTime (x max stamina when a fraction) is paid evenly over its duration.
             if (se.m_staminaOverTime > 0f && se.m_staminaOverTimeDuration > 0f)
                 f.StaminaOverTimePerSec = (se.m_staminaOverTimeIsFraction ? (p ? p.GetMaxStamina() : 0f) : 1f) *
