@@ -241,7 +241,7 @@ namespace Morgott.UI.ItemBrowser
 
         private string Missing(Node n, HashSet<Node> seen)
         {
-            if (n.Value != Inf || n.Magic || !seen.Add(n)) return null;
+            if (n.Value != Inf || n.Magic || seen.Count > 512 || !seen.Add(n)) return null;
             var real = n.Id[0] != '@';
             if (n.Paths.Count == 0) return real ? n.Id : null;
             foreach (var p in n.Paths)

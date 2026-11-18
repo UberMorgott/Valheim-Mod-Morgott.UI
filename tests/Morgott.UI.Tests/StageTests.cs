@@ -405,6 +405,28 @@ namespace Morgott.UI.Tests
         }
 
         [Fact]
+        public void Embedded_table_lines_without_objects_still_place_creatures_and_boss_altars()
+        {
+            var old = FoundInTable.Parse("L:Altar\t0\t0\tBonemass:b,Draugr:w\n", out _, out _)["L:Altar"];
+            Assert.Null(old.Objects); // no prefab load is owed for it: FoundInScan.Lookup only loads missing entries
+            var d = new FoundIn();
+            d.Place(old, Heightmap.Biome.Swamp);
+            Assert.Equal(("Bonemass", "", Heightmap.Biome.Swamp), d.World.Summons.Single());
+            Assert.True(d.World.Anchors.ContainsKey("Draugr"));
+            Assert.False(d.World.Anchors.ContainsKey("Bonemass"));
+            d.World.Bosses.Add("Bonemass");
+            var ix = new BrowserIndex();
+            ix.Add(new Relation { Kind = RelationKind.CreatureDrop, Source = "Bonemass", Outputs = new[] { new Stack("Wishbone") } });
+            ix.Add(new Relation { Kind = RelationKind.Pickable, Source = "ChestOnlyInLocation", Outputs = new[] { new Stack("Thing") } });
+            var s = new StageSolver();
+            foreach (var _ in StageGraph.Build(ix, d.World, new[] { new ItemFact { Prefab = "Thing", Biome = 2 } }, s)) { }
+            s.Solve();
+            Assert.Equal(4, s.Result("Bonemass").Stage);
+            Assert.Equal(5, s.Result("Wishbone").Stage);
+            Assert.Equal(StageVia.Authored, s.Result("Thing").Via); // placed objects unknown: falls through to the authored stage
+        }
+
+        [Fact]
         public void Table_round_trips_objects_and_summons_and_old_lines_stay_unscanned()
         {
             var s = new Scanned { Themes = 2, Interior = true };

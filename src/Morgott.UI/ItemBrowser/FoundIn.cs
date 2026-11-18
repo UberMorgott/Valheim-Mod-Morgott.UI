@@ -24,6 +24,21 @@ namespace Morgott.UI.ItemBrowser
             ByPrefab[prefab] = (o.Biomes | biomes, o.Kinds | kind);
         }
 
+        /// <summary>Stage anchors of a location / room: what stands in it counts only for prefabs with no open-world
+        /// placement (StageGraph); a boss comes from its altar, not from standing there. A scan without the objects column
+        /// (embedded table) still knows the altar's boss and biome, only not the offered item or the placed objects.</summary>
+        public void Place(Scanned s, Heightmap.Biome biome)
+        {
+            foreach (var (c, k) in s.Creatures)
+            {
+                if (k != Origin.Boss) World.Anchor(c, biome, false);
+                else if (s.Objects == null) World.Summons.Add((c, "", biome));
+            }
+            if (s.Objects == null) return;
+            foreach (var o in s.Objects) World.Anchor(o, biome, false);
+            foreach (var (boss, item) in s.Summons) World.Summons.Add((boss, item, biome));
+        }
+
         /// <summary>Map legend order (MapFilterMath.Biomes), Ocean last.</summary>
         public static readonly Heightmap.Biome[] Order =
         {

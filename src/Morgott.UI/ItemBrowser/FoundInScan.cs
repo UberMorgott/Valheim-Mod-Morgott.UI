@@ -112,8 +112,8 @@ namespace Morgott.UI.ItemBrowser
                 Scanned s = null;
                 if (owner == null) table?.TryGetValue(key, out s);
                 var ckey = key + "@" + (owner ?? version);
-                if (s?.Objects == null) cache.TryGetValue(ckey, out s);
-                if (s?.Objects == null) // no entry, or one from before the objects column
+                if (s == null) cache.TryGetValue(ckey, out s);
+                if (s == null) // an entry without the objects column is used as is: stages never cost a prefab load
                 {
                     at = key;
                     loads++;
@@ -144,7 +144,7 @@ namespace Morgott.UI.ItemBrowser
                          {
                              var plain = s.Interior ? Origin.Dungeon : Origin.Location;
                              foreach (var (c, k) in s.Creatures) d.Add(c, biome, k == Origin.World ? plain : k);
-                             Place(d, s, biome);
+                             d.Place(s, biome);
                              if (s.Themes != 0) themes.Add(((Room.Theme)s.Themes, biome, s.Interior));
                          }))
                 { Tick(); yield return null; _slice.Restart(); }
@@ -175,7 +175,7 @@ namespace Morgott.UI.ItemBrowser
                                  if (inside != Heightmap.Biome.None) d.Add(c, inside, k == Origin.World ? Origin.Dungeon : k);
                                  if (outside != Heightmap.Biome.None) d.Add(c, outside, k == Origin.World ? Origin.Location : k);
                              }
-                             Place(d, s, inside | outside);
+                             d.Place(s, inside | outside);
                          }))
                 { Tick(); yield return null; _slice.Restart(); }
                 if (Over) { Tick(); yield return null; _slice.Restart(); }
@@ -233,14 +233,6 @@ namespace Morgott.UI.ItemBrowser
             finally { r.Release(); }
         }
 
-        // Stage anchors of a location / room: what stands in it counts only for prefabs with no open-world placement
-        // (StageGraph); a boss comes from its altar (item + altar biome), not from standing there.
-        private static void Place(FoundIn d, Scanned s, Heightmap.Biome biome)
-        {
-            foreach (var (c, k) in s.Creatures) if (k != Origin.Boss) d.World.Anchor(c, biome, false);
-            foreach (var o in s.Objects) d.World.Anchor(o, biome, false);
-            foreach (var (boss, item) in s.Summons) d.World.Summons.Add((boss, item, biome));
-        }
 
         // What one object of a location / room places: a creature standing there (sleeping draugr, hives), a spawner
         // point, a nest, a boss altar; dungeon generators' themes.

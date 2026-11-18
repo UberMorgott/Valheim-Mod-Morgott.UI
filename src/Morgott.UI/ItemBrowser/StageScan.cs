@@ -58,7 +58,11 @@ namespace Morgott.UI.ItemBrowser
             if (ZNetScene.instance) prefabs.AddRange(ZNetScene.instance.m_prefabs);
             foreach (var go in prefabs)
             {
-                if (go && seen.Add(go)) Read(go, w, spawned);
+                if (go && seen.Add(go))
+                {
+                    try { Read(go, w, spawned); }
+                    catch (Exception e) { Warn(go.name, e); }
+                }
                 if (Over) { yield return null; Slice.Restart(); }
             }
             if (generation != _gen) yield break;
@@ -67,22 +71,40 @@ namespace Morgott.UI.ItemBrowser
             var byPrefab = new Dictionary<string, ItemFact>(StringComparer.Ordinal);
             foreach (var f in facts) byPrefab[f.Prefab] = f;
             var solver = new StageSolver();
-            foreach (var _ in StageGraph.Build(ix, w, facts, solver))
+            // A failure here leaves every entry unknown; the browser itself keeps working.
+            var build = StageGraph.Build(ix, w, facts, solver).GetEnumerator();
+            while (true)
+            {
+                bool more, solved = false;
+                try
+                {
+                    more = build.MoveNext();
+                    if (!more) solved = solver.Step(128);
+                }
+                catch (Exception e)
+                {
+                    Warn("solver", e);
+                    yield break;
+                }
+                if (!more && solved) break;
                 if (Over) { yield return null; Slice.Restart(); }
-            while (!solver.Step(128))
-                if (Over) { yield return null; Slice.Restart(); }
+            }
             if (generation != _gen) yield break;
 
             var data = new StageData { Solver = solver };
             foreach (var f in facts) if (f.Magic) data.MagicFacts.Add(f.Prefab);
             foreach (var e in ix.Entries.Values)
             {
-                data.Info[e.Id] = solver.Result(e.Id);
-                if (e.Hidden == null || e.Hidden == BrowserIndex.UnlistedReason)
+                try
                 {
-                    byPrefab.TryGetValue(e.Id, out var fact);
-                    AddFacets(data.Facets, ix, e, fact);
+                    data.Info[e.Id] = solver.Result(e.Id);
+                    if (e.Hidden == null || e.Hidden == BrowserIndex.UnlistedReason)
+                    {
+                        byPrefab.TryGetValue(e.Id, out var fact);
+                        AddFacets(data.Facets, ix, e, fact);
+                    }
                 }
+                catch (Exception ex) { Warn(e.Id, ex); }
                 if (Over) { yield return null; Slice.Restart(); }
             }
             if (generation != _gen) yield break;
@@ -91,6 +113,8 @@ namespace Morgott.UI.ItemBrowser
             Done = true;
             Plugin.Log.LogInfo(FormattableString.Invariant($"[Morgott.UI] item browser stages: {data.Info.Count} entries, {facts.Count} facts, {wall.Elapsed.TotalSeconds:F1} s"));
         }
+
+        private static void Warn(string what, Exception e) => Plugin.Log.LogWarning($"[Morgott.UI] item browser stages: {what}: {e.Message}");
 
         private static void Read(GameObject go, StageWorld w, HashSet<GameObject> spawned)
         {

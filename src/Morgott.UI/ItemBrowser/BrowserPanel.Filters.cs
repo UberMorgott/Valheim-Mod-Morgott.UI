@@ -16,7 +16,7 @@ namespace Morgott.UI.ItemBrowser
     // work happens in Results() on a change; layout reads the cached lists. Storage mode never comes here.
     public sealed partial class BrowserPanel
     {
-        private const float StripH = 70f, ChipRowDy = 88f, ChipH = 31f, CaptionDy = 133f, ListRowH = 53f, HeadH = 31f, PopRowH = 30f, PopW = 270f, CaptionW = 254f;
+        private const float StripH = 70f, ChipRowDy = 87f, ChipH = 31f, CaptionDy = 128f, ListDy = 42f, ListRowH = 53f, HeadH = 31f, PopRowH = 30f, PopW = 270f, CaptionW = 254f;
         private const int Plaques = 10, PopRows = 14;
         private static readonly Func<string, StageInfo> InfoOf = StageScan.Info;
 
@@ -24,7 +24,7 @@ namespace Morgott.UI.ItemBrowser
         private FilterState _fs = new FilterState();
         private string _scope = "";
         private int _filterRev, _resultsFilter = -1, _resultsStage = -1, _stageRev = -1, _chipOpen = -1, _popScroll, _popMax;
-        private bool _listMode = true, _resultsList = true;
+        private bool _listMode = true, _resultsList = true, _plainGrid; // _plainGrid: the filter UI failed, the classic grid takes over
         private List<Entry> _scoped = new List<Entry>();
         private List<ListBlock> _blocks = new List<ListBlock>();
         private readonly List<float> _blockH = new List<float>();
@@ -95,6 +95,15 @@ namespace Morgott.UI.ItemBrowser
         private static void OnClick(Component c, Action act) =>
             c.gameObject.AddComponent<Hit>().Click = e => { if (e.button == PointerEventData.InputButton.Left) act(); };
 
+        private void PlainGrid(Exception e)
+        {
+            Plugin.Log.LogWarning($"[Morgott.UI] item browser filters off, plain grid: {e}");
+            _plainGrid = true;
+            _filterRev++;
+            _dirty = true;
+            FiltersOff();
+        }
+
         private void Touch()
         {
             _filterRev++;
@@ -140,7 +149,7 @@ namespace Morgott.UI.ItemBrowser
 
         private void FiltersOff()
         {
-            foreach (var b in _plaques) { Off(b); if (_halos.TryGetValue(b, out var h)) Off(h); }
+            foreach (var b in _plaques) { Off(b); if (b && _halos.TryGetValue(b, out var h)) Off(h); }
             foreach (var c in _chips) { Off(c.B); if (_halos.TryGetValue(c.B, out var h)) Off(h); }
             Off(_reset);
             Off(_layoutBtn);
@@ -169,6 +178,17 @@ namespace Morgott.UI.ItemBrowser
             }
             _scoped = Browser.Index.Search(_query, TypeOf[_type],
                 e => (cat < 0 || (int)e.Category == cat) && (!known || Browser.Known(e)) && (fav == null || fav.Contains(e.Id)), L, Browser.ModName, dev);
+            if (_plainGrid) return _scoped;
+            try { return Staged(); }
+            catch (Exception e)
+            {
+                PlainGrid(e);
+                return _scoped;
+            }
+        }
+
+        private List<Entry> Staged()
+        {
             Array.Clear(_counts, 0, _counts.Length);
             var facets = StageScan.Facets;
             var kept = new List<Entry>(_scoped.Count);
@@ -296,7 +316,8 @@ namespace Morgott.UI.ItemBrowser
                 _chips[i].W = MeasureF(System.Text.RegularExpressions.Regex.Replace(ChipText(defs[i]), "<[^>]+>", ""), 17f) + 34f;
                 sum += _chips[i].W;
             }
-            var extra = (room - sum) / Math.Max(1, defs.Length);
+            var extra = sum < room ? (room - sum) / Math.Max(1, defs.Length) : 0f;
+            var scale = sum > room ? room / sum : 1f; // long picked values: every chip gives way, none collapses
             var x = 0f;
             for (var i = 0; i < _chips.Count; i++)
             {
@@ -307,7 +328,7 @@ namespace Morgott.UI.ItemBrowser
                     if (_halos.TryGetValue(c.B, out var ho)) Off(ho);
                     continue;
                 }
-                c.W += extra;
+                c.W = c.W * scale + extra;
                 c.X = x;
                 Square(c.B, i == _chipOpen, x, y, c.W, ChipH);
                 Put(c.Label, x + 9f, y, c.W - 28f, ChipH);
@@ -495,10 +516,9 @@ namespace Morgott.UI.ItemBrowser
             });
             var color = GroupColor(b.Group);
             var text = $"{GroupName(b.Group).ToUpperInvariant()} · {-b.Count}";
-            var w = Mathf.Min(MeasureF(text, 18f) + 4f, UnitW - 60f);
+            var w = Mathf.Min(MeasureF(text, 18f) * 1.1f + 4f, UnitW - 60f); // bold runs wider than the measuring font
             Put(head.Label, 0f, y + 3f, w, 25f);
-            Text(head.Label, text, 18f);
-            head.Label.color = color;
+            Text(head.Label, $"<color=#{ColorUtility.ToHtmlStringRGB(color)}>{text}</color>", 18f);
             Put(head.Line, w + 8f, y + 15f, UnitW - 14f - w - 8f, 1.5f);
             head.Line.color = color;
         }
@@ -517,14 +537,15 @@ namespace Morgott.UI.ItemBrowser
             r.Chest = Img(g, "RowChest" + n, "ib.glyph.chest");
             r.Ocean = Img(g, "RowOcean" + n, "ib.glyph.ocean");
             r.Tag = Img(g, "RowTag" + n, "ib.rule");
-            r.Tag.color = ThemeTokens.GetColor("color.text.active", Color.yellow);
             r.TagText = Txt(r.Tag.transform, "Text", "text.body", TextAlignmentOptions.Center, FontStyles.Bold);
             string[] roles = { "ib.stat.health", "ib.stat.stamina", "ib.stat.eitr" };
             for (var i = 0; i < 3; i++)
             {
                 r.Stat[i] = Img(g, "RowStat" + n + "_" + i, roles[i]);
                 r.StatText[i] = Txt(g, "RowStatText" + n + "_" + i, "text.muted", TextAlignmentOptions.Left);
+                r.StatText[i].raycastTarget = false;
             }
+            r.Sub.raycastTarget = r.Marker.raycastTarget = r.TagText.raycastTarget = c.A.raycastTarget = false; // the row's hit area takes the clicks
             return c.Row = r;
         }
 
@@ -582,7 +603,7 @@ namespace Morgott.UI.ItemBrowser
             c.Id = r.Hit.Id = e.Id;
             c.Store = null;
             c.Quality = r.Hit.Quality = 1;
-            const float nameX = 64f, markW = 172f;
+            const float nameX = 67f, markW = 172f;
             Put(r.Hit.Back, 0f, y, UnitW - 12f, ListRowH);
             Put(c.Back, 0f, y + 3f, 54f, 47f);
             Put(c.Icon, 4f, y + 6f, 46f, 41f);
@@ -602,6 +623,7 @@ namespace Morgott.UI.ItemBrowser
             if (tagged)
             {
                 Put(r.Tag, nameX + shownW + 6f, y + 7f, 46f, 17f);
+                r.Tag.color = ThemeTokens.GetColor("color.text.active", Color.yellow);
                 Put(r.TagText, nameX + shownW + 6f, y + 6f, 46f, 19f);
                 Text(r.TagText, $"<color=#141414>{L("$ib_tag_boss")}</color>", 16f);
             }
@@ -743,8 +765,16 @@ namespace Morgott.UI.ItemBrowser
             if (data == null || e.Type == EntryType.Other) return null;
             var i = StageScan.Info(e.Id);
             if (i.Stage >= 0 || i.Via == StageVia.Magic) return null;
-            var m = data.Solver.Missing(e.Id);
-            return m == null || m == e.Id ? null : $"{L("$ib_stage_why")}: {NameOf(m)}";
+            try
+            {
+                var m = data.Solver.Missing(e.Id);
+                return m == null || m == e.Id ? null : $"{L("$ib_stage_why")}: {NameOf(m)}";
+            }
+            catch (Exception ex)
+            {
+                Plugin.Log.LogWarning($"[Morgott.UI] item browser stages: {e.Id}: {ex.Message}");
+                return null;
+            }
         }
     }
 }

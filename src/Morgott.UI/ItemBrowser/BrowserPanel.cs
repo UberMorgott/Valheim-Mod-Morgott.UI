@@ -479,7 +479,8 @@ namespace Morgott.UI.ItemBrowser
             DollCell.Mark(_grip, "content", "item browser scrollbar hit area");
             _grip.gameObject.AddComponent<Grip>().Move = GripMove;
             BuildStore(g);
-            BuildFilters(g);
+            try { BuildFilters(g); }
+            catch (Exception e) { PlainGrid(e); }
 
             _pageView = Child("Page").gameObject;
             var p = _pageView.transform;
@@ -794,9 +795,14 @@ namespace Morgott.UI.ItemBrowser
             }
             var list = Results();
             var capY = items ? catY + 52f : CatY;
-            if (store) FiltersOff();
-            else capY = LayoutFilters(items ? catY + CatH + 9f : CatY);
-            Put(_caption, 0f, capY, store ? UnitW - 304f : CaptionW, 26f);
+            var filters = !store && !_plainGrid;
+            if (filters)
+            {
+                try { capY = LayoutFilters(items ? catY + CatH + 13f : CatY); }
+                catch (Exception e) { PlainGrid(e); return; }
+            }
+            else FiltersOff();
+            Put(_caption, 0f, capY, filters ? CaptionW : UnitW - 304f, 26f);
             if (store) { Off(_unknownLabel); Off(_unknownBox); Off(_unknownCheck); }
             else
             {
@@ -807,15 +813,16 @@ namespace Morgott.UI.ItemBrowser
                 else Off(_unknownCheck);
             }
             var what = items && _cat >= 0 ? CatName((ItemCategory)_cat) : store ? L(TypeTokens[0]) : _type == 5 ? L("$ib_type_favorites") : L(TypeTokens[_type]);
-            Fit(_caption, store ? $"{what} · {list.Count}" : FilterCaption(what, list.Count), 20f);
+            Fit(_caption, filters ? FilterCaption(what, list.Count) : $"{what} · {list.Count}", 20f);
 
             var top = capY + 37f;
-            if (!store)
+            if (filters)
             {
-                LayoutEntries(list, top, h);
+                try { LayoutEntries(list, capY + ListDy, h); }
+                catch (Exception e) { PlainGrid(e); }
                 return;
             }
-            var bottom = StoreBar(h);
+            var bottom = store ? StoreBar(h) : h;
             var rows = Math.Max(1, (int)((bottom - top + 4f) / CellPitchY));
             var per = rows * 6;
             var total = (list.Count + 5) / 6;

@@ -14,7 +14,7 @@ namespace Morgott.UI.ItemBrowser
         /// <summary>The location's Location.m_hasInterior.</summary>
         public bool Interior;
         /// <summary>Source prefabs the prefab places (pickables, chests, rocks, traders...); null = scanned before this
-        /// column existed, the scan reads the prefab again.</summary>
+        /// column existed (its objects stay unknown; the prefab is not loaded for them).</summary>
         public List<string> Objects;
         /// <summary>Boss altars: boss prefab + the item offered.</summary>
         public readonly List<(string Boss, string Item)> Summons = new List<(string, string)>();
