@@ -121,7 +121,7 @@ namespace Morgott.UI.ItemBrowser
                 if (perRecipe != null) perRecipe[r.name] = perRecipe.TryGetValue(r.name, out var dup) ? BrowserIndex.Mix(dup, rh) : rh;
             }
             return new Parts(ZNet.instance ? ZNet.instance.GetWorldUID().GetHashCode() : 0, ZNetScene.instance.m_namedPrefabs.Count,
-                ObjectDB.instance.m_items.Count, ItemSources.Revision, h);
+                ObjectDB.instance.m_items.Count, BrowserIndex.Mix(ItemSources.Revision, ItemFacts.Revision), h);
         }
 
         // The recipe fields VanillaScan.Recipe reads: result + max quality, flags, amount, station (repair only without a
@@ -451,6 +451,15 @@ namespace Morgott.UI.ItemBrowser
                 Sources = src.ToArray()
             };
         }
+
+        /// <summary>Stages + facets of the current generation are solved.</summary>
+        public static bool StageReady => StageScan.Done && StageScan.Data != null;
+
+        /// <summary>One JSON line per listed entry (harness check item-stage-dump).</summary>
+        public static string[] StageDump() => Index != null ? StageScan.Dump(Index).ToArray() : Array.Empty<string>();
+
+        /// <summary>The location / room table of the last lazy scan, for FoundInTable.txt.</summary>
+        public static string StageTable() => FoundInScan.TableText();
 
         public static string Take(string prefab, int quality, string mode) => Take(prefab, quality, mode, 0);
 

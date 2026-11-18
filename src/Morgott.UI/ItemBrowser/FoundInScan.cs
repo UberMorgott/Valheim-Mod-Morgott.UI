@@ -24,6 +24,8 @@ namespace Morgott.UI.ItemBrowser
         public static int Revision { get; private set; }
         /// <summary>The current generation's scan finished (autotest waits on it).</summary>
         public static bool Done { get; private set; }
+        /// <summary>Index generation of <see cref="Data"/>.</summary>
+        public static int Generation => _gen;
         /// <summary>Last finished scan: wall time, worst main-thread slice, loads, memory (log + autotest).</summary>
         public static string Stats { get; private set; }
         public static double WorstMs { get; private set; }
@@ -110,8 +112,8 @@ namespace Morgott.UI.ItemBrowser
                 Scanned s = null;
                 if (owner == null) table?.TryGetValue(key, out s);
                 var ckey = key + "@" + (owner ?? version);
-                if (s == null) cache.TryGetValue(ckey, out s);
-                if (s == null)
+                if (s?.Objects == null) cache.TryGetValue(ckey, out s);
+                if (s?.Objects == null) // no entry, or one from before the objects column
                 {
                     at = key;
                     loads++;
@@ -142,6 +144,7 @@ namespace Morgott.UI.ItemBrowser
                          {
                              var plain = s.Interior ? Origin.Dungeon : Origin.Location;
                              foreach (var (c, k) in s.Creatures) d.Add(c, biome, k == Origin.World ? plain : k);
+                             Place(d, s, biome);
                              if (s.Themes != 0) themes.Add(((Room.Theme)s.Themes, biome, s.Interior));
                          }))
                 { Tick(); yield return null; _slice.Restart(); }
@@ -172,6 +175,7 @@ namespace Morgott.UI.ItemBrowser
                                  if (inside != Heightmap.Biome.None) d.Add(c, inside, k == Origin.World ? Origin.Dungeon : k);
                                  if (outside != Heightmap.Biome.None) d.Add(c, outside, k == Origin.World ? Origin.Location : k);
                              }
+                             Place(d, s, inside | outside);
                          }))
                 { Tick(); yield return null; _slice.Restart(); }
                 if (Over) { Tick(); yield return null; _slice.Restart(); }
@@ -214,7 +218,7 @@ namespace Morgott.UI.ItemBrowser
                 var asset = r.IsLoaded ? r.Asset : null;
                 if (asset == null) yield break;
                 yield return null; // so does the Asset fetch
-                var s = new Scanned { Interior = asset.TryGetComponent<Location>(out var l) && l.m_hasInterior };
+                var s = new Scanned { Interior = asset.TryGetComponent<Location>(out var l) && l.m_hasInterior, Objects = new List<string>() };
                 var stack = new Stack<Transform>();
                 stack.Push(asset.transform);
                 while (stack.Count > 0)
@@ -229,6 +233,15 @@ namespace Morgott.UI.ItemBrowser
             finally { r.Release(); }
         }
 
+        // Stage anchors of a location / room: what stands in it counts only for prefabs with no open-world placement
+        // (StageGraph); a boss comes from its altar (item + altar biome), not from standing there.
+        private static void Place(FoundIn d, Scanned s, Heightmap.Biome biome)
+        {
+            foreach (var (c, k) in s.Creatures) if (k != Origin.Boss) d.World.Anchor(c, biome, false);
+            foreach (var o in s.Objects) d.World.Anchor(o, biome, false);
+            foreach (var (boss, item) in s.Summons) d.World.Summons.Add((boss, item, biome));
+        }
+
         // What one object of a location / room places: a creature standing there (sleeping draugr, hives), a spawner
         // point, a nest, a boss altar; dungeon generators' themes.
         private static void Read(Scanned s, GameObject go)
@@ -238,8 +251,16 @@ namespace Morgott.UI.ItemBrowser
             if (go.TryGetComponent<SpawnArea>(out var sa))
                 foreach (var p in sa.m_prefabs)
                     if (p?.m_prefab) s.Add(p.m_prefab.name, Origin.Nest);
-            if (go.TryGetComponent<OfferingBowl>(out var bowl) && bowl.m_bossPrefab) s.Add(bowl.m_bossPrefab.name, Origin.Boss);
+            if (go.TryGetComponent<OfferingBowl>(out var bowl) && bowl.m_bossPrefab)
+            {
+                s.Add(bowl.m_bossPrefab.name, Origin.Boss);
+                var summon = (bowl.m_bossPrefab.name, bowl.m_bossItem ? bowl.m_bossItem.gameObject.name : "");
+                if (!s.Summons.Contains(summon)) s.Summons.Add(summon);
+            }
             if (go.TryGetComponent<DungeonGenerator>(out var g)) s.Themes |= (int)g.m_themes;
+            if (go.GetComponent<Pickable>() || go.GetComponent<Container>() || go.GetComponent<MineRock>() || go.GetComponent<MineRock5>() || go.GetComponent<TreeBase>() ||
+                go.GetComponent<TreeLog>() || go.GetComponent<Destructible>() || go.GetComponent<DropOnDestroyed>() || go.GetComponent<ItemDrop>() || go.GetComponent<Trader>() || sa)
+                s.AddObject(Utils.GetPrefabName(go));
         }
 
         private static void Publish(FoundIn d)
@@ -257,7 +278,11 @@ namespace Morgott.UI.ItemBrowser
             foreach (var l in lists)
                 if (l)
                     foreach (var sd in l.m_spawners)
-                        if (sd != null && sd.m_enabled && !sd.m_devDisabled && sd.m_prefab) d.Add(sd.m_prefab.name, sd.m_biome, Origin.World);
+                        if (sd != null && sd.m_enabled && !sd.m_devDisabled && sd.m_prefab)
+                        {
+                            d.Add(sd.m_prefab.name, sd.m_biome, Origin.World);
+                            d.World.Anchor(sd.m_prefab.name, sd.m_biome, true, sd.m_requiredGlobalKey);
+                        }
 
             if (RandEventSystem.instance)
                 foreach (var ev in RandEventSystem.instance.m_events)
@@ -267,13 +292,20 @@ namespace Morgott.UI.ItemBrowser
             yield return null; // every section in its own frame: first-call costs (JIT, Summoned) spread (run 20261111-174554: 18.7 ms in one)
 
             yield return null;
-            var veg = new Scanned();
+            var veg = new Scanned { Objects = new List<string>() };
             foreach (var v in zs.m_vegetation)
             {
                 if (v == null || !v.m_enable || !v.m_prefab) continue;
                 veg.Creatures.Clear();
+                veg.Objects.Clear();
                 foreach (var t in v.m_prefab.GetComponentsInChildren<Transform>(true)) Read(veg, t.gameObject);
-                foreach (var (c, k) in veg.Creatures) d.Add(c, v.m_biome, k);
+                foreach (var (c, k) in veg.Creatures)
+                {
+                    d.Add(c, v.m_biome, k);
+                    d.World.Anchor(c, v.m_biome, true);
+                }
+                d.World.Anchor(v.m_prefab.name, v.m_biome, true);
+                foreach (var o in veg.Objects) d.World.Anchor(o, v.m_biome, true);
                 if (Over) yield return null;
             }
 

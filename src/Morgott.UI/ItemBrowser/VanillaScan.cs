@@ -136,21 +136,21 @@ namespace Morgott.UI.ItemBrowser
                         if (h.m_randomSets != null) foreach (var set in h.m_randomSets) Gear(set?.m_items);
                         if (h.m_randomItems != null) foreach (var ri in h.m_randomItems) if (ri?.m_prefab) _ix.NpcGear.Add(ri.m_prefab.name);
                         break;
-                    case DropOnDestroyed dd: Table(RelationKind.Destroy, id, dd.m_dropWhenDestroyed); break;
-                    case MineRock mr: Name(mr.m_name); Table(RelationKind.Mine, id, mr.m_dropItems); break;
-                    case MineRock5 mr5: Name(mr5.m_name); Table(RelationKind.Mine, id, mr5.m_dropItems); break;
+                    case DropOnDestroyed dd: Table(RelationKind.Destroy, id, dd.m_dropWhenDestroyed, go.TryGetComponent<Destructible>(out var ddd) ? ddd.m_minToolTier : 0); break;
+                    case MineRock mr: Name(mr.m_name); Table(RelationKind.Mine, id, mr.m_dropItems, mr.m_minToolTier); break;
+                    case MineRock5 mr5: Name(mr5.m_name); Table(RelationKind.Mine, id, mr5.m_dropItems, mr5.m_minToolTier); break;
                     case TreeBase tb:
-                        Table(RelationKind.Tree, id, tb.m_dropWhenDestroyed);
-                        Spawned(RelationKind.Tree, id, tb.m_logPrefab, tb.m_stubPrefab); // tree -> log -> wood chain
+                        Table(RelationKind.Tree, id, tb.m_dropWhenDestroyed, tb.m_minToolTier);
+                        Spawned(RelationKind.Tree, id, tb.m_minToolTier, tb.m_logPrefab, tb.m_stubPrefab); // tree -> log -> wood chain
                         break;
                     case TreeLog tl:
-                        Table(RelationKind.Tree, id, tl.m_dropWhenDestroyed);
-                        Spawned(RelationKind.Tree, id, tl.m_subLogPrefab);
+                        Table(RelationKind.Tree, id, tl.m_dropWhenDestroyed, tl.m_minToolTier);
+                        Spawned(RelationKind.Tree, id, tl.m_minToolTier, tl.m_subLogPrefab);
                         break;
                     case Destructible de when de.m_spawnWhenDestroyed:
-                        Add(RelationKind.Destroy, id, null, new[] { new Stack(de.m_spawnWhenDestroyed.name) }, null, 0, 0);
+                        Add(RelationKind.Destroy, id, null, new[] { new Stack(de.m_spawnWhenDestroyed.name) }, null, 0, 0, null, de.m_minToolTier);
                         break;
-                    case Container ct: Name(ct.m_name); Table(RelationKind.Container, id, ct.m_defaultItems); break;
+                    case Container ct: Name(ct.m_name); Table(RelationKind.Container, id, ct.m_defaultItems, 0, true); break; // placed chest loot is incidental (stage rule)
                     case Pickable pk:
                         if (pk.m_itemPrefab)
                         {
@@ -178,7 +178,7 @@ namespace Morgott.UI.ItemBrowser
                         foreach (var t in tr.m_items)
                             if (t?.m_prefab)
                                 Add(RelationKind.Trader, id, new[] { new Stack("Coins", t.m_price, t.m_price) }, new[] { new Stack(t.m_prefab.name, t.m_stack, t.m_stack) }, null, 0, 0,
-                                    string.IsNullOrEmpty(t.m_requiredGlobalKey) ? null : "$ib_cond_key " + t.m_requiredGlobalKey);
+                                    string.IsNullOrEmpty(t.m_requiredGlobalKey) ? null : "$ib_cond_key " + t.m_requiredGlobalKey, 0, false, false, t.m_requiredGlobalKey);
                         break;
                     case Smelter sm:
                         foreach (var cv in sm.m_conversion)
@@ -201,7 +201,7 @@ namespace Morgott.UI.ItemBrowser
                             var ins = new List<Stack>();
                             foreach (var rq in cv.m_requirements) if (rq?.m_resItem) ins.Add(new Stack(rq.m_resItem.name, rq.m_amount, rq.m_amount));
                             Add(RelationKind.Conversion, id, ins.ToArray(), new[] { new Stack(cv.m_result.name, cv.m_resultAmount, cv.m_resultAmount) }, id, 0, 0,
-                                cv.m_requireOnlyOneIngredient ? "$ib_cond_anyone" : null);
+                                cv.m_requireOnlyOneIngredient ? "$ib_cond_anyone" : null, 0, false, cv.m_requireOnlyOneIngredient);
                         }
                         break;
                 }
@@ -211,14 +211,14 @@ namespace Morgott.UI.ItemBrowser
         }
 
         // One relation per table entry; a lone entry keeps the table's drop chance, a weighted table reports NaN (design 3).
-        private static void Table(RelationKind kind, string source, DropTable t)
+        private static void Table(RelationKind kind, string source, DropTable t, int tier = 0, bool incidental = false)
         {
             if (t?.m_drops == null) return;
             var alone = t.m_drops.Count == 1;
             var cond = alone && t.m_dropMin == 1 && t.m_dropMax == 1 ? null : t.m_oneOfEach ? $"$ib_cond_draws {t.m_dropMin}-{t.m_dropMax} $ib_cond_oneofeach" : $"$ib_cond_draws {t.m_dropMin}-{t.m_dropMax}";
             foreach (var d in t.m_drops)
                 if (d.m_item)
-                    Add(kind, source, null, new[] { new Stack(d.m_item.name, Math.Max(0, d.m_stackMin), Math.Max(Math.Max(0, d.m_stackMin), d.m_stackMax), alone ? Mathf.Clamp01(t.m_dropChance) : float.NaN) }, null, 0, 0, cond);
+                    Add(kind, source, null, new[] { new Stack(d.m_item.name, Math.Max(0, d.m_stackMin), Math.Max(Math.Max(0, d.m_stackMin), d.m_stackMax), alone ? Mathf.Clamp01(t.m_dropChance) : float.NaN) }, null, 0, 0, cond, tier, incidental);
         }
 
         // Craft (quality 1, skipped for upgrade-only recipes) and one Upgrade per further quality level.
@@ -242,7 +242,7 @@ namespace Morgott.UI.ItemBrowser
                 }
                 var amount = q == 1 ? Math.Max(1, r.m_amount) : 1;
                 Add(q == 1 ? RelationKind.Craft : RelationKind.Upgrade, r.name, ins, new[] { new Stack(r.m_item.name, amount, amount) }, Station(station), station ? level : 0, q,
-                    r.m_requireOnlyOneIngredient ? "$ib_cond_anyone" : null);
+                    r.m_requireOnlyOneIngredient ? "$ib_cond_anyone" : null, 0, false, r.m_requireOnlyOneIngredient);
             }
         }
 
@@ -264,12 +264,26 @@ namespace Morgott.UI.ItemBrowser
         private static bool IsStation(GameObject go) =>
             go.GetComponent<CraftingStation>() || go.GetComponent<Smelter>() || go.GetComponent<Fermenter>() || go.GetComponent<CookingStation>() || go.GetComponent<Incinerator>();
 
-        private static void Spawned(RelationKind kind, string source, params GameObject[] spawns)
+        private static void Spawned(RelationKind kind, string source, int tier, params GameObject[] spawns)
         {
-            foreach (var s in spawns) if (s) Add(kind, source, null, new[] { new Stack(s.name) }, null, 0, 0);
+            foreach (var s in spawns) if (s) Add(kind, source, null, new[] { new Stack(s.name) }, null, 0, 0, null, tier);
         }
 
-        private static void Add(RelationKind kind, string source, Stack[] ins, Stack[] outs, string station, int level, int quality, string cond = null) =>
-            _ix.Add(new Relation { Kind = kind, Source = source, Inputs = ins ?? Array.Empty<Stack>(), Outputs = outs, Station = station, StationLevel = level, Quality = quality, Conditions = cond });
+        private static void Add(RelationKind kind, string source, Stack[] ins, Stack[] outs, string station, int level, int quality, string cond = null, int tier = 0, bool incidental = false, bool anyInput = false, string key = null) =>
+            _ix.Add(new Relation
+            {
+                Kind = kind,
+                Source = source,
+                Inputs = ins ?? Array.Empty<Stack>(),
+                Outputs = outs,
+                Station = station,
+                StationLevel = level,
+                Quality = quality,
+                Conditions = cond,
+                MinToolTier = tier,
+                Incidental = incidental,
+                AnyInput = anyInput,
+                RequiredKey = string.IsNullOrEmpty(key) ? null : key
+            });
     }
 }

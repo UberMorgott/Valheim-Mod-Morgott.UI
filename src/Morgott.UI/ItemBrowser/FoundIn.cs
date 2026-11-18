@@ -14,6 +14,9 @@ namespace Morgott.UI.ItemBrowser
         public readonly Dictionary<string, (Heightmap.Biome Biomes, Origin Kinds)> ByPrefab =
             new Dictionary<string, (Heightmap.Biome, Origin)>(StringComparer.Ordinal);
 
+        /// <summary>Placement facts of the stage rule, filled by the same scan.</summary>
+        public readonly StageWorld World = new StageWorld();
+
         public void Add(string prefab, Heightmap.Biome biomes, Origin kind)
         {
             if (string.IsNullOrEmpty(prefab) || kind == Origin.None) return;

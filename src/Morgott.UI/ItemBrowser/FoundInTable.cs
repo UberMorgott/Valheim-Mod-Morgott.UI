@@ -13,6 +13,17 @@ namespace Morgott.UI.ItemBrowser
         public int Themes;
         /// <summary>The location's Location.m_hasInterior.</summary>
         public bool Interior;
+        /// <summary>Source prefabs the prefab places (pickables, chests, rocks, traders...); null = scanned before this
+        /// column existed, the scan reads the prefab again.</summary>
+        public List<string> Objects;
+        /// <summary>Boss altars: boss prefab + the item offered.</summary>
+        public readonly List<(string Boss, string Item)> Summons = new List<(string, string)>();
+
+        public void AddObject(string prefab)
+        {
+            Objects ??= new List<string>();
+            if (!string.IsNullOrEmpty(prefab) && !Objects.Contains(prefab)) Objects.Add(prefab);
+        }
 
         public void Add(string creature, Origin kind)
         {
@@ -23,7 +34,7 @@ namespace Morgott.UI.ItemBrowser
     /// <summary>
     /// Text form of a <see cref="Scanned"/> set: the embedded vanilla table (FoundInTable.txt, dumped by the autotest
     /// check item-browser-found-in from a forced full scan) and the lazy-scan cache under BepInEx\cache. Line 1
-    /// "# game &lt;version&gt;\t&lt;count&gt;", then "&lt;key&gt;\t&lt;themes&gt;\t&lt;interior 0|1&gt;\t&lt;creature&gt;:&lt;w|n|b&gt;,...".
+    /// "# game &lt;version&gt;\t&lt;count&gt;", then "&lt;key&gt;\t&lt;themes&gt;\t&lt;interior 0|1&gt;\t&lt;creature&gt;:&lt;w|n|b&gt;,...\t&lt;object&gt;|&lt;boss&gt;&lt;&lt;item&gt;,...".
     /// Keys: "L:&lt;location prefab&gt;", "R:&lt;room prefab&gt;" (cache keys add "@&lt;owner&gt;"). No Unity calls: unit-tested.
     /// </summary>
     public static class FoundInTable
@@ -45,6 +56,11 @@ namespace Morgott.UI.ItemBrowser
                 {
                     if (i > 0) sb.Append(',');
                     sb.Append(s.Creatures[i].Creature).Append(':').Append(Code(s.Creatures[i].Kind));
+                }
+                if (s.Objects != null)
+                {
+                    sb.Append('\t').Append(string.Join(",", s.Objects));
+                    foreach (var (boss, item) in s.Summons) sb.Append(sb[sb.Length - 1] == '\t' ? "" : ",").Append(boss).Append('<').Append(item);
                 }
                 sb.Append('\n');
             }
@@ -70,12 +86,22 @@ namespace Morgott.UI.ItemBrowser
                     continue;
                 }
                 var f = line.Split('\t');
-                if (f.Length != 4 || f[0].Length == 0 || !int.TryParse(f[1], out var themes)) continue;
+                if (f.Length < 4 || f.Length > 5 || f[0].Length == 0 || !int.TryParse(f[1], out var themes)) continue;
                 var s = new Scanned { Themes = themes, Interior = f[2] == "1" };
                 foreach (var c in f[3].Split(','))
                 {
                     var at = c.LastIndexOf(':');
                     if (at > 0 && at == c.Length - 2) s.Add(c.Substring(0, at), Kind(c[at + 1]));
+                }
+                if (f.Length == 5)
+                {
+                    s.Objects = new List<string>();
+                    foreach (var o in f[4].Split(','))
+                    {
+                        var lt = o.IndexOf('<');
+                        if (lt > 0) s.Summons.Add((o.Substring(0, lt), o.Substring(lt + 1)));
+                        else s.AddObject(o);
+                    }
                 }
                 map[f[0]] = s;
             }

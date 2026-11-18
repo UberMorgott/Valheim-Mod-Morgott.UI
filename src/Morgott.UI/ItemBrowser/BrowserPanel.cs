@@ -87,8 +87,9 @@ namespace Morgott.UI.ItemBrowser
         private sealed class Slot
         {
             public RectTransform Rt;
-            public Image Back, Icon, Badge;
+            public Image Back, Icon, Badge, Corner; // Corner: grid view's stage diamond
             public TMP_Text A, B, D;
+            public RowParts Row; // list view parts, built on first use
             public string Id;
             public int Quality = 1;
             public StorageEntry Store; // storage mode grid cell: the item it shows (icon, tooltip, selection)
@@ -283,6 +284,8 @@ namespace Morgott.UI.ItemBrowser
                 _nextCheck = Time.unscaledTime + 1f;
                 if (Browser.EnsureReady() != _resultsGen) _dirty = true;
                 FoundInScan.Ensure(this, Browser.Generation);
+                StageScan.Ensure(this, Browser.Generation);
+                if (StageScan.Revision != _stageRev) { _stageRev = StageScan.Revision; _dirty = true; }
                 if (FoundInScan.Revision != _foundRev && _pageId != null) { _foundRev = FoundInScan.Revision; _dirty = true; }
             }
             if (!typing) Keys();
@@ -308,7 +311,13 @@ namespace Morgott.UI.ItemBrowser
             if (wheel == 0f || !RectTransformUtility.RectangleContainsScreenPoint(_root, ZInput.pointerPosition, null)) return;
             // Relayout only when the position moves: a tick at either end changes nothing on screen.
             var step = wheel < 0 ? 1 : -1;
-            if (_pageId != null)
+            if (_chipOpen >= 0 && _pageId == null)
+            {
+                var next = Mathf.Clamp(_popScroll + step, 0, _popMax);
+                if (next == _popScroll) return;
+                _popScroll = next;
+            }
+            else if (_pageId != null)
             {
                 var next = Mathf.Clamp(_pageScroll + step, 0, _pageScrollMax);
                 if (next == _pageScroll) return;
@@ -470,6 +479,7 @@ namespace Morgott.UI.ItemBrowser
             DollCell.Mark(_grip, "content", "item browser scrollbar hit area");
             _grip.gameObject.AddComponent<Grip>().Move = GripMove;
             BuildStore(g);
+            BuildFilters(g);
 
             _pageView = Child("Page").gameObject;
             var p = _pageView.transform;
@@ -489,6 +499,7 @@ namespace Morgott.UI.ItemBrowser
             _pageDesc.textWrappingMode = TextWrappingModes.Normal;
             _pageMod = Txt(p, "Mod", "text.muted", TextAlignmentOptions.Left, FontStyles.Italic);
             _pageFound = Txt(p, "FoundIn", "text.body", TextAlignmentOptions.Left);
+            _pageWhy = Txt(p, "StageWhy", "text.muted", TextAlignmentOptions.Left, FontStyles.Italic);
             _qualLabel = Txt(p, "QualityLabel", "text.body", TextAlignmentOptions.Right);
             _fromHeader = Img(p, "FromHeader", "decor.plaque");
             _fromLabel = Txt(p, "FromLabel", "text.body", TextAlignmentOptions.Center, FontStyles.Bold);
@@ -710,13 +721,16 @@ namespace Morgott.UI.ItemBrowser
             var known = Browser.KnownFilter;
             var dev = Browser.Devcommands;
             var cat = _type == 1 || _storage ? _cat : -1;
-            if (_resultsGen == Browser.Generation && _resultsQuery == _query && _resultsType == _type && _resultsCat == cat && _resultsKnownOnly == known && _resultsDev == dev) return _results;
+            if (_resultsGen == Browser.Generation && _resultsQuery == _query && _resultsType == _type && _resultsCat == cat && _resultsKnownOnly == known && _resultsDev == dev &&
+                _resultsFilter == _filterRev && _resultsStage == StageScan.Revision && _resultsList == _listMode) return _results;
             var fav = _type == 5 ? Browser.Favorites() : null;
             // Storage: one cell per network stock entry (StoreTick / mode switch reset _resultsGen).
             _results = _storage
                 ? StoreResults(cat)
-                : Browser.Index.Search(_query, TypeOf[_type],
-                    e => (cat < 0 || (int)e.Category == cat) && (!known || Browser.Known(e)) && (fav == null || fav.Contains(e.Id)), L, Browser.ModName, dev);
+                : Filtered(cat, known, fav, dev);
+            _resultsFilter = _filterRev;
+            _resultsStage = StageScan.Revision;
+            _resultsList = _listMode;
             _resultsDev = dev;
             _resultsGen = Browser.Generation;
             _resultsQuery = _query;
@@ -780,7 +794,9 @@ namespace Morgott.UI.ItemBrowser
             }
             var list = Results();
             var capY = items ? catY + 52f : CatY;
-            Put(_caption, 0f, capY, UnitW - 304f, 26f);
+            if (store) FiltersOff();
+            else capY = LayoutFilters(items ? catY + CatH + 9f : CatY);
+            Put(_caption, 0f, capY, store ? UnitW - 304f : CaptionW, 26f);
             if (store) { Off(_unknownLabel); Off(_unknownBox); Off(_unknownCheck); }
             else
             {
@@ -791,10 +807,15 @@ namespace Morgott.UI.ItemBrowser
                 else Off(_unknownCheck);
             }
             var what = items && _cat >= 0 ? CatName((ItemCategory)_cat) : store ? L(TypeTokens[0]) : _type == 5 ? L("$ib_type_favorites") : L(TypeTokens[_type]);
-            Fit(_caption, $"{what} · {list.Count}", 20f);
+            Fit(_caption, store ? $"{what} · {list.Count}" : FilterCaption(what, list.Count), 20f);
 
             var top = capY + 37f;
-            var bottom = store ? StoreBar(h) : h;
+            if (!store)
+            {
+                LayoutEntries(list, top, h);
+                return;
+            }
+            var bottom = StoreBar(h);
             var rows = Math.Max(1, (int)((bottom - top + 4f) / CellPitchY));
             var per = rows * 6;
             var total = (list.Count + 5) / 6;
@@ -806,6 +827,9 @@ namespace Morgott.UI.ItemBrowser
             for (var i = 0; i < _cells.Count; i++)
             {
                 var c = _cells[i];
+                HideRow(c);
+                c.A.alignment = TextAlignmentOptions.Top;
+                c.A.textWrappingMode = TextWrappingModes.Normal;
                 var n = _gridScroll * 6 + i;
                 if (i >= per || n >= list.Count) { c.Id = null; c.Store = null; Off(c.Back); Off(c.A); continue; }
                 c.Id = list[n].Id;
@@ -981,6 +1005,13 @@ namespace Morgott.UI.ItemBrowser
                 top = 184f;
             }
             else Off(_pageFound);
+            if (StageWhy(e) is string why)
+            {
+                Put(_pageWhy, 0f, top + 4f, UnitW, 24f);
+                Fit(_pageWhy, why, 17f);
+                top += 32f;
+            }
+            else Off(_pageWhy);
             if (e.MaxQuality > 1)
             {
                 Put(_qualLabel, 360f, 108f, 48f, 31f);

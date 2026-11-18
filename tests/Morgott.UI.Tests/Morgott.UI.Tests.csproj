@@ -86,6 +86,9 @@
     <Compile Include="..\..\src\Morgott.UI\ItemBrowser\StorageMath.cs" Link="Linked\StorageMath.cs" />
     <Compile Include="..\..\src\Morgott.UI\ItemBrowser\FoundIn.cs" Link="Linked\FoundIn.cs" />
     <Compile Include="..\..\src\Morgott.UI\ItemBrowser\FoundInTable.cs" Link="Linked\FoundInTable.cs" />
+    <Compile Include="..\..\src\Morgott.UI\ItemBrowser\StageSolver.cs" Link="Linked\StageSolver.cs" />
+    <Compile Include="..\..\src\Morgott.UI\ItemBrowser\StageGraph.cs" Link="Linked\StageGraph.cs" />
+    <Compile Include="..\..\src\Morgott.UI\ItemBrowser\Facets.cs" Link="Linked\Facets.cs" />
     <Compile Include="..\..\src\Morgott.UI\Icons\ModStatusIconMap.cs" Link="Linked\ModStatusIconMap.cs" />
     <Compile Include="..\..\src\Morgott.UI\Compat\BuildCameraWords.cs" Link="Linked\BuildCameraWords.cs" />
     <Compile Include="..\..\src\Morgott.UI\Compat\ModWords.cs" Link="Linked\ModWords.cs" />
