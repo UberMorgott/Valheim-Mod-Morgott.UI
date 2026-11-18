@@ -179,7 +179,7 @@ namespace Morgott.UI.ItemBrowser
             var y = h - BarBtnH - 2f;
             Put(_takeHalo, 336f, y - 8f, 118f, BarBtnH + 16f);
             StoreBtn(_bTake, _takeLabel, L("$ib_store_take"), live, 344f, y, 102f);
-            if (_sel != null && StorageMath.Single(_sel.Count))
+            if (_sel != null && StorageMath.IsSingleItem(_sel.Count))
             {
                 // One item: just "Take" (amount 1), the take button keeps its mockup place.
                 foreach (var c in new Component[] { _bStack, _bMinus, _amountBack, _bPlus, _bAll }) Off(c);

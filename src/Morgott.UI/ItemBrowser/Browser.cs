@@ -93,6 +93,8 @@ namespace Morgott.UI.ItemBrowser
             public readonly int World, Prefabs, Items, Sources, Recipes;
             public Parts(int world, int prefabs, int items, int sources, int recipes) { World = world; Prefabs = prefabs; Items = items; Sources = sources; Recipes = recipes; }
             public bool Equals(Parts o) => World == o.World && Prefabs == o.Prefabs && Items == o.Items && Sources == o.Sources && Recipes == o.Recipes;
+            public override bool Equals(object obj) => obj is Parts o && Equals(o);
+            public override int GetHashCode() => BrowserIndex.Mix(BrowserIndex.Mix(BrowserIndex.Mix(BrowserIndex.Mix(BrowserIndex.Mix(BrowserIndex.Seed, World), Prefabs), Items), Sources), Recipes);
         }
 
         internal static string FingerprintDiff(Parts a, Parts b, IReadOnlyDictionary<string, int> recipesA = null, IReadOnlyDictionary<string, int> recipesB = null)

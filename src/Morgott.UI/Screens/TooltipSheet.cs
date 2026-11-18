@@ -301,7 +301,7 @@ namespace Morgott.UI.Screens
             var at = line.IndexOf(" <color=", StringComparison.Ordinal);
             if (at <= 0 || !line.EndsWith("</color>", StringComparison.Ordinal)) return line;
             var value = StripColors(line.Substring(at + 1)).Trim();
-            return value.StartsWith("+", StringComparison.Ordinal) || value.StartsWith("-", StringComparison.Ordinal)
+            return value.Length > 0 && (value[0] == '+' || value[0] == '-')
                 ? "<color=#" + s.Body + ">" + line.Substring(0, at) + "</color>" + RightCell(value, s.Value)
                 : line;
         }

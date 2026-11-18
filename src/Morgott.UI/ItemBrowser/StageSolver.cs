@@ -235,7 +235,7 @@ namespace Morgott.UI.ItemBrowser
         /// or only a cycle blocks it. Internal requirement nodes ("@...") are never named.</summary>
         public string Missing(string id)
         {
-            if (!_nodes.TryGetValue(id, out var n)) return id.StartsWith("@", StringComparison.Ordinal) ? null : id;
+            if (!_nodes.TryGetValue(id, out var n)) return id.Length > 0 && id[0] == '@' ? null : id;
             return Missing(n, new HashSet<Node>());
         }
 

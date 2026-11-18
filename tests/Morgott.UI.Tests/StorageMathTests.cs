@@ -116,9 +116,9 @@ namespace Morgott.UI.Tests
         [InlineData(1, 50, true, true)] // one wood: only "Take", stackable shows its count
         [InlineData(2, 1, false, true)] // defensive: Core lists non-stackables one per entry
         [InlineData(240, 50, false, true)]
-        public void TakeBarAndBadgeFollowCountAndStack(int count, int maxStack, bool single, bool badge)
+        public void TakeBarAndBadgeFollowCountAndStack(int count, int maxStack, bool singleItem, bool badge)
         {
-            Assert.Equal(single, StorageMath.Single(count));
+            Assert.Equal(singleItem, StorageMath.IsSingleItem(count));
             Assert.Equal(badge, StorageMath.Badge(count, maxStack));
         }
 

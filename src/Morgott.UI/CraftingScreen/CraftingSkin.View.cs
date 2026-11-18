@@ -460,11 +460,11 @@ namespace Morgott.UI.CraftingScreen
                 if (isNew)
                 {
                     // Gold-framed tag (mockup-v2): the timer plate tinted gold (role craft.tag.new) under the gold word.
-                    var tag = "<color=" + Hex("color.text.display.gold", Color.yellow) + ">" + newText + "</color>";
+                    var newTag = "<color=" + Hex("color.text.display.gold", Color.yellow) + ">" + newText + "</color>";
                     v.New.fontSize = size * 0.75f;
-                    if (v.New.text != tag) v.New.text = tag;
+                    if (v.New.text != newTag) v.New.text = newTag;
                     var tagH = h * 0.4f;
-                    var w = v.New.GetPreferredValues(tag).x + tagH * 0.7f;
+                    var w = v.New.GetPreferredValues(newTag).x + tagH * 0.7f;
                     At(v.NewTag.rectTransform, Vector2.one, -right, -2f, w, tagH);
                     At(v.New.rectTransform, Vector2.one, -right, -2f, w, tagH);
                     right += w + 4f;
@@ -547,7 +547,7 @@ namespace Morgott.UI.CraftingScreen
             if (!_stats.gameObject.activeSelf) _stats.gameObject.SetActive(true);
             var shared = recipe.m_item.m_itemData.m_shared;
             var cap = CountCap();
-            var key = ((recipe.GetInstanceID() * 31 + count) * 31 + bonus) * 31 + Localization.instance.GetSelectedLanguage().GetHashCode() + ThemeTokens.Revision * 7;
+            var key = ((recipe.GetInstanceID() * 31 + count) * 31 + bonus) * 31 + StringComparer.Ordinal.GetHashCode(Localization.instance.GetSelectedLanguage()) + ThemeTokens.Revision * 7;
             if (key != _statKey)
             {
                 _statKey = key;

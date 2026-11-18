@@ -74,7 +74,7 @@ namespace Morgott.UI.ItemBrowser
             key == null ? null : stock.FirstOrDefault(e => Equals(keyOf(e), key));
 
         /// <summary>A single item (Count 1): the take bar shows only "Take", no stack / amount / all.</summary>
-        public static bool Single(int count) => count <= 1;
+        public static bool IsSingleItem(int count) => count <= 1;
 
         /// <summary>Cell count badge: several items, or a stackable (as the inventory shows n/max on stackables).</summary>
         public static bool Badge(int count, int maxStack) => count > 1 || maxStack > 1;

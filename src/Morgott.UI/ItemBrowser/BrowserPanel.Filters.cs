@@ -290,9 +290,9 @@ namespace Morgott.UI.ItemBrowser
 
         private string ChipText(FacetChip chip)
         {
-            var name = L(chip.Token);
+            var chipName = L(chip.Token);
             var v = FirstPicked(chip, out var more);
-            return v == null ? name : $"{name}: <color=#{Hex("color.text.active", Color.yellow)}>{v}{(more > 0 ? " +" + more : "")}</color>";
+            return v == null ? chipName : $"{chipName}: <color=#{Hex("color.text.active", Color.yellow)}>{v}{(more > 0 ? " +" + more : "")}</color>";
         }
 
         private void LayoutChips(float y)
@@ -361,7 +361,7 @@ namespace Morgott.UI.ItemBrowser
                 var rows = new List<PopItem>(counts.Count);
                 foreach (var kv in counts)
                     if (kv.Key != Facet.NoneKey) rows.Add(new PopItem { Facet = id, Key = kv.Key, Label = ValueLabel(id, kv.Key), Count = kv.Value });
-                rows.Sort((a, b) => id == "duration" || id == "tier" || id == "level" ? string.CompareOrdinal(a.Key, b.Key) : string.Compare(a.Label, b.Label, StringComparison.CurrentCultureIgnoreCase));
+                rows.Sort((a, b) => id == "duration" || id == "tier" || id == "level" ? string.CompareOrdinal(a.Key, b.Key) : StringComparer.CurrentCultureIgnoreCase.Compare(a.Label, b.Label));
                 if (rows.Count == 0) continue;
                 if (chip.Facets.Length > 1) _popItems.Add(new PopItem { Header = true, Label = L("$ib_f_" + id) });
                 _popItems.AddRange(rows);
@@ -442,8 +442,8 @@ namespace Morgott.UI.ItemBrowser
         {
             if (group == StageRules.GroupMagic) return L("$ib_stage_magic");
             if (group == StageRules.GroupUnknown) return L("$ib_stage_unknown");
-            var name = L(MapFilterMath.NameKey(BiomeAt(group / 2)));
-            return (group & 1) == 1 ? $"{name} · {L("$ib_stage_afterboss")}" : name;
+            var biomeName = L(MapFilterMath.NameKey(BiomeAt(group / 2)));
+            return (group & 1) == 1 ? $"{biomeName} · {L("$ib_stage_afterboss")}" : biomeName;
         }
 
         private void LayoutEntries(List<Entry> list, float top, float h)
@@ -613,13 +613,13 @@ namespace Morgott.UI.ItemBrowser
             c.D.enabled = fav.Contains(c.Id);
             Off(c.B);
             var nameW = UnitW - nameX - markW - 16f;
-            var name = L(e.Name);
+            var entryName = L(e.Name);
             var tagged = e.Type == EntryType.Creature && StageScan.Data != null && StageScan.Data.Solver != null && IsBoss(e.Id);
-            var shownW = Mathf.Min(MeasureF(name, 19f) + 3f, nameW - (tagged ? 56f : e.Type == EntryType.Creature ? 26f : 0f));
+            var shownW = Mathf.Min(MeasureF(entryName, 19f) + 3f, nameW - (tagged ? 56f : e.Type == EntryType.Creature ? 26f : 0f));
             Put(c.A, nameX, y + 3f, shownW, 25f);
             c.A.alignment = TextAlignmentOptions.Left;
             c.A.textWrappingMode = TextWrappingModes.NoWrap;
-            Text(c.A, name, 19f);
+            Text(c.A, entryName, 19f);
             if (tagged)
             {
                 Put(r.Tag, nameX + shownW + 6f, y + 7f, 46f, 17f);

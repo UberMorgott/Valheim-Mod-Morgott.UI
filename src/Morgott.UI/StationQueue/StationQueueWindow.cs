@@ -1306,7 +1306,7 @@ namespace Morgott.UI.StationQueue
             if (_state.Fuel) set.Add(_state.Fuel.name);
             _pAll.Clear();
             foreach (var id in set) if (Item(id)) _pAll.Add(id);
-            _pAll.Sort((a, b) => string.Compare(Name(a), Name(b), StringComparison.CurrentCultureIgnoreCase));
+            _pAll.Sort((a, b) => StringComparer.CurrentCultureIgnoreCase.Compare(Name(a), Name(b)));
             _pScroll = 0;
             _pSearch.SetTextWithoutNotify("");
             var c = new Vector3[4];

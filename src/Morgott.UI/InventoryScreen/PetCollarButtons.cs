@@ -116,11 +116,11 @@ namespace Morgott.UI.InventoryScreen
                 _stanceGlyph.sprite = ThemeTokens.GetSprite(StanceGlyph[(int)s]);
                 _stanceGlyph.enabled = _stanceGlyph.sprite;
             }
-            var name = StanceName[(int)s];
-            Apply(_stance, _stanceGlyph, _stanceTip, have, "$su_pet_stance_" + name, "$su_pet_stance_none");
+            var stanceId = StanceName[(int)s];
+            Apply(_stance, _stanceGlyph, _stanceTip, have, "$su_pet_stance_" + stanceId, "$su_pet_stance_none");
             if (have && _stanceTip)
             {
-                var text = Localization.instance.Localize("$su_pet_stance_" + name + "_desc\n$su_pet_stance_hint");
+                var text = Localization.instance.Localize("$su_pet_stance_" + stanceId + "_desc\n$su_pet_stance_hint");
                 if (_stanceTip.m_text != text) _stanceTip.m_text = text;
             }
         }
