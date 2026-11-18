@@ -996,9 +996,10 @@ namespace Morgott.UI.StationQueue
             _sFuelBox = NewRect("Fuel", _single);
             Put(_sFuelBox, 440f, 50f, 260f, 190f);
             Put(Rule(_sFuelBox, "Rule", Dim), 0f, 30f, 1f, 110f);
+            // eitr-refinery.png: label clear of the title ribbon, its cell a little below the recipe cells
             _sFuelLabel = Txt(_sFuelBox, "Label", "text.body", TextAlignmentOptions.Center, 20f);
-            Put(_sFuelLabel, 60f, 0f, 160f, 30f);
-            _sFuel = SlotIcon(_sFuelBox, 90f, 34f, 100f, out _sFuelCount);
+            Put(_sFuelLabel, 60f, 20f, 160f, 26f);
+            _sFuel = SlotIcon(_sFuelBox, 90f, 46f, 100f, out _sFuelCount);
             _sFuelName = CellName(_sFuelBox, "FuelName", 60f, 140f);
             _sStatus = Txt(_single, "Status", "text.body", TextAlignmentOptions.Center, 20f);
             _sStatus.richText = true;
@@ -1079,7 +1080,7 @@ namespace Morgott.UI.StationQueue
         {
             var t = Txt(parent, name, "text.body", TextAlignmentOptions.Top, 19f);
             t.textWrappingMode = TextWrappingModes.Normal;
-            Put(t, x, parent == _single ? 190f : 140f, w, 50f);
+            Put(t, x, parent == _single ? 190f : 150f, w, 50f);
             return t;
         }
 
@@ -1385,24 +1386,8 @@ namespace Morgott.UI.StationQueue
             return icon;
         }
 
-        // Thin coloured rim inside a plate (ChangelogPanel.Rim).
-        private static Image[] Rim(Transform host)
-        {
-            var rim = new Image[4];
-            for (var i = 0; i < 4; i++)
-            {
-                rim[i] = Rule(host, "Rim" + i, Color.clear);
-                var rt = rim[i].rectTransform;
-                var horizontal = i < 2;
-                var edge = i == 0 || i == 2 ? 1f : 0f;
-                rt.anchorMin = horizontal ? new Vector2(0f, edge) : new Vector2(i == 3 ? 1f : 0f, 0f);
-                rt.anchorMax = horizontal ? new Vector2(1f, edge) : new Vector2(i == 3 ? 1f : 0f, 1f);
-                rt.pivot = new Vector2(0.5f, 0.5f);
-                rt.offsetMin = horizontal ? new Vector2(4f, i == 0 ? -2f : 0.5f) : new Vector2(i == 3 ? -2f : 0.5f, 4f);
-                rt.offsetMax = horizontal ? new Vector2(-4f, i == 0 ? -0.5f : 2f) : new Vector2(i == 3 ? -0.5f : 2f, -4f);
-            }
-            return rim;
-        }
+        // 2 units: every edge covers the same whole pixels at the game's scale (1.5 drew 2 px on one side, 1 on the other).
+        private static Image[] Rim(Transform host) => OutlineFrame.Build(host, 2f);
 
         // Dashed outline (drop zone): 10-unit dashes, 6-unit gaps.
         private static void Dashes(RectTransform host, float w, float h, Color c)

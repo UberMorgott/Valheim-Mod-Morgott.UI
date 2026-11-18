@@ -237,6 +237,20 @@ namespace Morgott.UI.Tests
             Assert.Equal(Knot, FitTitle(Plate, "ПРЯЛКА").knot);
         }
 
+        [Theory]
+        [InlineData(2f)]
+        [InlineData(1.5f)]
+        public void OutlineCornerClosesTheGapBetweenEdges(float thick)
+        {
+            const float chamfer = 4f, inset = 0.5f;
+            OutlineMath.Corner(chamfer, inset, thick, out var centre, out var length);
+            var line = inset + thick / 2f;
+            var halfSpan = length / 2f / (float)System.Math.Sqrt(2d); // per-axis reach of the stroke from its centre
+            Assert.True(centre - halfSpan <= line, "must reach the edge centre line");
+            Assert.True(centre + halfSpan >= chamfer, "must reach where the edge stroke stops");
+            Assert.True(length <= (chamfer - line) * System.Math.Sqrt(2d) + thick, "must not run far past the joints");
+        }
+
         [Fact]
         public void KnotsSqueezeOnANarrowPlateAndKeepWiderInsets()
         {

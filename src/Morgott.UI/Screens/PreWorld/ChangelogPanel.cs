@@ -818,25 +818,8 @@ namespace Morgott.UI.PreWorld
             Put(b.Thumb, x, (h - thumbH) * Mathf.Clamp01(pos / (float)max), w, thumbH);
         }
 
-        // Thin coloured rim inside a plate (mockup chips / tags / active preset): four 1.5-unit lines, corners left open
-        // for the plate's chamfer.
-        private static Image[] Rim(Transform host)
-        {
-            var rim = new Image[4];
-            for (var i = 0; i < 4; i++)
-            {
-                rim[i] = Rule(host, "Rim" + i, Color.clear);
-                var rt = rim[i].rectTransform;
-                var horizontal = i < 2;
-                var edge = i == 0 || i == 2 ? 1f : 0f; // top / left = 1 / 0 anchor
-                rt.anchorMin = horizontal ? new Vector2(0f, edge) : new Vector2(i == 3 ? 1f : 0f, 0f);
-                rt.anchorMax = horizontal ? new Vector2(1f, edge) : new Vector2(i == 3 ? 1f : 0f, 1f);
-                rt.pivot = new Vector2(0.5f, 0.5f);
-                rt.offsetMin = horizontal ? new Vector2(4f, i == 0 ? -2f : 0.5f) : new Vector2(i == 3 ? -2f : 0.5f, 4f);
-                rt.offsetMax = horizontal ? new Vector2(-4f, i == 0 ? -0.5f : 2f) : new Vector2(i == 3 ? -0.5f : 2f, -4f);
-            }
-            return rim;
-        }
+        // Thin coloured rim inside a plate (mockup chips / tags / active preset).
+        private static Image[] Rim(Transform host) => OutlineFrame.Build(host, 1.5f);
 
         // Translucent accent fill inside a plate (chips, tags, mod row hover): plain quad, no role (a role restyle keeps its
         // colour off).
