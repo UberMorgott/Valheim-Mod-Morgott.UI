@@ -300,17 +300,20 @@ func exitBlend(ex any, length, speed float64) float64 {
 type timing struct {
 	total, blend float64 // attack-tagged span from the trigger; exit blend when nothing may interrupt it, else 0
 	chain        float64 // first Chain event inside the span, 0 = none
+	chainSpeed   float64 // Animator.speed at that event: the next chain level starts with it
 }
 
 func (t timing) full() float64 { return round(t.total+t.blend, 3) }
 
 // simulate walks the attack-tagged states from a trigger: state speed, clip Speed events and exit-time transitions
-// (BalanceSim anim_events.py Controller.simulate). ok = false for anything it cannot state exactly.
-func (c *controller) simulate(tr transition) (res timing, ok bool) {
+// (BalanceSim anim_events.py Controller.simulate). start = Animator.speed at the trigger: CharacterAnimEvent resets it
+// only outside attacks (:164-167), so a chained level inherits the previous clip's. ok = false for anything it cannot
+// state exactly.
+func (c *controller) simulate(tr transition, start float64) (res timing, ok bool) {
 	states := list(tr.sm, "m_StateConstantArray")
 	dest, offset := int(integer(tr.d, "m_DestinationState")), num(tr.d, "m_TransitionOffset")
-	aSpeed, t := 1.0, 0.0
-	var chains []float64
+	aSpeed, t := start, 0.0
+	var chains, chainSpeeds []float64
 	var blend float64
 	var interruption int64 = -1
 	finish := func(end float64) (timing, bool) {
@@ -318,9 +321,9 @@ func (c *controller) simulate(tr transition) (res timing, ok bool) {
 		if interruption == 0 {
 			res.blend = blend
 		}
-		for _, ch := range chains {
+		for i, ch := range chains {
 			if ch < res.total {
-				res.chain = round(ch, 3)
+				res.chain, res.chainSpeed = round(ch, 3), chainSpeeds[i]
 				break
 			}
 		}
@@ -373,7 +376,7 @@ func (c *controller) simulate(tr transition) (res timing, ok bool) {
 			t, pos = at, e.t
 			switch e.fn {
 			case "Chain":
-				chains = append(chains, round(t, 4))
+				chains, chainSpeeds = append(chains, round(t, 4)), append(chainSpeeds, aSpeed)
 			case "Speed":
 				if e.f > 0 {
 					aSpeed = e.f
@@ -394,7 +397,7 @@ func (c *controller) simulate(tr transition) (res timing, ok bool) {
 	return res, false
 }
 
-func (c *controller) attack(trigger string) (timing, bool) {
+func (c *controller) attack(trigger string, start float64) (timing, bool) {
 	trs := c.transitions(trigger, 1)
 	if len(trs) == 0 {
 		return timing{}, false
@@ -405,7 +408,7 @@ func (c *controller) attack(trigger string) (timing, bool) {
 		}
 		return trs[i].layer < trs[j].layer
 	})
-	return c.simulate(trs[0])
+	return c.simulate(trs[0], start)
 }
 
 // reloadTail = seconds the minor-action tag outlives the reload timer: the "<anim>_done" state with its exit blend, or
@@ -537,17 +540,21 @@ func bake(game, dumpPath string) (triggerLines, reloadLines []string, err error)
 			continue
 		}
 		names := triggers(at)
-		for _, t := range names {
-			if seen[t] {
-				continue
+		speed := 1.0
+		for i, t := range names {
+			if !seen[t] {
+				seen[t] = true
+				c, name := player, t
+				if s, ok := swaps[t]; ok {
+					c, name = s.c, s.trigger
+				}
+				if v, ok := c.attack(name, speed); ok {
+					found[t] = v
+				}
 			}
-			seen[t] = true
-			c, name := player, t
-			if s, ok := swaps[t]; ok {
-				c, name = s.c, s.trigger
-			}
-			if v, ok := c.attack(name); ok {
-				found[t] = v
+			speed = 1
+			if v := found[t]; at.Chain > 1 && i < len(names)-1 && v.chain > 0 {
+				speed = v.chainSpeed
 			}
 		}
 		if at.Reload && at.ReloadAnim != "" && fireOf[at.ReloadAnim] == "" {

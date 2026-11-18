@@ -23,6 +23,7 @@ namespace Morgott.UI.Screens
         // Full = trigger to the next possible attack: the attack-tagged span (Player.InAttack), plus the exit blend when
         // it cannot be interrupted. Chain = clip "Chain" event inside that span (CharacterAnimEvent.Chain): a held key
         // starts the next chain level there (Humanoid.StartAttack :282, Player.HaveQueuedChain, Attack.CanStartChainAttack).
+        // A chained level's values include the Animator.speed the previous level left at its Chain event.
         private readonly struct Timing
         {
             public readonly float Full, Chain;
@@ -61,7 +62,7 @@ namespace Morgott.UI.Screens
             ["greatsword1"] = new Timing(1f, 0.641f),
             ["greatsword2"] = new Timing(1.5f, 0.833f),
             ["knife_stab0"] = new Timing(0.444f, 0.274f),
-            ["knife_stab1"] = new Timing(0.395f, 0.299f),
+            ["knife_stab1"] = new Timing(0.522f, 0.426f),
             ["knife_stab2"] = new Timing(0.542f, 0f),
             ["scything"] = new Timing(1.076f, 0f),
             ["shovel0"] = new Timing(0.833f, 0.501f),
@@ -78,7 +79,7 @@ namespace Morgott.UI.Screens
             ["staff_thunder"] = new Timing(1.3f, 0f),
             ["staff_trollsummon"] = new Timing(2f, 0f),
             ["swing_axe0"] = new Timing(1.13f, 0.801f),
-            ["swing_axe1"] = new Timing(0.549f, 0f),
+            ["swing_axe1"] = new Timing(0.636f, 0f),
             ["swing_axe2"] = new Timing(0.861f, 0f),
             ["swing_longsword0"] = new Timing(0.982f, 0.692f),
             ["swing_longsword1"] = new Timing(0.646f, 0.536f),
@@ -99,6 +100,9 @@ namespace Morgott.UI.Screens
             ["recharge_lightningstaff"] = 0.05f,
             ["reload_crossbow"] = 0.95f,
         };
+
+        // The next attack starts on a physics step after the animation allows it (Player.PlayerAttackInput in FixedUpdate).
+        private const float InputStep = 0.02f;
 
         // Attacks per second, 0 = cannot be determined.
         public static float PerSecond(in Attack a)
@@ -121,7 +125,7 @@ namespace Morgott.UI.Screens
             }
             // The draw timer runs while the release animation still plays (Player.UpdateAttackBowDraw has no attack check).
             if (a.BowDraw) cycle = Math.Max(cycle, a.DrawSeconds);
-            return cycle > 0f ? 1f / cycle : 0f;
+            return cycle > 0f ? 1f / (cycle + InputStep) : 0f;
         }
 
         // Tooltip text with the rate row after its last damage row (HitData.GetTooltipString); unchanged without one.

@@ -8,26 +8,26 @@ namespace Morgott.UI.Tests
         private static float Rate(WeaponAttackRate.Attack a) => WeaponAttackRate.PerSecond(a);
 
         [Theory]
-        [InlineData("swing_longsword", 3, 1.519f)] // chain cuts at levels 0 and 1, level 2 plays out
-        [InlineData("knife_stab", 3, 2.691f)]
-        [InlineData("staff_fireball", 2, 1.263f)]  // no Chain event: both levels play out
-        [InlineData("swing_sledge", 0, 0.456f)]    // uninterruptible exit blend counted
+        [InlineData("swing_longsword", 3, 1.474f)] // chain cuts at levels 0 and 1, level 2 plays out
+        [InlineData("knife_stab", 3, 2.304f)]    // level 1 starts at the 0.5 animator speed level 0 left
+        [InlineData("staff_fireball", 2, 1.233f)]  // no Chain event: both levels play out
+        [InlineData("swing_sledge", 0, 0.452f)]    // uninterruptible exit blend counted
         public void Melee_and_cast_cycles(string anim, int levels, float expected) =>
-            Assert.Equal(expected, Rate(new WeaponAttackRate.Attack { Animation = anim, ChainLevels = levels }), 2f);
+            Assert.Equal(expected, Rate(new WeaponAttackRate.Attack { Animation = anim, ChainLevels = levels }), 0.001f);
 
         [Fact]
         public void Bow_is_limited_by_the_full_draw() =>
-            Assert.Equal(0.4f, Rate(new WeaponAttackRate.Attack { Animation = "bow_fire", BowDraw = true, DrawSeconds = 2.5f }), 3f);
+            Assert.Equal(1f / 2.52f, Rate(new WeaponAttackRate.Attack { Animation = "bow_fire", BowDraw = true, DrawSeconds = 2.5f }), 0.001f);
 
         [Fact]
         public void Bow_without_draw_time_is_limited_by_the_release() =>
-            Assert.Equal(1f / 0.76f, Rate(new WeaponAttackRate.Attack { Animation = "bow_fire", BowDraw = true }), 3f);
+            Assert.Equal(1f / 0.78f, Rate(new WeaponAttackRate.Attack { Animation = "bow_fire", BowDraw = true }), 0.001f);
 
         [Theory]
-        [InlineData("crossbow_fire", "reload_crossbow", 3.5f, 0.194f)]
-        [InlineData("staff_lightningshot", "recharge_lightningstaff", 1.9f, 0.377f)]
+        [InlineData("crossbow_fire", "reload_crossbow", 3.5f, 0.193f)]
+        [InlineData("staff_lightningshot", "recharge_lightningstaff", 1.9f, 0.375f)]
         public void Reload_weapons_include_the_reload(string anim, string reload, float seconds, float expected) =>
-            Assert.Equal(expected, Rate(new WeaponAttackRate.Attack { Animation = anim, RequiresReload = true, ReloadAnimation = reload, ReloadSeconds = seconds }), 3f);
+            Assert.Equal(expected, Rate(new WeaponAttackRate.Attack { Animation = anim, RequiresReload = true, ReloadAnimation = reload, ReloadSeconds = seconds }), 0.001f);
 
         [Fact]
         public void Undeterminable_attacks_have_no_rate()
