@@ -6,7 +6,7 @@ namespace Morgott.UI.Screens
 {
     // Base attacks per second of a weapon's primary attack, attack key held, no target hit: no skill, status effect or
     // Epic Loot speed. Unity exposes no trigger -> state mapping at runtime, so the timings are baked from the game's
-    // Player_animator + clips (BalanceSim tools/anim_events.py Controller.attack, game 1.0.21, Therzie clip swaps included);
+    // Player_animator + clips (tools/attacktimings writes both tables, game 1.0.21, Therzie clip swaps included);
     // the caller shows nothing on another game version. An unknown trigger or looping attack has no value.
     public static class WeaponAttackRate
     {

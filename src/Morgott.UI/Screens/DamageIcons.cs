@@ -111,6 +111,7 @@ namespace Morgott.UI.Screens
         }
 
         // The game version WeaponAttackRate's animator timings were baked from: another version shows no rate.
+        // Re-bake after a game update: `go -C tools/attacktimings run . -write`, then set this version.
         private static readonly GameVersion AttackTimingsVersion = new GameVersion(1, 0, 21);
 
         // Skill 0 values: full draw (Humanoid.GetAttackDrawPercentage :367), full reload (ItemData.GetWeaponLoadingTime :770).
