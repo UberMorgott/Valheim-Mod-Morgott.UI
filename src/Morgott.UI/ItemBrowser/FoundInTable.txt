@@ -1,547 +1,547 @@
 # game 1.0.21 b26249040	546
-L:AbandonedLogCabin02	0	0	StoneGolem:w
-L:AbandonedLogCabin03	0	0	StoneGolem:w,Skeleton_Mountains:w
-L:AbandonedLogCabin04	0	0	StoneGolem:w,Skeleton_Mountains:w
-L:AncientUpgradeStation	0	0	
-L:AshlandRuins	4096	0	
-L:BOM_BlackMetalMine01	0	1	GoblinBrute:w,Goblin:w
-L:BOM_BlackMetalMine02	0	1	GoblinShaman:w,Goblin:w
-L:BOM_CoalMine01	0	1	Skeleton:w
-L:BOM_CoalMine02	0	1	Skeleton:w
-L:BOM_CopperMine01	0	1	Skeleton:w
-L:BOM_CopperMine02	0	1	Skeleton:w
-L:BOM_FlametalMine01	0	1	Charred_Archer:w,Charred_Melee:w
-L:BOM_FlametalMine02	0	1	Charred_Mage:w,Charred_Melee:w
-L:BOM_FlintMine01	0	1	Neck:w
-L:BOM_FlintMine02	0	1	Boar:w,Neck:w
-L:BOM_SilverMine01	0	1	Wolf:w,Fenring:w
-L:BOM_SilverMine02	0	1	Wolf:w,Fenring:w
-L:BOM_TinMine01	0	1	Greydwarf_Elite:w,Greydwarf:w,Skeleton:w
-L:BOM_TinMine02	0	1	Greydwarf_Shaman:w,Greydwarf:w,Skeleton:w
-L:BearCave	0	1	Bjorn_sleeping:w
-L:BigRockClearing	0	0	
-L:BogWitch_Camp	0	0	BogWitchKvastur:n,BogWitchKvastur:w
-L:Bonemass	0	0	Bonemass:b
-L:CharredFortress	0	0	piece_Charred_Balista:w,Charred_Mage:w,Charred_Archer:w,Charred_Melee:n,Charred_Archer:n,Charred_Mage:n
-L:CharredRuins1	0	0	
-L:CharredRuins2	0	0	
-L:CharredRuins3	0	0	
-L:CharredRuins4	0	0	
-L:CharredStone_Spawner	0	0	Charred_Twitcher:n,Charred_Melee:n
-L:CharredTowerRuins1	0	0	
-L:CharredTowerRuins1_dvergr	0	0	DvergerAshlands:w
-L:CharredTowerRuins2	0	0	
-L:CharredTowerRuins3	0	0	Charred_Twitcher:n,Charred_Melee:n
-L:CombatRuin01	0	0	Skeleton:n
-L:Crypt2	8	1	Skeleton:w
-L:Crypt3	8	1	Skeleton:w
-L:Crypt4	8	1	Skeleton:w
-L:DN_Bossroom	0	1	vfx_LastBossGate_destroyed:b,FrozenKing:w,FrozenKing:b
-L:DN_gammeltrollFrac01	0	0	
-L:DN_gammeltrollFrac02	0	0	
-L:DN_hut01	0	0	
-L:Dolmen01	0	0	Skeleton_Meadows_noarcher:w
-L:Dolmen02	0	0	Skeleton_Meadows_noarcher:w
-L:Dolmen03	0	0	Skeleton_Meadows_noarcher:w
-L:Dragonqueen	0	0	Dragon:b
-L:DrakeLorestone	0	0	
-L:DrakeNest01	0	0	Hatchling:w
-L:Eikthyrnir	0	0	Eikthyr:b
-L:FaderLocation	0	0	Fader:b
-L:FireHole	0	0	Surtling:w
-L:FortressRuins	8192	0	
-L:FrozenShip01_DN	0	0	
-L:FrozenShip02_DN	0	0	
-L:FrozenShip03_DN	0	0	
-L:GDKing	0	0	gd_king:b
-L:GoblinCamp2	16	0	
-L:GoblinCamp2_1	16	0	
-L:GoblinHut01	0	0	Goblin:w
-L:GoblinHut02	0	0	GoblinShaman:w,Goblin:w,GoblinBrute:w
-L:GoblinHut03	0	0	Goblin:w,GoblinShaman:w,GoblinBrute:w,GoblinArcher:w
-L:GoblinKing	0	0	GoblinKing:b
-L:Grave1	0	0	Draugr:n,Draugr_Elite:n,Draugr_Ranged:n,Draugr:w,Skeleton_Swamps:n
-L:Greydwarf_camp1	0	0	Greydwarf:n,Greydwarf_Elite:n,Greydwarf_Shaman:n
-L:Hildir_camp	0	0	
-L:Hildir_cave	1024	1	
-L:Hildir_crypt	512	1	Skeleton:w
-L:Hildir_plainsfortress	2048	0	
-L:IcePond1	0	0	
-L:InfestedTree01	0	0	
-L:LeviathanLava	0	0	
-L:LumberCamp	0	0	
-L:Mistlands_DvergrBossEntrance1	256	1	Seeker:w
-L:Mistlands_DvergrTownEntrance1	128	1	Seeker:w
-L:Mistlands_DvergrTownEntrance2	128	1	Seeker:w
-L:Mistlands_Excavation1	0	0	Dverger:w,DvergerMage:w
-L:Mistlands_Excavation2	0	0	Dverger:w,DvergerMage:w
-L:Mistlands_Excavation3	0	0	Seeker:w
-L:Mistlands_Giant1	0	0	Tick:w
-L:Mistlands_Giant2	0	0	
-L:Mistlands_GuardTower1_new	0	0	Dverger:w,DvergerMage:w
-L:Mistlands_GuardTower1_ruined_new	0	0	Seeker:w
-L:Mistlands_GuardTower1_ruined_new2	0	0	Seeker:w
-L:Mistlands_GuardTower2_new	0	0	DvergerMage:w,Dverger:w
-L:Mistlands_GuardTower3_new	0	0	Dverger:w,DvergerMage:w
-L:Mistlands_GuardTower3_ruined_new	0	0	Seeker:w
-L:Mistlands_Harbour1	0	0	Dverger:w,DvergerMage:w
-L:Mistlands_Lighthouse1_new	0	0	DvergerMage:w,Dverger:w
-L:Mistlands_RoadPost1	0	0	Dverger:w,DvergerMage:w
-L:Mistlands_RockSpire1	0	0	Seeker:w
-L:Mistlands_Statue1	0	0	
-L:Mistlands_Statue2	0	0	
-L:Mistlands_StatueGroup1	0	0	
-L:Mistlands_Swords1	0	0	
-L:Mistlands_Swords2	0	0	
-L:Mistlands_Swords3	0	0	
-L:Mistlands_Viaduct1	0	0	
-L:Mistlands_Viaduct2	0	0	
-L:MorgenHole1	0	1	Morgen:w
-L:MorgenHole2	0	1	Morgen:w
-L:MorgenHole3	0	1	Morgen:w
-L:MorkBorg	131072	1	BlobMork:n
-L:MountainCave02	4	1	
-L:MountainGrave01	0	0	
-L:MountainWell1	0	0	
-L:NorthMemorialPlace	0	0	memorialsite_offering:b
-L:NorthVillage	65536	0	
-L:PlaceofMystery1	0	0	Charred_Twitcher:n,Charred_Melee:n,Charred_Archer:n,Charred_Mage:n
-L:PlaceofMystery2	0	0	Charred_Twitcher:n,Charred_Melee:n,Charred_Archer:n,Charred_Mage:n
-L:PlaceofMystery3	0	1	Charred_Twitcher:n,Charred_Melee:n,Charred_Archer:n,Charred_Mage:n,Charred_Melee_Dyrnwyn:w
-L:Ruin1	0	0	Greydwarf:w,Greydwarf_Shaman:w
-L:Ruin2	0	0	Greydwarf:w,Greydwarf_Elite:w
-L:Ruin3	0	0	Goblin:w
-L:Runestone_Ashlands	0	0	
-L:Runestone_BlackForest	0	0	
-L:Runestone_Boars	0	0	Boar:w
-L:Runestone_DeepNorth	0	0	
-L:Runestone_Draugr	0	0	Draugr:w
-L:Runestone_Greydwarfs	0	0	Greydwarf:w
-L:Runestone_Meadows	0	0	
-L:Runestone_Mistlands	0	0	
-L:Runestone_Mountains	0	0	
-L:Runestone_Plains	0	0	
-L:Runestone_Swamps	0	0	
-L:ShipSetting01	0	0	Skeleton_Meadows_noarcher:w
-L:ShipSetting02	0	0	
-L:ShipSetting03	0	0	
-L:ShipWreck01	0	0	
-L:ShipWreck01_DN	0	0	
-L:ShipWreck02	0	0	
-L:ShipWreck02_DN	0	0	
-L:ShipWreck03	0	0	
-L:ShipWreck04	0	0	
-L:StartTemple	0	0	
-L:StoneCircle	0	0	
-L:StoneHenge1	0	0	GoblinBrute:w
-L:StoneHenge2	0	0	GoblinBrute:w
-L:StoneHenge3	0	0	GoblinBrute:w
-L:StoneHenge4	0	0	GoblinBrute:w
-L:StoneHenge5	0	0	Goblin:w
-L:StoneHenge6	0	0	
-L:StoneHouse1_heath	0	0	Goblin:w
-L:StoneHouse2_heath	0	0	Goblin:w
-L:StoneHouse3	0	0	Greydwarf:w
-L:StoneHouse4	0	0	Greydwarf:w
-L:StoneHouse5_heath	0	0	
-L:StoneTower1	0	0	Goblin:w
-L:StoneTower3	0	0	Goblin:w
-L:StoneTowerRuins03	0	0	Skeleton:w,Greydwarf:w,Greydwarf_Elite:w
-L:StoneTowerRuins04	0	0	Skeleton_Mountains:w
-L:StoneTowerRuins05	0	0	Skeleton:n,Skeleton_Mountains:w
-L:StoneTowerRuins05_leet	0	0	Skeleton:n,Skeleton_Mountains:w
-L:StoneTowerRuins07	0	0	Skeleton:w
-L:StoneTowerRuins07_sunk	0	0	
-L:StoneTowerRuins08	0	0	Skeleton:w
-L:StoneTowerRuins08_sunk	0	0	
-L:StoneTowerRuins09	0	0	Skeleton:w
-L:StoneTowerRuins09_sunk	0	0	Skeleton:w
-L:StoneTowerRuins10	0	0	Skeleton:w
-L:StoneTowerRuins10_sunk	0	0	Skeleton:w
-L:SulfurArch	0	0	
-L:SunkenCrypt4	2	1	BlobElite:w,Draugr:w
-L:SwampHut1	0	0	Wraith:w
-L:SwampHut1_1	0	0	Wraith:w
-L:SwampHut2	0	0	Wraith:w
-L:SwampHut2_1	0	0	Wraith:w
-L:SwampHut3	0	0	Wraith:w
-L:SwampHut3_1	0	0	Wraith:w
-L:SwampHut4	0	0	Draugr_Ranged:w,Draugr:w
-L:SwampHut5	0	0	Wraith:w
-L:SwampRuin1	0	0	Draugr:n,Draugr_Elite:n,Draugr_Ranged:n,Draugr:w,Draugr_Elite:w
-L:SwampRuin2	0	0	Draugr:w,Draugr_Elite:w,Draugr:n,Draugr_Elite:n,Draugr_Ranged:n
-L:SwampWell1	0	0	Draugr_Elite:w
-L:TarPit1	0	0	BlobTar:w
-L:TarPit1_1	0	0	BlobTar:w
-L:TarPit2	0	0	BlobTar:w
-L:TarPit2_1	0	0	BlobTar:w
-L:TarPit3	0	0	BlobTar:w
-L:TarPit3_1	0	0	BlobTar:w
-L:TheHole01	16384	1	ShadowPerson:w
-L:TrollCave02	0	1	Troll:w
-L:Vendor_BlackForest	0	0	
-L:VoltureNest	0	0	Volture:w
-L:Waymarker01	0	0	
-L:Waymarker02	0	0	
-L:WoodFarm1	64	0	
-L:WoodHouse1	0	0	
-L:WoodHouse10	0	0	
-L:WoodHouse11	0	0	Greydwarf:w
-L:WoodHouse12	0	0	
-L:WoodHouse13	0	0	Greydwarf:w
-L:WoodHouse2	0	0	
-L:WoodHouse3	0	0	
-L:WoodHouse4	0	0	
-L:WoodHouse5	0	0	
-L:WoodHouse6	0	0	Greydwarf:w
-L:WoodHouse7	0	0	
-L:WoodHouse8	0	0	
-L:WoodHouse9	0	0	
-L:WoodVillage1	32	0	
-L:WoodVillage2	32	0	
-R:CharredRuins12	0	0	
-R:CharredRuins13	0	0	
-R:CharredRuins14	0	0	
-R:CharredRuins15	0	0	
-R:CharredRuins16	0	0	
-R:CharredRuins17	0	0	
-R:CharredRuins23	0	0	Morgen:w
-R:CharredRuins24	0	0	
-R:CharredRuins25	0	0	
-R:CharredRuins9	0	0	
-R:CharredRuins_new01	0	0	
-R:CharredRuins_new02	0	0	
-R:CharredRuins_new03	0	0	
-R:CharredRuins_new04	0	0	
-R:CharredRuins_new05	0	0	
-R:FortressRuins23	0	0	Charred_Twitcher:w
-R:FortressRuins_new01	0	0	Charred_Twitcher:w
-R:FortressRuins_shieldgen	0	0	Morgen:w,Charred_Twitcher:w
-R:cave_divider	0	0	
-R:cave_divider02	0	0	
-R:cave_dome_bottom_endcap	0	0	
-R:cave_dome_bottom_lake	0	0	StoneGolem:w
-R:cave_dome_middle	0	0	Bat:w
-R:cave_dome_roof	0	0	Bat:w
-R:cave_dome_roof_from_deeproom_corner1	0	0	Bat:w
-R:cave_dome_roof_from_deeproom_corner2	0	0	Bat:w
-R:cave_dome_roof_from_deeproom_corner3	0	0	Bat:w
-R:cave_dome_roof_from_deeproom_corner4	0	0	Bat:w
-R:cave_new_corridor01	0	0	
-R:cave_new_corridor03	0	0	
-R:cave_new_corridor05	0	0	
-R:cave_new_corridor06	0	0	Ulv:w
-R:cave_new_corridor07	0	0	
-R:cave_new_corridor08	0	0	
-R:cave_new_corridor09	0	0	Ulv:w
-R:cave_new_crossroads01	0	0	
-R:cave_new_crossroads01_hole	0	0	Bat:w
-R:cave_new_crossroads01_hole_ice	0	0	Bat:w
-R:cave_new_crossroads01_hole_long	0	0	Bat:w
-R:cave_new_crossroads01_hole_shrine	0	0	Bat:w,Ulv:w
-R:cave_new_crossroads01_hole_to_deeproom	0	0	Bat:w
-R:cave_new_crossroads01_ice	0	0	
-R:cave_new_crossroads02	0	0	
-R:cave_new_crossroads03	0	0	Ulv:w
-R:cave_new_deeproom_bottom	0	0	Ulv:w
-R:cave_new_deeproom_bottom_ice	0	0	Ulv:w
-R:cave_new_deeproom_bottom_lake	0	0	Fish4_cave:w
-R:cave_new_deeproom_bottom_shrine	0	0	Ulv:w
-R:cave_new_deeproom_endcap	0	0	
-R:cave_new_deeproom_middle	0	0	Bat:w
-R:cave_new_deeproom_roof	0	0	Bat:w
-R:cave_new_deeproom_top	0	0	Bat:w
-R:cave_new_endcap02	0	0	Fenring_Cultist_Hildir:w
-R:cave_new_endcap02_crystal	0	0	Fenring_Cultist_Hildir:w
-R:cave_new_endcap_moderstone	0	0	Fenring_Cultist_Hildir:w
-R:cave_new_endcap_painting01	0	0	Fenring_Cultist_Hildir:w
-R:cave_new_endcap_painting02	0	0	Fenring_Cultist_Hildir:w
-R:cave_new_endcap_painting03	0	0	Fenring_Cultist_Hildir:w
-R:cave_new_endcap_painting04	0	0	Fenring_Cultist_Hildir:w
-R:cave_new_entrance02	0	0	
-R:cave_new_icecorridor01	0	0	
-R:cave_new_icecorridor02	0	0	Ulv:w
-R:cave_new_icecorridor03	0	0	
-R:cave_new_icecorridor04	0	0	
-R:cave_new_icecorridor05	0	0	Ulv:w
-R:cave_new_icecorridor06	0	0	
-R:cave_new_icecorridor07	0	0	
-R:cave_new_iceendcap02	0	0	Fenring_Cultist_Hildir:w
-R:cave_new_iceendcap02_crystal	0	0	Fenring_Cultist_Hildir:w
-R:cave_new_iceendcap_moderstone	0	0	Fenring_Cultist_Hildir:w
-R:cave_new_iceendcap_painting01	0	0	Fenring_Cultist_Hildir:w
-R:cave_new_iceendcap_painting02	0	0	Fenring_Cultist_Hildir:w
-R:cave_new_iceendcap_painting03	0	0	Fenring_Cultist_Hildir:w
-R:cave_new_iceendcap_painting04	0	0	Fenring_Cultist_Hildir:w
-R:cave_new_slope_endcap01	0	0	
-R:cave_new_sloperoom01	0	0	Ulv:w,Bat:w
-R:cave_new_sloperoom02	0	0	Ulv:w,Bat:w
-R:cave_new_sloperoom03	0	0	Bat:w
-R:cave_new_sloperoom04	0	0	Bat:w
-R:cave_new_sloperoom05	0	0	Bat:w
-R:cave_new_sloperoom_w_hole	0	0	Ulv:w,Bat:w,Fish4_cave:w
-R:cave_shrine_corridor01	0	0	Ulv:w
-R:cave_shrine_corridor02	0	0	Ulv:w
-R:cave_shrine_corridor03	0	0	Ulv:w
-R:cave_shrine_corridor04	0	0	Ulv:w
-R:cave_shrine_corridor05	0	0	Ulv:w
-R:cave_shrine_corridor06	0	0	Ulv:w
-R:cave_shrine_corridor07	0	0	Ulv:w
-R:cave_shrine_endcap	0	0	Fenring_Cultist_Hildir:w
-R:cave_shrine_endcap01	0	0	Fenring_Cultist_Hildir:w
-R:cave_shrine_endcap02	0	0	Fenring_Cultist_Hildir:w
-R:cave_shrine_endcap03	0	0	Fenring_Cultist_Hildir:w
-R:cave_shrine_endcap04	0	0	Fenring_Cultist_Hildir:w
-R:cave_shrine_endcap05	0	0	Fenring_Cultist_Hildir:w
-R:cave_shrine_endcap_noshrine	0	0	
-R:cave_shrine_endcap_noshrine02	0	0	
-R:cave_shrine_hole01	0	0	Ulv:w
-R:cave_shrine_lootencap01	0	0	
-R:cave_shrine_lootencap02	0	0	
-R:cave_shrine_lootencap03	0	0	
-R:cave_shrine_lootencap04	0	0	
-R:cave_shrine_lootencap05	0	0	
-R:cave_shrine_lootencap06	0	0	
-R:cave_shrine_room01	0	0	Ulv:w
-R:cave_shrine_room02	0	0	Ulv:w
-R:cave_shrine_shrine01	0	0	Fenring_Cultist_Hildir:w,Fenring_Cultist:w
-R:cave_shrine_shrine02	0	0	Fenring_Cultist_Hildir:w,Fenring_Cultist:w
-R:cave_shrine_shrine03	0	0	Fenring_Cultist_Hildir:w,Fenring_Cultist:w
-R:cave_shrine_shrine03_HILDIR	0	0	Fenring_Cultist_Hildir:w
-R:cave_shrine_start02	0	0	
-R:cave_shrine_start02_corridor	0	0	
-R:cave_shrine_start02_ice	0	0	
-R:cave_shrine_start02_ice_corridor	0	0	
-R:dvergr_bossroom_middle_endcap01	0	0	
-R:dvergr_bossroom_middle_endcap02	0	0	
-R:dvergr_bossroom_middle_endcap03	0	0	
-R:dvergr_bossroom_roof_endcap01	0	0	
-R:dvergr_bossroom_roof_endcap02	0	0	
-R:dvergr_bossroom_roof_endcap03	0	0	
-R:dvergr_bossroom_top_endcap01	0	0	
-R:dvergr_bossroom_top_endcap02	0	0	
-R:dvergr_bossroom_top_endcap03	0	0	
-R:dvergr_corridor01	0	0	
-R:dvergr_corridor02	0	0	
-R:dvergr_divider01	0	0	
-R:dvergr_divider02	0	0	
-R:dvergr_divider03	0	0	
-R:dvergr_entrance01	0	0	
-R:dvergr_entrance02	0	0	
-R:dvergr_new_bossroom_ENTRANCE02	0	0	SeekerQueen:w,SeekerQueen:b
-R:dvergr_new_bossroom_bottom_endcap_stair01	0	0	
-R:dvergr_new_bossroom_bottom_endcap_stair02	0	0	
-R:dvergr_new_bossroom_bottom_endcap_stair03	0	0	
-R:dvergr_new_bossroom_bottom_endcap_stair04	0	0	
-R:dvergr_new_bossroom_bottom_endcap_stair05	0	0	
-R:dvergr_new_bossroom_bottom_endcap_stair06	0	0	
-R:dvergr_new_bossroom_bottom_endcap_stair07	0	0	
-R:dvergr_new_bossroom_bottom_endcap_stair08	0	0	
-R:dvergr_room01	0	0	Tick:w
-R:dvergr_room02	0	0	Tick:w
-R:dvergr_room03	0	0	Tick:w
-R:dvergr_room04	0	0	Tick:w
-R:dvergr_room_TREASURE	0	0	
-R:dvergr_room_TREASURE2	0	0	
-R:dvergr_room_endcap01	0	0	
-R:dvergr_room_endcap02	0	0	
-R:dvergr_room_endcap03	0	0	Tick:w
-R:dvergr_room_fence01	0	0	Seeker:w
-R:dvergr_room_open01	0	0	Seeker:w
-R:dvergr_room_open02	0	0	Seeker:w
-R:dvergr_room_open03	0	0	Seeker:w
-R:dvergr_room_open04	0	0	SeekerBrute:w,Seeker:w
-R:dvergr_roombig_corner01	0	0	SeekerBrute:w,Seeker:w
-R:dvergr_roombig_corridor01	0	0	SeekerBrute:w,Seeker:w
-R:dvergr_roombig_corridor02	0	0	SeekerBrute:w,Seeker:w
-R:dvergr_roombig_endcap02	0	0	Tick:w
-R:dvergr_roombig_open01	0	0	SeekerBrute:w,Seeker:w
-R:dvergr_roombig_open02	0	0	SeekerBrute:w,Seeker:w
-R:dvergr_roombig_side01	0	0	SeekerBrute:w,Seeker:w
-R:dvergr_roombig_side02	0	0	SeekerBrute:w,Seeker:w
-R:dvergr_roombig_toStone01	0	0	
-R:dvergr_roombig_toStone02	0	0	
-R:dvergr_roombig_windows01	0	0	Tick:w,SeekerBrute:w
-R:dvergr_stair01	0	0	
-R:dvergr_stair02	0	0	Seeker:w
-R:dvergr_stair03	0	0	
-R:dvergr_stone_corridor01	0	0	
-R:dvergr_stone_corridor02	0	0	
-R:dvergr_stone_corridor03	0	0	
-R:dvergr_stone_endcap01	0	0	
-R:dvergr_stone_endcap02	0	0	Tick:w
-R:dvergr_stone_endcap03	0	0	Tick:w
-R:dvergr_stone_open01	0	0	Seeker:w
-R:dvergr_stone_room01	0	0	Seeker:w
-R:dvergr_stone_room02	0	0	Seeker:w
-R:dvergr_stone_room03	0	0	Seeker:w
-R:dvergr_stone_room04	0	0	Tick:w
-R:dvergr_stone_stair01	0	0	
-R:dvergr_stone_turn01	0	0	Seeker:w
-R:forestcrypt_Bend1	0	0	
-R:forestcrypt_Bend2	0	0	Skeleton:w
-R:forestcrypt_Chasm01	0	0	Ghost:w,Skeleton:w
-R:forestcrypt_Corridor1	0	0	Skeleton:w
-R:forestcrypt_Corridor2	0	0	Skeleton:w
-R:forestcrypt_Corridor3	0	0	Skeleton:w
-R:forestcrypt_EndCap	0	0	
-R:forestcrypt_EndCap2	0	0	
-R:forestcrypt_EndCap2_hildir	0	0	Skeleton_Hildir:w
-R:forestcrypt_EndCap3	0	0	
-R:forestcrypt_EndCap3_hildir	0	0	Skeleton_Hildir:w
-R:forestcrypt_Stairs1	0	0	
-R:forestcrypt_chamber_hildir	0	0	Skeleton_Hildir:w
-R:forestcrypt_entrance_large	0	0	
-R:forestcrypt_new_BurialChamber01	0	0	Skeleton:w,Ghost:w
-R:forestcrypt_new_BurialChamber02	0	0	Skeleton_Poison:w,Skeleton:w,Skeleton:n
-R:forestcrypt_new_Burialchamber03	0	0	Skeleton_Poison:w,Skeleton:w,Skeleton:n
-R:forestcrypt_new_Burialchamber04	0	0	Skeleton_Poison:w,Skeleton:w,Skeleton:n
-R:forestcrypt_new_Burialchamber05	0	0	Skeleton:n,Skeleton:w,Skeleton_Poison:w
-R:forestcrypt_room1	0	0	Skeleton:w
-R:forestcrypt_room_16	0	0	Skeleton:n,Skeleton:w
-R:gobvill_barley	0	0	Goblin:w
-R:gobvill_bonfire	0	0	GoblinShaman:w,GoblinBrute:w,Goblin:w
-R:gobvill_campfire	0	0	GoblinShaman:w,GoblinBrute:w,Goblin:w
-R:gobvill_crafting	0	0	Goblin:w
-R:gobvill_flax	0	0	Goblin:w
-R:gobvill_guardplatform	0	0	GoblinArcher:w,Goblin:w
-R:gobvill_guardtower	0	0	Goblin:w,GoblinArcher:w
-R:gobvill_hut02	0	0	GoblinShaman:w,Goblin:w,GoblinBrute:w
-R:gobvill_hut03	0	0	Goblin:w,GoblinShaman:w,GoblinBrute:w,GoblinArcher:w
-R:gobvill_hut1	0	0	Goblin:w
-R:gobvill_platform	0	0	GoblinArcher:w,Goblin:w
-R:gobvill_refusepit	0	0	Goblin:w
-R:gobvill_stakes	0	0	Goblin:w,GoblinArcher:w
-R:gobvill_tent02	0	0	Goblin:w
-R:gobvill_tent1	0	0	GoblinShaman:w,Goblin:w
-R:gobvill_woodwall	0	0	
-R:gobvill_woodwall2	0	0	
-R:hole_corridors01	0	0	ElakingMole:w
-R:hole_corridors01_alt2	0	0	ElakingMole:w
-R:hole_corridors01_alt3	0	0	ElakingMole:w
-R:hole_corridors01_alt4	0	0	ElakingMole:w
-R:hole_corridors02	0	0	
-R:hole_corridors02_alt1	0	0	ElakingMole:w
-R:hole_corridors02_alt2	0	0	ElakingMole:w
-R:hole_corridors02_alt3	0	0	
-R:hole_corridors02_alt4	0	0	
-R:hole_corridors03	0	0	ElakingMole:w
-R:hole_corridors03_alt1	0	0	ElakingMole:w
-R:hole_corridors03_alt2	0	0	ElakingMole:w
-R:hole_corridors04	0	0	
-R:hole_corridors04_alt1	0	0	
-R:hole_corridors04_alt2	0	0	
-R:hole_corridors04_alt3	0	0	
-R:hole_corridors04_alt4	0	0	ElakingMole:w
-R:hole_corridors04_alt5	0	0	
-R:hole_corridors04_alt6	0	0	
-R:hole_divider1	0	0	
-R:hole_endcap1	0	0	
-R:hole_endcap2	0	0	Elaking:n,ElakingLantern:n
-R:hole_endcap3	0	0	
-R:hole_endcap4	0	0	Elaking:n,ElakingLantern:n
-R:hole_endcap5	0	0	ElakingMole:w
-R:hole_endcap6	0	0	ElakingMole:w
-R:hole_endcap7	0	0	ElakingMole:w
-R:hole_endcap8	0	0	ElakingMole:w
-R:hole_endcap9	0	0	
-R:hole_room01	0	0	ElakingMole:w,Elaking:n,ElakingLantern:n
-R:hole_room02	0	0	ElakingMole:w,Elaking:n,ElakingLantern:n
-R:hole_room03	0	0	ElakingMole:w,Elaking:n,ElakingLantern:n
-R:meadowsvillage_greathall	0	0	Draugr_Elite:w,Draugr_Ranged:w,Draugr:w,Draugr:n,Draugr_Elite:n,Draugr_Ranged:n
-R:meadowsvillage_greathallruin	0	0	Draugr:n,Draugr_Elite:n,Draugr_Ranged:n,Draugr_Ranged:w,Draugr:w
-R:meadowsvillage_house1	0	0	Draugr:w,Draugr_Ranged:w
-R:meadowsvillage_house2	0	0	Draugr:w,Draugr_Ranged:w
-R:meadowsvillage_longhouse	0	0	Draugr_Elite:w,Draugr_Ranged:w,Draugr:w,Draugr:n,Draugr_Elite:n,Draugr_Ranged:n
-R:meadowsvillage_longhouseruin	0	0	Draugr:n,Draugr_Elite:n,Draugr_Ranged:n,Draugr:w,Draugr_Ranged:w
-R:meadowsvillage_road1	0	0	
-R:meadowsvillage_stakewall3	0	0	
-R:meadowsvillage_tower	0	0	Draugr_Ranged:w,Draugr:w
-R:meadowsvillage_towerruin	0	0	Draugr:w
-R:morkhalla_endcap01	0	0	JotunWarriorDualWield:w,JotunWitch:w,JotunWarrior:w,BlobMork:n
-R:morkhalla_endcap02	0	0	JotunWarriorDualWield:w,JotunWarrior:w,JotunWitch:w,BlobMork:n
-R:morkhalla_entrance01	0	0	BlobMork:n,JotunWitch:w
-R:morkhalla_entrance02	0	0	BlobMork:n,JotunWitch:w
-R:morkhalla_floor01	0	0	GoblinDeepNorth:w,DvergerDeepNorth:w,JotunWarrior:w,JotunWitch:w,BlobMork:n
-R:morkhalla_floor01_tall	0	0	GoblinDeepNorth:w,DvergerDeepNorth:w,BlobMork:n,JotunWarrior:w,JotunWitch:w
-R:morkhalla_floor02	0	0	GoblinDeepNorth:w,DvergerDeepNorth:w,JotunWarrior:w,BlobMork:n
-R:morkhalla_floor02_tall	0	0	BlobMork:n,JotunWarrior:w
-R:morkhalla_floor03	0	0	GoblinDeepNorth:w,DvergerDeepNorth:w,JotunWarrior:w,BlobMork:n,JotunWitch:w
-R:morkhalla_floor03_tall	0	0	GoblinDeepNorth:w,DvergerDeepNorth:w,BlobMork:n,JotunWarrior:w,JotunWitch:w
-R:morkhalla_floor04	0	0	GoblinDeepNorth:w,DvergerDeepNorth:w,JotunWarrior:w,BlobMork:n,JotunWitch:w
-R:morkhalla_floor04_tall	0	0	GoblinDeepNorth:w,DvergerDeepNorth:w,BlobMork:n,JotunWarrior:w,JotunWitch:w
-R:morkhalla_floor05	0	0	GoblinDeepNorth:w,DvergerDeepNorth:w,JotunWarrior:w,JotunWitch:w,BlobMork:n
-R:morkhalla_floor05_tall	0	0	GoblinDeepNorth:w,DvergerDeepNorth:w,JotunWarrior:w,BlobMork:n,JotunWitch:w
-R:morkhalla_floor06	0	0	GoblinDeepNorth:w,DvergerDeepNorth:w,BlobMork:n,JotunWarrior:w,JotunWitch:w
-R:morkhalla_floor06_tall	0	0	GoblinDeepNorth:w,DvergerDeepNorth:w,BlobMork:n,JotunWarrior:w,JotunWitch:w
-R:northvillage_fence1	0	0	ShadowPerson:w
-R:northvillage_fence2	0	0	
-R:northvillage_granary	0	0	
-R:northvillage_house1	0	0	ShadowPerson:w
-R:northvillage_house2	0	0	ShadowPerson:w
-R:northvillage_stable	0	0	
-R:northvillage_tower	0	0	
-R:northvillage_turnipfield	0	0	ShadowPerson:w
-R:northvillage_woodpile	0	0	
-R:plainsfortress_Hildir_Endcap	0	0	GoblinArcher:w
-R:plainsfortress_Hildir_Floor0	0	0	GoblinShaman:w,GoblinArcher:w,Goblin:w
-R:plainsfortress_Hildir_Floor1	0	0	GoblinShaman:w,GoblinArcher:w,Goblin:w
-R:plainsfortress_Hildir_Floor2	0	0	Goblin:w
-R:plainsfortress_Hildir_Floor2_1	0	0	
-R:plainsfortress_Hildir_Floor2_2	0	0	GoblinShaman:w,GoblinArcher:w,Goblin:w
-R:plainsfortress_Hildir_Floor2_3	0	0	GoblinShaman:w,GoblinArcher:w,Goblin:w
-R:plainsfortress_Hildir_Floor2_4	0	0	GoblinShaman:w,GoblinArcher:w
-R:plainsfortress_Hildir_Start	0	0	GoblinShaman:w,GoblinArcher:w,Goblin:w,GoblinBruteBros:w
-R:plainsfortress_Hildir_endcap_balcony	0	0	GoblinArcher:w
-R:plainsfortress_Hildir_endcap_balcony1	0	0	
-R:plainsfortress_Hildir_endcap_balcony_wall	0	0	
-R:plainsfortress_Hildir_endcap_barred	0	0	
-R:plainsfortress_Hildir_endcap_goblinbalcony	0	0	GoblinArcher:w
-R:plainsfortress_Hildir_endcap_goblinbalcony1	0	0	GoblinArcher:w
-R:plainsfortress_Hildir_endcap_hole	0	0	
-R:plainsfortress_Hildir_endcap_hole1	0	0	
-R:plainsfortress_Hildir_endcap_hole2	0	0	
-R:plainsfortress_Hildir_endcap_hole3	0	0	
-R:plainsfortress_Hildir_endcap_hole4	0	0	
-R:plainsfortress_Hildir_endcap_middlewall01	0	0	
-R:plainsfortress_Hildir_endcap_middlewall02	0	0	
-R:plainsfortress_Hildir_endcap_middlewall03	0	0	
-R:plainsfortress_Hildir_endcap_middlewall04	0	0	
-R:plainsfortress_Hildir_endcap_middlewall05	0	0	
-R:plainsfortress_Hildir_endcap_middlewall06	0	0	
-R:plainsfortress_Hildir_endcap_middlewall07	0	0	
-R:plainsfortress_Hildir_endcap_middlewall08	0	0	
-R:plainsfortress_Hildir_endcap_wall	0	0	
-R:plainsfortress_Hildir_endcap_wall1	0	0	
-R:plainsfortress_Hildir_endcap_window_barred	0	0	
-R:plainsfortress_Hildir_endcap_window_hole	0	0	
-R:plainsfortress_Hildir_endcap_window_hole1	0	0	
-R:sunkencrypt_new_Corridor1	0	0	
-R:sunkencrypt_new_Corridor2	0	0	Draugr:w
-R:sunkencrypt_new_Corridor3	0	0	
-R:sunkencrypt_new_Corridor4	0	0	Blob:w,Draugr:w
-R:sunkencrypt_new_Corridor5	0	0	Blob:w
-R:sunkencrypt_new_Endcap1	0	0	
-R:sunkencrypt_new_Endcap2	0	0	
-R:sunkencrypt_new_Endcap3	0	0	
-R:sunkencrypt_new_EndcapWater1	0	0	
-R:sunkencrypt_new_EndcapWater2	0	0	
-R:sunkencrypt_new_Room1	0	0	Blob:w,Draugr_Elite:w,Draugr:w
-R:sunkencrypt_new_Room2	0	0	Draugr:n,Draugr_Elite:n,Draugr_Ranged:n,Blob:w,Draugr_Elite:w,Draugr:w
-R:sunkencrypt_new_Room3	0	0	Draugr:n,Draugr_Elite:n,Draugr_Ranged:n,Blob:w,Draugr:w,Draugr_Elite:w
-R:sunkencrypt_new_Room4	0	0	Blob:w,Draugr:w,Draugr_Elite:w
-R:sunkencrypt_new_Stair1	0	0	
-R:sunkencrypt_new_Start1	0	0	
-R:woodfarm_farmhouse1	0	0	
-R:woodfarm_farmhouse2	0	0	
-R:woodfarm_farmhouse3	0	0	
-R:woodfarm_fence1	0	0	
-R:woodfarm_fence2	0	0	
-R:woodfarm_henpen	0	0	Boar:w
-R:woodfarm_outhouse	0	0	
-R:woodfarm_road1	0	0	
-R:woodfarm_signpost	0	0	
-R:woodfarm_tower	0	0	
-R:woodfarm_turnipfield	0	0	Boar:w
-R:woodfarm_woodpile	0	0	
-R:woodfarm_yard	0	0	Boar:w
+L:AbandonedLogCabin02	0	0	StoneGolem:w	TreasureChest_mountains
+L:AbandonedLogCabin03	0	0	StoneGolem:w,Skeleton_Mountains:w	TreasureChest_mountains
+L:AbandonedLogCabin04	0	0	StoneGolem:w,Skeleton_Mountains:w	TreasureChest_mountains
+L:AncientUpgradeStation	0	0		
+L:AshlandRuins	4096	0		
+L:BOM_BlackMetalMine01	0	1	GoblinBrute:w,Goblin:w	MineRock_BlackMetalScrap
+L:BOM_BlackMetalMine02	0	1	GoblinShaman:w,Goblin:w	MineRock_BlackMetalScrap
+L:BOM_CoalMine01	0	1	Skeleton:w	MineRock_Coal
+L:BOM_CoalMine02	0	1	Skeleton:w	MineRock_Coal
+L:BOM_CopperMine01	0	1	Skeleton:w	MineRock_CopperOre
+L:BOM_CopperMine02	0	1	Skeleton:w	MineRock_CopperOre
+L:BOM_FlametalMine01	0	1	Charred_Archer:w,Charred_Melee:w	MineRock_IronOre,MineRock_Flametal
+L:BOM_FlametalMine02	0	1	Charred_Mage:w,Charred_Melee:w	MineRock_Flametal,MineRock_TinOre
+L:BOM_FlintMine01	0	1	Neck:w	MineRock_Flint
+L:BOM_FlintMine02	0	1	Boar:w,Neck:w	MineRock_Flint
+L:BOM_SilverMine01	0	1	Wolf:w,Fenring:w	MineRock_Silver,MineRock_SilverOre
+L:BOM_SilverMine02	0	1	Wolf:w,Fenring:w	MineRock_Silver
+L:BOM_TinMine01	0	1	Greydwarf_Elite:w,Greydwarf:w,Skeleton:w	MineRock_TinOre
+L:BOM_TinMine02	0	1	Greydwarf_Shaman:w,Greydwarf:w,Skeleton:w	MineRock_TinOre
+L:BearCave	0	1	Bjorn_sleeping:w	BlueberryBush,Beehive,FirTree,Pickable_ForestCryptRemains03,Pickable_ForestCryptRemains02,Pickable_ForestCryptRemains01,Pickable_Mushroom_yellow
+L:BigRockClearing	0	0		Pickable_Thistle,BigRock,Pickable_StoneRock,Crow
+L:BogWitch_Camp	0	0	BogWitchKvastur:n,BogWitchKvastur:w	Spawner_Kvastur,shrub_2,BogWitch
+L:Bonemass	0	0	Bonemass:b	Bonemass<WitheredBone
+L:CharredFortress	0	0	piece_Charred_Balista:w,Charred_Mage:w,Charred_Archer:w,Charred_Melee:n,Charred_Archer:n,Charred_Mage:n	Pickable_MoltenCoreStand,GraveStone_CharredTwitcherNest,GraveStone_Broken_CharredTwitcherNest,CharredBanner1,CharredBanner2,TreasureChest_charredfortress,Charred_altar_bellfragment,Ashlands_Fortress_Wall_Pillar_base,Ashlands_Fortress_Wall_PillarTopStone,Ashlands_Fortress_Wall_PillarTop,Ashlands_Fortress_Wall_Pillar,Ashlands_Fortress_Wall_Spikes,Ashlands_Fortress_Floor,Spawner_CharredCross,Ashland_Stair
+L:CharredRuins1	0	0		Ashlands_Altar,AshCrow,Ashlands_Arch2_Broken1,Ashlands_Arch2_Broken2,Ashlands_Pillar4_tip2_broken2,Ashlands_Pillar4_tip2_broken1,Ashlands_Pillar4_tip3_broken1,Ashlands_Pillar4_tip3_broken3,Ashlands_Pillar4_tip3_broken2,Ashlands_Pillar4,VineAsh,ashland_pot1_green,ashland_pot1_red,ashland_pot2_green,ashland_pot2_red,ashland_pot3_green,ashland_pot3_red,Ashlands_Ruins_Floor_6x6_broken1,Ashlands_Ruins_Floor_3x3_broken2,Ashlands_Ruins_Floor_1point5x1point5,Ashland_Steepstair,Ashlands_Ruins_Floor_3x3_broken3,Ashlands_Ruins_Floor_3x3_broken1
+L:CharredRuins2	0	0		AshCrow,Ashlands_Pillar4,Ashlands_Pillar4_tip3_broken3,Ashlands_Pillar4_tip3_broken2,Ashlands_Pillar4_tip3_broken1,Ashlands_Arch2_Broken1,Ashlands_Arch2_Broken2,Ashlands_Pillar4_tip2_broken2,Ashlands_Pillar4_tip2_broken1,Ashlands_Ruins_Floor_3x3_broken3,ashland_pot1_red,ashland_pot2_red,ashland_pot3_red,Ashlands_Ruins_Floor_3x3_broken1,Ashland_Steepstair,Ashlands_Ruins_Floor_1point5x1point5,VineAsh,Ashlands_Ruins_Wall_4x6,Ashlands_Ruins_Floor_3x3_broken2,ashland_pot1_green,ashland_pot2_green,ashland_pot3_green,Ashlands_Ruins_Floor_6x6_broken1
+L:CharredRuins3	0	0		AshCrow,Ashlands_Pillar4_tip3_broken3,Ashlands_Pillar4_tip3_broken2,Ashlands_Pillar4_tip3_broken1,Ashlands_Arch2_Broken1,Ashlands_Arch2_Broken2,Ashlands_Pillar4_tip2_broken2,Ashlands_Pillar4_tip2_broken1,Ashlands_Pillar4,Ashlands_Ruins_Floor_1point5x1point5,Ashland_Steepstair,Ashlands_Ruins_Floor_3x3_broken3,ashland_pot1_green,ashland_pot2_green,ashland_pot3_green,Ashlands_Ruins_Floor_3x3_broken2,VineAsh,ashland_pot1_red,ashland_pot2_red,ashland_pot3_red,Ashlands_Ruins_Floor_6x6_broken1,Ashlands_Ruins_Floor_3x3_broken1
+L:CharredRuins4	0	0		AshCrow,Ashlands_Ruins_Wall_4x6,Ashlands_Pillar4,ashland_pot1_green,ashland_pot2_green,ashland_pot3_green,Ashlands_Ruins_Floor_3x3_broken2,Ashlands_Pillar4_tip3_broken3,Ashlands_Pillar4_tip3_broken2,Ashlands_Pillar4_tip3_broken1,Ashlands_Arch2_Broken1,Ashland_Steepstair,Ashlands_Ruins_Floor_1point5x1point5,Ashlands_Ruins_Floor_3x3_broken3,VineAsh,Ashlands_Ruins_Floor_3x3_broken1,Ashlands_Arch2_Broken2,Ashlands_Pillar4_tip2_broken2,Ashlands_Pillar4_tip2_broken1,ashland_pot1_red,ashland_pot2_red,ashland_pot3_red,Ashlands_Ruins_Floor_6x6_broken1
+L:CharredStone_Spawner	0	0	Charred_Twitcher:n,Charred_Melee:n	GraveStone_CharredTwitcherNest,GraveStone_Broken_CharredTwitcherNest,Spawner_CharredStone
+L:CharredTowerRuins1	0	0		Ashlands_floor_large,Ashlands_Floor,Ashlands_Pillar4_tip_broken2,Ashlands_Pillar4_tip_broken1,Pickable_Fiddlehead,FernAshlands,Ashlands_ArchRoofDamaged_half2,Ashlands_ArchRoofDamaged_half1,Ashlands_Pillar4,ashland_pot3_red,ashland_pot2_red,ashland_pot1_red,Pickable_SmokePuff
+L:CharredTowerRuins1_dvergr	0	0	DvergerAshlands:w	dvergrprops_crate_ashlands,Ashlands_Floor,dvergrprops_stool,Pickable_DvergrLantern,dvergrprops_barrel,dvergrprops_wood_stakewall,Ashlands_floor_large,dvergrprops_wood_pole,Ashlands_Pillar4_tip_broken2,Ashlands_Pillar4_tip_broken1,Pickable_Fiddlehead,FernAshlands,Ashlands_ArchRoofDamaged_half2,Ashlands_ArchRoofDamaged_half1,Ashlands_Pillar4,Pickable_SmokePuff
+L:CharredTowerRuins2	0	0		AshlandsTree6_big,Ashlands_WallBlock,Ashlands_Ruins_twist_ArchBig,Ashlands_Ruins_twist_PillarBaseSmall,Ashlands_Ruins_twist_PillarBase,Ashlands_Pillar4
+L:CharredTowerRuins3	0	0	Charred_Twitcher:n,Charred_Melee:n	GraveStone_CharredTwitcherNest,GraveStone_Broken_CharredTwitcherNest,Spawner_CharredStone,Ashlands_Ruins_twist_ArchBig,Ashlands_Ruins_twist_PillarBaseSmall,Ashlands_Ruins_twist_PillarBase,Ashlands_Pillar4,Ashlands_WallBlock
+L:CombatRuin01	0	0	Skeleton:n	BonePileSpawner,TreasureChest_meadows_combat,Pickable_ForestCryptRemains03,Pickable_ForestCryptRemains02
+L:Crypt2	8	1	Skeleton:w	Crow
+L:Crypt3	8	1	Skeleton:w	Crow
+L:Crypt4	8	1	Skeleton:w	Crow
+L:DN_Bossroom	0	1	vfx_LastBossGate_destroyed:b,FrozenKing:w,FrozenKing:b	vfx_LastBossGate_destroyed<HatefulBlood,FrozenKing<HatefulBlood
+L:DN_gammeltrollFrac01	0	0		TrollFrost_Frac_legs
+L:DN_gammeltrollFrac02	0	0		TrollFrost_Frac_arm
+L:DN_hut01	0	0		prop_ashwood_bed,TreasureChest_deepnorth_village
+L:Dolmen01	0	0	Skeleton_Meadows_noarcher:w	Rock_7,Pickable_ForestCryptRemains01,RockDolmen_1
+L:Dolmen02	0	0	Skeleton_Meadows_noarcher:w	Rock_7,Pickable_ForestCryptRemains01,RockDolmen_2
+L:Dolmen03	0	0	Skeleton_Meadows_noarcher:w	Rock_7,Pickable_ForestCryptRemains02,Pickable_ForestCryptRemains01,RockDolmen_3
+L:Dragonqueen	0	0	Dragon:b	Dragon<
+L:DrakeLorestone	0	0		
+L:DrakeNest01	0	0	Hatchling:w	Pickable_DragonEgg
+L:Eikthyrnir	0	0	Eikthyr:b	Eikthyr<TrophyDeer
+L:FaderLocation	0	0	Fader:b	GraveStone_CharredFaderLocation,Ashlands_Ruins_twist_ArchBig,Ashlands_Ruins_twist_PillarBaseSmall,Ashlands_Ruins_twist_PillarBase,Ashlands_Pillar4,Ashlands_WallBlock,Ashlands_Ruins_Ramp_Upsidedown,Ashlands_Pillar4_tip3_broken3,Ashlands_Pillar4_tip3_broken2,Ashlands_Pillar4_tip3_broken1,Ashlands_PillarBase3_double,Fader<Bell
+L:FireHole	0	0	Surtling:w	
+L:FortressRuins	8192	0		
+L:FrozenShip01_DN	0	0		frozenship
+L:FrozenShip02_DN	0	0		frozenship,frozenship02
+L:FrozenShip03_DN	0	0		frozenship03,frozenship02
+L:GDKing	0	0	gd_king:b	gd_king<AncientSeed
+L:GoblinCamp2	16	0		
+L:GoblinCamp2_1	16	0		
+L:GoblinHut01	0	0	Goblin:w	goblin_woodwall_2m,goblin_pole,goblin_pole_small,goblin_woodwall_1m,goblin_woodwall_2m_ribs,goblin_roof_45d_corner
+L:GoblinHut02	0	0	GoblinShaman:w,Goblin:w,GoblinBrute:w	TreasureChest_heath,goblin_pole_small,goblin_woodwall_1m,goblin_woodwall_2m_ribs,goblin_woodwall_2m,goblin_roof_cap,goblin_roof_45d_corner,goblin_roof_45d
+L:GoblinHut03	0	0	Goblin:w,GoblinShaman:w,GoblinBrute:w,GoblinArcher:w	goblin_pole_small,goblin_woodwall_1m,goblin_roof_45d,goblin_woodwall_2m,goblin_roof_45d_corner,goblin_pole,goblin_woodwall_2m_ribs,Pickable_Dandelion,BlackMetalScrap,goblin_banner,TreasureChest_heath
+L:GoblinKing	0	0	GoblinKing:b	RockFingerBroken,RockThumb,RockFinger,GoblinKing<GoblinTotem
+L:Grave1	0	0	Draugr:n,Draugr_Elite:n,Draugr_Ranged:n,Draugr:w,Skeleton_Swamps:n	Spawner_DraugrPile,TreasureChest_swamp,BonePileSpawner_swamp
+L:Greydwarf_camp1	0	0	Greydwarf:n,Greydwarf_Elite:n,Greydwarf_Shaman:n	Greydwarf_Root,Spawner_GreydwarfNest
+L:Hildir_camp	0	0		Hildir
+L:Hildir_cave	1024	1		MountainKit_brazier_blue,ice_rock1,rock3_ice,caverock_ice_stalagmite,caverock_ice_stalagtite
+L:Hildir_crypt	512	1	Skeleton:w	Crow
+L:Hildir_plainsfortress	2048	0		
+L:IcePond1	0	0		ShimmeringSand_rock,IcePond_rock
+L:InfestedTree01	0	0		GuckSack,GuckSack_small
+L:LeviathanLava	0	0		LeviathanLava
+L:LumberCamp	0	0		prop_piece_workbench_ext3,prop_piece_workbench_ext1,prop_wood_stack,prop_ashwood_bed,TreasureChest_deepnorth_village,stubbe_deepnorth,SnowFirTree_small
+L:Mistlands_DvergrBossEntrance1	256	1	Seeker:w	Pickable_DvergrStein,dvergrprops_shelf,Pickable_DvergrLantern,dvergrprops_lantern,dvergrprops_stool,dvergrprops_chair,dvergrprops_table,dvergrprops_barrel,cliff_mistlands1,cliff_mistlands1_creep,cliff_mistlands2,dvergrprops_banner,blackmarble_post01,dvergrprops_curtain,CreepProp_hanging01
+L:Mistlands_DvergrTownEntrance1	128	1	Seeker:w	dvergrprops_wood_stakewall,blackmarble_post01,CreepProp_hanging01,dvergrtown_wood_beam,dvergrtown_wood_support
+L:Mistlands_DvergrTownEntrance2	128	1	Seeker:w	cliff_mistlands1,cliff_mistlands1_creep,cliff_mistlands2,dvergrprops_banner,dvergrprops_curtain,CreepProp_hanging01
+L:Mistlands_Excavation1	0	0	Dverger:w,DvergerMage:w	dvergrprops_crate_long,Pickable_DvergrLantern,blackmarble_post01,dvergrprops_crate,dvergrprops_hooknchain,dvergrprops_wood_pole,giant_brain,giant_skull,trader_wagon_destructable,dvergrprops_wood_wall,dvergrprops_wood_stakewall
+L:Mistlands_Excavation2	0	0	Dverger:w,DvergerMage:w	dvergrprops_crate_long,Pickable_DvergrLantern,blackmarble_post01,dvergrprops_crate,trader_wagon_destructable,giant_ribs,dvergrtown_wood_crane,dvergrprops_wood_pole,dvergrprops_wood_wall,dvergrprops_wood_stakewall
+L:Mistlands_Excavation3	0	0	Seeker:w	blackmarble_post01,dvergrprops_crate,dvergrtown_wood_crane,dvergrprops_wood_wall
+L:Mistlands_Giant1	0	0	Tick:w	giant_brain,giant_skull,giant_ribs,giant_sword1
+L:Mistlands_Giant2	0	0		giant_ribs
+L:Mistlands_GuardTower1_new	0	0	Dverger:w,DvergerMage:w	dvergrprops_bed,dvergrprops_crate_long,Pickable_DvergrLantern,dvergrprops_wood_stakewall,dvergrprops_crate,blackmarble_post01,dvergrprops_banner,dvergrprops_wood_pole,dvergrtown_stair_corner_wood_left,dvergrprops_wood_beam,Pickable_DvergrStein,dvergrprops_stool,dvergrprops_chair,dvergrprops_table,dvergrprops_curtain,dvergrprops_lantern
+L:Mistlands_GuardTower1_ruined_new	0	0	Seeker:w	TreasureChest_dvergrtower,dvergrprops_wood_stakewall,blackmarble_post01,dvergrprops_banner,dvergrprops_wood_beam,dvergrprops_wood_pole,dvergrprops_curtain,dvergrtown_stair_corner_wood_left
+L:Mistlands_GuardTower1_ruined_new2	0	0	Seeker:w	TreasureChest_dvergrtower,YggaShoot3,YggaShoot2,YggaShoot1,blackmarble_post01,dvergrprops_banner,dvergrprops_wood_pole,dvergrprops_wood_beam,dvergrprops_curtain
+L:Mistlands_GuardTower2_new	0	0	DvergerMage:w,Dverger:w	dvergrprops_bed,dvergrprops_crate_long,Pickable_DvergrLantern,dvergrprops_wood_stakewall,dvergrprops_crate,blackmarble_post01,dvergrprops_banner,dvergrtown_stair_corner_wood_left,dvergrprops_wood_pole,dvergrprops_wood_beam,Pickable_DvergrStein,dvergrprops_stool,dvergrprops_chair,dvergrprops_table,dvergrprops_curtain,dvergrprops_lantern
+L:Mistlands_GuardTower3_new	0	0	Dverger:w,DvergerMage:w	dvergrprops_bed,dvergrprops_barrel,dvergrprops_crate_long,dvergrprops_wood_stakewall,dvergrprops_crate,blackmarble_post01,dvergrprops_wood_beam,dvergrprops_curtain,dvergrprops_wood_pole,dvergrprops_lantern
+L:Mistlands_GuardTower3_ruined_new	0	0	Seeker:w	TreasureChest_dvergrtower,YggaShoot_small1,dvergrprops_wood_stakewall,dvergrprops_curtain,dvergrprops_wood_pole,blackmarble_post01
+L:Mistlands_Harbour1	0	0	Dverger:w,DvergerMage:w	dvergrprops_crate_long,dvergrprops_lantern,dvergrtown_wood_crane,dvergrprops_crate,dvergrprops_wood_beam,dvergrprops_wood_pole
+L:Mistlands_Lighthouse1_new	0	0	DvergerMage:w,Dverger:w	dvergrprops_crate_long,dvergrprops_bed,dvergrprops_wood_stakewall,blackmarble_post01,dvergrprops_stool,Pickable_DvergrStein,dvergrprops_chair,dvergrprops_table,Pickable_DvergrLantern,dvergrprops_wood_beam,dvergrprops_banner,dvergrprops_wood_pole,dvergrprops_curtain,dvergrprops_lantern
+L:Mistlands_RoadPost1	0	0	Dverger:w,DvergerMage:w	blackmarble_post01
+L:Mistlands_RockSpire1	0	0	Seeker:w	TreasureChest_dvergrtower,blackmarble_post01,cliff_mistlands2
+L:Mistlands_Statue1	0	0		
+L:Mistlands_Statue2	0	0		
+L:Mistlands_StatueGroup1	0	0		
+L:Mistlands_Swords1	0	0		giant_helmet2,giant_sword2,giant_sword1
+L:Mistlands_Swords2	0	0		giant_sword2,giant_helmet1,giant_sword1
+L:Mistlands_Swords3	0	0		giant_sword2,giant_sword1,cliff_mistlands2
+L:Mistlands_Viaduct1	0	0		cliff_mistlands2
+L:Mistlands_Viaduct2	0	0		cliff_mistlands2
+L:MorgenHole1	0	1	Morgen:w	cliff_ashlands6,cliff_ashlands7_HalfArch,asksvin_carrion2,asksvin_carrion,ashland_pot3_green,ashland_pot2_green,ashland_pot1_red,ashland_pot2_red,ashland_pot3_red,ashland_pot1_green,Pickable_MoltenCoreStand,TreasureChest_ashland_stone,morgenhole_pile,Pickable_MeatPile
+L:MorgenHole2	0	1	Morgen:w	cliff_ashlands6,cliff_ashlands7_HalfArch,asksvin_carrion2,asksvin_carrion,ashland_pot3_green,ashland_pot2_green,ashland_pot1_red,ashland_pot3_red,ashland_pot1_green,ashland_pot2_red,Pickable_MoltenCoreStand,TreasureChest_ashland_stone,morgenhole_pile,Pickable_MeatPile
+L:MorgenHole3	0	1	Morgen:w	asksvin_carrion2,asksvin_carrion,cliff_ashlands6,cliff_ashlands7_HalfArch,ashland_pot3_green,ashland_pot2_green,ashland_pot1_red,ashland_pot3_red,ashland_pot1_green,ashland_pot2_red,Pickable_MoltenCoreStand,TreasureChest_ashland_stone,morgenhole_pile,Pickable_MeatPile
+L:MorkBorg	131072	1	BlobMork:n	Morkhalla_Rug_stair,Morkhalla_Rug_corner,morkhalla_web_corner,Morkhalla_Banner2,Morkhalla_Banner1,Morkhalla_Eye4,Morkhalla_Eye3,Morkhalla_Eye2,Morkhalla_Eye1,BlobMorkBig,morkhalla_web_tunnel,Morkhalla_Eye7_gemstone,Morkhalla_Eye6_gemstone,Morkhalla_Eye5_gemstone,Morkhalla_Rubble4,Morkhalla_Rubble3,Morkhalla_Rubble2,Morkhalla_Rubble1,TreasureChest_morkhalla,Morkhalla_ChestAncient,Morkhalla_StatuePieceHorn2,Morkhalla_StatuePieceHorn,Morkhalla_StatuePieceFace,Morkhalla_StatuePieceSword,Morkhalla_StatuePieceArmL,Morkhalla_StatuePieceArmR,Morkhalla_StatuePieceTorso,Morkhalla_StatuePieceLegs,Morkhalla_StatuePieceFeet,Morkhalla_GateDoor03,Morkhalla_GateDoor02,Morkhalla_GateDoor
+L:MountainCave02	4	1		rock2_mountain,rock1_mountain,caverock_ice_stalagmite,caverock_ice_stalagtite,rock3_mountain
+L:MountainGrave01	0	0		MountainGraveStone01,Pickable_MountainRemains01_buried
+L:MountainWell1	0	0		TreasureChest_mountains
+L:NorthMemorialPlace	0	0	memorialsite_offering:b	TreasureChest_memorial_buried,Pickable_ForestCryptRemains01,Pickable_ForestCryptRemains02,MemorialStone_Medium,MemorialStone_Small,Pickable_ForestCryptRemains03,MemorialStone_Large,memorialsite_offering<MemorialCoal
+L:NorthVillage	65536	0		
+L:PlaceofMystery1	0	0	Charred_Twitcher:n,Charred_Melee:n,Charred_Archer:n,Charred_Mage:n	Pickable_MoltenCoreStand,GraveStone_Elite_CharredTwitcherNest,GraveStone_Elite_Broken_CharredTwitcherNest,Spawner_CharredStone_Elite,Ashlands_PillarBase3_double,Pickable_Swordpiece3,Ashlands_floor_large,Ashlands_Floor,Ashlands_Pillar4_tip_broken2,Ashlands_Pillar4_tip_broken1,Ashlands_ArchRoofDamaged_half2,Ashlands_ArchRoofDamaged_half1,Ashlands_Pillar4
+L:PlaceofMystery2	0	0	Charred_Twitcher:n,Charred_Melee:n,Charred_Archer:n,Charred_Mage:n	Pickable_MoltenCoreStand,Ashlands_Pillar4,Ashlands_Ruins_twist_PillarBase,Ashlands_Ruins_twist_PillarBaseSmall,Ashlands_Ruins_twist_ArchBig,Ashlands_WallBlock,Ashlands_PillarBase3_double,GraveStone_Elite_CharredTwitcherNest,GraveStone_Elite_Broken_CharredTwitcherNest,Spawner_CharredStone_Elite,Pickable_Swordpiece2
+L:PlaceofMystery3	0	1	Charred_Twitcher:n,Charred_Melee:n,Charred_Archer:n,Charred_Mage:n,Charred_Melee_Dyrnwyn:w	Spawner_CharredStone_Elite,cliff_ashlands6,cliff_ashlands7_HalfArch,GraveStone_Elite_CharredTwitcherNest,GraveStone_Elite_Broken_CharredTwitcherNest,Pickable_MoltenCoreStand,Ashlands_PillarBase3_double,Ashlands_Pillar4_tip_broken2,Ashlands_floor_large,Ashlands_Floor,Ashlands_Pillar4,Ashlands_ArchRoofDamaged_half1,Ashlands_ArchRoofDamaged_half2,Ashlands_Pillar4_tip_broken1
+L:Ruin1	0	0	Greydwarf:w,Greydwarf_Shaman:w	Crow,TreasureChest_blackforest
+L:Ruin2	0	0	Greydwarf:w,Greydwarf_Elite:w	Crow,barrell,TreasureChest_blackforest
+L:Ruin3	0	0	Goblin:w	TreasureChest_heath
+L:Runestone_Ashlands	0	0		
+L:Runestone_BlackForest	0	0		
+L:Runestone_Boars	0	0	Boar:w	
+L:Runestone_DeepNorth	0	0		
+L:Runestone_Draugr	0	0	Draugr:w	
+L:Runestone_Greydwarfs	0	0	Greydwarf:w	FirTree_oldLog
+L:Runestone_Meadows	0	0		
+L:Runestone_Mistlands	0	0		
+L:Runestone_Mountains	0	0		
+L:Runestone_Plains	0	0		
+L:Runestone_Swamps	0	0		
+L:ShipSetting01	0	0	Skeleton_Meadows_noarcher:w	Pickable_ForestCryptRemains02,Pickable_ForestCryptRemains01,TreasureChest_meadows_buried,Rock_7
+L:ShipSetting02	0	0		Rock_4_deepnorth,Pickable_ForestCryptRemains02,Pickable_ForestCryptRemains01,TreasureChest_deepnorth_village,Rock_7_deepnorth
+L:ShipSetting03	0	0		Rock_4_deepnorth,Pickable_ForestCryptRemains02,Pickable_ForestCryptRemains01,TreasureChest_deepnorth_village,Rock_7_deepnorth
+L:ShipWreck01	0	0		shipwreck_karve_chest,shipwreck_karve_bottomboards,shipwreck_karve_dragonhead,shipwreck_karve_bow
+L:ShipWreck01_DN	0	0		shipwreck_vikingship_rear,shipwreck_vikingship_frontpiece,shipwreck_vikingship_mast1,shipwreck_vikingship_front,shipwreck_karve_bottomboards,shipwreck_vikingship_chest
+L:ShipWreck02	0	0		shipwreck_karve_bottomboards,shipwreck_karve_stern,shipwreck_karve_chest,shipwreck_karve_bow
+L:ShipWreck02_DN	0	0		shipwreck_vikingship_rear,shipwreck_vikingship_mast1,shipwreck_vikingship_front,shipwreck_karve_bottomboards,shipwreck_vikingship_chest
+L:ShipWreck03	0	0		shipwreck_karve_sternpost,shipwreck_karve_bottomboards,shipwreck_karve_chest,shipwreck_karve_dragonhead,shipwreck_karve_bow
+L:ShipWreck04	0	0		shipwreck_karve_bottomboards,shipwreck_karve_sternpost,shipwreck_karve_dragonhead,shipwreck_karve_bow,shipwreck_karve_stern,shipwreck_karve_chest
+L:StartTemple	0	0		RaspberryBush,Pickable_Mushroom,Bush01,Pickable_Branch,Pickable_Stone
+L:StoneCircle	0	0		
+L:StoneHenge1	0	0	GoblinBrute:w	Rock_3,highstone,widestone,TreasureChest_plains_stone
+L:StoneHenge2	0	0	GoblinBrute:w	highstone,widestone,TreasureChest_plains_stone
+L:StoneHenge3	0	0	GoblinBrute:w	TreasureChest_plains_stone,highstone,widestone,Rock_3
+L:StoneHenge4	0	0	GoblinBrute:w	widestone,highstone
+L:StoneHenge5	0	0	Goblin:w	Rock_3,highstone,widestone
+L:StoneHenge6	0	0		highstone,widestone,Rock_3
+L:StoneHouse1_heath	0	0	Goblin:w	TreasureChest_heath
+L:StoneHouse2_heath	0	0	Goblin:w	
+L:StoneHouse3	0	0	Greydwarf:w	TreasureChest_blackforest
+L:StoneHouse4	0	0	Greydwarf:w	
+L:StoneHouse5_heath	0	0		TreasureChest_heath
+L:StoneTower1	0	0	Goblin:w	goblin_banner,goblin_roof_45d,goblin_pole_small,TreasureChest_heath,goblin_woodwall_1m,goblin_roof_45d_corner,goblin_fence,goblin_totempole
+L:StoneTower3	0	0	Goblin:w	goblin_woodwall_1m,TreasureChest_heath,goblin_woodwall_2m_ribs,goblin_roof_45d,goblin_pole_small,goblin_roof_45d_corner,goblin_banner,goblin_fence
+L:StoneTowerRuins03	0	0	Skeleton:w,Greydwarf:w,Greydwarf_Elite:w	Crow,TreasureChest_blackforest,Beehive
+L:StoneTowerRuins04	0	0	Skeleton_Mountains:w	TreasureChest_mountains
+L:StoneTowerRuins05	0	0	Skeleton:n,Skeleton_Mountains:w	BonePileSpawner,TreasureChest_mountains
+L:StoneTowerRuins05_leet	0	0	Skeleton:n,Skeleton_Mountains:w	BonePileSpawner,TreasureChest_mountains
+L:StoneTowerRuins07	0	0	Skeleton:w	Crow,TreasureChest_blackforest
+L:StoneTowerRuins07_sunk	0	0		
+L:StoneTowerRuins08	0	0	Skeleton:w	Crow,TreasureChest_blackforest
+L:StoneTowerRuins08_sunk	0	0		
+L:StoneTowerRuins09	0	0	Skeleton:w	Crow,TreasureChest_blackforest
+L:StoneTowerRuins09_sunk	0	0	Skeleton:w	TreasureChest_blackforest
+L:StoneTowerRuins10	0	0	Skeleton:w	Crow,TreasureChest_blackforest
+L:StoneTowerRuins10_sunk	0	0	Skeleton:w	TreasureChest_blackforest
+L:SulfurArch	0	0		cliff_ashlands6,Pickable_SulfurRock,cliff_ashlands3_Arch_1
+L:SunkenCrypt4	2	1	BlobElite:w,Draugr:w	
+L:SwampHut1	0	0	Wraith:w	TreasureChest_blackforest
+L:SwampHut1_1	0	0	Wraith:w	TreasureChest_blackforest
+L:SwampHut2	0	0	Wraith:w	TreasureChest_blackforest
+L:SwampHut2_1	0	0	Wraith:w	TreasureChest_blackforest
+L:SwampHut3	0	0	Wraith:w	TreasureChest_blackforest
+L:SwampHut3_1	0	0	Wraith:w	TreasureChest_blackforest
+L:SwampHut4	0	0	Draugr_Ranged:w,Draugr:w	TreasureChest_blackforest
+L:SwampHut5	0	0	Wraith:w	Crow,TreasureChest_blackforest
+L:SwampRuin1	0	0	Draugr:n,Draugr_Elite:n,Draugr_Ranged:n,Draugr:w,Draugr_Elite:w	Crow,Spawner_DraugrPile,TreasureChest_swamp
+L:SwampRuin2	0	0	Draugr:w,Draugr_Elite:w,Draugr:n,Draugr_Elite:n,Draugr_Ranged:n	Crow,Spawner_DraugrPile,TreasureChest_swamp
+L:SwampWell1	0	0	Draugr_Elite:w	
+L:TarPit1	0	0	BlobTar:w	lox_ribs,Pickable_TarBig,Pickable_Tar
+L:TarPit1_1	0	0	BlobTar:w	lox_ribs,Pickable_TarBig,Pickable_Tar
+L:TarPit2	0	0	BlobTar:w	lox_ribs,Pickable_Tar,Pickable_TarBig
+L:TarPit2_1	0	0	BlobTar:w	lox_ribs,Pickable_Tar,Pickable_TarBig
+L:TarPit3	0	0	BlobTar:w	Pickable_Tar,Pickable_TarBig,lox_ribs
+L:TarPit3_1	0	0	BlobTar:w	Pickable_Tar,Pickable_TarBig,lox_ribs
+L:TheHole01	16384	1	ShadowPerson:w	loot_deepNorth_TimberHall,prop_Tankard,prop_bonfire,Pickable_Stone,Pickable_Branch,prop_piece_cauldron,prop_piece_MeadCauldron,prop_cauldron_ext3_butchertable,prop_cauldron_ext6_rollingpins,prop_cauldron_ext1_spice,prop_FeastMeadows,piece_chest_warderobe,prop_preptable,piece_chest_barrel,HoleRock_root1
+L:TrollCave02	0	1	Troll:w	Pickable_ForestCryptRemains03,Pickable_ForestCryptRemains02,Pickable_ForestCryptRemains01,TreasureChest_trollcave,Pickable_Mushroom_yellow,TreasureChest_blackforest,root07,root11,root12,root08
+L:Vendor_BlackForest	0	0		Haldor
+L:VoltureNest	0	0	Volture:w	cliff_ashlands6,volture_strawpile,Pickable_VoltureEgg,asksvin_carrion2,asksvin_carrion
+L:Waymarker01	0	0		marker01
+L:Waymarker02	0	0		marker02
+L:WoodFarm1	64	0		
+L:WoodHouse1	0	0		Beehive,TreasureChest_meadows
+L:WoodHouse10	0	0		TreasureChest_meadows,Beehive
+L:WoodHouse11	0	0	Greydwarf:w	Beehive,TreasureChest_meadows
+L:WoodHouse12	0	0		Pickable_Mushroom,TreasureChest_meadows
+L:WoodHouse13	0	0	Greydwarf:w	TreasureChest_meadows,Beehive,Beech_small1,Beech_small2
+L:WoodHouse2	0	0		TreasureChest_meadows_02,Beehive
+L:WoodHouse3	0	0		Beehive,Pickable_Branch,Pickable_Stone
+L:WoodHouse4	0	0		Beehive
+L:WoodHouse5	0	0		Beehive
+L:WoodHouse6	0	0	Greydwarf:w	Beehive,TreasureChest_meadows_01
+L:WoodHouse7	0	0		TreasureChest_meadows,Beehive
+L:WoodHouse8	0	0		Pickable_Dandelion
+L:WoodHouse9	0	0		TreasureChest_meadows,Beehive
+L:WoodVillage1	32	0		
+L:WoodVillage2	32	0		
+R:CharredRuins12	0	0		Ashlands_Ruins_twist_ArchBig,Ashlands_Ruins_twist_PillarBaseSmall,Ashlands_Ruins_twist_PillarBase,Ashlands_Pillar4,Ashlands_WallBlock
+R:CharredRuins13	0	0		Ashlands_Ruins_twist_ArchBig,Ashlands_Ruins_twist_PillarBaseSmall,Ashlands_Ruins_twist_PillarBase,Ashlands_Pillar4,Ashlands_WallBlock
+R:CharredRuins14	0	0		Ashlands_Ruins_twist_ArchBig,Ashlands_Ruins_twist_PillarBaseSmall,Ashlands_Ruins_twist_PillarBase,Ashlands_Pillar4
+R:CharredRuins15	0	0		Ashlands_PillarBase3_double,Ashlands_ArchRoofDamaged_half2,Ashlands_ArchRoofDamaged_half1,FernAshlands,Pickable_Fiddlehead
+R:CharredRuins16	0	0		
+R:CharredRuins17	0	0		Ashlands_Ruins_twist_PillarBase,Ashlands_Floor
+R:CharredRuins23	0	0	Morgen:w	Ashlands_Ruins_twist_ArchBig,Ashlands_Ruins_twist_PillarBaseSmall,Ashlands_Ruins_twist_PillarBase,Ashlands_Pillar4
+R:CharredRuins24	0	0		Ashlands_WallBlock,Ashlands_Ruins_twist_ArchBig,Ashlands_Ruins_twist_PillarBaseSmall,Ashlands_Ruins_twist_PillarBase,Ashlands_Pillar4
+R:CharredRuins25	0	0		Ashlands_WallBlock,Ashlands_Ruins_twist_PillarBase,Ashlands_Pillar4
+R:CharredRuins9	0	0		Ashlands_WallBlock,Ashlands_Ruins_twist_ArchBig,Ashlands_Ruins_twist_PillarBaseSmall,Ashlands_Ruins_twist_PillarBase,Ashlands_Pillar4
+R:CharredRuins_new01	0	0		Ashlands_floor_large,Pickable_Fiddlehead,FernAshlands,Ashlands_Ruins_Floor_3x3_broken1,Ashlands_Ruins_Floor_3x3_broken3,Ashlands_Ruins_Floor_3x3_broken2,Ashlands_Pillar4_tip_broken2,Ashlands_Pillar4_tip_broken1,Ashlands_PillarBase3_double,Ashlands_ArchRoofDamaged_half1,Ashlands_ArchRoofDamaged_half2,Ashlands_Ruins_twist_PillarBase,Ashlands_Pillar4,Ashlands_Ruins_TopStone,Ashlands_Ruins_Floor_1point5x1point5,Ashland_Steepstair,Ashlands_Ruins_Ramp_Upsidedown,Ashlands_Ruins_Ramp
+R:CharredRuins_new02	0	0		Ashlands_floor_large,Ashlands_Floor,Pickable_SmokePuff,Ashlands_Pillar4_tip_broken2,Ashlands_Pillar4_tip_broken1,Pickable_Fiddlehead,FernAshlands,Ashlands_ArchRoofDamaged_half2,Ashlands_ArchRoofDamaged_half1,Ashlands_Pillar4
+R:CharredRuins_new03	0	0		Ashlands_floor_large,Ashlands_Floor,Ashlands_Pillar4_tip_broken2,Ashlands_Pillar4_tip_broken1,Pickable_Fiddlehead,FernAshlands,Ashlands_ArchRoofDamaged_half2,Ashlands_ArchRoofDamaged_half1,Ashlands_PillarBase3_double,Ashlands_Ruins_twist_PillarBase,Pickable_SmokePuff
+R:CharredRuins_new04	0	0		Ashlands_floor_large,Ashlands_Floor,Pickable_SmokePuff,Ashlands_Pillar4_tip_broken2,Ashlands_Pillar4_tip_broken1,Pickable_Fiddlehead,FernAshlands,Ashlands_ArchRoofDamaged_half2,Ashlands_ArchRoofDamaged_half1,Ashlands_Pillar4
+R:CharredRuins_new05	0	0		Ashlands_floor_large,Ashlands_Floor,Pickable_SmokePuff,Ashlands_Pillar4_tip_broken2,Ashlands_Pillar4_tip_broken1,Pickable_Fiddlehead,FernAshlands,Ashlands_ArchRoofDamaged_half2,Ashlands_ArchRoofDamaged_half1,Ashlands_Pillar4
+R:FortressRuins23	0	0	Charred_Twitcher:w	Ashlands_Ruins_twist_ArchBig,Ashlands_Ruins_twist_PillarBaseSmall,Ashlands_Ruins_twist_PillarBase,Ashlands_Pillar4
+R:FortressRuins_new01	0	0	Charred_Twitcher:w	Ashlands_floor_large,Pickable_Fiddlehead,FernAshlands,Ashlands_Ruins_Floor_3x3_broken1,Ashlands_Ruins_Floor_3x3_broken3,Ashlands_Ruins_Floor_3x3_broken2,Ashlands_Pillar4_tip_broken2,Ashlands_Pillar4_tip_broken1,TreasureChest_charredfortress,Ashlands_PillarBase3_double,Ashlands_ArchRoofDamaged_half1,Ashlands_ArchRoofDamaged_half2,Ashlands_Ruins_twist_PillarBase,Ashlands_Pillar4,Ashlands_Ruins_TopStone,Ashlands_Ruins_Floor_1point5x1point5,Ashland_Steepstair,Ashlands_Ruins_Ramp_Upsidedown,Ashlands_Ruins_Ramp
+R:FortressRuins_shieldgen	0	0	Morgen:w,Charred_Twitcher:w	Ashlands_Floor
+R:cave_divider	0	0		
+R:cave_divider02	0	0		
+R:cave_dome_bottom_endcap	0	0		Pickable_MountainCaveCrystal
+R:cave_dome_bottom_lake	0	0	StoneGolem:w	Pickable_MountainCaveCrystal,Pickable_Fishingrod,Fish4_cave
+R:cave_dome_middle	0	0	Bat:w	
+R:cave_dome_roof	0	0	Bat:w	Pickable_MountainCaveCrystal,caverock_ice_stalagtite
+R:cave_dome_roof_from_deeproom_corner1	0	0	Bat:w	Pickable_MountainCaveCrystal,caverock_ice_stalagtite
+R:cave_dome_roof_from_deeproom_corner2	0	0	Bat:w	Pickable_MountainCaveCrystal,caverock_ice_stalagtite
+R:cave_dome_roof_from_deeproom_corner3	0	0	Bat:w	Pickable_MountainCaveCrystal,caverock_ice_stalagtite
+R:cave_dome_roof_from_deeproom_corner4	0	0	Bat:w	Pickable_MountainCaveCrystal,caverock_ice_stalagtite
+R:cave_new_corridor01	0	0		Pickable_MountainCaveCrystal,caverock_ice_stalagtite,caverock_ice_stalagmite
+R:cave_new_corridor03	0	0		Pickable_MountainCaveCrystal,caverock_ice_stalagtite,caverock_ice_stalagmite
+R:cave_new_corridor05	0	0		caverock_ice_stalagmite,Pickable_MountainCaveCrystal
+R:cave_new_corridor06	0	0	Ulv:w	caverock_ice_stalagtite,caverock_ice_stalagmite,Pickable_MountainCaveCrystal
+R:cave_new_corridor07	0	0		Pickable_MountainCaveCrystal
+R:cave_new_corridor08	0	0		Pickable_MountainCaveCrystal
+R:cave_new_corridor09	0	0	Ulv:w	caverock_ice_pillar_wall,caverock_ice_stalagtite,caverock_ice_stalagmite,Pickable_MountainCaveCrystal
+R:cave_new_crossroads01	0	0		Pickable_MountainCaveCrystal,caverock_ice_stalagtite,caverock_ice_stalagmite
+R:cave_new_crossroads01_hole	0	0	Bat:w	Pickable_MountainCaveCrystal,TreasureChest_mountaincave,Fish4_cave,caverock_ice_stalagtite
+R:cave_new_crossroads01_hole_ice	0	0	Bat:w	Pickable_MountainCaveCrystal,Fish4_cave,caverock_ice_stalagtite,TreasureChest_mountaincave
+R:cave_new_crossroads01_hole_long	0	0	Bat:w	Pickable_MountainCaveCrystal,caverock_ice_stalagtite,Fish4_cave
+R:cave_new_crossroads01_hole_shrine	0	0	Bat:w,Ulv:w	Pickable_MountainCaveCrystal,Fish4_cave,caverock_ice_stalagtite,MountainKit_brazier
+R:cave_new_crossroads01_hole_to_deeproom	0	0	Bat:w	Pickable_MountainCaveCrystal,caverock_ice_stalagmite,caverock_ice_stalagtite,Fish4_cave
+R:cave_new_crossroads01_ice	0	0		caverock_ice_stalagtite,caverock_ice_stalagmite
+R:cave_new_crossroads02	0	0		Pickable_MountainCaveCrystal,caverock_ice_stalagtite,caverock_ice_stalagmite
+R:cave_new_crossroads03	0	0	Ulv:w	TreasureChest_mountaincave,caverock_ice_stalagtite,caverock_ice_stalagmite
+R:cave_new_deeproom_bottom	0	0	Ulv:w	caverock_ice_pillar_wall,caverock_ice_stalagmite,caverock_ice_stalagtite
+R:cave_new_deeproom_bottom_ice	0	0	Ulv:w	caverock_ice_pillar_wall,caverock_ice_stalagmite,caverock_ice_stalagtite
+R:cave_new_deeproom_bottom_lake	0	0	Fish4_cave:w	Pickable_MountainCaveCrystal,Fish4_cave
+R:cave_new_deeproom_bottom_shrine	0	0	Ulv:w	caverock_ice_stalagmite,cloth_hanging_door_double,MountainKit_brazier_blue,MountainKit_brazier
+R:cave_new_deeproom_endcap	0	0		Pickable_MountainCaveCrystal
+R:cave_new_deeproom_middle	0	0	Bat:w	Pickable_MountainCaveCrystal
+R:cave_new_deeproom_roof	0	0	Bat:w	caverock_ice_stalagtite
+R:cave_new_deeproom_top	0	0	Bat:w	caverock_ice_stalagtite,caverock_ice_stalagmite,Pickable_MountainCaveCrystal
+R:cave_new_endcap02	0	0	Fenring_Cultist_Hildir:w	
+R:cave_new_endcap02_crystal	0	0	Fenring_Cultist_Hildir:w	Pickable_MountainCaveCrystal
+R:cave_new_endcap_moderstone	0	0	Fenring_Cultist_Hildir:w	caverock_ice_stalagtite,caverock_ice_stalagmite,caverock_ice_pillar_wall
+R:cave_new_endcap_painting01	0	0	Fenring_Cultist_Hildir:w	caverock_ice_stalagtite,caverock_ice_stalagmite,caverock_ice_pillar_wall
+R:cave_new_endcap_painting02	0	0	Fenring_Cultist_Hildir:w	caverock_ice_stalagtite,caverock_ice_stalagmite,caverock_ice_pillar_wall
+R:cave_new_endcap_painting03	0	0	Fenring_Cultist_Hildir:w	caverock_ice_stalagtite,caverock_ice_stalagmite,caverock_ice_pillar_wall
+R:cave_new_endcap_painting04	0	0	Fenring_Cultist_Hildir:w	caverock_ice_stalagtite,caverock_ice_stalagmite,caverock_ice_pillar_wall
+R:cave_new_entrance02	0	0		Pickable_MountainCaveCrystal,caverock_ice_pillar_wall,caverock_ice_stalagtite,caverock_ice_stalagmite
+R:cave_new_icecorridor01	0	0		Pickable_MountainCaveCrystal,caverock_ice_stalagtite,caverock_ice_stalagmite
+R:cave_new_icecorridor02	0	0	Ulv:w	TreasureChest_mountaincave,caverock_ice_stalagtite,caverock_ice_stalagmite
+R:cave_new_icecorridor03	0	0		Pickable_MountainCaveCrystal,caverock_ice_stalagtite,caverock_ice_stalagmite
+R:cave_new_icecorridor04	0	0		Pickable_MountainCaveCrystal
+R:cave_new_icecorridor05	0	0	Ulv:w	Pickable_MountainCaveCrystal,TreasureChest_mountaincave,caverock_ice_stalagtite,caverock_ice_stalagmite
+R:cave_new_icecorridor06	0	0		Pickable_MountainCaveCrystal
+R:cave_new_icecorridor07	0	0		Pickable_MountainCaveCrystal,caverock_ice_stalagtite
+R:cave_new_iceendcap02	0	0	Fenring_Cultist_Hildir:w	
+R:cave_new_iceendcap02_crystal	0	0	Fenring_Cultist_Hildir:w	Pickable_MountainCaveCrystal
+R:cave_new_iceendcap_moderstone	0	0	Fenring_Cultist_Hildir:w	caverock_ice_stalagtite,caverock_ice_stalagmite,caverock_ice_pillar_wall
+R:cave_new_iceendcap_painting01	0	0	Fenring_Cultist_Hildir:w	caverock_ice_stalagtite,caverock_ice_stalagmite,caverock_ice_pillar_wall
+R:cave_new_iceendcap_painting02	0	0	Fenring_Cultist_Hildir:w	caverock_ice_stalagtite,caverock_ice_stalagmite,caverock_ice_pillar_wall
+R:cave_new_iceendcap_painting03	0	0	Fenring_Cultist_Hildir:w	caverock_ice_stalagtite,caverock_ice_stalagmite,caverock_ice_pillar_wall
+R:cave_new_iceendcap_painting04	0	0	Fenring_Cultist_Hildir:w	caverock_ice_stalagtite,caverock_ice_stalagmite,caverock_ice_pillar_wall
+R:cave_new_slope_endcap01	0	0		caverock_ice_stalagtite,caverock_ice_stalagmite
+R:cave_new_sloperoom01	0	0	Ulv:w,Bat:w	Pickable_MountainCaveCrystal,caverock_ice_pillar_wall,caverock_ice_stalagtite,caverock_ice_stalagmite
+R:cave_new_sloperoom02	0	0	Ulv:w,Bat:w	Pickable_MountainCaveCrystal,caverock_ice_stalagtite,caverock_ice_stalagmite,caverock_ice_pillar_wall
+R:cave_new_sloperoom03	0	0	Bat:w	Pickable_MountainCaveCrystal,caverock_ice_pillar_wall,caverock_ice_stalagtite,caverock_ice_stalagmite
+R:cave_new_sloperoom04	0	0	Bat:w	Pickable_MountainCaveCrystal,caverock_ice_stalagtite,caverock_ice_stalagmite,caverock_ice_pillar_wall
+R:cave_new_sloperoom05	0	0	Bat:w	Pickable_MountainCaveCrystal,caverock_ice_stalagtite,caverock_ice_stalagmite,caverock_ice_pillar_wall
+R:cave_new_sloperoom_w_hole	0	0	Ulv:w,Bat:w,Fish4_cave:w	Pickable_MountainCaveCrystal,caverock_ice_stalagtite,caverock_ice_pillar_wall,caverock_ice_stalagmite,Fish4_cave
+R:cave_shrine_corridor01	0	0	Ulv:w	Pickable_MeatPile,Pickable_ForestCryptRemains03,Pickable_ForestCryptRemains02,Pickable_ForestCryptRemains01,MountainKit_brazier_blue,MountainKit_brazier
+R:cave_shrine_corridor02	0	0	Ulv:w	
+R:cave_shrine_corridor03	0	0	Ulv:w	Pickable_MeatPile,Pickable_ForestCryptRemains03,Pickable_ForestCryptRemains02,Pickable_ForestCryptRemains01,MountainKit_brazier_blue,MountainKit_brazier
+R:cave_shrine_corridor04	0	0	Ulv:w	Pickable_MeatPile,Pickable_ForestCryptRemains03,Pickable_ForestCryptRemains02,Pickable_ForestCryptRemains01,MountainKit_brazier_blue,MountainKit_brazier
+R:cave_shrine_corridor05	0	0	Ulv:w	cloth_hanging_door
+R:cave_shrine_corridor06	0	0	Ulv:w	MountainKit_brazier_blue,MountainKit_brazier
+R:cave_shrine_corridor07	0	0	Ulv:w	cloth_hanging_door
+R:cave_shrine_endcap	0	0	Fenring_Cultist_Hildir:w	CastleKit_metal_groundtorch_unlit
+R:cave_shrine_endcap01	0	0	Fenring_Cultist_Hildir:w	Pickable_MeatPile,lox_ribs
+R:cave_shrine_endcap02	0	0	Fenring_Cultist_Hildir:w	fenrirhide_hanging,Pickable_ForestCryptRemains03,Pickable_ForestCryptRemains02,Pickable_ForestCryptRemains01
+R:cave_shrine_endcap03	0	0	Fenring_Cultist_Hildir:w	mountainkit_chair,fenrirhide_hanging
+R:cave_shrine_endcap04	0	0	Fenring_Cultist_Hildir:w	Pickable_MeatPile,lox_ribs
+R:cave_shrine_endcap05	0	0	Fenring_Cultist_Hildir:w	TreasureChest_mountaincave,CastleKit_metal_groundtorch_unlit
+R:cave_shrine_endcap_noshrine	0	0		CastleKit_metal_groundtorch_unlit
+R:cave_shrine_endcap_noshrine02	0	0		CastleKit_metal_groundtorch_unlit,TreasureChest_mountaincave
+R:cave_shrine_hole01	0	0	Ulv:w	Pickable_MeatPile,Pickable_ForestCryptRemains03,Pickable_ForestCryptRemains02,Pickable_ForestCryptRemains01,MountainKit_brazier_blue,MountainKit_brazier,Fish4_cave
+R:cave_shrine_lootencap01	0	0		cloth_hanging_door
+R:cave_shrine_lootencap02	0	0		MountainKit_brazier
+R:cave_shrine_lootencap03	0	0		cloth_hanging_door
+R:cave_shrine_lootencap04	0	0		
+R:cave_shrine_lootencap05	0	0		Pickable_MeatPile,Pickable_ForestCryptRemains03,Pickable_ForestCryptRemains02,cloth_hanging_door
+R:cave_shrine_lootencap06	0	0		Pickable_ForestCryptRemains01,Pickable_ForestCryptRemains03
+R:cave_shrine_room01	0	0	Ulv:w	mountainkit_table,mountainkit_chair,Pickable_MeatPile,Pickable_ForestCryptRemains03,Pickable_ForestCryptRemains02,Pickable_ForestCryptRemains01,MountainKit_brazier_blue,MountainKit_brazier
+R:cave_shrine_room02	0	0	Ulv:w	Pickable_MeatPile,Pickable_ForestCryptRemains03,Pickable_ForestCryptRemains02,Pickable_ForestCryptRemains01,lox_ribs,MountainKit_brazier_blue,MountainKit_brazier
+R:cave_shrine_shrine01	0	0	Fenring_Cultist_Hildir:w,Fenring_Cultist:w	Pickable_MeatPile,Pickable_ForestCryptRemains03,Pickable_ForestCryptRemains02,Pickable_ForestCryptRemains01,MountainKit_brazier_blue,MountainKit_brazier,hanging_hairstrands,fenrirhide_hanging,cloth_hanging_long
+R:cave_shrine_shrine02	0	0	Fenring_Cultist_Hildir:w,Fenring_Cultist:w	Pickable_MeatPile,Pickable_ForestCryptRemains03,Pickable_ForestCryptRemains02,Pickable_ForestCryptRemains01,hanging_hairstrands,fenrirhide_hanging,cloth_hanging_long,MountainKit_brazier_blue,MountainKit_brazier
+R:cave_shrine_shrine03	0	0	Fenring_Cultist_Hildir:w,Fenring_Cultist:w	Pickable_MeatPile,Pickable_ForestCryptRemains03,Pickable_ForestCryptRemains02,Pickable_ForestCryptRemains01,hanging_hairstrands,fenrirhide_hanging,cloth_hanging_long,MountainKit_brazier_blue,MountainKit_brazier
+R:cave_shrine_shrine03_HILDIR	0	0	Fenring_Cultist_Hildir:w	Pickable_MeatPile,Pickable_ForestCryptRemains03,Pickable_ForestCryptRemains01,Pickable_ForestCryptRemains02,hanging_hairstrands,fenrirhide_hanging,cloth_hanging_long,MountainKit_brazier_blue
+R:cave_shrine_start02	0	0		caverock_ice_stalagtite,caverock_ice_stalagmite,MountainKit_brazier_blue,MountainKit_brazier,MountainKit_wood_gate
+R:cave_shrine_start02_corridor	0	0		cloth_hanging_door,caverock_ice_stalagtite,caverock_ice_stalagmite,MountainKit_brazier_blue,MountainKit_brazier,MountainKit_wood_gate
+R:cave_shrine_start02_ice	0	0		MountainKit_brazier_blue,MountainKit_brazier,caverock_ice_stalagtite,caverock_ice_stalagmite,MountainKit_wood_gate
+R:cave_shrine_start02_ice_corridor	0	0		cloth_hanging_door,MountainKit_brazier_blue,MountainKit_brazier,caverock_ice_stalagtite,caverock_ice_stalagmite,MountainKit_wood_gate
+R:dvergr_bossroom_middle_endcap01	0	0		
+R:dvergr_bossroom_middle_endcap02	0	0		
+R:dvergr_bossroom_middle_endcap03	0	0		
+R:dvergr_bossroom_roof_endcap01	0	0		
+R:dvergr_bossroom_roof_endcap02	0	0		
+R:dvergr_bossroom_roof_endcap03	0	0		
+R:dvergr_bossroom_top_endcap01	0	0		
+R:dvergr_bossroom_top_endcap02	0	0		
+R:dvergr_bossroom_top_endcap03	0	0		
+R:dvergr_corridor01	0	0		Pickable_RoyalJelly,SeekerEgg,dvergrprops_lantern,CreepProp_hanging01
+R:dvergr_corridor02	0	0		dvergrprops_lantern,CreepProp_hanging01
+R:dvergr_divider01	0	0		Pickable_BlackCoreStand
+R:dvergr_divider02	0	0		
+R:dvergr_divider03	0	0		dvergrtown_wood_support
+R:dvergr_entrance01	0	0		Pickable_RoyalJelly,SeekerEgg,dvergrprops_lantern,CreepProp_hanging01
+R:dvergr_entrance02	0	0		dvergrprops_lantern,CreepProp_hanging01,Pickable_RoyalJelly,SeekerEgg
+R:dvergr_new_bossroom_ENTRANCE02	0	0	SeekerQueen:w,SeekerQueen:b	dvergrtown_arch,SeekerEgg,dvergrprops_lantern,SeekerQueen<TrophySeekerBrute
+R:dvergr_new_bossroom_bottom_endcap_stair01	0	0		
+R:dvergr_new_bossroom_bottom_endcap_stair02	0	0		
+R:dvergr_new_bossroom_bottom_endcap_stair03	0	0		
+R:dvergr_new_bossroom_bottom_endcap_stair04	0	0		
+R:dvergr_new_bossroom_bottom_endcap_stair05	0	0		
+R:dvergr_new_bossroom_bottom_endcap_stair06	0	0		
+R:dvergr_new_bossroom_bottom_endcap_stair07	0	0		
+R:dvergr_new_bossroom_bottom_endcap_stair08	0	0		
+R:dvergr_room01	0	0	Tick:w	Pickable_RoyalJelly,SeekerEgg,dvergrprops_lantern,CreepProp_hanging01
+R:dvergr_room02	0	0	Tick:w	Pickable_RoyalJelly,SeekerEgg,dvergrprops_lantern,CreepProp_hanging01
+R:dvergr_room03	0	0	Tick:w	dvergrprops_lantern,CreepProp_hanging01,Pickable_RoyalJelly,SeekerEgg
+R:dvergr_room04	0	0	Tick:w	dvergrprops_lantern,CreepProp_hanging01,Pickable_RoyalJelly,SeekerEgg
+R:dvergr_room_TREASURE	0	0		Pickable_BlackCoreStand,Pickable_DvergrMineTreasure,TreasureChest_dvergrtown
+R:dvergr_room_TREASURE2	0	0		TreasureChest_dvergrtown,Pickable_BlackCoreStand
+R:dvergr_room_endcap01	0	0		blackmarble_altar_crystal
+R:dvergr_room_endcap02	0	0		Pickable_BlackCoreStand
+R:dvergr_room_endcap03	0	0	Tick:w	Pickable_RoyalJelly,SeekerEgg,dvergrtown_wood_support,dvergrprops_pickaxe
+R:dvergr_room_fence01	0	0	Seeker:w	dvergrprops_lantern,CreepProp_hanging01
+R:dvergr_room_open01	0	0	Seeker:w	dvergrprops_lantern,CreepProp_hanging01,dvergrtown_arch
+R:dvergr_room_open02	0	0	Seeker:w	dvergrtown_arch,dvergrprops_lantern,CreepProp_hanging01
+R:dvergr_room_open03	0	0	Seeker:w	dvergrprops_lantern,CreepProp_hanging01,dvergrtown_arch
+R:dvergr_room_open04	0	0	SeekerBrute:w,Seeker:w	CreepProp_egg_hanging01,dvergrprops_lantern,CreepProp_hanging01
+R:dvergr_roombig_corner01	0	0	SeekerBrute:w,Seeker:w	Pickable_RoyalJelly,CreepProp_egg_hanging01,dvergrprops_lantern,CreepProp_hanging01
+R:dvergr_roombig_corridor01	0	0	SeekerBrute:w,Seeker:w	Pickable_RoyalJelly,CreepProp_egg_hanging01,dvergrprops_lantern,CreepProp_hanging01
+R:dvergr_roombig_corridor02	0	0	SeekerBrute:w,Seeker:w	Pickable_RoyalJelly,CreepProp_egg_hanging01,dvergrprops_lantern,CreepProp_hanging01
+R:dvergr_roombig_endcap02	0	0	Tick:w	Pickable_BlackCoreStand,blackmarble_altar_crystal
+R:dvergr_roombig_open01	0	0	SeekerBrute:w,Seeker:w	Pickable_RoyalJelly,CreepProp_egg_hanging01
+R:dvergr_roombig_open02	0	0	SeekerBrute:w,Seeker:w	dvergrtown_arch,Pickable_RoyalJelly,CreepProp_egg_hanging01,dvergrprops_lantern,CreepProp_hanging01
+R:dvergr_roombig_side01	0	0	SeekerBrute:w,Seeker:w	Pickable_RoyalJelly,CreepProp_egg_hanging01,dvergrprops_lantern,CreepProp_hanging01
+R:dvergr_roombig_side02	0	0	SeekerBrute:w,Seeker:w	Pickable_RoyalJelly,CreepProp_egg_hanging01,dvergrprops_lantern,CreepProp_hanging01
+R:dvergr_roombig_toStone01	0	0		dvergrtown_wood_support,dvergrtown_wood_pole
+R:dvergr_roombig_toStone02	0	0		dvergrtown_wood_pole
+R:dvergr_roombig_windows01	0	0	Tick:w,SeekerBrute:w	Pickable_BlackCoreStand,blackmarble_altar_crystal,Pickable_RoyalJelly,CreepProp_egg_hanging01
+R:dvergr_stair01	0	0		dvergrprops_lantern,CreepProp_hanging01,Pickable_RoyalJelly,SeekerEgg
+R:dvergr_stair02	0	0	Seeker:w	dvergrprops_lantern,CreepProp_hanging01,Pickable_RoyalJelly,SeekerEgg
+R:dvergr_stair03	0	0		CreepProp_hanging01,dvergrprops_lantern
+R:dvergr_stone_corridor01	0	0		CreepProp_hanging01,dvergrtown_wood_pole
+R:dvergr_stone_corridor02	0	0		dvergrtown_wood_pole
+R:dvergr_stone_corridor03	0	0		
+R:dvergr_stone_endcap01	0	0		
+R:dvergr_stone_endcap02	0	0	Tick:w	Pickable_RoyalJelly,SeekerEgg,dvergrtown_wood_support,dvergrprops_pickaxe
+R:dvergr_stone_endcap03	0	0	Tick:w	dvergrtown_wood_support
+R:dvergr_stone_open01	0	0	Seeker:w	dvergrtown_wood_beam,dvergrtown_wood_support,dvergrprops_lantern,CreepProp_hanging01
+R:dvergr_stone_room01	0	0	Seeker:w	dvergrtown_wood_support
+R:dvergr_stone_room02	0	0	Seeker:w	CreepProp_hanging01,dvergrtown_wood_support
+R:dvergr_stone_room03	0	0	Seeker:w	CreepProp_hanging01,dvergrtown_wood_support
+R:dvergr_stone_room04	0	0	Tick:w	CreepProp_hanging01,Pickable_RoyalJelly,SeekerEgg,dvergrtown_wood_support
+R:dvergr_stone_stair01	0	0		Pickable_RoyalJelly,SeekerEgg,dvergrtown_wood_support,CreepProp_hanging01,dvergrtown_wood_pole
+R:dvergr_stone_turn01	0	0	Seeker:w	dvergrtown_wood_support,dvergrtown_wood_beam
+R:forestcrypt_Bend1	0	0		Pickable_Mushroom_yellow
+R:forestcrypt_Bend2	0	0	Skeleton:w	Pickable_Mushroom_yellow
+R:forestcrypt_Chasm01	0	0	Ghost:w,Skeleton:w	Pickable_Mushroom_yellow,root07,root12,root11,root08
+R:forestcrypt_Corridor1	0	0	Skeleton:w	root12,root07
+R:forestcrypt_Corridor2	0	0	Skeleton:w	Pickable_Mushroom_yellow,root12,root07
+R:forestcrypt_Corridor3	0	0	Skeleton:w	Pickable_Mushroom_yellow,root12,root07
+R:forestcrypt_EndCap	0	0		
+R:forestcrypt_EndCap2	0	0		Pickable_Mushroom_yellow
+R:forestcrypt_EndCap2_hildir	0	0	Skeleton_Hildir:w	Pickable_Mushroom_yellow
+R:forestcrypt_EndCap3	0	0		Pickable_SurtlingCoreStand,Pickable_ForestCryptRemains03
+R:forestcrypt_EndCap3_hildir	0	0	Skeleton_Hildir:w	crypt_skeleton_chest
+R:forestcrypt_Stairs1	0	0		
+R:forestcrypt_chamber_hildir	0	0	Skeleton_Hildir:w	crypt_skeleton_chest,Pickable_Mushroom_yellow,root08,root12,root07,root11
+R:forestcrypt_entrance_large	0	0		Pickable_Mushroom_yellow,root07,root12,root11,root08
+R:forestcrypt_new_BurialChamber01	0	0	Skeleton:w,Ghost:w	Pickable_ForestCryptRemains01,Pickable_ForestCryptRemains03,Pickable_ForestCryptRemains02,Pickable_SurtlingCoreStand,Pickable_Mushroom_yellow
+R:forestcrypt_new_BurialChamber02	0	0	Skeleton_Poison:w,Skeleton:w,Skeleton:n	BonePileSpawner,Pickable_SurtlingCoreStand,Pickable_Mushroom_yellow,TreasureChest_forestcrypt,Pickable_ForestCryptRemains04,root07,root11
+R:forestcrypt_new_Burialchamber03	0	0	Skeleton_Poison:w,Skeleton:w,Skeleton:n	Pickable_SurtlingCoreStand,TreasureChest_forestcrypt,BonePileSpawner
+R:forestcrypt_new_Burialchamber04	0	0	Skeleton_Poison:w,Skeleton:w,Skeleton:n	Pickable_SurtlingCoreStand,TreasureChest_forestcrypt,BonePileSpawner
+R:forestcrypt_new_Burialchamber05	0	0	Skeleton:n,Skeleton:w,Skeleton_Poison:w	Pickable_SurtlingCoreStand,TreasureChest_forestcrypt,BonePileSpawner,Pickable_Mushroom_yellow,root07,root12,root11,root08
+R:forestcrypt_room1	0	0	Skeleton:w	TreasureChest_forestcrypt,Pickable_Mushroom_yellow,root07,root12,root11,root08
+R:forestcrypt_room_16	0	0	Skeleton:n,Skeleton:w	BonePileSpawner,Pickable_Mushroom_yellow,root07,root12,root11,root08
+R:gobvill_barley	0	0	Goblin:w	Pickable_Barley_Wild
+R:gobvill_bonfire	0	0	GoblinShaman:w,GoblinBrute:w,Goblin:w	goblin_totempole
+R:gobvill_campfire	0	0	GoblinShaman:w,GoblinBrute:w,Goblin:w	
+R:gobvill_crafting	0	0	Goblin:w	TreasureChest_heath
+R:gobvill_flax	0	0	Goblin:w	Pickable_Flax_Wild
+R:gobvill_guardplatform	0	0	GoblinArcher:w,Goblin:w	goblin_woodwall_1m,goblin_fence,goblin_pole_small,goblin_pole,goblin_woodwall_2m,goblin_roof_45d,goblin_woodwall_2m_ribs,goblin_banner
+R:gobvill_guardtower	0	0	Goblin:w,GoblinArcher:w	goblin_banner,goblin_woodwall_1m,goblin_fence,goblin_pole,goblin_pole_small,goblin_woodwall_2m,goblin_roof_45d
+R:gobvill_hut02	0	0	GoblinShaman:w,Goblin:w,GoblinBrute:w	TreasureChest_heath,goblin_pole_small,goblin_woodwall_1m,goblin_woodwall_2m_ribs,goblin_woodwall_2m,goblin_roof_cap,goblin_roof_45d_corner,goblin_roof_45d
+R:gobvill_hut03	0	0	Goblin:w,GoblinShaman:w,GoblinBrute:w,GoblinArcher:w	goblin_pole_small,goblin_woodwall_1m,goblin_roof_45d,goblin_woodwall_2m,goblin_roof_45d_corner,goblin_pole,goblin_woodwall_2m_ribs,Pickable_Dandelion,BlackMetalScrap,goblin_banner,TreasureChest_heath
+R:gobvill_hut1	0	0	Goblin:w	goblin_woodwall_2m,goblin_pole,goblin_pole_small,goblin_woodwall_1m,goblin_woodwall_2m_ribs,goblin_roof_45d_corner
+R:gobvill_platform	0	0	GoblinArcher:w,Goblin:w	goblin_pole,goblin_woodwall_1m,goblin_roof_45d,goblin_pole_small,goblin_banner
+R:gobvill_refusepit	0	0	Goblin:w	BoneFragments,Pickable_Dandelion,BlackMetalScrap
+R:gobvill_stakes	0	0	Goblin:w,GoblinArcher:w	
+R:gobvill_tent02	0	0	Goblin:w	goblin_banner,TreasureChest_heath,goblin_pole_small,goblin_roof_45d_corner,goblin_pole
+R:gobvill_tent1	0	0	GoblinShaman:w,Goblin:w	goblin_banner,TreasureChest_heath,goblin_woodwall_2m_ribs,goblin_pole_small,goblin_roof_45d
+R:gobvill_woodwall	0	0		goblin_fence
+R:gobvill_woodwall2	0	0		goblin_fence
+R:hole_corridors01	0	0	ElakingMole:w	elaking_trashpile,HoleRock_root1,HoleRock_rootBush1,Pickable_GlowWorm
+R:hole_corridors01_alt2	0	0	ElakingMole:w	HoleRock_rootBush1,Pickable_GlowWorm,HoleRock_rootFloor1,HoleRock_root1
+R:hole_corridors01_alt3	0	0	ElakingMole:w	HoleRock_rootWall1,HoleRock_root1,Pickable_GlowWorm,HoleRock_rootFloor1
+R:hole_corridors01_alt4	0	0	ElakingMole:w	HoleRock_rootWall1,HoleRock_root1,Pickable_GlowWorm,HoleRock_rootFloor1
+R:hole_corridors02	0	0		HoleRock_rootBush1,Pickable_GlowWorm,HoleRock_rootWall1,HoleRock_root1
+R:hole_corridors02_alt1	0	0	ElakingMole:w	HoleRock_root1,HoleRock_rootBush1,Pickable_GlowWorm
+R:hole_corridors02_alt2	0	0	ElakingMole:w	HoleRock_rootBush1,HoleRock_root1,Pickable_GlowWorm,HoleRock_rootWall1
+R:hole_corridors02_alt3	0	0		HoleRock_rootBush1,HoleRock_root1,Pickable_GlowWorm
+R:hole_corridors02_alt4	0	0		Pickable_FrostCoreHanger,HoleRock_root1,HoleRock_rootBush1,Pickable_GlowWorm
+R:hole_corridors03	0	0	ElakingMole:w	HoleRock_rootBush1,Pickable_GlowWorm,HoleRock_rootWall1,HoleRock_root1
+R:hole_corridors03_alt1	0	0	ElakingMole:w	HoleRock_rootBush1,Pickable_GlowWorm,HoleRock_rootWall1,HoleRock_root1
+R:hole_corridors03_alt2	0	0	ElakingMole:w	Pickable_FrostCoreHanger,HoleRock_root1,HoleRock_rootBush1,Pickable_GlowWorm,HoleRock_rootWall1
+R:hole_corridors04	0	0		HoleRock_rootBush1,Pickable_GlowWorm,HoleRock_root1
+R:hole_corridors04_alt1	0	0		HoleRock_rootBush1,HoleRock_root1,Pickable_GlowWorm
+R:hole_corridors04_alt2	0	0		HoleRock_rootBush1,HoleRock_root1,Pickable_GlowWorm
+R:hole_corridors04_alt3	0	0		HoleRock_rootBush1,HoleRock_root1,Pickable_GlowWorm
+R:hole_corridors04_alt4	0	0	ElakingMole:w	HoleRock_rootBush1,Pickable_GlowWorm,HoleRock_rootWall1,HoleRock_root1
+R:hole_corridors04_alt5	0	0		HoleRock_root1,HoleRock_rootBush1,HoleRock_rootWall1,HoleRock_rootFloor1,elaking_trashpile,Pickable_GlowWorm
+R:hole_corridors04_alt6	0	0		HoleRock_root1,HoleRock_rootBush1,Pickable_GlowWorm,HoleRock_rootWall1,HoleRock_rootFloor1,elaking_trashpile
+R:hole_divider1	0	0		HoleRock_root1
+R:hole_endcap1	0	0		Pickable_FrostCoreHanger,Pickable_GlowWorm,HoleRock_root1
+R:hole_endcap2	0	0	Elaking:n,ElakingLantern:n	Spawner_Hole,HoleRock_rootBush1,HoleRock_root1
+R:hole_endcap3	0	0		Pickable_GlowWorm,HoleRock_rootBush1,HoleRock_root1
+R:hole_endcap4	0	0	Elaking:n,ElakingLantern:n	Spawner_Hole,HoleRock_root1
+R:hole_endcap5	0	0	ElakingMole:w	Pickable_FrostCoreHanger,HoleRock_rootBush1,HoleRock_root1
+R:hole_endcap6	0	0	ElakingMole:w	elaking_trashpile,Pickable_FrostCoreHanger,HoleRock_rootBush1,HoleRock_root1
+R:hole_endcap7	0	0	ElakingMole:w	elaking_trashpile,Pickable_FrostCoreHanger,HoleRock_root1,Pickable_GlowWorm
+R:hole_endcap8	0	0	ElakingMole:w	elaking_trashpile,Pickable_FrostCoreHanger,HoleRock_root1,Pickable_GlowWorm
+R:hole_endcap9	0	0		elaking_trashpile,Pickable_FrostCoreHanger,HoleRock_root1
+R:hole_room01	0	0	ElakingMole:w,Elaking:n,ElakingLantern:n	elaking_trashpile,HoleRock_rootBush1,Spawner_Hole,HoleRock_root1
+R:hole_room02	0	0	ElakingMole:w,Elaking:n,ElakingLantern:n	elaking_trashpile,HoleRock_rootBush1,Spawner_Hole,HoleRock_root1
+R:hole_room03	0	0	ElakingMole:w,Elaking:n,ElakingLantern:n	elaking_trashpile,HoleRock_rootBush1,HoleRock_root1,Spawner_Hole
+R:meadowsvillage_greathall	0	0	Draugr_Elite:w,Draugr_Ranged:w,Draugr:w,Draugr:n,Draugr_Elite:n,Draugr_Ranged:n	TreasureChest_meadows,Spawner_DraugrPile
+R:meadowsvillage_greathallruin	0	0	Draugr:n,Draugr_Elite:n,Draugr_Ranged:n,Draugr_Ranged:w,Draugr:w	Beehive,Spawner_DraugrPile
+R:meadowsvillage_house1	0	0	Draugr:w,Draugr_Ranged:w	TreasureChest_meadows,Beehive
+R:meadowsvillage_house2	0	0	Draugr:w,Draugr_Ranged:w	TreasureChest_meadows,Beehive
+R:meadowsvillage_longhouse	0	0	Draugr_Elite:w,Draugr_Ranged:w,Draugr:w,Draugr:n,Draugr_Elite:n,Draugr_Ranged:n	Spawner_DraugrPile,TreasureChest_meadows
+R:meadowsvillage_longhouseruin	0	0	Draugr:n,Draugr_Elite:n,Draugr_Ranged:n,Draugr:w,Draugr_Ranged:w	Spawner_DraugrPile,Beehive
+R:meadowsvillage_road1	0	0		
+R:meadowsvillage_stakewall3	0	0		
+R:meadowsvillage_tower	0	0	Draugr_Ranged:w,Draugr:w	Beehive
+R:meadowsvillage_towerruin	0	0	Draugr:w	Beehive
+R:morkhalla_endcap01	0	0	JotunWarriorDualWield:w,JotunWitch:w,JotunWarrior:w,BlobMork:n	BlackIce_Start,Morkhalla_Rubble3,Morkhalla_Rubble4,TreasureChest_morkhalla,Morkhalla_GateDoor03,Morkhalla_GateDoor02,Morkhalla_GateDoor,Morkhalla_Rug_stair,Morkhalla_Rug_corner,Morkhalla_StatuePieceHorn2,Morkhalla_StatuePieceHorn,Morkhalla_StatuePieceFace,Morkhalla_StatuePieceSword,Morkhalla_StatuePieceArmL,Morkhalla_StatuePieceArmR,morkhalla_web_tunnel,Morkhalla_StatuePieceTorso,Morkhalla_StatuePieceLegs,Morkhalla_StatuePieceFeet,morkhalla_web_corner,Morkhalla_coal_pile_memorial,Morkhalla_firepit,Morkhalla_Trainingdummy2,Morkhalla_Trainingdummy1,BlobMorkBig,Morkhalla_Eye7_gemstone,Morkhalla_Eye6_gemstone,Morkhalla_Eye5_gemstone,Morkhalla_Eye4,Morkhalla_Eye3,Morkhalla_Eye2,Morkhalla_Eye1,Morkhalla_Rubble2,Morkhalla_Rubble1,Morkhalla_ChestAncient,Morkhalla_Bench,Morkhalla_Table,Morkhalla_Stool,Morkhalla_Bedroll2,Morkhalla_Bedroll1
+R:morkhalla_endcap02	0	0	JotunWarriorDualWield:w,JotunWarrior:w,JotunWitch:w,BlobMork:n	BlackIce_Start,Morkhalla_Rubble3,Morkhalla_Rubble4,TreasureChest_morkhalla,Morkhalla_Bench,Morkhalla_Table,Morkhalla_Stool,Morkhalla_firepit,Morkhalla_Rug_stair,Morkhalla_Rug_corner,Morkhalla_GateDoor03,Morkhalla_GateDoor02,Morkhalla_GateDoor,Morkhalla_StatuePieceHorn2,Morkhalla_StatuePieceHorn,Morkhalla_StatuePieceFace,Morkhalla_StatuePieceSword,Morkhalla_StatuePieceArmL,Morkhalla_StatuePieceArmR,morkhalla_web_tunnel,Morkhalla_StatuePieceTorso,Morkhalla_StatuePieceLegs,Morkhalla_StatuePieceFeet,morkhalla_web_corner,Morkhalla_Banner2,Morkhalla_Banner1,Morkhalla_Eye4,Morkhalla_Eye3,Morkhalla_Eye2,Morkhalla_Eye1,Morkhalla_Trainingdummy1,Morkhalla_Trainingdummy2,Morkhalla_WeaponStand,BlobMorkBig,Morkhalla_Eye7_gemstone,Morkhalla_Eye6_gemstone,Morkhalla_Eye5_gemstone,Morkhalla_Rubble2,Morkhalla_Rubble1,Morkhalla_ChestAncient
+R:morkhalla_entrance01	0	0	BlobMork:n,JotunWitch:w	Morkhalla_rubble_trashpile,Morkhalla_Rubble2,Morkhalla_Rubble1,Morkhalla_Rubble4,Morkhalla_Rubble3,Morkhalla_ChestAncient,morkhalla_web_corner,Morkhalla_Rug_end1,Morkhalla_Rug_end2,Morkhalla_Rug_middle,Morkhalla_Banner2,Morkhalla_Banner1,Morkhalla_Eye4,Morkhalla_Eye3,Morkhalla_Eye2,Morkhalla_Eye1,Morkhalla_Rug_stair,Morkhalla_Rug_corner,BlobMorkBig,morkhalla_web_tunnel,Morkhalla_Eye7_gemstone,Morkhalla_Eye6_gemstone,Morkhalla_Eye5_gemstone,TreasureChest_morkhalla,Morkhalla_GateDoor03,Morkhalla_GateDoor02,Morkhalla_GateDoor,Morkhalla_StatuePieceHorn2,Morkhalla_StatuePieceHorn,Morkhalla_StatuePieceFace,Morkhalla_StatuePieceSword,Morkhalla_StatuePieceArmL,Morkhalla_StatuePieceArmR,Morkhalla_StatuePieceTorso,Morkhalla_StatuePieceLegs,Morkhalla_StatuePieceFeet
+R:morkhalla_entrance02	0	0	BlobMork:n,JotunWitch:w	Morkhalla_rubble_trashpile,Morkhalla_Rubble2,Morkhalla_Rubble1,Morkhalla_Rubble4,Morkhalla_Rubble3,morkhalla_web_corner,Morkhalla_Rug_end1,Morkhalla_Rug_end2,Morkhalla_Rug_middle,Morkhalla_Banner2,Morkhalla_Banner1,Morkhalla_Eye4,Morkhalla_Eye3,Morkhalla_Eye2,Morkhalla_Eye1,Morkhalla_StatuePieceHorn2,Morkhalla_StatuePieceHorn,Morkhalla_StatuePieceFace,Morkhalla_StatuePieceSword,Morkhalla_StatuePieceArmL,Morkhalla_StatuePieceArmR,morkhalla_web_tunnel,Morkhalla_StatuePieceTorso,Morkhalla_StatuePieceLegs,Morkhalla_StatuePieceFeet,BlobMorkBig,Morkhalla_Rug_stair,Morkhalla_Rug_corner,Morkhalla_Eye7_gemstone,Morkhalla_Eye6_gemstone,Morkhalla_Eye5_gemstone,TreasureChest_morkhalla,Morkhalla_ChestAncient,Morkhalla_GateDoor03,Morkhalla_GateDoor02,Morkhalla_GateDoor
+R:morkhalla_floor01	0	0	GoblinDeepNorth:w,DvergerDeepNorth:w,JotunWarrior:w,JotunWitch:w,BlobMork:n	Morkhalla_rubble_trashpile,Morkhalla_Rubble2,Morkhalla_Rubble1,Morkhalla_Rubble4,Morkhalla_Rubble3,Morkhalla_Rug_middle,Morkhalla_Rug_end2,Morkhalla_Rug_corner,Morkhalla_Rug_end1,Morkhalla_ChestAncient,Morkhalla_GateDoor03,Morkhalla_GateDoor02,Morkhalla_GateDoor,morkhalla_web_corner,Morkhalla_Banner2,Morkhalla_Banner1,Morkhalla_Eye4,Morkhalla_Eye3,Morkhalla_Eye2,Morkhalla_Eye1,Morkhalla_Bench,Morkhalla_Stool,Morkhalla_firepit,Morkhalla_StatuePieceHorn2,Morkhalla_StatuePieceHorn,Morkhalla_StatuePieceFace,Morkhalla_StatuePieceSword,Morkhalla_StatuePieceArmL,Morkhalla_StatuePieceArmR,morkhalla_web_tunnel,Morkhalla_StatuePieceTorso,Morkhalla_StatuePieceLegs,Morkhalla_StatuePieceFeet,Morkhalla_Rug_stair,BlobMorkBig,Morkhalla_Eye7_gemstone,Morkhalla_Eye6_gemstone,Morkhalla_Eye5_gemstone,TreasureChest_morkhalla
+R:morkhalla_floor01_tall	0	0	GoblinDeepNorth:w,DvergerDeepNorth:w,BlobMork:n,JotunWarrior:w,JotunWitch:w	Morkhalla_Rubble2,Morkhalla_Rubble1,Morkhalla_ChestAncient,Morkhalla_rubble_trashpile,Morkhalla_Rubble4,Morkhalla_Rubble3,Morkhalla_Rug_corner,Morkhalla_Rug_end1,Morkhalla_Rug_end2,Morkhalla_Rug_middle,Morkhalla_Rug_stair,Morkhalla_GateDoor03,Morkhalla_GateDoor02,Morkhalla_GateDoor,BlobMorkBig,morkhalla_web_tunnel,morkhalla_web_corner,Morkhalla_Eye7_gemstone,Morkhalla_Eye6_gemstone,Morkhalla_Eye5_gemstone,Morkhalla_Eye4,Morkhalla_Eye3,Morkhalla_Eye2,Morkhalla_Eye1,TreasureChest_morkhalla,Morkhalla_StatuePieceHorn2,Morkhalla_StatuePieceHorn,Morkhalla_StatuePieceFace,Morkhalla_StatuePieceSword,Morkhalla_StatuePieceArmL,Morkhalla_StatuePieceArmR,Morkhalla_StatuePieceTorso,Morkhalla_StatuePieceLegs,Morkhalla_StatuePieceFeet,Morkhalla_Banner2,Morkhalla_Banner1,Morkhalla_WoodBoards,Morkhalla_Bench,Morkhalla_Stool,Morkhalla_firepit
+R:morkhalla_floor02	0	0	GoblinDeepNorth:w,DvergerDeepNorth:w,JotunWarrior:w,BlobMork:n	Morkhalla_rubble_trashpile,Morkhalla_Rubble2,Morkhalla_Rubble1,Morkhalla_Rubble4,Morkhalla_Rubble3,Morkhalla_ChestAncient,Morkhalla_Rug_end1,Morkhalla_Rug_end2,Morkhalla_Rug_middle,Morkhalla_GateDoor03,Morkhalla_GateDoor02,Morkhalla_GateDoor,morkhalla_web_corner,Morkhalla_StatuePieceHorn2,Morkhalla_StatuePieceHorn,Morkhalla_StatuePieceFace,Morkhalla_StatuePieceSword,Morkhalla_StatuePieceArmL,Morkhalla_StatuePieceArmR,morkhalla_web_tunnel,Morkhalla_StatuePieceTorso,Morkhalla_StatuePieceLegs,Morkhalla_StatuePieceFeet,BlobMorkBig,Morkhalla_WoodBoards,Morkhalla_Banner2,Morkhalla_Banner1,Morkhalla_Eye4,Morkhalla_Eye3,Morkhalla_Eye2,Morkhalla_Eye1,Morkhalla_Rug_stair,Morkhalla_Rug_corner
+R:morkhalla_floor02_tall	0	0	BlobMork:n,JotunWarrior:w	Morkhalla_rubble_trashpile,Morkhalla_Rubble2,Morkhalla_Rubble1,Morkhalla_Rubble4,Morkhalla_Rubble3,Morkhalla_Rug_end1,Morkhalla_Rug_end2,Morkhalla_Rug_middle,Morkhalla_Rug_stair,Morkhalla_Rug_corner,BlobMorkBig,morkhalla_web_tunnel,morkhalla_web_corner,Morkhalla_Eye7_gemstone,Morkhalla_Eye6_gemstone,Morkhalla_Eye5_gemstone,Morkhalla_Eye4,Morkhalla_Eye3,Morkhalla_Eye2,Morkhalla_Eye1,TreasureChest_morkhalla,Morkhalla_ChestAncient,Morkhalla_GateDoor03,Morkhalla_GateDoor02,Morkhalla_GateDoor,Morkhalla_StatuePieceHorn2,Morkhalla_StatuePieceHorn,Morkhalla_StatuePieceFace,Morkhalla_StatuePieceSword,Morkhalla_StatuePieceArmL,Morkhalla_StatuePieceArmR,Morkhalla_StatuePieceTorso,Morkhalla_StatuePieceLegs,Morkhalla_StatuePieceFeet,Morkhalla_Banner2,Morkhalla_Banner1,Morkhalla_WoodBoards
+R:morkhalla_floor03	0	0	GoblinDeepNorth:w,DvergerDeepNorth:w,JotunWarrior:w,BlobMork:n,JotunWitch:w	Morkhalla_rubble_trashpile,Morkhalla_Rubble2,Morkhalla_Rubble1,Morkhalla_Rubble4,Morkhalla_Rubble3,Morkhalla_Rug_end1,Morkhalla_Rug_middle,Morkhalla_Rug_corner,Morkhalla_Rug_end2,Morkhalla_ChestAncient,Morkhalla_GateDoor03,Morkhalla_GateDoor02,Morkhalla_GateDoor,morkhalla_web_corner,Morkhalla_StatuePieceHorn2,Morkhalla_StatuePieceHorn,Morkhalla_StatuePieceFace,Morkhalla_StatuePieceSword,Morkhalla_StatuePieceArmL,Morkhalla_StatuePieceArmR,morkhalla_web_tunnel,Morkhalla_StatuePieceTorso,Morkhalla_StatuePieceLegs,Morkhalla_StatuePieceFeet,BlobMorkBig,Morkhalla_WoodBoards,Morkhalla_Banner2,Morkhalla_Banner1,Morkhalla_Eye4,Morkhalla_Eye3,Morkhalla_Eye2,Morkhalla_Eye1,Morkhalla_Bench,Morkhalla_firepit,Morkhalla_Rug_stair,Morkhalla_Eye7_gemstone,Morkhalla_Eye6_gemstone,Morkhalla_Eye5_gemstone,TreasureChest_morkhalla
+R:morkhalla_floor03_tall	0	0	GoblinDeepNorth:w,DvergerDeepNorth:w,BlobMork:n,JotunWarrior:w,JotunWitch:w	Morkhalla_rubble_trashpile,Morkhalla_Rubble2,Morkhalla_Rubble1,Morkhalla_Rubble4,Morkhalla_Rubble3,Morkhalla_Rug_corner,Morkhalla_Rug_end1,Morkhalla_Rug_end2,Morkhalla_ChestAncient,Morkhalla_Rug_stair,Morkhalla_Rug_middle,Morkhalla_GateDoor03,Morkhalla_GateDoor02,Morkhalla_GateDoor,BlobMorkBig,morkhalla_web_tunnel,morkhalla_web_corner,Morkhalla_Eye7_gemstone,Morkhalla_Eye6_gemstone,Morkhalla_Eye5_gemstone,Morkhalla_Eye4,Morkhalla_Eye3,Morkhalla_Eye2,Morkhalla_Eye1,TreasureChest_morkhalla,Morkhalla_StatuePieceHorn2,Morkhalla_StatuePieceHorn,Morkhalla_StatuePieceFace,Morkhalla_StatuePieceSword,Morkhalla_StatuePieceArmL,Morkhalla_StatuePieceArmR,Morkhalla_StatuePieceTorso,Morkhalla_StatuePieceLegs,Morkhalla_StatuePieceFeet,Morkhalla_WoodBoards,Morkhalla_Banner2,Morkhalla_Banner1,Morkhalla_Bench,Morkhalla_Stool,Morkhalla_firepit
+R:morkhalla_floor04	0	0	GoblinDeepNorth:w,DvergerDeepNorth:w,JotunWarrior:w,BlobMork:n,JotunWitch:w	Morkhalla_rubble_trashpile,Morkhalla_Rubble2,Morkhalla_Rubble1,Morkhalla_Rubble4,Morkhalla_Rubble3,Morkhalla_ChestAncient,Morkhalla_GateDoor03,Morkhalla_GateDoor02,Morkhalla_GateDoor,morkhalla_web_corner,Morkhalla_StatuePieceHorn2,Morkhalla_StatuePieceHorn,Morkhalla_StatuePieceFace,Morkhalla_StatuePieceSword,Morkhalla_StatuePieceArmL,Morkhalla_StatuePieceArmR,morkhalla_web_tunnel,Morkhalla_StatuePieceTorso,Morkhalla_StatuePieceLegs,Morkhalla_StatuePieceFeet,BlobMorkBig,Morkhalla_WoodBoards,Morkhalla_Banner2,Morkhalla_Banner1,Morkhalla_Eye4,Morkhalla_Eye3,Morkhalla_Eye2,Morkhalla_Eye1,Morkhalla_Rug_stair,Morkhalla_Rug_corner,Morkhalla_Eye7_gemstone,Morkhalla_Eye6_gemstone,Morkhalla_Eye5_gemstone,TreasureChest_morkhalla,Morkhalla_Bench,Morkhalla_Stool,Morkhalla_firepit
+R:morkhalla_floor04_tall	0	0	GoblinDeepNorth:w,DvergerDeepNorth:w,BlobMork:n,JotunWarrior:w,JotunWitch:w	Morkhalla_rubble_trashpile,Morkhalla_Rubble2,Morkhalla_Rubble1,Morkhalla_Rubble4,Morkhalla_Rubble3,Morkhalla_ChestAncient,Morkhalla_Rug_end1,Morkhalla_Rug_end2,Morkhalla_Rug_middle,Morkhalla_Rug_stair,Morkhalla_Rug_corner,BlobMorkBig,morkhalla_web_tunnel,morkhalla_web_corner,Morkhalla_Eye7_gemstone,Morkhalla_Eye6_gemstone,Morkhalla_Eye5_gemstone,Morkhalla_Eye4,Morkhalla_Eye3,Morkhalla_Eye2,Morkhalla_Eye1,TreasureChest_morkhalla,Morkhalla_GateDoor03,Morkhalla_GateDoor02,Morkhalla_GateDoor,Morkhalla_StatuePieceHorn2,Morkhalla_StatuePieceHorn,Morkhalla_StatuePieceFace,Morkhalla_StatuePieceSword,Morkhalla_StatuePieceArmL,Morkhalla_StatuePieceArmR,Morkhalla_StatuePieceTorso,Morkhalla_StatuePieceLegs,Morkhalla_StatuePieceFeet,Morkhalla_WoodBoards,Morkhalla_Banner2,Morkhalla_Banner1,Morkhalla_Bench,Morkhalla_Stool,Morkhalla_firepit
+R:morkhalla_floor05	0	0	GoblinDeepNorth:w,DvergerDeepNorth:w,JotunWarrior:w,JotunWitch:w,BlobMork:n	Morkhalla_rubble_trashpile,Morkhalla_Rubble2,Morkhalla_Rubble1,Morkhalla_Rubble4,Morkhalla_Rubble3,Morkhalla_ChestAncient,Morkhalla_Rug_end1,Morkhalla_Rug_end2,Morkhalla_Rug_middle,Morkhalla_GateDoor03,Morkhalla_GateDoor02,Morkhalla_GateDoor,morkhalla_web_corner,Morkhalla_Banner2,Morkhalla_Banner1,Morkhalla_Eye4,Morkhalla_Eye3,Morkhalla_Eye2,Morkhalla_Eye1,Morkhalla_Stool,Morkhalla_firepit,Morkhalla_StatuePieceHorn2,Morkhalla_StatuePieceHorn,Morkhalla_StatuePieceFace,Morkhalla_StatuePieceSword,Morkhalla_StatuePieceArmL,Morkhalla_StatuePieceArmR,morkhalla_web_tunnel,Morkhalla_StatuePieceTorso,Morkhalla_StatuePieceLegs,Morkhalla_StatuePieceFeet,BlobMorkBig,Morkhalla_WoodBoards,Morkhalla_Rug_stair,Morkhalla_Rug_corner,Morkhalla_Eye7_gemstone,Morkhalla_Eye6_gemstone,Morkhalla_Eye5_gemstone,TreasureChest_morkhalla
+R:morkhalla_floor05_tall	0	0	GoblinDeepNorth:w,DvergerDeepNorth:w,JotunWarrior:w,BlobMork:n,JotunWitch:w	Morkhalla_rubble_trashpile,Morkhalla_Rubble2,Morkhalla_Rubble1,Morkhalla_Rubble4,Morkhalla_Rubble3,Morkhalla_ChestAncient,Morkhalla_Rug_end1,Morkhalla_Rug_end2,Morkhalla_Rug_middle,Morkhalla_GateDoor03,Morkhalla_GateDoor02,Morkhalla_GateDoor,morkhalla_web_corner,Morkhalla_StatuePieceHorn2,Morkhalla_StatuePieceHorn,Morkhalla_StatuePieceFace,Morkhalla_StatuePieceSword,Morkhalla_StatuePieceArmL,Morkhalla_StatuePieceArmR,morkhalla_web_tunnel,Morkhalla_StatuePieceTorso,Morkhalla_StatuePieceLegs,Morkhalla_StatuePieceFeet,BlobMorkBig,Morkhalla_WoodBoards,Morkhalla_Banner2,Morkhalla_Banner1,Morkhalla_Eye4,Morkhalla_Eye3,Morkhalla_Eye2,Morkhalla_Eye1,Morkhalla_Rug_stair,Morkhalla_Rug_corner,Morkhalla_Eye7_gemstone,Morkhalla_Eye6_gemstone,Morkhalla_Eye5_gemstone,TreasureChest_morkhalla,Morkhalla_Bench,Morkhalla_Stool,Morkhalla_firepit
+R:morkhalla_floor06	0	0	GoblinDeepNorth:w,DvergerDeepNorth:w,BlobMork:n,JotunWarrior:w,JotunWitch:w	Morkhalla_rubble_trashpile,Morkhalla_Rubble2,Morkhalla_Rubble1,Morkhalla_Rubble4,Morkhalla_Rubble3,Morkhalla_ChestAncient,Morkhalla_Rug_end1,Morkhalla_Rug_end2,Morkhalla_Rug_middle,Morkhalla_GateDoor03,Morkhalla_GateDoor02,Morkhalla_GateDoor,morkhalla_web_corner,Morkhalla_StatuePieceHorn2,Morkhalla_StatuePieceHorn,Morkhalla_StatuePieceFace,Morkhalla_StatuePieceSword,Morkhalla_StatuePieceArmL,Morkhalla_StatuePieceArmR,morkhalla_web_tunnel,Morkhalla_StatuePieceTorso,Morkhalla_StatuePieceLegs,Morkhalla_StatuePieceFeet,BlobMorkBig,Morkhalla_Banner2,Morkhalla_Banner1,Morkhalla_Eye4,Morkhalla_Eye3,Morkhalla_Eye2,Morkhalla_Eye1,Morkhalla_Bench,Morkhalla_firepit,Morkhalla_WoodBoards,Morkhalla_Rug_stair,Morkhalla_Rug_corner,Morkhalla_Eye7_gemstone,Morkhalla_Eye6_gemstone,Morkhalla_Eye5_gemstone,TreasureChest_morkhalla
+R:morkhalla_floor06_tall	0	0	GoblinDeepNorth:w,DvergerDeepNorth:w,BlobMork:n,JotunWarrior:w,JotunWitch:w	Morkhalla_rubble_trashpile,Morkhalla_Rubble2,Morkhalla_Rubble1,Morkhalla_Rubble4,Morkhalla_Rubble3,Morkhalla_ChestAncient,Morkhalla_Rug_end2,Morkhalla_Rug_middle,Morkhalla_Rug_corner,Morkhalla_Rug_end1,Morkhalla_GateDoor03,Morkhalla_GateDoor02,Morkhalla_GateDoor,morkhalla_web_corner,Morkhalla_Banner2,Morkhalla_Banner1,Morkhalla_Eye4,Morkhalla_Eye3,Morkhalla_Eye2,Morkhalla_Eye1,Morkhalla_StatuePieceHorn2,Morkhalla_StatuePieceHorn,Morkhalla_StatuePieceFace,Morkhalla_StatuePieceSword,Morkhalla_StatuePieceArmL,Morkhalla_StatuePieceArmR,morkhalla_web_tunnel,Morkhalla_StatuePieceTorso,Morkhalla_StatuePieceLegs,Morkhalla_StatuePieceFeet,Morkhalla_Rug_stair,BlobMorkBig,Morkhalla_WoodBoards,Morkhalla_Bench,Morkhalla_Stool,Morkhalla_firepit,Morkhalla_Eye7_gemstone,Morkhalla_Eye6_gemstone,Morkhalla_Eye5_gemstone,TreasureChest_morkhalla
+R:northvillage_fence1	0	0	ShadowPerson:w	
+R:northvillage_fence2	0	0		
+R:northvillage_granary	0	0		WallSnow1,WallSnow3,WallSnow2,WallSnow4,TreasureChest_deepnorth_village,prop_piece_cookingstation,loot_deepNorth_Granary
+R:northvillage_house1	0	0	ShadowPerson:w	WallSnow1,WallSnow3,WallSnow2,WallSnow4,prop_piece_workbench_ext3,prop_piece_workbench_ext1,prop_wood_stack,prop_piece_brazierfloor01,TreasureChest_deepnorth_village,prop_Tankard,prop_FeastAshlands,prop_piece_bench_runed,prop_FeastMeadows,prop_piece_chair03,prop_ashwood_bed,prop_bed02,prop_itemstand_TrophyGoblinBrute,prop_itemstand_TrophySeekerBrute,prop_itemstand_TrophyDraugrElite,prop_itemstand_TrophyGoblinShaman,prop_itemstand_TrophyGreydwarfBrute,prop_itemstand_TrophyGreydwarf,prop_chest_warderobe
+R:northvillage_house2	0	0	ShadowPerson:w	WallSnow1,WallSnow3,WallSnow2,WallSnow4,loot_deepNorth_TimberHall,prop_forge_ext2,prop_forge_ext5,prop_hearth,prop_itemstand_TrophyGoblinShaman,prop_itemstand,prop_piece_brazierfloor01,prop_Tankard,prop_FeastAshlands,prop_piece_bench_runed,prop_cauldron_ext5_mortarandpestle,prop_chest_warderobe,TreasureChest_deepnorth_village,prop_piece_workbench_ext4,prop_piece_workbench_ext2,prop_ashwood_bed,prop_bed02
+R:northvillage_stable	0	0		WallSnow3,WallSnow2,LingonberryBush
+R:northvillage_tower	0	0		WallSnow1,WallSnow3,WallSnow2,TreasureChest_deepnorth_village
+R:northvillage_turnipfield	0	0	ShadowPerson:w	Bush01_deepnorth
+R:northvillage_woodpile	0	0		
+R:plainsfortress_Hildir_Endcap	0	0	GoblinArcher:w	
+R:plainsfortress_Hildir_Floor0	0	0	GoblinShaman:w,GoblinArcher:w,Goblin:w	dungeon_sunkencrypt_irongate_rusty,TreasureChest_heath,goblin_strawpile,goblin_trashpile
+R:plainsfortress_Hildir_Floor1	0	0	GoblinShaman:w,GoblinArcher:w,Goblin:w	dungeon_sunkencrypt_irongate_rusty,TreasureChest_heath,goblin_strawpile,goblin_trashpile
+R:plainsfortress_Hildir_Floor2	0	0	Goblin:w	dungeon_sunkencrypt_irongate_rusty,TreasureChest_heath,goblin_strawpile,goblin_trashpile
+R:plainsfortress_Hildir_Floor2_1	0	0		dungeon_sunkencrypt_irongate_rusty,TreasureChest_heath,goblin_strawpile,goblin_trashpile
+R:plainsfortress_Hildir_Floor2_2	0	0	GoblinShaman:w,GoblinArcher:w,Goblin:w	dungeon_sunkencrypt_irongate_rusty,TreasureChest_heath,goblin_strawpile,goblin_trashpile
+R:plainsfortress_Hildir_Floor2_3	0	0	GoblinShaman:w,GoblinArcher:w,Goblin:w	dungeon_sunkencrypt_irongate_rusty,TreasureChest_heath,goblin_strawpile,goblin_trashpile
+R:plainsfortress_Hildir_Floor2_4	0	0	GoblinShaman:w,GoblinArcher:w	dungeon_sunkencrypt_irongate_rusty,TreasureChest_heath,goblin_strawpile,goblin_trashpile
+R:plainsfortress_Hildir_Start	0	0	GoblinShaman:w,GoblinArcher:w,Goblin:w,GoblinBruteBros:w	TreasureChest_heath_hildir,TreasureChest_heath,dungeon_sunkencrypt_irongate_rusty
+R:plainsfortress_Hildir_endcap_balcony	0	0	GoblinArcher:w	dungeon_sunkencrypt_irongate_rusty,goblin_pole,goblin_roof_45d
+R:plainsfortress_Hildir_endcap_balcony1	0	0		
+R:plainsfortress_Hildir_endcap_balcony_wall	0	0		goblin_woodwall_1m
+R:plainsfortress_Hildir_endcap_barred	0	0		goblin_woodwall_1m
+R:plainsfortress_Hildir_endcap_goblinbalcony	0	0	GoblinArcher:w	goblin_pole,goblin_woodwall_2m,goblin_roof_45d
+R:plainsfortress_Hildir_endcap_goblinbalcony1	0	0	GoblinArcher:w	goblin_woodwall_2m_ribs,goblin_pole,goblin_woodwall_2m
+R:plainsfortress_Hildir_endcap_hole	0	0		
+R:plainsfortress_Hildir_endcap_hole1	0	0		goblin_woodwall_1m
+R:plainsfortress_Hildir_endcap_hole2	0	0		
+R:plainsfortress_Hildir_endcap_hole3	0	0		
+R:plainsfortress_Hildir_endcap_hole4	0	0		goblin_woodwall_1m
+R:plainsfortress_Hildir_endcap_middlewall01	0	0		dungeon_sunkencrypt_irongate_rusty
+R:plainsfortress_Hildir_endcap_middlewall02	0	0		goblin_strawpile,goblin_trashpile
+R:plainsfortress_Hildir_endcap_middlewall03	0	0		dungeon_sunkencrypt_irongate_rusty
+R:plainsfortress_Hildir_endcap_middlewall04	0	0		goblin_strawpile,goblin_trashpile,dungeon_sunkencrypt_irongate_rusty
+R:plainsfortress_Hildir_endcap_middlewall05	0	0		goblin_strawpile,goblin_trashpile
+R:plainsfortress_Hildir_endcap_middlewall06	0	0		goblin_strawpile,goblin_trashpile
+R:plainsfortress_Hildir_endcap_middlewall07	0	0		goblin_strawpile,goblin_trashpile,dungeon_sunkencrypt_irongate_rusty
+R:plainsfortress_Hildir_endcap_middlewall08	0	0		TreasureChest_heath,goblin_strawpile,goblin_trashpile,dungeon_sunkencrypt_irongate_rusty
+R:plainsfortress_Hildir_endcap_wall	0	0		
+R:plainsfortress_Hildir_endcap_wall1	0	0		goblin_woodwall_1m
+R:plainsfortress_Hildir_endcap_window_barred	0	0		goblin_woodwall_1m
+R:plainsfortress_Hildir_endcap_window_hole	0	0		
+R:plainsfortress_Hildir_endcap_window_hole1	0	0		
+R:sunkencrypt_new_Corridor1	0	0		mudpile2,TreasureChest_sunkencrypt
+R:sunkencrypt_new_Corridor2	0	0	Draugr:w	mudpile2
+R:sunkencrypt_new_Corridor3	0	0		
+R:sunkencrypt_new_Corridor4	0	0	Blob:w,Draugr:w	mudpile2
+R:sunkencrypt_new_Corridor5	0	0	Blob:w	mudpile2
+R:sunkencrypt_new_Endcap1	0	0		Pickable_Mushroom_yellow
+R:sunkencrypt_new_Endcap2	0	0		Pickable_Mushroom_yellow
+R:sunkencrypt_new_Endcap3	0	0		
+R:sunkencrypt_new_EndcapWater1	0	0		
+R:sunkencrypt_new_EndcapWater2	0	0		root07
+R:sunkencrypt_new_Room1	0	0	Blob:w,Draugr_Elite:w,Draugr:w	mudpile2,Pickable_Mushroom_yellow,root12,root11,root07,root08,TreasureChest_sunkencrypt
+R:sunkencrypt_new_Room2	0	0	Draugr:n,Draugr_Elite:n,Draugr_Ranged:n,Blob:w,Draugr_Elite:w,Draugr:w	mudpile2,Spawner_DraugrPile,Pickable_Mushroom_yellow,root11,root07,root08,TreasureChest_sunkencrypt
+R:sunkencrypt_new_Room3	0	0	Draugr:n,Draugr_Elite:n,Draugr_Ranged:n,Blob:w,Draugr:w,Draugr_Elite:w	mudpile2,TreasureChest_sunkencrypt,Spawner_DraugrPile,Pickable_Mushroom_yellow,root07,root08
+R:sunkencrypt_new_Room4	0	0	Blob:w,Draugr:w,Draugr_Elite:w	TreasureChest_sunkencrypt,Pickable_Mushroom_yellow,root07,root08,mudpile2
+R:sunkencrypt_new_Stair1	0	0		root08,mudpile2
+R:sunkencrypt_new_Start1	0	0		Pickable_Mushroom_yellow,root12,root11,root07,root08
+R:woodfarm_farmhouse1	0	0		
+R:woodfarm_farmhouse2	0	0		TreasureChest_meadows,Beehive
+R:woodfarm_farmhouse3	0	0		Beehive,TreasureChest_meadows
+R:woodfarm_fence1	0	0		
+R:woodfarm_fence2	0	0		
+R:woodfarm_henpen	0	0	Boar:w	Pickable_Dandelion
+R:woodfarm_outhouse	0	0		Pickable_Mushroom
+R:woodfarm_road1	0	0		
+R:woodfarm_signpost	0	0		
+R:woodfarm_tower	0	0		Beehive
+R:woodfarm_turnipfield	0	0	Boar:w	RaspberryBush
+R:woodfarm_woodpile	0	0		
+R:woodfarm_yard	0	0	Boar:w	
