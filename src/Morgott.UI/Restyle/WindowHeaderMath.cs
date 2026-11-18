@@ -79,11 +79,19 @@ namespace Morgott.UI.Restyle
             if (!leftSlot && deficit > 0f) titleLeft -= Math.Min(deficit, Math.Max(0f, titleLeft - (plateLeft + edge)));
         }
 
-        // Title insets kept off the plate's end knots: a knot is the plate sprite's side border (`border` units), squeezed
-        // to half the plate when the plate is narrower than both (9-slice).
-        public static void ClearOfKnots(float width, float plateLeft, float plateRight, float border, ref float titleLeft, ref float titleRight)
+        // Smallest knot as a share of its full width (KnotForTitle floor), spare room on each side of a squeezed-in title.
+        public const float KnotMinShare = 0.35f, KnotTitlePad = 3f;
+
+        // Knot width on a plate `plateW` wide: full size while the title fits between the knots at its smallest size
+        // (TitleMinShare), else just small enough to leave it that room: a long name is shown whole, never cut.
+        public static float KnotForTitle(float plateW, float border, float natural) =>
+            Math.Max(border * KnotMinShare, Math.Min(border, (plateW - natural * TitleMinShare) / 2f - KnotTitlePad));
+
+        // Title insets kept off the plate's end knots (`knot` units wide each), squeezed to half the plate when the plate
+        // is narrower than both (9-slice).
+        public static void ClearOfKnots(float width, float plateLeft, float plateRight, float knot, ref float titleLeft, ref float titleRight)
         {
-            var knot = Math.Min(border, Math.Max(0f, width - plateLeft - plateRight) / 2f);
+            knot = Math.Min(knot, Math.Max(0f, width - plateLeft - plateRight) / 2f);
             titleLeft = Math.Max(titleLeft, plateLeft + knot);
             titleRight = Math.Max(titleRight, plateRight + knot);
         }

@@ -203,6 +203,40 @@ namespace Morgott.UI.Tests
             Assert.True(WindowHeaderMath.FitFont(30f, 408f, 600f - left - right, WindowHeaderMath.TitleMinShare) < 30f);
         }
 
+        // Measured in run 20261118-095140: single window plate 515 of a 604 band, knots 105, title font 30 at 20 units a
+        // capital (11.85 at the 60 % floor).
+        private const float Band = 604f, Plate = 515f, Knot = 105f, FullFont = 30f, CapWidth = 20f;
+
+        private static (float knot, float room, float font) FitTitle(float plate, string title)
+        {
+            var natural = title.Length * CapWidth;
+            var side = (Band - plate) / 2f;
+            var knot = WindowHeaderMath.KnotForTitle(plate, Knot, natural);
+            float left = side, right = side;
+            WindowHeaderMath.ClearOfKnots(Band, side, side, knot, ref left, ref right);
+            var room = Band - left - right;
+            return (knot, room, WindowHeaderMath.FitFont(FullFont, natural, room, WindowHeaderMath.TitleMinShare));
+        }
+
+        [Theory]
+        [InlineData("МАШИНА ДЛЯ ПЕРЕРАБОТКИ ЭЙТРА")]
+        [InlineData("ЖЕЛЕЗНАЯ СТОЙКА ДЛЯ ГОТОВКИ")]
+        [InlineData("УГЛЕВЫЖИГАТЕЛЬНАЯ ПЕЧЬ")]
+        public void LongestStationNamesAreNeverCut(string title)
+        {
+            var (knot, room, font) = FitTitle(Plate, title);
+            Assert.True(title.Length * CapWidth * font / FullFont <= room, $"{title}: font {font}, room {room}");
+            Assert.True(knot >= Knot * WindowHeaderMath.KnotMinShare);
+        }
+
+        [Fact]
+        public void KnotsYieldOnlyWhenTheTitleNeedsTheRoom()
+        {
+            Assert.True(FitTitle(Plate, "МАШИНА ДЛЯ ПЕРЕРАБОТКИ ЭЙТРА").knot < Knot);
+            Assert.Equal(Knot, FitTitle(415f, "ЗАПИСЬ ОЧЕРЕДИ").knot);
+            Assert.Equal(Knot, FitTitle(Plate, "ПРЯЛКА").knot);
+        }
+
         [Fact]
         public void KnotsSqueezeOnANarrowPlateAndKeepWiderInsets()
         {

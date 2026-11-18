@@ -56,9 +56,10 @@ namespace Morgott.UI.Restyle
         // station queue 1.5); every plate / title / aux size follows the height.
         public float HeightScale = 1f;
 
-        // Title kept between the plate's end knots, stepping down to fit (own windows with long titles, station queue);
-        // off = the title may run over them (every other window, unchanged).
+        // Title kept between the plate's end knots: it steps down to fit, then the knots shrink for it (own windows with
+        // long titles, station queue); off = the title may run over them (every other window, unchanged).
         public bool TitleClearsKnots;
+        private float _plateBasePpu = 1f, _plateSetPpu = -1f;
         private string _fallback = "", _fallbackKey, _static, _staticKey, _staticLang, _staticText;
         private int _styled = -1;
         private float _stretch, _iconShare, _auxShare;
@@ -426,8 +427,7 @@ namespace Morgott.UI.Restyle
                 _natural = natural;
                 // The plinth side is slotted: its reserve never gives way (the title must not run into the plinth).
                 WindowHeaderMath.FreeEmptySide(r.width, r.height, pl, pr, _hasIcon, _auxShare > 0f || !plinth.IsEmpty, natural, ref tl, ref tr);
-                if (TitleClearsKnots && Plate && Plate.sprite)
-                    WindowHeaderMath.ClearOfKnots(r.width, pl, pr, Plate.sprite.border.x / Mathf.Max(Plate.pixelsPerUnit * Plate.pixelsPerUnitMultiplier, 1e-4f), ref tl, ref tr);
+                if (TitleClearsKnots && Plate && Plate.sprite) FitKnots(r.width, pl, pr, natural, ref tl, ref tr);
                 var room = Mathf.Max(0f, r.width - tl - tr);
                 // a zero / negative room is still a cut title (the 3-column AB backpack before 0.25.9 had -18 units and
                 // drew at full size, unmeasured): step down whenever it does not fit
@@ -436,6 +436,18 @@ namespace Morgott.UI.Restyle
             Inside(Title.rectTransform, tl, tr, ft, 0f);
             if (Mathf.Abs(Title.fontSize - want) > 0.05f) Title.fontSize = want;
             _ = _iconShare;
+        }
+
+        // The plate's side borders (its knots) drawn at the width the title leaves them: a 9-slice border scales with the
+        // image's pixels-per-unit multiplier.
+        private void FitKnots(float width, float pl, float pr, float natural, ref float tl, ref float tr)
+        {
+            if (!Mathf.Approximately(Plate.pixelsPerUnitMultiplier, _plateSetPpu)) _plateBasePpu = Plate.pixelsPerUnitMultiplier;
+            var border = Plate.sprite.border.x / Mathf.Max(Plate.pixelsPerUnit * _plateBasePpu, 1e-4f);
+            var knot = WindowHeaderMath.KnotForTitle(width - pl - pr, border, natural);
+            _plateSetPpu = _plateBasePpu * (knot > 0f ? border / knot : 1f);
+            if (!Mathf.Approximately(Plate.pixelsPerUnitMultiplier, _plateSetPpu)) Plate.pixelsPerUnitMultiplier = _plateSetPpu;
+            WindowHeaderMath.ClearOfKnots(width, pl, pr, knot, ref tl, ref tr);
         }
 
         // ---------------------------------------------------------------- action plinth
