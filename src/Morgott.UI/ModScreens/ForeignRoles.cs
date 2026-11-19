@@ -178,6 +178,10 @@ namespace Morgott.UI.ModScreens
             foreach (var img in root.GetComponentsInChildren<Image>(true))
                 if (img.name.StartsWith("Gem", StringComparison.Ordinal) && !ctx.AdapterRoles.ContainsKey(img) && IsUnder(img.transform, "GemsContent"))
                     ctx.Role(img, "content", "Morgott.EpicLoot gem tab art (theme sprites, per state)");
+            // its texts (header, slots, list) in the body face at their own sizes, like the mockup (not the rune display face)
+            foreach (var t in root.GetComponentsInChildren<TMP_Text>(true))
+                if (t.name.StartsWith("Gem", StringComparison.Ordinal) && !ctx.AdapterRoles.ContainsKey(t) && IsUnder(t.transform, "GemsContent"))
+                    ctx.Role(t, "text.body", "Morgott.EpicLoot gem tab text (body face)");
         }
 
         private static bool IsUnder(Transform t, string name)
