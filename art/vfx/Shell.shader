@@ -10,6 +10,12 @@
 // gets thinner than _MinPixels on screen (halo: x _HaloWidth): a sub-pixel hull drops in and out of rasterisation from
 // frame to frame as the creature animates (flicker bug 2026-11-07: magic 0.012 m < 1 px past ~12 m at 1080p).
 // Fog: additive passes fade toward black, the body toward the fog colour (UNITY_APPLY_FOG).
+// Silhouette only (2026-11-19): hull/halo of a limb in front of the body used to paint the body interior. A mask-only
+// material of this shader (_ShellRole 1, queue Transparent-1, so every mask precedes every hull) stamps the visible
+// body into stencil bit _RarityStencilMask; hull/halo then draw only where that bit is clear = outside the silhouette.
+// _RarityStencilMask 0 (default, e.g. the Power shield flash) = no stencil test. Bit 0x20: built-in deferred uses
+// 0x80 (non-background), 0x40 (non-lightmapped), 0x10 (light shape culling), 0x0F (light layers); "bit #5 (value=32)
+// is not used by Unity" (manual SL-Stencil, deferred section) and the camera clear zeroes it every frame.
 Shader "Morgott/Shell"
 {
     Properties
@@ -32,6 +38,8 @@ Shader "Morgott/Shell"
         _FadeFar ("Fade end (m)", Float) = 45
         _MinPixels ("Min line width (px)", Float) = 1.5
         _Flash ("Flash (shield hit)", Range(0, 1)) = 1
+        _ShellRole ("Role (0 shell, 1 silhouette mask)", Float) = 0
+        _RarityStencilMask ("Silhouette stencil bit (0 off, 32)", Float) = 0
     }
 
     CGINCLUDE
@@ -41,7 +49,7 @@ Shader "Morgott/Shell"
     float _Line, _LineGlow, _Halo, _HaloWidth, _Pulse, _PulseSpeed, _Band, _RimGlow, _RimPower;
     float _Surface;
     float4 _SurfaceColor;
-    float _SurfaceGlow, _Size, _FadeNear, _FadeFar, _Flash, _MinPixels;
+    float _SurfaceGlow, _Size, _FadeNear, _FadeFar, _Flash, _MinPixels, _ShellRole;
 
     struct appdata
     {
@@ -205,18 +213,32 @@ Shader "Morgott/Shell"
     v2f vertLine(appdata v)
     {
         v2f o = Shell(v, _Line, _MinPixels);
-        if (_LineGlow <= 0.0) o.pos = float4(0, 0, -1, 1); // surface-only shell: no line
+        if (_LineGlow <= 0.0 || _ShellRole > 0.5) o.pos = float4(0, 0, -1, 1); // surface-only shell / mask: no line
         return o;
     }
 
     v2f vertHalo(appdata v)
     {
         v2f o = Shell(v, _Line * _HaloWidth, _MinPixels * _HaloWidth);
-        if (_Halo <= 0.0) o.pos = float4(0, 0, -1, 1); // degenerate: no fragments for magic
+        if (_Halo <= 0.0 || _ShellRole > 0.5) o.pos = float4(0, 0, -1, 1); // degenerate: no fragments for magic / mask
         return o;
     }
 
-    v2f vertBody(appdata v) { return Shell(v, 0.0, 0.0); }
+    v2f vertBody(appdata v)
+    {
+        v2f o = Shell(v, 0.0, 0.0);
+        if ((_RimGlow <= 0.0 && _Surface < 0.5) || _ShellRole > 0.5) o.pos = float4(0, 0, -1, 1); // nothing to draw on the body
+        return o;
+    }
+
+    v2f vertMask(appdata v)
+    {
+        v2f o = Shell(v, 0.0, 0.0);
+        if (_ShellRole < 0.5) o.pos = float4(0, 0, -1, 1); // only the mask-only material stamps the silhouette
+        return o;
+    }
+
+    fixed4 fragMask(v2f i) : SV_Target { return 0; }
 
     float4 fragLine(v2f i) : SV_Target
     {
@@ -254,11 +276,26 @@ Shader "Morgott/Shell"
         Tags { "Queue" = "Transparent" "RenderType" = "Transparent" "IgnoreProjector" = "True" }
         Pass
         {
+            Name "MASK"
+            Cull Back
+            ZWrite Off
+            ZTest LEqual
+            ColorMask 0
+            Stencil { Ref [_RarityStencilMask] WriteMask [_RarityStencilMask] Comp Always Pass Replace }
+            CGPROGRAM
+            #pragma vertex vertMask
+            #pragma fragment fragMask
+            #pragma target 3.0
+            ENDCG
+        }
+        Pass
+        {
             Name "HULL"
             Cull Front
             ZWrite Off
             ZTest LEqual
             Blend One One
+            Stencil { Ref 0 ReadMask [_RarityStencilMask] Comp Equal Pass Keep }
             CGPROGRAM
             #pragma vertex vertLine
             #pragma fragment fragLine
@@ -273,6 +310,7 @@ Shader "Morgott/Shell"
             ZWrite Off
             ZTest LEqual
             Blend One One
+            Stencil { Ref 0 ReadMask [_RarityStencilMask] Comp Equal Pass Keep }
             CGPROGRAM
             #pragma vertex vertHalo
             #pragma fragment fragHalo
