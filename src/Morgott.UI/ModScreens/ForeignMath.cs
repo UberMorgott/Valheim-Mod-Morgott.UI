@@ -109,6 +109,7 @@ namespace Morgott.UI.ModScreens
             if (t.Contains("augment")) return "glyph.ench.augment";
             if (t.Contains("enchant")) return "glyph.ench.enchant";
             if (t.Contains("upgrade")) return "glyph.ench.upgrade";
+            if (t == "gems") return "glyph.ench.gems"; // Morgott.EpicLoot GemTab (old Storage slot): the kit's gem glyph
             return null;
         }
 

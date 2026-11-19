@@ -139,6 +139,7 @@ namespace Morgott.UI.Tests
         [InlineData("Augment", "glyph.ench.augment")]
         [InlineData("Disenchant", "glyph.ench.disenchant")]
         [InlineData("Upgrade", "glyph.ench.upgrade")]
+        [InlineData("Gems", "glyph.ench.gems")] // Morgott.EpicLoot GemTab: the old Storage slot
         [InlineData("Close", null)]
         public void EnchantTabsMapToKitGlyphs(string tab, string want) => Assert.Equal(want, EnchantGlyph(tab));
 
