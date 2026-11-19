@@ -237,6 +237,7 @@ namespace Morgott.UI.PlayerHud
             var pkg = new ZPackage(bytes);
             if (pkg.ReadInt() != SummonMath.SlotsVersion) return false;
             var count = pkg.ReadInt();
+            _bodies.Clear();
             for (var i = 0; i < count; i++)
             {
                 var u = new PartyUnit { Id = pkg.ReadInt(), Prefab = pkg.ReadInt(), State = (SummonState)pkg.ReadByte() };
@@ -246,15 +247,23 @@ namespace Morgott.UI.PlayerHud
                 u.Es = SummonMath.Ratio(pkg.ReadSingle(), 1f);
                 u.CdUntil = pkg.ReadDouble();
                 var gen = pkg.ReadInt();
-                var body = Body(pkg.ReadZDOID(), gen);
-                var baseHp = BaseHealth(u.Prefab);
-                u.HpMax = baseHp;
-                u.HpCur = u.Hp * baseHp;
-                if (body) Live(body, ref u);
+                _bodies.Add(Body(pkg.ReadZDOID(), gen));
                 _units.Add(u);
+            }
+            // Summons 0.14.2+ appends each slot's max health after the records (staff table x gear / skill); older = prefab health
+            var tail = bytes.Length - pkg.GetPos() >= count * 4;
+            for (var i = 0; i < count; i++)
+            {
+                var u = _units[i];
+                u.HpMax = SummonMath.SlotMaxHp(tail ? pkg.ReadSingle() : 0f, BaseHealth(u.Prefab));
+                u.HpCur = u.Hp * u.HpMax;
+                if (_bodies[i]) Live(_bodies[i], ref u);
+                _units[i] = u;
             }
             return true;
         }
+
+        private readonly List<Character> _bodies = new List<Character>();
 
         private static float BaseHealth(int prefab)
         {

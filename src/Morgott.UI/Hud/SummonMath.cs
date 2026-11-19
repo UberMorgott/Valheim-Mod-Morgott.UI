@@ -40,6 +40,9 @@ namespace Morgott.UI.PlayerHud
         // The creature shows at full strength while it has a body (alive or appearing); dimmed otherwise.
         public static bool Active(SummonState state) => state == SummonState.Alive || state == SummonState.Spawning;
 
+        // Max health of a slot without a loaded body: the summoner's mirrored max when valid, else the prefab's.
+        public static float SlotMaxHp(float mirrored, float prefab) => mirrored > 0f && !float.IsInfinity(mirrored) ? mirrored : prefab;
+
         public static float Ratio(float value, float max) => max > 0f && !float.IsNaN(value) ? Math.Max(0f, Math.Min(1f, value / max)) : 0f;
 
         // The row hangs below the hotbar while the hotbar sits in the upper half of the screen (vanilla top-left), and

@@ -16,6 +16,14 @@ namespace Morgott.UI.Tests
             byte flags = 0, bool pet = false, double cd = 0d, int id = 0) =>
             new PartyUnit { Id = id, Prefab = prefab, State = state, HpCur = hp, HpMax = max, Hp = max > 0f ? hp / max : 0f, Es = es, EsCur = esCur, Flags = flags, Pet = pet, CdUntil = cd };
 
+        [Theory]
+        [InlineData(150f, 400f, 150f)] // Summons table max wins over the prefab health
+        [InlineData(0f, 400f, 400f)] // older Summons: no mirrored max
+        [InlineData(float.NaN, 400f, 400f)]
+        [InlineData(float.PositiveInfinity, 400f, 400f)]
+        public void Slot_max_hp_prefers_the_mirrored_max(float mirrored, float prefab, float expected) =>
+            Assert.Equal(expected, SummonMath.SlotMaxHp(mirrored, prefab));
+
         [Fact]
         public void Groups_by_type_and_state_class_in_first_seen_type_order()
         {
