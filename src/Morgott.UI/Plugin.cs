@@ -141,6 +141,7 @@ namespace Morgott.UI
                 Services.Register<IVfx>(VfxProvider.Instance = new VfxProvider(System.IO.Path.GetDirectoryName(Info.Location)));
                 Services.Register<IWebVfx>(VfxProvider.Instance);
                 Services.Register<IOverlayVfx>(VfxProvider.Instance);
+                Services.Register<IGemVfx>(VfxProvider.Instance);
             }
             if (!CoreApi.Headless) Services.Register<IItemBrowser>(ItemBrowser.BrowserService.Instance); // inactive (false) until the ITEMS tab exists
             // Icons and compat text do not depend on the theme either (MorgottTweaks moved them here, TASKS 4.5).
@@ -292,6 +293,7 @@ namespace Morgott.UI
                 Services.Unregister<IVfx>(VfxProvider.Instance);
                 Services.Unregister<IWebVfx>(VfxProvider.Instance);
                 Services.Unregister<IOverlayVfx>(VfxProvider.Instance);
+                Services.Unregister<IGemVfx>(VfxProvider.Instance);
             }
             Services.Unregister<IItemBrowser>(ItemBrowser.BrowserService.Instance);
             if (MapScreen.PortalPickerService.Registered) Services.Unregister<IPortalPicker>(MapScreen.PortalPickerService.Instance);

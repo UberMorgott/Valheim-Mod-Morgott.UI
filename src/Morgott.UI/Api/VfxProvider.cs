@@ -7,7 +7,7 @@ namespace Morgott.UI.Api
 {
     // Morgott.Core IVfx implementation (plan 5a): the small "morgott_vfx" bundle next to the DLL (unity BuildVfx), loaded on
     // the first call and kept loaded (handed-out shaders / template live as long as consumer copies may).
-    public sealed class VfxProvider : IVfx, IWebVfx, IOverlayVfx
+    public sealed class VfxProvider : IVfx, IWebVfx, IOverlayVfx, IGemVfx
     {
         public const string BundleFile = "morgott_vfx";
 
@@ -29,6 +29,50 @@ namespace Morgott.UI.Api
         public Material AdditiveParticle() => Load()._particle;
         public Material Web() => BindVanillaWeb(Load()._web);
         public Material Overlay() => Load()._overlay;
+
+        private readonly System.Collections.Generic.Dictionary<GemLook, Material> _gem = new();
+
+        // Boss gem looks (Core IGemVfx): tinted copies of the existing shell / overlay / particle templates, built once.
+        public Material Gem(GemLook look)
+        {
+            if (_gem.TryGetValue(look, out var m)) return m;
+            m = look switch
+            {
+                GemLook.FreezeShell => ShellLook(new Color(0.65f, 0.9f, 1f), 6f, new Color(0.75f, 0.95f, 1f), 0.6f),
+                GemLook.RootShell => ShellLook(new Color(0.35f, 0.6f, 0.2f), 2f, new Color(0.3f, 0.5f, 0.15f), 0.25f),
+                GemLook.StolenInfusion => ShellLook(new Color(1f, 0.7f, 0.3f), 5f, new Color(1f, 0.55f, 0.2f), 0.5f),
+                GemLook.ChainArc => Tinted(Overlay(), new Color(0.55f, 0.7f, 1f, 0.9f), zTest: 4f),
+                GemLook.LightningBurst => Tinted(AdditiveParticle(), new Color(0.6f, 0.75f, 1f, 0.8f)),
+                GemLook.PoisonBurst => Tinted(AdditiveParticle(), new Color(0.45f, 0.75f, 0.15f, 0.7f)),
+                _ => null,
+            };
+            if (m) m.name = "MT_Gem" + look;
+            return _gem[look] = m; // null cached too: Load() is one attempt, a missing asset stays missing
+        }
+
+        private Material ShellLook(Color line, float surface, Color surfaceColor, float rim)
+        {
+            var shader = Shell();
+            if (!shader) return null;
+            var m = new Material(shader);
+            m.SetColor("_LineColor", line);
+            m.SetFloat("_Line", 0.015f);
+            m.SetFloat("_LineGlow", 1.2f);
+            m.SetFloat("_RimGlow", rim);
+            m.SetFloat("_Surface", surface);
+            m.SetColor("_SurfaceColor", surfaceColor);
+            m.SetFloat("_Flash", 0f);
+            return m;
+        }
+
+        private static Material Tinted(Material template, Color tint, float zTest = -1f)
+        {
+            if (!template) return null;
+            var m = new Material(template);
+            m.SetColor("_TintColor", tint);
+            if (zTest >= 0f) m.SetFloat("_ZTest", zTest);
+            return m;
+        }
 
         private static readonly int WebTexId = Shader.PropertyToID("_WebTex"), WrapTexId = Shader.PropertyToID("_WrapTex");
         private bool _vanillaBound;
