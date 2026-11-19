@@ -113,6 +113,7 @@ namespace Morgott.UI.ModScreens
                 // Epic Loot's augment / craft result dialogs (clones of the vanilla variant dialog) inside the window.
                 ElDialogs.Roles(ctx, root);
                 RarityColoured(ctx, root);
+                GemTabArt(ctx, root);
                 foreach (var tabs in root.GetComponentsInChildren<TabHandler>(true))
                     foreach (var tab in tabs.m_tabs)
                         if (tab != null && tab.m_button && tab.m_button.targetGraphic is Image tg && !ctx.AdapterRoles.ContainsKey(tg))
@@ -168,6 +169,22 @@ namespace Morgott.UI.ModScreens
                     foreach (var g in graphics)
                         // Texts keep the theme face; their rarity colour comes back after the pass (After: RefreshAll).
                         if (g is Image && !ctx.AdapterRoles.ContainsKey(g)) ctx.Role(g, "content", "Epic Loot rarity-coloured graphic (SetRarityColor keeps its art + colour)");
+        }
+
+        // Morgott.EpicLoot's Gems tab (GemTab.View.cs, page "GemsContent") draws its slots, rows, segments and chips with this
+        // theme's own sprites (Core ITheme.TryGetSprite) and swaps them per state: its Gem* images keep that art.
+        private static void GemTabArt(ScreenContext ctx, Transform root)
+        {
+            foreach (var img in root.GetComponentsInChildren<Image>(true))
+                if (img.name.StartsWith("Gem", StringComparison.Ordinal) && !ctx.AdapterRoles.ContainsKey(img) && IsUnder(img.transform, "GemsContent"))
+                    ctx.Role(img, "content", "Morgott.EpicLoot gem tab art (theme sprites, per state)");
+        }
+
+        private static bool IsUnder(Transform t, string name)
+        {
+            for (; t; t = t.parent)
+                if (t.name == name) return true;
+            return false;
         }
 
         // One Epic Loot enchanting tab (ForeignMath.ElTabPartOf): icon -> the M7 kit glyph of the tab (Epic Loot's art
