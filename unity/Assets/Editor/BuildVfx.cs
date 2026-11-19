@@ -28,13 +28,14 @@ public static class BuildVfx
     {
         try
         {
+            AssetDatabase.DeleteAsset(Dir); // regenerate every asset under its pinned GUID (old random ones would survive in place)
             Directory.CreateDirectory(Dir);
             var assets = new List<string>();
             foreach (var src in Directory.GetFiles(Src, "*.shader"))
             {
                 var path = $"{Dir}/{Path.GetFileName(src)}";
                 File.Copy(src, path, true);
-                AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate | ImportAssetOptions.ForceSynchronousImport);
+                Pin(path);
                 var sh = AssetDatabase.LoadAssetAtPath<Shader>(path) ?? throw new Exception("no shader at " + path);
                 if (ShaderUtil.ShaderHasError(sh))
                     throw new Exception($"shader {sh.name} has errors: " + string.Join("; ", ShaderUtil.GetShaderMessages(sh).Select(m => m.message)));
@@ -58,6 +59,21 @@ public static class BuildVfx
         }
     }
 
+    // Assets/Morgott is generated and untracked, so Unity mints a random GUID per clone; GUIDs feed the bundle's object
+    // path IDs and Shader.m_AssetGUID, so a fresh clone built different bytes. Pin each GUID to MD5(asset path) and
+    // (re)import. CreateAsset ignores a pre-written .meta, so native assets are pinned after creation by rewriting it.
+    static void Pin(string path)
+    {
+        using var md5 = System.Security.Cryptography.MD5.Create();
+        var guid = string.Concat(md5.ComputeHash(Encoding.UTF8.GetBytes(path)).Select(b => b.ToString("x2")));
+        var meta = path + ".meta";
+        File.WriteAllText(meta, File.Exists(meta)
+            ? System.Text.RegularExpressions.Regex.Replace(File.ReadAllText(meta), @"(?m)^guid: \w+", "guid: " + guid)
+            : $"fileFormatVersion: 2\nguid: {guid}\n");
+        AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate | ImportAssetOptions.ForceSynchronousImport);
+        if (AssetDatabase.AssetPathToGUID(path) != guid) throw new Exception($"GUID pin failed for {path}: {AssetDatabase.AssetPathToGUID(path)}");
+    }
+
     // Same soft falloff as Vaettir's vt_dot (BossAwakening VaettirBuild.cs:79): alpha (1 - r)^2, white.
     static Texture2D Dot()
     {
@@ -79,6 +95,7 @@ public static class BuildVfx
         imp.mipmapEnabled = false;
         imp.wrapMode = TextureWrapMode.Clamp;
         imp.SaveAndReimport();
+        Pin(path); // after the import: a bare pre-written .meta left the png without a loadable Texture2D
         return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
     }
 
@@ -91,6 +108,7 @@ public static class BuildVfx
         var m = new Material(shader) { name = "AdditiveParticle", mainTexture = dot };
         AssetDatabase.CreateAsset(m, path);
         AssetDatabase.SaveAssets();
+        Pin(path);
         return path;
     }
 
@@ -127,7 +145,9 @@ public static class BuildVfx
         EditorUtility.CompressTexture(atlas, TextureFormat.BC4, TextureCompressionQuality.Best);
         AssetDatabase.DeleteAsset(path);
         AssetDatabase.CreateAsset(atlas, path);
-        return atlas;
+        AssetDatabase.SaveAssets();
+        Pin(path);
+        return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
     }
 
     static string Web(Texture2D atlas)
@@ -138,6 +158,7 @@ public static class BuildVfx
         var m = new Material(shader) { name = "Web", mainTexture = atlas };
         AssetDatabase.CreateAsset(m, path);
         AssetDatabase.SaveAssets();
+        Pin(path);
         return path;
     }
 
@@ -149,6 +170,7 @@ public static class BuildVfx
         var m = new Material(shader) { name = "Overlay" }; // _MainTex unset = the shader's "white" default
         AssetDatabase.CreateAsset(m, path);
         AssetDatabase.SaveAssets();
+        Pin(path);
         return path;
     }
 
@@ -168,6 +190,7 @@ public static class BuildVfx
                 sb.Append($"Shader {sh.name}: supported {sh.isSupported}, passes {sh.passCount}\n");
             }
             var mat = all.OfType<Material>().FirstOrDefault(m => m.name == "AdditiveParticle") ?? throw new Exception("bundle lacks AdditiveParticle");
+            if (mat.mainTexture == null) throw new Exception("AdditiveParticle has no dot texture");
             sb.Append($"Material {mat.name}: shader {mat.shader?.name}, mainTexture {mat.mainTexture?.name} {mat.mainTexture?.width}x{mat.mainTexture?.height}\n");
             var web = all.OfType<Material>().FirstOrDefault(m => m.name == "Web") ?? throw new Exception("bundle lacks Web");
             var wt = web.mainTexture as Texture2D ?? throw new Exception("Web has no atlas");
