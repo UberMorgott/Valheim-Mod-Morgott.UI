@@ -1698,8 +1698,10 @@ namespace Morgott.UI.InventoryScreen
         // Loot re-dresses each cell on every UpdateGui (ItemBackgroundHelper): ApplyEquippedSprite puts its equipped sprite
         // at texture size over the cell centre (only skipped with Auga), "magicItem" = rarity glow behind the icon, "setItem"
         // = the set sprite 64 x 64 as the LAST sibling (over the icon). After it (this postfix runs last): no badge on a
-        // cell but the quality number (user call 2026-11-08; set / food / teleport info stays in the tooltip), so equipped,
-        // equip-queued, no-teleport, food and set markers are hidden; rarity = a rim in Epic Loot's colour on the cell edge.
+        // cell but the quality number and the no-teleport mark (user call 2026-11-08; set / food info stays in the tooltip),
+        // so equipped, equip-queued, food and set markers are hidden; rarity = a rim in Epic Loot's colour on the cell edge.
+        // The no-teleport mark stays vanilla's (InventoryGrid.cs:336: !m_shared.m_teleportable && no TeleportAll world key;
+        // player report 2026-11-19: ores / bars / eggs lost it).
         private static void CellMarks(InventoryElement e)
         {
             if (!e) return;
@@ -1707,7 +1709,6 @@ namespace Morgott.UI.InventoryScreen
             // UpdateGui, so they are switched off here every frame.
             Off(e.m_equiped);
             Off(e.m_queued);
-            Off(e.m_noteleport);
             Off(e.m_food);
             if (e.transform.Find("setItem") is Transform set && set.TryGetComponent<Image>(out var si)) Off(si);
             var cell = (RectTransform)e.transform;

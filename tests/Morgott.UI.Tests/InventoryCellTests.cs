@@ -95,5 +95,17 @@ namespace Morgott.UI.Tests
             InventoryMath.FontRange(19.2f, 12f, 0f, out min, out max);
             Assert.Equal(max, min);
         }
+
+        // Player report 2026-11-19: ores / bars / eggs lost the no-teleport mark. The rule is vanilla's
+        // (InventoryGrid.cs:336, m_teleportable + TeleportAll key); the cell skin must never switch it off.
+        [Fact]
+        public void CellSkinKeepsVanillaNoTeleportMark()
+        {
+            var d = new System.IO.DirectoryInfo(AppContext.BaseDirectory);
+            while (d != null && !System.IO.File.Exists(System.IO.Path.Combine(d.FullName, "Morgott.UI.sln"))) d = d.Parent;
+            var src = System.IO.File.ReadAllText(System.IO.Path.Combine(d!.FullName, "src", "Morgott.UI", "InventoryScreen", "InventorySkin.cs"));
+            Assert.DoesNotContain("Off(e.m_noteleport)", src);
+            Assert.DoesNotContain("m_noteleport.enabled = false", src);
+        }
     }
 }
