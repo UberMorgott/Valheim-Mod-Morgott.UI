@@ -15,7 +15,7 @@
    "width": 2016,
    "height": 2016,
    "bytes": 5397840,
-   "sha256": "b06fb3191e57765fdc743e8ab121a0565369cd71c7dc23d503702e38957be298"
+   "sha256": "dedaf2db20153d48279d2a7435a950a760a11db20b3c03282485f5a56c7a5cb6"
   },
   {
    "png": "ItemIcons_01.png",
@@ -24,25 +24,25 @@
    "width": 2016,
    "height": 2016,
    "bytes": 5397840,
-   "sha256": "3c5c6abe0d4660cc323f86e4d7492d543f9ab5d7cfbfc99cab90df33b66376fb"
+   "sha256": "b7526aee771ae58b17beeb085ffbe26ec75fe8c5a26eea35067c83e9ddf5b07b"
   },
   {
    "png": "ItemIcons_02.png",
    "file": "ItemIcons_02.bc7.gz",
-   "group": "morgott.valheim.tweaks",
+   "group": "randyknapp.mods.epicloot",
    "width": 2016,
-   "height": 576,
-   "bytes": 1542240,
-   "sha256": "d00e272b90edc734d7096d205a635bb127b3fd7efff5d3846eb7e5047bcc2ac7"
+   "height": 2016,
+   "bytes": 5397840,
+   "sha256": "ccfaa893427e4ae2f29be5e5942c1c777f7a891dd1130452ad434b332d7f997c"
   },
   {
    "png": "ItemIcons_03.png",
    "file": "ItemIcons_03.bc7.gz",
-   "group": "morgott.valheim.tweaks",
+   "group": "randyknapp.mods.epicloot",
    "width": 2016,
-   "height": 160,
-   "bytes": 428400,
-   "sha256": "eb269326872604c48b88ec825748c1d005cc2fee7b4fa68e1ba6cebe242893fa"
+   "height": 1152,
+   "bytes": 3084480,
+   "sha256": "03117556d04a8cce8d96aa455885e4017153eec3bdc6eedc02c36fea885dd67d"
   },
   {
    "png": "ItemIcons_04.png",
@@ -51,7 +51,7 @@
    "width": 2016,
    "height": 2016,
    "bytes": 5397840,
-   "sha256": "e327462068a810b10c76837504bfafe8d353f712e2019d581b101e0887229178"
+   "sha256": "8ed2b1d8ceae7fffcef4534d245ac4ddc9ed3a50be6abe1454c025e0387cf24f"
   },
   {
    "png": "ItemIcons_05.png",
@@ -60,7 +60,7 @@
    "width": 2016,
    "height": 2016,
    "bytes": 5397840,
-   "sha256": "e1885e6347122e6004ebddc790851d0c7b2e6630f1cf5e10fa4573c5d0878586"
+   "sha256": "aaf436254ecb8fd0800b0204bbc95295d889fab69d87631c5009639e0949faa6"
   },
   {
    "png": "ItemIcons_06.png",
@@ -69,7 +69,7 @@
    "width": 2016,
    "height": 2016,
    "bytes": 5397840,
-   "sha256": "5b0343722fe2f11a5510f880e692b183936a95ca4288c6c566033c7695eb41e5"
+   "sha256": "1526568f16760386aca063af774e49859592afb1ee95a413ba890c0a5dddd2ad"
   },
   {
    "png": "ItemIcons_07.png",
@@ -78,7 +78,7 @@
    "width": 2016,
    "height": 1600,
    "bytes": 4284000,
-   "sha256": "458f10f589753902930c23de9c8d4bdfc657961f00339d6781ed9161dac9873d"
+   "sha256": "410ade1f5d49a05098bbff045bad838288f4860fa657f60f6e3ee15dd660fc34"
   },
   {
    "png": "ItemIcons_08.png",
@@ -96,7 +96,7 @@
    "width": 2016,
    "height": 1440,
    "bytes": 3855600,
-   "sha256": "fa19cb220b99d423d9afd35aaaaadd5e7627fa6b7d8849175401cbabe0f898c5"
+   "sha256": "b20709f420d6ce21024fa02695a97dd7ce3397c99729e8fc656bf86f6ab73476"
   },
   {
    "png": "ItemIcons_10.png",
@@ -105,7 +105,7 @@
    "width": 2016,
    "height": 288,
    "bytes": 771120,
-   "sha256": "0ecabe44dce4e0dbbb5de97abe8a7aa72c363519105bd1b18635c08a2e1ea701"
+   "sha256": "6ed73d0b1c9cb9c87e2f52a9c3fce48365a8eade2adc665e5cf85d11a2fc3314"
   },
   {
    "png": "ItemIcons_11.png",
@@ -114,7 +114,7 @@
    "width": 2016,
    "height": 1152,
    "bytes": 3084480,
-   "sha256": "88a458b2a493147b3e3e99dec7f314cd2aa6a02d529974acb295eb1abfd05c1b"
+   "sha256": "5f23c3dcde3f9d026b414909324694dc1051827e402b4f7a826e0094fd384f07"
   },
   {
    "png": "ItemIcons_12.png",
@@ -123,16 +123,16 @@
    "width": 2016,
    "height": 1728,
    "bytes": 4626720,
-   "sha256": "eea1fe223272c916e09a485bab6ded2490688c77910fd178d1f1c601562f3e14"
+   "sha256": "df1a26d85e7744bb9a876b8db6d09c3e7116b1df134342cd6fe12c7f606c9655"
   },
   {
    "png": "ItemIcons_13.png",
    "file": "ItemIcons_13.bc7.gz",
-   "group": "misc",
+   "group": "randyknapp.mods.epicloot",
    "width": 2016,
    "height": 160,
    "bytes": 428400,
-   "sha256": "dae9cde69fd4fd78ff57c19b364f9c068c299e42d575dd4f83f0c20df42aa9c3"
+   "sha256": "8ad24d222a50cdcbb64a15524dd269677a9d3e039f3be7d591b90e7ba78fd9f3"
   }
  ],
  "items": {
@@ -140,137 +140,1165 @@
    2,
    0
   ],
+  "1011_Mythic_ShardStone": [
+   2,
+   27
+  ],
+  "1012_Mythic_ShardStone": [
+   2,
+   28
+  ],
+  "1013_Mythic_ShardStone": [
+   2,
+   29
+  ],
+  "1014_Mythic_ShardStone": [
+   2,
+   30
+  ],
+  "1015_Mythic_ShardStone": [
+   2,
+   31
+  ],
+  "1016_Mythic_ShardStone": [
+   2,
+   32
+  ],
+  "1017_Mythic_ShardStone": [
+   2,
+   33
+  ],
+  "1018_Mythic_ShardStone": [
+   2,
+   39
+  ],
   "101_Legendary_ShardStone": [
    2,
    1
+  ],
+  "1021_Mythic_ShardStone": [
+   2,
+   40
+  ],
+  "1022_Mythic_ShardStone": [
+   2,
+   41
+  ],
+  "1023_Mythic_ShardStone": [
+   2,
+   51
+  ],
+  "1024_Mythic_ShardStone": [
+   2,
+   52
+  ],
+  "1025_Mythic_ShardStone": [
+   2,
+   53
+  ],
+  "1026_Mythic_ShardStone": [
+   2,
+   54
+  ],
+  "1027_Mythic_ShardStone": [
+   2,
+   55
+  ],
+  "1028_Mythic_ShardStone": [
+   2,
+   56
   ],
   "102_Legendary_ShardStone": [
    2,
    2
   ],
+  "1031_Mythic_ShardStone": [
+   2,
+   57
+  ],
+  "1032_Mythic_ShardStone": [
+   2,
+   58
+  ],
+  "1033_Mythic_ShardStone": [
+   2,
+   59
+  ],
+  "1034_Mythic_ShardStone": [
+   2,
+   60
+  ],
+  "1035_Mythic_ShardStone": [
+   2,
+   61
+  ],
+  "1036_Mythic_ShardStone": [
+   2,
+   62
+  ],
+  "1037_Mythic_ShardStone": [
+   2,
+   63
+  ],
+  "1038_Mythic_ShardStone": [
+   2,
+   64
+  ],
   "103_Legendary_ShardStone": [
    2,
    3
+  ],
+  "1041_Mythic_ShardStone": [
+   2,
+   65
+  ],
+  "1042_Mythic_ShardStone": [
+   2,
+   66
+  ],
+  "1043_Mythic_ShardStone": [
+   2,
+   67
+  ],
+  "1044_Mythic_ShardStone": [
+   2,
+   68
+  ],
+  "1045_Mythic_ShardStone": [
+   2,
+   69
+  ],
+  "1046_Mythic_ShardStone": [
+   2,
+   70
+  ],
+  "1047_Mythic_ShardStone": [
+   2,
+   71
+  ],
+  "1048_Mythic_ShardStone": [
+   2,
+   72
   ],
   "104_Legendary_ShardStone": [
    2,
    4
   ],
+  "1051_Mythic_ShardStone": [
+   2,
+   73
+  ],
+  "1052_Mythic_ShardStone": [
+   2,
+   74
+  ],
+  "1053_Mythic_ShardStone": [
+   2,
+   75
+  ],
+  "1054_Mythic_ShardStone": [
+   2,
+   76
+  ],
+  "1055_Mythic_ShardStone": [
+   2,
+   77
+  ],
+  "1056_Mythic_ShardStone": [
+   2,
+   78
+  ],
+  "1057_Mythic_ShardStone": [
+   2,
+   79
+  ],
+  "1058_Mythic_ShardStone": [
+   2,
+   80
+  ],
   "105_Legendary_ShardStone": [
    2,
    5
+  ],
+  "1061_Mythic_ShardStone": [
+   2,
+   81
+  ],
+  "1062_Mythic_ShardStone": [
+   2,
+   82
+  ],
+  "1063_Mythic_ShardStone": [
+   2,
+   83
+  ],
+  "1064_Mythic_ShardStone": [
+   2,
+   84
+  ],
+  "1065_Mythic_ShardStone": [
+   2,
+   85
+  ],
+  "1066_Mythic_ShardStone": [
+   2,
+   86
+  ],
+  "1067_Mythic_ShardStone": [
+   2,
+   87
+  ],
+  "1068_Mythic_ShardStone": [
+   2,
+   88
   ],
   "106_Legendary_ShardStone": [
    2,
    6
   ],
+  "1071_Mythic_ShardStone": [
+   2,
+   89
+  ],
+  "1072_Mythic_ShardStone": [
+   2,
+   90
+  ],
+  "1073_Mythic_ShardStone": [
+   2,
+   91
+  ],
+  "1074_Mythic_ShardStone": [
+   2,
+   92
+  ],
+  "1075_Mythic_ShardStone": [
+   2,
+   93
+  ],
+  "1076_Mythic_ShardStone": [
+   2,
+   94
+  ],
+  "1077_Mythic_ShardStone": [
+   2,
+   95
+  ],
+  "1078_Mythic_ShardStone": [
+   2,
+   96
+  ],
   "107_Legendary_ShardStone": [
    2,
    7
+  ],
+  "1081_Mythic_ShardStone": [
+   2,
+   97
+  ],
+  "1082_Mythic_ShardStone": [
+   2,
+   98
+  ],
+  "1083_Mythic_ShardStone": [
+   2,
+   99
+  ],
+  "1084_Mythic_ShardStone": [
+   2,
+   100
+  ],
+  "1085_Mythic_ShardStone": [
+   2,
+   101
+  ],
+  "1086_Mythic_ShardStone": [
+   2,
+   102
+  ],
+  "1087_Mythic_ShardStone": [
+   2,
+   103
+  ],
+  "1088_Mythic_ShardStone": [
+   2,
+   104
   ],
   "108_Legendary_ShardStone": [
    2,
    8
   ],
+  "1091_Mythic_ShardStone": [
+   2,
+   105
+  ],
+  "1092_Mythic_ShardStone": [
+   2,
+   106
+  ],
+  "1093_Mythic_ShardStone": [
+   2,
+   107
+  ],
+  "1094_Mythic_ShardStone": [
+   2,
+   108
+  ],
+  "1095_Mythic_ShardStone": [
+   2,
+   109
+  ],
+  "1096_Mythic_ShardStone": [
+   2,
+   110
+  ],
+  "1097_Mythic_ShardStone": [
+   2,
+   111
+  ],
+  "1098_Mythic_ShardStone": [
+   2,
+   112
+  ],
   "109_Legendary_ShardStone": [
    2,
    9
+  ],
+  "1101_Mythic_ShardStone": [
+   2,
+   113
+  ],
+  "1102_Mythic_ShardStone": [
+   2,
+   114
+  ],
+  "1103_Mythic_ShardStone": [
+   2,
+   115
+  ],
+  "1104_Mythic_ShardStone": [
+   2,
+   116
+  ],
+  "1105_Mythic_ShardStone": [
+   2,
+   117
+  ],
+  "1106_Mythic_ShardStone": [
+   2,
+   118
+  ],
+  "1107_Mythic_ShardStone": [
+   2,
+   119
+  ],
+  "1108_Mythic_ShardStone": [
+   2,
+   120
   ],
   "110_Legendary_ShardStone": [
    2,
    10
   ],
+  "1111_Mythic_ShardStone": [
+   2,
+   121
+  ],
+  "1112_Mythic_ShardStone": [
+   2,
+   122
+  ],
+  "1113_Mythic_ShardStone": [
+   2,
+   123
+  ],
+  "1114_Mythic_ShardStone": [
+   2,
+   124
+  ],
+  "1115_Mythic_ShardStone": [
+   2,
+   125
+  ],
+  "1116_Mythic_ShardStone": [
+   2,
+   126
+  ],
+  "1117_Mythic_ShardStone": [
+   2,
+   127
+  ],
+  "1118_Mythic_ShardStone": [
+   2,
+   128
+  ],
   "111_Legendary_ShardStone": [
    2,
    11
+  ],
+  "1121_Mythic_ShardStone": [
+   2,
+   129
+  ],
+  "1122_Mythic_ShardStone": [
+   2,
+   130
+  ],
+  "1123_Mythic_ShardStone": [
+   2,
+   131
+  ],
+  "1124_Mythic_ShardStone": [
+   2,
+   132
+  ],
+  "1125_Mythic_ShardStone": [
+   2,
+   133
+  ],
+  "1126_Mythic_ShardStone": [
+   2,
+   134
+  ],
+  "1127_Mythic_ShardStone": [
+   2,
+   135
+  ],
+  "1128_Mythic_ShardStone": [
+   2,
+   136
   ],
   "112_Legendary_ShardStone": [
    2,
    12
   ],
+  "1131_Mythic_ShardStone": [
+   2,
+   137
+  ],
+  "1132_Mythic_ShardStone": [
+   2,
+   138
+  ],
+  "1133_Mythic_ShardStone": [
+   2,
+   139
+  ],
+  "1134_Mythic_ShardStone": [
+   2,
+   140
+  ],
+  "1135_Mythic_ShardStone": [
+   2,
+   141
+  ],
+  "1136_Mythic_ShardStone": [
+   2,
+   142
+  ],
+  "1137_Mythic_ShardStone": [
+   2,
+   143
+  ],
+  "1138_Mythic_ShardStone": [
+   2,
+   144
+  ],
   "113_Legendary_ShardStone": [
    2,
    13
+  ],
+  "1141_Mythic_ShardStone": [
+   2,
+   145
+  ],
+  "1142_Mythic_ShardStone": [
+   2,
+   146
+  ],
+  "1143_Mythic_ShardStone": [
+   2,
+   147
+  ],
+  "1144_Mythic_ShardStone": [
+   2,
+   148
+  ],
+  "1145_Mythic_ShardStone": [
+   2,
+   149
+  ],
+  "1146_Mythic_ShardStone": [
+   2,
+   150
+  ],
+  "1147_Mythic_ShardStone": [
+   2,
+   151
+  ],
+  "1148_Mythic_ShardStone": [
+   2,
+   152
   ],
   "114_Legendary_ShardStone": [
    2,
    14
   ],
+  "1151_Mythic_ShardStone": [
+   2,
+   153
+  ],
+  "1152_Mythic_ShardStone": [
+   2,
+   154
+  ],
+  "1153_Mythic_ShardStone": [
+   2,
+   155
+  ],
+  "1154_Mythic_ShardStone": [
+   2,
+   156
+  ],
+  "1155_Mythic_ShardStone": [
+   2,
+   157
+  ],
+  "1156_Mythic_ShardStone": [
+   2,
+   158
+  ],
+  "1157_Mythic_ShardStone": [
+   2,
+   159
+  ],
+  "1158_Mythic_ShardStone": [
+   2,
+   160
+  ],
   "115_Legendary_ShardStone": [
    2,
    15
+  ],
+  "1161_Mythic_ShardStone": [
+   2,
+   161
+  ],
+  "1162_Mythic_ShardStone": [
+   2,
+   162
+  ],
+  "1163_Mythic_ShardStone": [
+   2,
+   163
+  ],
+  "1164_Mythic_ShardStone": [
+   2,
+   164
+  ],
+  "1165_Mythic_ShardStone": [
+   2,
+   165
+  ],
+  "1166_Mythic_ShardStone": [
+   2,
+   166
+  ],
+  "1167_Mythic_ShardStone": [
+   2,
+   167
+  ],
+  "1168_Mythic_ShardStone": [
+   2,
+   168
   ],
   "116_Legendary_ShardStone": [
    2,
    16
   ],
+  "1171_Mythic_ShardStone": [
+   2,
+   169
+  ],
+  "1172_Mythic_ShardStone": [
+   2,
+   170
+  ],
+  "1173_Mythic_ShardStone": [
+   2,
+   171
+  ],
+  "1174_Mythic_ShardStone": [
+   2,
+   172
+  ],
+  "1175_Mythic_ShardStone": [
+   2,
+   173
+  ],
+  "1176_Mythic_ShardStone": [
+   2,
+   174
+  ],
+  "1177_Mythic_ShardStone": [
+   2,
+   175
+  ],
+  "1178_Mythic_ShardStone": [
+   2,
+   176
+  ],
   "117_Legendary_ShardStone": [
    2,
    17
+  ],
+  "1181_Mythic_ShardStone": [
+   2,
+   177
+  ],
+  "1182_Mythic_ShardStone": [
+   2,
+   178
+  ],
+  "1183_Mythic_ShardStone": [
+   2,
+   179
+  ],
+  "1184_Mythic_ShardStone": [
+   2,
+   180
+  ],
+  "1185_Mythic_ShardStone": [
+   2,
+   181
+  ],
+  "1186_Mythic_ShardStone": [
+   2,
+   182
+  ],
+  "1187_Mythic_ShardStone": [
+   2,
+   183
+  ],
+  "1188_Mythic_ShardStone": [
+   2,
+   184
   ],
   "118_Legendary_ShardStone": [
    2,
    18
   ],
+  "1191_Mythic_ShardStone": [
+   2,
+   185
+  ],
+  "1192_Mythic_ShardStone": [
+   2,
+   186
+  ],
+  "1193_Mythic_ShardStone": [
+   2,
+   187
+  ],
+  "1194_Mythic_ShardStone": [
+   2,
+   188
+  ],
+  "1195_Mythic_ShardStone": [
+   2,
+   189
+  ],
+  "1196_Mythic_ShardStone": [
+   2,
+   190
+  ],
+  "1197_Mythic_ShardStone": [
+   2,
+   191
+  ],
+  "1198_Mythic_ShardStone": [
+   2,
+   192
+  ],
   "119_Legendary_ShardStone": [
    2,
    19
+  ],
+  "1201_Mythic_ShardStone": [
+   2,
+   193
+  ],
+  "1202_Mythic_ShardStone": [
+   2,
+   194
+  ],
+  "1203_Mythic_ShardStone": [
+   2,
+   195
+  ],
+  "1204_Mythic_ShardStone": [
+   3,
+   1
+  ],
+  "1205_Mythic_ShardStone": [
+   3,
+   2
+  ],
+  "1206_Mythic_ShardStone": [
+   3,
+   3
+  ],
+  "1207_Mythic_ShardStone": [
+   3,
+   4
+  ],
+  "1208_Mythic_ShardStone": [
+   3,
+   5
   ],
   "120_Legendary_ShardStone": [
    2,
    20
   ],
+  "1211_Mythic_ShardStone": [
+   3,
+   6
+  ],
+  "1212_Mythic_ShardStone": [
+   3,
+   7
+  ],
+  "1213_Mythic_ShardStone": [
+   3,
+   8
+  ],
+  "1214_Mythic_ShardStone": [
+   3,
+   9
+  ],
+  "1215_Mythic_ShardStone": [
+   3,
+   10
+  ],
+  "1216_Mythic_ShardStone": [
+   3,
+   11
+  ],
+  "1217_Mythic_ShardStone": [
+   3,
+   12
+  ],
+  "1218_Mythic_ShardStone": [
+   3,
+   13
+  ],
   "121_Legendary_ShardStone": [
    2,
+   21
+  ],
+  "1221_Mythic_ShardStone": [
+   3,
+   14
+  ],
+  "1222_Mythic_ShardStone": [
+   3,
+   15
+  ],
+  "1223_Mythic_ShardStone": [
+   3,
+   16
+  ],
+  "1224_Mythic_ShardStone": [
+   3,
+   17
+  ],
+  "1225_Mythic_ShardStone": [
+   3,
+   18
+  ],
+  "1226_Mythic_ShardStone": [
+   3,
+   19
+  ],
+  "1227_Mythic_ShardStone": [
+   3,
+   20
+  ],
+  "1228_Mythic_ShardStone": [
+   3,
    21
   ],
   "122_Legendary_ShardStone": [
    2,
    22
   ],
+  "1231_Mythic_ShardStone": [
+   3,
+   22
+  ],
+  "1232_Mythic_ShardStone": [
+   3,
+   23
+  ],
+  "1233_Mythic_ShardStone": [
+   3,
+   24
+  ],
+  "1234_Mythic_ShardStone": [
+   3,
+   25
+  ],
+  "1235_Mythic_ShardStone": [
+   3,
+   26
+  ],
+  "1236_Mythic_ShardStone": [
+   3,
+   27
+  ],
+  "1237_Mythic_ShardStone": [
+   3,
+   28
+  ],
+  "1238_Mythic_ShardStone": [
+   3,
+   29
+  ],
   "123_Legendary_ShardStone": [
    2,
    23
+  ],
+  "1241_Mythic_ShardStone": [
+   3,
+   30
+  ],
+  "1242_Mythic_ShardStone": [
+   3,
+   31
+  ],
+  "1243_Mythic_ShardStone": [
+   3,
+   32
+  ],
+  "1244_Mythic_ShardStone": [
+   3,
+   33
+  ],
+  "1245_Mythic_ShardStone": [
+   3,
+   34
+  ],
+  "1246_Mythic_ShardStone": [
+   3,
+   35
+  ],
+  "1247_Mythic_ShardStone": [
+   3,
+   36
+  ],
+  "1248_Mythic_ShardStone": [
+   3,
+   37
   ],
   "124_Legendary_ShardStone": [
    2,
    24
   ],
+  "1251_Mythic_ShardStone": [
+   3,
+   38
+  ],
+  "1252_Mythic_ShardStone": [
+   3,
+   39
+  ],
+  "1253_Mythic_ShardStone": [
+   3,
+   40
+  ],
+  "1254_Mythic_ShardStone": [
+   3,
+   41
+  ],
+  "1255_Mythic_ShardStone": [
+   3,
+   42
+  ],
+  "1256_Mythic_ShardStone": [
+   3,
+   43
+  ],
+  "1257_Mythic_ShardStone": [
+   3,
+   44
+  ],
+  "1258_Mythic_ShardStone": [
+   3,
+   45
+  ],
   "125_Legendary_ShardStone": [
    2,
    25
+  ],
+  "1261_Mythic_ShardStone": [
+   3,
+   46
+  ],
+  "1262_Mythic_ShardStone": [
+   3,
+   47
+  ],
+  "1263_Mythic_ShardStone": [
+   3,
+   48
+  ],
+  "1264_Mythic_ShardStone": [
+   3,
+   49
+  ],
+  "1265_Mythic_ShardStone": [
+   3,
+   50
+  ],
+  "1266_Mythic_ShardStone": [
+   3,
+   51
+  ],
+  "1267_Mythic_ShardStone": [
+   3,
+   52
+  ],
+  "1268_Mythic_ShardStone": [
+   3,
+   53
   ],
   "126_Legendary_ShardStone": [
    2,
    26
   ],
-  "130_Mythic_ShardStone": [
-   2,
-   27
+  "1271_Mythic_ShardStone": [
+   3,
+   54
   ],
-  "131_Mythic_ShardStone": [
-   2,
-   28
+  "1272_Mythic_ShardStone": [
+   3,
+   55
   ],
-  "132_Mythic_ShardStone": [
-   2,
-   29
+  "1273_Mythic_ShardStone": [
+   3,
+   56
   ],
-  "133_Mythic_ShardStone": [
-   2,
-   30
+  "1274_Mythic_ShardStone": [
+   3,
+   57
   ],
-  "134_Mythic_ShardStone": [
-   2,
-   31
+  "1275_Mythic_ShardStone": [
+   3,
+   58
   ],
-  "135_Mythic_ShardStone": [
-   2,
-   32
+  "1276_Mythic_ShardStone": [
+   3,
+   59
   ],
-  "136_Mythic_ShardStone": [
-   2,
-   33
+  "1277_Mythic_ShardStone": [
+   3,
+   60
+  ],
+  "1278_Mythic_ShardStone": [
+   3,
+   61
+  ],
+  "1281_Mythic_ShardStone": [
+   3,
+   62
+  ],
+  "1282_Mythic_ShardStone": [
+   3,
+   63
+  ],
+  "1283_Mythic_ShardStone": [
+   3,
+   64
+  ],
+  "1284_Mythic_ShardStone": [
+   3,
+   65
+  ],
+  "1285_Mythic_ShardStone": [
+   3,
+   66
+  ],
+  "1286_Mythic_ShardStone": [
+   3,
+   67
+  ],
+  "1287_Mythic_ShardStone": [
+   3,
+   68
+  ],
+  "1288_Mythic_ShardStone": [
+   3,
+   69
+  ],
+  "1291_Mythic_ShardStone": [
+   3,
+   70
+  ],
+  "1292_Mythic_ShardStone": [
+   3,
+   71
+  ],
+  "1293_Mythic_ShardStone": [
+   3,
+   72
+  ],
+  "1294_Mythic_ShardStone": [
+   3,
+   73
+  ],
+  "1295_Mythic_ShardStone": [
+   3,
+   74
+  ],
+  "1296_Mythic_ShardStone": [
+   3,
+   75
+  ],
+  "1297_Mythic_ShardStone": [
+   3,
+   76
+  ],
+  "1298_Mythic_ShardStone": [
+   3,
+   77
+  ],
+  "1301_Mythic_ShardStone": [
+   3,
+   78
+  ],
+  "1302_Mythic_ShardStone": [
+   3,
+   79
+  ],
+  "1303_Mythic_ShardStone": [
+   3,
+   80
+  ],
+  "1304_Mythic_ShardStone": [
+   3,
+   81
+  ],
+  "1305_Mythic_ShardStone": [
+   3,
+   82
+  ],
+  "1306_Mythic_ShardStone": [
+   3,
+   83
+  ],
+  "1307_Mythic_ShardStone": [
+   3,
+   84
+  ],
+  "1308_Mythic_ShardStone": [
+   3,
+   85
+  ],
+  "1311_Mythic_ShardStone": [
+   3,
+   86
+  ],
+  "1312_Mythic_ShardStone": [
+   3,
+   87
+  ],
+  "1313_Mythic_ShardStone": [
+   3,
+   88
+  ],
+  "1314_Mythic_ShardStone": [
+   3,
+   89
+  ],
+  "1315_Mythic_ShardStone": [
+   3,
+   90
+  ],
+  "1316_Mythic_ShardStone": [
+   3,
+   91
+  ],
+  "1317_Mythic_ShardStone": [
+   3,
+   92
+  ],
+  "1318_Mythic_ShardStone": [
+   3,
+   93
+  ],
+  "1321_Mythic_ShardStone": [
+   3,
+   94
+  ],
+  "1322_Mythic_ShardStone": [
+   3,
+   95
+  ],
+  "1323_Mythic_ShardStone": [
+   3,
+   96
+  ],
+  "1324_Mythic_ShardStone": [
+   3,
+   97
+  ],
+  "1325_Mythic_ShardStone": [
+   3,
+   98
+  ],
+  "1326_Mythic_ShardStone": [
+   3,
+   99
+  ],
+  "1327_Mythic_ShardStone": [
+   3,
+   100
+  ],
+  "1328_Mythic_ShardStone": [
+   3,
+   101
+  ],
+  "1331_Mythic_ShardStone": [
+   3,
+   102
+  ],
+  "1332_Mythic_ShardStone": [
+   3,
+   103
+  ],
+  "1333_Mythic_ShardStone": [
+   3,
+   104
+  ],
+  "1334_Mythic_ShardStone": [
+   3,
+   105
+  ],
+  "1335_Mythic_ShardStone": [
+   3,
+   106
+  ],
+  "1336_Mythic_ShardStone": [
+   3,
+   107
+  ],
+  "1337_Mythic_ShardStone": [
+   3,
+   108
+  ],
+  "1338_Mythic_ShardStone": [
+   3,
+   109
   ],
   "137_Legendary_ShardStone": [
    3,
@@ -299,18 +1327,6 @@
   "76_Legendary_ShardStone": [
    2,
    38
-  ],
-  "77_Mythic_ShardStone": [
-   2,
-   39
-  ],
-  "78_Mythic_ShardStone": [
-   2,
-   40
-  ],
-  "79_Mythic_ShardStone": [
-   2,
-   41
   ],
   "80_Legendary_ShardStone": [
    2,
@@ -1632,6 +2648,810 @@
    0,
    79
   ],
+  "CS_AuroraBroth": [
+   1,
+   0
+  ],
+  "CS_Bacon": [
+   1,
+   1
+  ],
+  "CS_BarbecuedLox": [
+   1,
+   20
+  ],
+  "CS_BarrowSausagePot": [
+   1,
+   21
+  ],
+  "CS_BerryPreserve": [
+   1,
+   22
+  ],
+  "CS_BloodSausage": [
+   1,
+   2
+  ],
+  "CS_BloodSausageRaw": [
+   1,
+   3
+  ],
+  "CS_BloodTonic": [
+   1,
+   4
+  ],
+  "CS_BloodwarmStew": [
+   1,
+   23
+  ],
+  "CS_BogCream": [
+   1,
+   24
+  ],
+  "CS_BoiledEgg": [
+   1,
+   25
+  ],
+  "CS_BondiBreakfast": [
+   1,
+   26
+  ],
+  "CS_BoneBroth": [
+   1,
+   27
+  ],
+  "CS_BonemawChowder": [
+   1,
+   28
+  ],
+  "CS_BraisedVolture": [
+   1,
+   29
+  ],
+  "CS_BrewAllfather": [
+   1,
+   30
+  ],
+  "CS_BrewBloodroot": [
+   1,
+   5
+  ],
+  "CS_BrewHearthwarm": [
+   1,
+   6
+  ],
+  "CS_BrewRunewise": [
+   1,
+   31
+  ],
+  "CS_BrewShieldwall": [
+   1,
+   7
+  ],
+  "CS_BrewSkald": [
+   1,
+   32
+  ],
+  "CS_CandiedTurnip": [
+   1,
+   33
+  ],
+  "CS_CarrotButter": [
+   1,
+   34
+  ],
+  "CS_CarrotCake": [
+   1,
+   35
+  ],
+  "CS_CarrotCakeRaw": [
+   1,
+   36
+  ],
+  "CS_CarrotSticks": [
+   1,
+   8
+  ],
+  "CS_CloudberryPorridge": [
+   1,
+   37
+  ],
+  "CS_DeathcapBroth": [
+   1,
+   38
+  ],
+  "CS_DeerJerky": [
+   1,
+   39
+  ],
+  "CS_DrakeEgg": [
+   1,
+   40
+  ],
+  "CS_DraughtEitr4": [
+   1,
+   9
+  ],
+  "CS_DraughtEitr6": [
+   1,
+   42
+  ],
+  "CS_DraughtEitr7": [
+   1,
+   43
+  ],
+  "CS_DraughtHealth1": [
+   1,
+   10
+  ],
+  "CS_DraughtHealth3": [
+   1,
+   44
+  ],
+  "CS_DraughtHealth5": [
+   1,
+   45
+  ],
+  "CS_DraughtHealth6": [
+   1,
+   46
+  ],
+  "CS_DraughtHealth7": [
+   1,
+   47
+  ],
+  "CS_DraughtStamina1": [
+   1,
+   48
+  ],
+  "CS_DraughtStamina3": [
+   1,
+   11
+  ],
+  "CS_DraughtStamina5": [
+   1,
+   49
+  ],
+  "CS_DvergrRation": [
+   1,
+   51
+  ],
+  "CS_DwarvenMushroomStew": [
+   1,
+   52
+  ],
+  "CS_EmberCream": [
+   1,
+   53
+  ],
+  "CS_EmberGlaze": [
+   1,
+   54
+  ],
+  "CS_EmberPieRaw": [
+   1,
+   55
+  ],
+  "CS_EmberWort": [
+   1,
+   56
+  ],
+  "CS_EmberforgePie": [
+   1,
+   57
+  ],
+  "CS_FeastAllfather": [
+   1,
+   58
+  ],
+  "CS_FeastAllfather_Material": [
+   1,
+   59
+  ],
+  "CS_FeastBogwitch": [
+   1,
+   60
+  ],
+  "CS_FeastBogwitch_Material": [
+   1,
+   61
+  ],
+  "CS_FeastDisablot": [
+   1,
+   62
+  ],
+  "CS_FeastDisablot_Material": [
+   1,
+   63
+  ],
+  "CS_FeastDvergr": [
+   1,
+   64
+  ],
+  "CS_FeastDvergr_Material": [
+   1,
+   65
+  ],
+  "CS_FeastFimbul": [
+   1,
+   66
+  ],
+  "CS_FeastFimbul_Material": [
+   1,
+   67
+  ],
+  "CS_FeastForgeHall": [
+   1,
+   68
+  ],
+  "CS_FeastForgeHall_Material": [
+   1,
+   69
+  ],
+  "CS_FeastHarvest": [
+   1,
+   70
+  ],
+  "CS_FeastHarvest_Material": [
+   1,
+   71
+  ],
+  "CS_FeastHearthkeeper": [
+   1,
+   72
+  ],
+  "CS_FeastHearthkeeper_Material": [
+   1,
+   73
+  ],
+  "CS_FeastJarl": [
+   1,
+   74
+  ],
+  "CS_FeastJarl_Material": [
+   1,
+   75
+  ],
+  "CS_FeastMeadhall": [
+   1,
+   76
+  ],
+  "CS_FeastMeadhall_Material": [
+   1,
+   77
+  ],
+  "CS_FeastMuspel": [
+   1,
+   78
+  ],
+  "CS_FeastMuspel_Material": [
+   1,
+   79
+  ],
+  "CS_FeastNorthernLights": [
+   1,
+   80
+  ],
+  "CS_FeastNorthernLights_Material": [
+   1,
+   81
+  ],
+  "CS_FeastSeidr": [
+   1,
+   82
+  ],
+  "CS_FeastSeidr_Material": [
+   1,
+   83
+  ],
+  "CS_FeastSkald": [
+   1,
+   84
+  ],
+  "CS_FeastSkald_Material": [
+   1,
+   85
+  ],
+  "CS_FeastWedding": [
+   1,
+   86
+  ],
+  "CS_FeastWedding_Material": [
+   1,
+   87
+  ],
+  "CS_FeastWinterNights": [
+   1,
+   88
+  ],
+  "CS_FeastWinterNights_Material": [
+   1,
+   89
+  ],
+  "CS_FeastYule": [
+   1,
+   90
+  ],
+  "CS_FeastYule_Material": [
+   1,
+   91
+  ],
+  "CS_FortifiedYellowStew": [
+   1,
+   92
+  ],
+  "CS_FriedAsksvin": [
+   1,
+   93
+  ],
+  "CS_FriedLox": [
+   1,
+   12
+  ],
+  "CS_FriedLoxRaw": [
+   1,
+   94
+  ],
+  "CS_FrostCream": [
+   1,
+   96
+  ],
+  "CS_FrostMalt": [
+   1,
+   97
+  ],
+  "CS_FrostOnionSoup": [
+   1,
+   98
+  ],
+  "CS_FrostfellPlatter": [
+   1,
+   99
+  ],
+  "CS_FrostrootBroth": [
+   1,
+   100
+  ],
+  "CS_GlazedBearRoast": [
+   1,
+   101
+  ],
+  "CS_GlazedCarrots": [
+   1,
+   102
+  ],
+  "CS_GlazedFish": [
+   1,
+   103
+  ],
+  "CS_GlazedFishWrap": [
+   1,
+   104
+  ],
+  "CS_GlazedNeckTail": [
+   1,
+   105
+  ],
+  "CS_GlazedSeeker": [
+   1,
+   106
+  ],
+  "CS_GriddleCakeBatter": [
+   1,
+   107
+  ],
+  "CS_GriddleCakes": [
+   1,
+   108
+  ],
+  "CS_Haggis": [
+   1,
+   109
+  ],
+  "CS_HarePie": [
+   1,
+   110
+  ],
+  "CS_HarePieRaw": [
+   1,
+   111
+  ],
+  "CS_HearthMead": [
+   1,
+   112
+  ],
+  "CS_HearthfireMooseStew": [
+   1,
+   113
+  ],
+  "CS_Hearthstock": [
+   1,
+   114
+  ],
+  "CS_HerbBundle": [
+   1,
+   115
+  ],
+  "CS_HoneyBread": [
+   1,
+   116
+  ],
+  "CS_HoneyCakeRaw": [
+   1,
+   117
+  ],
+  "CS_HoneyRoastHare": [
+   1,
+   118
+  ],
+  "CS_HoneySausages": [
+   1,
+   119
+  ],
+  "CS_HoneySyrup": [
+   1,
+   120
+  ],
+  "CS_HuntersBrothStew": [
+   1,
+   121
+  ],
+  "CS_HuntersPie": [
+   1,
+   122
+  ],
+  "CS_HuntersPieRaw": [
+   1,
+   123
+  ],
+  "CS_JamNutBread": [
+   1,
+   124
+  ],
+  "CS_JotunBreakfast": [
+   1,
+   125
+  ],
+  "CS_Kabob": [
+   8,
+   7
+  ],
+  "CS_KabobRaw": [
+   1,
+   126
+  ],
+  "CS_KonungrOmelette": [
+   1,
+   127
+  ],
+  "CS_KonungrOmeletteRaw": [
+   1,
+   128
+  ],
+  "CS_Lard": [
+   1,
+   129
+  ],
+  "CS_LesserYellowStew": [
+   1,
+   130
+  ],
+  "CS_LingonCakeRaw": [
+   1,
+   131
+  ],
+  "CS_LingonberryCake": [
+   1,
+   132
+  ],
+  "CS_LoggersPot": [
+   1,
+   133
+  ],
+  "CS_LoxBun": [
+   1,
+   134
+  ],
+  "CS_LoxJerky": [
+   1,
+   135
+  ],
+  "CS_MagesPlatter": [
+   1,
+   136
+  ],
+  "CS_MarinatedWolf": [
+   1,
+   137
+  ],
+  "CS_MeadBase": [
+   1,
+   138
+  ],
+  "CS_MeadBaseBrewAllfather": [
+   1,
+   139
+  ],
+  "CS_MeadBaseBrewBloodroot": [
+   1,
+   13
+  ],
+  "CS_MeadBaseBrewHearthwarm": [
+   1,
+   140
+  ],
+  "CS_MeadBaseBrewRunewise": [
+   1,
+   141
+  ],
+  "CS_MeadBaseBrewShieldwall": [
+   1,
+   142
+  ],
+  "CS_MeadBaseBrewSkald": [
+   1,
+   14
+  ],
+  "CS_MeadBaseDraughtEitr4": [
+   1,
+   143
+  ],
+  "CS_MeadBaseDraughtEitr6": [
+   1,
+   144
+  ],
+  "CS_MeadBaseDraughtEitr7": [
+   1,
+   145
+  ],
+  "CS_MeadBaseDraughtHealth1": [
+   1,
+   15
+  ],
+  "CS_MeadBaseDraughtHealth3": [
+   1,
+   146
+  ],
+  "CS_MeadBaseDraughtHealth5": [
+   1,
+   147
+  ],
+  "CS_MeadBaseDraughtHealth6": [
+   1,
+   148
+  ],
+  "CS_MeadBaseDraughtHealth7": [
+   1,
+   149
+  ],
+  "CS_MeadBaseDraughtStamina1": [
+   1,
+   16
+  ],
+  "CS_MeadBaseDraughtStamina3": [
+   1,
+   150
+  ],
+  "CS_MeadBaseDraughtStamina5": [
+   1,
+   151
+  ],
+  "CS_MeadBaseDraughtStamina7": [
+   1,
+   152
+  ],
+  "CS_MeadBaseSurgeDrengr": [
+   1,
+   153
+  ],
+  "CS_MeadBaseSurgeEinherjar": [
+   1,
+   154
+  ],
+  "CS_MeadBaseSurgeValkyrie": [
+   1,
+   155
+  ],
+  "CS_MeadBaseWardBarrow": [
+   1,
+   156
+  ],
+  "CS_MeadBaseWardFire": [
+   1,
+   157
+  ],
+  "CS_MeadBaseWardFrost": [
+   1,
+   158
+  ],
+  "CS_MeadowSkewer": [
+   1,
+   159
+  ],
+  "CS_MeadowSkewerRaw": [
+   1,
+   160
+  ],
+  "CS_MidsummerCake": [
+   1,
+   161
+  ],
+  "CS_MidwinterBreakfast": [
+   1,
+   162
+  ],
+  "CS_MistwalkerStew": [
+   1,
+   163
+  ],
+  "CS_MushroomHoneySoup": [
+   1,
+   164
+  ],
+  "CS_MuspelChowder": [
+   1,
+   165
+  ],
+  "CS_NeckJerky": [
+   1,
+   166
+  ],
+  "CS_NorthernSundae": [
+   1,
+   167
+  ],
+  "CS_NutButter": [
+   1,
+   168
+  ],
+  "CS_OdinsDelight": [
+   1,
+   169
+  ],
+  "CS_Omelette": [
+   1,
+   170
+  ],
+  "CS_OmeletteRaw": [
+   1,
+   171
+  ],
+  "CS_PieCrust": [
+   1,
+   172
+  ],
+  "CS_PorkBellyRaw": [
+   1,
+   173
+  ],
+  "CS_PorkRinds": [
+   1,
+   174
+  ],
+  "CS_PorkTenderloin": [
+   1,
+   175
+  ],
+  "CS_RichStock": [
+   1,
+   176
+  ],
+  "CS_RimeHotpot": [
+   1,
+   177
+  ],
+  "CS_RunewisePorridge": [
+   1,
+   178
+  ],
+  "CS_SapCordial": [
+   1,
+   179
+  ],
+  "CS_SealHotpot": [
+   1,
+   180
+  ],
+  "CS_SearedHoneycomb": [
+   1,
+   181
+  ],
+  "CS_SeedBrew": [
+   1,
+   182
+  ],
+  "CS_SeersPot": [
+   1,
+   183
+  ],
+  "CS_SeidrBroth": [
+   1,
+   184
+  ],
+  "CS_ShieldwallLoaf": [
+   1,
+   185
+  ],
+  "CS_SmokedFishChowder": [
+   1,
+   186
+  ],
+  "CS_SmoulderBroth": [
+   1,
+   187
+  ],
+  "CS_SpiceRub": [
+   1,
+   188
+  ],
+  "CS_SpicedBarleyBrew": [
+   1,
+   189
+  ],
+  "CS_StormCream": [
+   1,
+   190
+  ],
+  "CS_StuffedChicken": [
+   1,
+   191
+  ],
+  "CS_SurgeDrengr": [
+   1,
+   17
+  ],
+  "CS_SurgeEinherjar": [
+   1,
+   18
+  ],
+  "CS_SurgeValkyrie": [
+   1,
+   192
+  ],
+  "CS_SurtrsDelight": [
+   1,
+   193
+  ],
+  "CS_TeriyakiSerpent": [
+   1,
+   194
+  ],
+  "CS_TrailRation": [
+   1,
+   195
+  ],
+  "CS_VenisonLoin": [
+   8,
+   0
+  ],
+  "CS_VolvasBrew": [
+   8,
+   1
+  ],
+  "CS_WardBarrow": [
+   1,
+   19
+  ],
+  "CS_WardFire": [
+   8,
+   2
+  ],
+  "CS_WardFrost": [
+   8,
+   3
+  ],
+  "CS_WildEgg": [
+   8,
+   4
+  ],
+  "CS_WinterSupper": [
+   8,
+   5
+  ],
+  "CS_Wort": [
+   8,
+   6
+  ],
   "CandleWick": [
    0,
    80
@@ -2491,810 +4311,6 @@
   "Guck": [
    4,
    14
-  ],
-  "CS_AuroraBroth": [
-   1,
-   0
-  ],
-  "CS_Bacon": [
-   1,
-   1
-  ],
-  "CS_BarbecuedLox": [
-   1,
-   20
-  ],
-  "CS_BarrowSausagePot": [
-   1,
-   21
-  ],
-  "CS_BerryPreserve": [
-   1,
-   22
-  ],
-  "CS_BloodSausage": [
-   1,
-   2
-  ],
-  "CS_BloodSausageRaw": [
-   1,
-   3
-  ],
-  "CS_BloodTonic": [
-   1,
-   4
-  ],
-  "CS_BloodwarmStew": [
-   1,
-   23
-  ],
-  "CS_BogCream": [
-   1,
-   24
-  ],
-  "CS_BoiledEgg": [
-   1,
-   25
-  ],
-  "CS_BondiBreakfast": [
-   1,
-   26
-  ],
-  "CS_BoneBroth": [
-   1,
-   27
-  ],
-  "CS_BonemawChowder": [
-   1,
-   28
-  ],
-  "CS_BraisedVolture": [
-   1,
-   29
-  ],
-  "CS_BrewAllfather": [
-   1,
-   30
-  ],
-  "CS_BrewBloodroot": [
-   1,
-   5
-  ],
-  "CS_BrewHearthwarm": [
-   1,
-   6
-  ],
-  "CS_BrewRunewise": [
-   1,
-   31
-  ],
-  "CS_BrewShieldwall": [
-   1,
-   7
-  ],
-  "CS_BrewSkald": [
-   1,
-   32
-  ],
-  "CS_CandiedTurnip": [
-   1,
-   33
-  ],
-  "CS_CarrotButter": [
-   1,
-   34
-  ],
-  "CS_CarrotCake": [
-   1,
-   35
-  ],
-  "CS_CarrotCakeRaw": [
-   1,
-   36
-  ],
-  "CS_CarrotSticks": [
-   1,
-   8
-  ],
-  "CS_CloudberryPorridge": [
-   1,
-   37
-  ],
-  "CS_DeathcapBroth": [
-   1,
-   38
-  ],
-  "CS_DeerJerky": [
-   1,
-   39
-  ],
-  "CS_DrakeEgg": [
-   1,
-   40
-  ],
-  "CS_DraughtEitr4": [
-   1,
-   9
-  ],
-  "CS_DraughtEitr6": [
-   1,
-   42
-  ],
-  "CS_DraughtEitr7": [
-   1,
-   43
-  ],
-  "CS_DraughtHealth1": [
-   1,
-   10
-  ],
-  "CS_DraughtHealth3": [
-   1,
-   44
-  ],
-  "CS_DraughtHealth5": [
-   1,
-   45
-  ],
-  "CS_DraughtHealth6": [
-   1,
-   46
-  ],
-  "CS_DraughtHealth7": [
-   1,
-   47
-  ],
-  "CS_DraughtStamina1": [
-   1,
-   48
-  ],
-  "CS_DraughtStamina3": [
-   1,
-   11
-  ],
-  "CS_DraughtStamina5": [
-   1,
-   49
-  ],
-  "CS_DvergrRation": [
-   1,
-   51
-  ],
-  "CS_DwarvenMushroomStew": [
-   1,
-   52
-  ],
-  "CS_EmberCream": [
-   1,
-   53
-  ],
-  "CS_EmberGlaze": [
-   1,
-   54
-  ],
-  "CS_EmberPieRaw": [
-   1,
-   55
-  ],
-  "CS_EmberWort": [
-   1,
-   56
-  ],
-  "CS_EmberforgePie": [
-   1,
-   57
-  ],
-  "CS_FeastAllfather": [
-   1,
-   58
-  ],
-  "CS_FeastAllfather_Material": [
-   1,
-   59
-  ],
-  "CS_FeastBogwitch": [
-   1,
-   60
-  ],
-  "CS_FeastBogwitch_Material": [
-   1,
-   61
-  ],
-  "CS_FeastDisablot": [
-   1,
-   62
-  ],
-  "CS_FeastDisablot_Material": [
-   1,
-   63
-  ],
-  "CS_FeastDvergr": [
-   1,
-   64
-  ],
-  "CS_FeastDvergr_Material": [
-   1,
-   65
-  ],
-  "CS_FeastFimbul": [
-   1,
-   66
-  ],
-  "CS_FeastFimbul_Material": [
-   1,
-   67
-  ],
-  "CS_FeastForgeHall": [
-   1,
-   68
-  ],
-  "CS_FeastForgeHall_Material": [
-   1,
-   69
-  ],
-  "CS_FeastHarvest": [
-   1,
-   70
-  ],
-  "CS_FeastHarvest_Material": [
-   1,
-   71
-  ],
-  "CS_FeastHearthkeeper": [
-   1,
-   72
-  ],
-  "CS_FeastHearthkeeper_Material": [
-   1,
-   73
-  ],
-  "CS_FeastJarl": [
-   1,
-   74
-  ],
-  "CS_FeastJarl_Material": [
-   1,
-   75
-  ],
-  "CS_FeastMeadhall": [
-   1,
-   76
-  ],
-  "CS_FeastMeadhall_Material": [
-   1,
-   77
-  ],
-  "CS_FeastMuspel": [
-   1,
-   78
-  ],
-  "CS_FeastMuspel_Material": [
-   1,
-   79
-  ],
-  "CS_FeastNorthernLights": [
-   1,
-   80
-  ],
-  "CS_FeastNorthernLights_Material": [
-   1,
-   81
-  ],
-  "CS_FeastSeidr": [
-   1,
-   82
-  ],
-  "CS_FeastSeidr_Material": [
-   1,
-   83
-  ],
-  "CS_FeastSkald": [
-   1,
-   84
-  ],
-  "CS_FeastSkald_Material": [
-   1,
-   85
-  ],
-  "CS_FeastWedding": [
-   1,
-   86
-  ],
-  "CS_FeastWedding_Material": [
-   1,
-   87
-  ],
-  "CS_FeastWinterNights": [
-   1,
-   88
-  ],
-  "CS_FeastWinterNights_Material": [
-   1,
-   89
-  ],
-  "CS_FeastYule": [
-   1,
-   90
-  ],
-  "CS_FeastYule_Material": [
-   1,
-   91
-  ],
-  "CS_FortifiedYellowStew": [
-   1,
-   92
-  ],
-  "CS_FriedAsksvin": [
-   1,
-   93
-  ],
-  "CS_FriedLox": [
-   1,
-   12
-  ],
-  "CS_FriedLoxRaw": [
-   1,
-   94
-  ],
-  "CS_FrostCream": [
-   1,
-   96
-  ],
-  "CS_FrostMalt": [
-   1,
-   97
-  ],
-  "CS_FrostOnionSoup": [
-   1,
-   98
-  ],
-  "CS_FrostfellPlatter": [
-   1,
-   99
-  ],
-  "CS_FrostrootBroth": [
-   1,
-   100
-  ],
-  "CS_GlazedBearRoast": [
-   1,
-   101
-  ],
-  "CS_GlazedCarrots": [
-   1,
-   102
-  ],
-  "CS_GlazedFish": [
-   1,
-   103
-  ],
-  "CS_GlazedFishWrap": [
-   1,
-   104
-  ],
-  "CS_GlazedNeckTail": [
-   1,
-   105
-  ],
-  "CS_GlazedSeeker": [
-   1,
-   106
-  ],
-  "CS_GriddleCakeBatter": [
-   1,
-   107
-  ],
-  "CS_GriddleCakes": [
-   1,
-   108
-  ],
-  "CS_Haggis": [
-   1,
-   109
-  ],
-  "CS_HarePie": [
-   1,
-   110
-  ],
-  "CS_HarePieRaw": [
-   1,
-   111
-  ],
-  "CS_HearthMead": [
-   1,
-   112
-  ],
-  "CS_HearthfireMooseStew": [
-   1,
-   113
-  ],
-  "CS_Hearthstock": [
-   1,
-   114
-  ],
-  "CS_HerbBundle": [
-   1,
-   115
-  ],
-  "CS_HoneyBread": [
-   1,
-   116
-  ],
-  "CS_HoneyCakeRaw": [
-   1,
-   117
-  ],
-  "CS_HoneyRoastHare": [
-   1,
-   118
-  ],
-  "CS_HoneySausages": [
-   1,
-   119
-  ],
-  "CS_HoneySyrup": [
-   1,
-   120
-  ],
-  "CS_HuntersBrothStew": [
-   1,
-   121
-  ],
-  "CS_HuntersPie": [
-   1,
-   122
-  ],
-  "CS_HuntersPieRaw": [
-   1,
-   123
-  ],
-  "CS_JamNutBread": [
-   1,
-   124
-  ],
-  "CS_JotunBreakfast": [
-   1,
-   125
-  ],
-  "CS_Kabob": [
-   8,
-   7
-  ],
-  "CS_KabobRaw": [
-   1,
-   126
-  ],
-  "CS_KonungrOmelette": [
-   1,
-   127
-  ],
-  "CS_KonungrOmeletteRaw": [
-   1,
-   128
-  ],
-  "CS_Lard": [
-   1,
-   129
-  ],
-  "CS_LesserYellowStew": [
-   1,
-   130
-  ],
-  "CS_LingonCakeRaw": [
-   1,
-   131
-  ],
-  "CS_LingonberryCake": [
-   1,
-   132
-  ],
-  "CS_LoggersPot": [
-   1,
-   133
-  ],
-  "CS_LoxBun": [
-   1,
-   134
-  ],
-  "CS_LoxJerky": [
-   1,
-   135
-  ],
-  "CS_MagesPlatter": [
-   1,
-   136
-  ],
-  "CS_MarinatedWolf": [
-   1,
-   137
-  ],
-  "CS_MeadBase": [
-   1,
-   138
-  ],
-  "CS_MeadBaseBrewAllfather": [
-   1,
-   139
-  ],
-  "CS_MeadBaseBrewBloodroot": [
-   1,
-   13
-  ],
-  "CS_MeadBaseBrewHearthwarm": [
-   1,
-   140
-  ],
-  "CS_MeadBaseBrewRunewise": [
-   1,
-   141
-  ],
-  "CS_MeadBaseBrewShieldwall": [
-   1,
-   142
-  ],
-  "CS_MeadBaseBrewSkald": [
-   1,
-   14
-  ],
-  "CS_MeadBaseDraughtEitr4": [
-   1,
-   143
-  ],
-  "CS_MeadBaseDraughtEitr6": [
-   1,
-   144
-  ],
-  "CS_MeadBaseDraughtEitr7": [
-   1,
-   145
-  ],
-  "CS_MeadBaseDraughtHealth1": [
-   1,
-   15
-  ],
-  "CS_MeadBaseDraughtHealth3": [
-   1,
-   146
-  ],
-  "CS_MeadBaseDraughtHealth5": [
-   1,
-   147
-  ],
-  "CS_MeadBaseDraughtHealth6": [
-   1,
-   148
-  ],
-  "CS_MeadBaseDraughtHealth7": [
-   1,
-   149
-  ],
-  "CS_MeadBaseDraughtStamina1": [
-   1,
-   16
-  ],
-  "CS_MeadBaseDraughtStamina3": [
-   1,
-   150
-  ],
-  "CS_MeadBaseDraughtStamina5": [
-   1,
-   151
-  ],
-  "CS_MeadBaseDraughtStamina7": [
-   1,
-   152
-  ],
-  "CS_MeadBaseSurgeDrengr": [
-   1,
-   153
-  ],
-  "CS_MeadBaseSurgeEinherjar": [
-   1,
-   154
-  ],
-  "CS_MeadBaseSurgeValkyrie": [
-   1,
-   155
-  ],
-  "CS_MeadBaseWardBarrow": [
-   1,
-   156
-  ],
-  "CS_MeadBaseWardFire": [
-   1,
-   157
-  ],
-  "CS_MeadBaseWardFrost": [
-   1,
-   158
-  ],
-  "CS_MeadowSkewer": [
-   1,
-   159
-  ],
-  "CS_MeadowSkewerRaw": [
-   1,
-   160
-  ],
-  "CS_MidsummerCake": [
-   1,
-   161
-  ],
-  "CS_MidwinterBreakfast": [
-   1,
-   162
-  ],
-  "CS_MistwalkerStew": [
-   1,
-   163
-  ],
-  "CS_MushroomHoneySoup": [
-   1,
-   164
-  ],
-  "CS_MuspelChowder": [
-   1,
-   165
-  ],
-  "CS_NeckJerky": [
-   1,
-   166
-  ],
-  "CS_NorthernSundae": [
-   1,
-   167
-  ],
-  "CS_NutButter": [
-   1,
-   168
-  ],
-  "CS_OdinsDelight": [
-   1,
-   169
-  ],
-  "CS_Omelette": [
-   1,
-   170
-  ],
-  "CS_OmeletteRaw": [
-   1,
-   171
-  ],
-  "CS_PieCrust": [
-   1,
-   172
-  ],
-  "CS_PorkBellyRaw": [
-   1,
-   173
-  ],
-  "CS_PorkRinds": [
-   1,
-   174
-  ],
-  "CS_PorkTenderloin": [
-   1,
-   175
-  ],
-  "CS_RichStock": [
-   1,
-   176
-  ],
-  "CS_RimeHotpot": [
-   1,
-   177
-  ],
-  "CS_RunewisePorridge": [
-   1,
-   178
-  ],
-  "CS_SapCordial": [
-   1,
-   179
-  ],
-  "CS_SealHotpot": [
-   1,
-   180
-  ],
-  "CS_SearedHoneycomb": [
-   1,
-   181
-  ],
-  "CS_SeedBrew": [
-   1,
-   182
-  ],
-  "CS_SeersPot": [
-   1,
-   183
-  ],
-  "CS_SeidrBroth": [
-   1,
-   184
-  ],
-  "CS_ShieldwallLoaf": [
-   1,
-   185
-  ],
-  "CS_SmokedFishChowder": [
-   1,
-   186
-  ],
-  "CS_SmoulderBroth": [
-   1,
-   187
-  ],
-  "CS_SpiceRub": [
-   1,
-   188
-  ],
-  "CS_SpicedBarleyBrew": [
-   1,
-   189
-  ],
-  "CS_StormCream": [
-   1,
-   190
-  ],
-  "CS_StuffedChicken": [
-   1,
-   191
-  ],
-  "CS_SurgeDrengr": [
-   1,
-   17
-  ],
-  "CS_SurgeEinherjar": [
-   1,
-   18
-  ],
-  "CS_SurgeValkyrie": [
-   1,
-   192
-  ],
-  "CS_SurtrsDelight": [
-   1,
-   193
-  ],
-  "CS_TeriyakiSerpent": [
-   1,
-   194
-  ],
-  "CS_TrailRation": [
-   1,
-   195
-  ],
-  "CS_VenisonLoin": [
-   8,
-   0
-  ],
-  "CS_VolvasBrew": [
-   8,
-   1
-  ],
-  "CS_WardBarrow": [
-   1,
-   19
-  ],
-  "CS_WardFire": [
-   8,
-   2
-  ],
-  "CS_WardFrost": [
-   8,
-   3
-  ],
-  "CS_WildEgg": [
-   8,
-   4
-  ],
-  "CS_WinterSupper": [
-   8,
-   5
-  ],
-  "CS_Wort": [
-   8,
-   6
   ],
   "HardAntler": [
    4,
