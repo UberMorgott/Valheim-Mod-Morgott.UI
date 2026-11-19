@@ -49,6 +49,21 @@ namespace Morgott.UI.Tests
         }
 
         [Fact]
+        public void DamageModRowsLabelTheDamageType()
+        {
+            // SE_Stats.GetDamageModifiersTooltipString shape (ArmorRootLegs: weak fire, resistant pierce).
+            var raw = "$d\n\n$item_armor: <color=orange>20</color>" +
+                      "\n$inventory_dmgmod: <color=orange>$inventory_weak</color> VS <color=orange>$inventory_fire</color>" +
+                      "\n$inventory_dmgmod: <color=orange>$inventory_resistant</color> VS <color=orange>$inventory_pierce</color>";
+            var r = TooltipSheet.Compose(raw, Data(), S);
+            string Pair(string label, string value) =>
+                "<color=#" + S.Body + ">" + label + "</color><line-height=0>\n<align=right><color=#" + S.Value + ">" + value + "</color>";
+            Assert.True(At(r, Pair("$inventory_fire", "$inventory_weak")) < At(r, Pair("$inventory_pierce", "$inventory_resistant")));
+            Assert.DoesNotContain("$inventory_dmgmod", r);
+            Assert.DoesNotContain(" VS ", r);
+        }
+
+        [Fact]
         public void VanillaWeaponSectionsInOrder()
         {
             var r = TooltipSheet.Compose(Axe, Data(), S);

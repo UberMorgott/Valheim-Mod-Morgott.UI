@@ -76,7 +76,7 @@ namespace Morgott.UI.Screens
             "inventory_damage", "inventory_blunt", "inventory_slash", "inventory_pierce", "inventory_fire", "inventory_frost",
             "inventory_lightning", "inventory_poison", "inventory_spirit", "item_damagemultipliertotal", "item_damagemultiplierhp",
             "item_staminause", "item_eitruse", "item_healthuse", "item_healthhitreturn", "item_eitrhitreturn", "item_staminahold",
-            "item_armor", "item_blockarmor", "item_blockforce", "item_parrybonus", "item_parryadrenaline", "inventory_dmgmod",
+            "item_armor", "item_blockarmor", "item_blockforce", "item_parrybonus", "item_parryadrenaline",
             "item_knockback", "item_backstab", "item_eitrregen_modifier", "item_movement_modifier", "base_item_modifier",
             "item_heat_modifier", "se_jumpstamina", "se_attackstamina", "se_blockstamina", "se_dodgestamina", "se_swimstamina",
             "se_sneakstamina", "se_runstamina", "item_maxadrenaline", "item_food_health", "item_food_stamina", "item_food_eitr",
@@ -117,6 +117,7 @@ namespace Morgott.UI.Screens
         };
 
         private const string Requirement = "item_repairlevel";
+        private const string DamageMod = "inventory_dmgmod";
         private const string VanillaSet = "$item_seteffect";
         private const string ElRarityLine = "$mod_epicloot_itemtooltip_rarity:";
         private const string ElSetHeader = "> $mod_epicloot_set:";
@@ -181,6 +182,7 @@ namespace Morgott.UI.Screens
                 }
                 else if (token != null && OwnerTokens.Contains(token)) owned.Add(Row(trimmed, s, s.Body, s.Value));
                 else if (token == Requirement) reqs.Add(Row(trimmed, s, s.Accent, s.Accent));
+                else if (token == DamageMod) rows.Add(Row(DamageModRow(trimmed), s, s.Body, s.Value));
                 else if (token != null && RowTokens.Contains(token)) rows.Add(Row(trimmed, s, s.Body, s.Value));
                 else rows.Add(line);
             }
@@ -395,6 +397,17 @@ namespace Morgott.UI.Screens
             var total = value.IndexOf(" ($item_total", StringComparison.Ordinal);
             if (total > 0) value = value.Substring(0, total);
             return "<color=#" + labelColor + ">" + label + "</color>" + RightCell(value, valueColor);
+        }
+
+        // "$inventory_dmgmod: <mod> VS <type>" (SE_Stats.GetDamageModifiersTooltipString, SE_Stats.cs:702-760): the
+        // value ran over the label in the narrow column (ArmorRootLegs); reshaped to "<type>: <mod>", the type word gets
+        // its DamageIcons sprite when UITooltip decorates the text. No " VS " -> line unchanged.
+        private static string DamageModRow(string line)
+        {
+            var vs = line.IndexOf(" VS ", StringComparison.Ordinal);
+            if (vs < 0) return line;
+            var colon = line.IndexOf(':');
+            return Plain(line.Substring(vs + 4)) + ": " + line.Substring(colon + 1, vs - colon - 1).Trim();
         }
 
         private static string RightCell(string value, string color) =>
