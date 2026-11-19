@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace Morgott.UI.PlayerHud
 {
-    // Ashen Crown (Morgott.Power boss gem): infusions stolen onto the local player (Core IInfusionSteal, provided by
+    // Ashen Crown (Morgott.Power boss gem): infusions stolen onto the local player (Core IInfusionStealLong: every infusion, Reflect too; provided by
     // Morgott.Creatures) shown as a buff tile with the time left. Display-only effect: never added to the SEMan, so it has
     // no gameplay side; the tile icon is the Ashen Crown T1 gem's (absent item = no tile).
     internal static class StolenInfusionStatus
@@ -15,7 +15,7 @@ namespace Morgott.UI.PlayerHud
         internal static void Append(List<StatusEffect> list)
         {
             var player = Player.m_localPlayer;
-            if (!player || !Services.TryGet<IInfusionSteal>(out var steal) || steal.Stolen(player, out var left) == 0) return;
+            if (!player || !Services.TryGet<IInfusionStealLong>(out var steal) || steal.Stolen(player, out var left) == 0) return;
             if (!_se)
             {
                 var icon = ObjectDB.instance ? ObjectDB.instance.GetItemPrefab(IconItem)?.GetComponent<ItemDrop>()?.m_itemData.GetIcon() : null;
