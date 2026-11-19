@@ -190,6 +190,7 @@ namespace Morgott.UI.PlayerHud
             var belt = BeltEffectHash();
             foreach (var se in effects)
                 if (!se || belt == 0 || se.NameHash() != belt) _hudEffects.Add(se);
+            StolenInfusionStatus.Append(_hudEffects);
             _fed = true;
         }
 
