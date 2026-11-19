@@ -16,7 +16,7 @@ namespace Morgott.UI.ItemBrowser
     // work happens in Results() on a change; layout reads the cached lists. Storage mode never comes here.
     public sealed partial class BrowserPanel
     {
-        private const float StripH = 70f, ChipRowDy = 87f, ChipH = 31f, CaptionDy = 128f, ListDy = 42f, ListRowH = 53f, HeadH = 31f, PopRowH = 30f, PopW = 270f, CaptionW = 254f;
+        private const float StripH = 70f, ChipRowDy = 87f, ChipH = 31f, CaptionDy = 128f, ListDy = 34f, ListRowH = 53f, HeadH = 31f, PopRowH = 30f, PopW = 270f, CaptionW = 254f;
         private const int Plaques = 10, PopRows = 14;
         private static readonly Func<string, StageInfo> InfoOf = StageScan.Info;
 
@@ -519,8 +519,16 @@ namespace Morgott.UI.ItemBrowser
             Text(head.Label, $"<color=#{ColorUtility.ToHtmlStringRGB(color)}>{text}</color>", 18f);
             var w = Mathf.Min(head.Label.GetPreferredValues(text).x / Mathf.Max(_k * _f, 1e-6f) + 4f, UnitW - 60f); // measured in the label's own bold style
             Put(head.Label, 0f, y + 3f, w, 25f);
-            Put(head.Line, w + 8f, y + 15f, UnitW - 14f - w - 8f, 1.5f);
-            head.Line.color = color;
+            if (_listMode)
+            {
+                Put(head.Line, w + 8f, y + 15f, UnitW - 14f - w - 8f, 2f);
+                head.Line.color = color;
+            }
+            else
+            {
+                Put(head.Line, 0f, y + HeadH - 3f, UnitW - 14f, 2f); // mockup 05: the grid's band rule runs under the header
+                head.Line.color = RuleColor;
+            }
         }
 
         private RowParts Parts(Slot c)
@@ -542,7 +550,7 @@ namespace Morgott.UI.ItemBrowser
             for (var i = 0; i < 3; i++)
             {
                 r.Stat[i] = Img(g, "RowStat" + n + "_" + i, roles[i]);
-                r.StatText[i] = Txt(g, "RowStatText" + n + "_" + i, "text.muted", TextAlignmentOptions.Left);
+                r.StatText[i] = Txt(g, "RowStatText" + n + "_" + i, "text.body", TextAlignmentOptions.Left); // mockup 03: values in the body tone
                 r.StatText[i].raycastTarget = false;
             }
             r.Sub.raycastTarget = r.Marker.raycastTarget = r.TagText.raycastTarget = c.A.raycastTarget = false; // the row's hit area takes the clicks
@@ -648,12 +656,24 @@ namespace Morgott.UI.ItemBrowser
                 }
             }
             else for (var i = 0; i < 3; i++) { Off(r.Stat[i]); Off(r.StatText[i]); }
-            Put(r.Sub, sx, y + 27f, nameX + nameW - sx, 22f);
-            Fit(r.Sub, SubLine(e), 16f);
+            var subW = nameX + nameW - sx;
+            var sub = SubLine(e);
+            if (sx > nameX && sub.Length > 0) sub = "· " + sub; // mockup 03: "94 · 30 min"
+            Put(r.Sub, sx, y + 27f, subW, 22f);
+            Fit(r.Sub, ListBlocks.WholeParts(sub, subW - 4f, s => MeasureF(s, 16f)), 16f);
             Rule2(y + ListRowH - 1.5f);
         }
 
-        private void Rule2(float y) => Put(_rowRules.Next(n => Img(_gridView.transform, "RowRule" + n, "ib.rule")), 0f, y, UnitW - 12f, 1.5f);
+        private void Rule2(float y)
+        {
+            var rule = _rowRules.Next(n => Img(_gridView.transform, "RowRule" + n, "ib.rule"));
+            Put(rule, 0f, y, UnitW - 12f, 1f);
+            var c = RuleColor;
+            c.a *= 0.3f; // mockups 01-04: rows part on a faint line, the stage bands keep the bright rule
+            rule.color = c;
+        }
+
+        private static Color RuleColor => ThemeTokens.GetColor("color.ib.rule", new Color(0.24f, 0.51f, 0.56f));
 
         // Returns the left edge of the marker with its glyphs.
         private float Marker(RowParts r, StageInfo i, float y)
@@ -774,7 +794,7 @@ namespace Morgott.UI.ItemBrowser
             try
             {
                 var m = data.Solver.Missing(e.Id);
-                return m == null || m == e.Id ? null : $"{L("$ib_stage_why")}: {NameOf(m)}";
+                return m == null || m == e.Id || m.StartsWith("stale:", StringComparison.Ordinal) ? null : $"{L("$ib_stage_why")}: {NameOf(m)}"; // stale: a world-data gap, no item to name
             }
             catch (Exception ex)
             {
