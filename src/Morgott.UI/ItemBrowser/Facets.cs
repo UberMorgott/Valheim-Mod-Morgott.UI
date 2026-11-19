@@ -248,5 +248,18 @@ namespace Morgott.UI.ItemBrowser
             }
             return blocks;
         }
+
+        /// <summary>Sub line that fits <paramref name="width"/>: whole ", " / " · " parts dropped from the end (mockup 04: no
+        /// "…" mid-name); a first part that alone is too wide stays for the ellipsis.</summary>
+        public static string WholeParts(string text, float width, Func<string, float> measure)
+        {
+            while (measure(text) > width)
+            {
+                var cut = Math.Max(text.LastIndexOf(", ", StringComparison.Ordinal), text.LastIndexOf(" · ", StringComparison.Ordinal));
+                if (cut <= 0) break;
+                text = text.Substring(0, cut);
+            }
+            return text;
+        }
     }
 }

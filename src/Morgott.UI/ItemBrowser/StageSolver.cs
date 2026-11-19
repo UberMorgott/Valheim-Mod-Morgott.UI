@@ -213,6 +213,19 @@ namespace Morgott.UI.ItemBrowser
             return _phase >= 3;
         }
 
+        private int _cap = Inf;
+        private string _capWhy;
+
+        /// <summary>Stale world data (StageWorld.StaleCap): a solved stage above <paramref name="cap"/> may be too late, so it
+        /// reads as unknown (<see cref="Missing(string)"/> = <paramref name="why"/>) or as the entry's authored stage.</summary>
+        public void Cap(int cap, string why)
+        {
+            _cap = cap;
+            _capWhy = why;
+        }
+
+        private bool Capped(Node n) => n.Value != Inf && n.Value > _cap && n.Via != StageVia.Authored;
+
         public void Solve()
         {
             while (!Step(4096)) { }
@@ -229,6 +242,7 @@ namespace Morgott.UI.ItemBrowser
         {
             if (!_nodes.TryGetValue(id, out var n)) return StageInfo.None;
             if (n.Magic) return new StageInfo { Stage = -1, Via = StageVia.Magic };
+            if (Capped(n)) return n.Authored >= 0 ? new StageInfo { Stage = n.Authored, Via = StageVia.Authored, Kind = "authored" } : StageInfo.None;
             if (n.Value == Inf) return StageInfo.None;
             return new StageInfo { Stage = n.Value, Via = n.Via, Ocean = OceanOf(this, n, 0), Kind = n.Win?.Kind ?? "authored" };
         }
@@ -238,7 +252,7 @@ namespace Morgott.UI.ItemBrowser
         public string Missing(string id)
         {
             if (!_nodes.TryGetValue(id, out var n)) return id.Length > 0 && id[0] == '@' ? null : id;
-            return Missing(n, new HashSet<Node>());
+            return Capped(n) ? _capWhy : Missing(n, new HashSet<Node>());
         }
 
         private string Missing(Node n, HashSet<Node> seen)

@@ -46,9 +46,26 @@ namespace Morgott.UI.ItemBrowser
         public readonly List<StageTool> Tools = new List<StageTool>();
         public readonly List<(string Item, string Producer, string Root)> Tapped = new List<(string, string, string)>(); // SapCollector on its root
 
-        /// <summary>False when a location or room could not be read with its placed objects: a source may be missing, so
-        /// the MIN over the known paths could be a wrong, too late biome.</summary>
-        public bool Complete = true;
+        /// <summary>Locations / rooms read without their placed objects (failed load, old line) -> their biomes. A source may be
+        /// missing there, so a derived stage above the lowest of these biomes could be too late (<see cref="StaleCap"/>).</summary>
+        public readonly Dictionary<string, Heightmap.Biome> Stale = new Dictionary<string, Heightmap.Biome>(StringComparer.Ordinal);
+
+        public bool Complete => Stale.Count == 0;
+
+        /// <summary>Highest stage no stale location can lower (int.MaxValue = none stale); ocean-only counts as stage 0.</summary>
+        public int StaleCap(out string why)
+        {
+            var cap = int.MaxValue;
+            why = null;
+            foreach (var kv in Stale)
+            {
+                var b = StageGraph.LowestBiome(kv.Value);
+                var c = b == -1 ? int.MaxValue : b == -2 ? 0 : b * 2;
+                if (c < cap || c == cap && string.CompareOrdinal(kv.Key, why) < 0) { cap = c; why = kv.Key; }
+            }
+            if (why != null) why = "stale:" + why;
+            return cap;
+        }
 
         public void Anchor(string prefab, Heightmap.Biome biomes, bool open, string key = null)
         {
@@ -104,8 +121,8 @@ namespace Morgott.UI.ItemBrowser
         /// <summary>Adds everything to a new solver; yields so the caller can spread the work over frames.</summary>
         public static IEnumerable<object> Build(BrowserIndex ix, StageWorld w, IEnumerable<ItemFact> facts, StageSolver s, int chunk = 500)
         {
-            if (w.Complete)
-                foreach (var y in Derived(ix, w, s, chunk)) yield return y;
+            foreach (var y in Derived(ix, w, s, chunk)) yield return y;
+            s.Cap(w.StaleCap(out var why), why);
             if (facts != null)
                 foreach (var f in facts)
                 {

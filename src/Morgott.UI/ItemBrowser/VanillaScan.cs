@@ -170,6 +170,9 @@ namespace Morgott.UI.ItemBrowser
                     case EggGrow eg when eg.m_grownPrefab: // a warm egg hatches (EggGrow.GrowUpdate)
                         Add(RelationKind.Grow, id, null, new[] { new Stack(eg.m_grownPrefab.name) }, null, 0, 0);
                         break;
+                    case Procreation pr: // a tame parent breeds (Procreation.Procreate: m_offspring, or m_noPartnerOffspring alone)
+                        Spawned(RelationKind.Spawn, id, 0, pr.m_offspring, pr.m_noPartnerOffspring);
+                        break;
                     case Plant pl:
                         Name(pl.m_name);
                         foreach (var g in pl.m_grownPrefabs) if (g) Add(RelationKind.Grow, id, null, new[] { new Stack(g.name) }, null, 0, 0);
@@ -205,6 +208,13 @@ namespace Morgott.UI.ItemBrowser
                         }
                         break;
                 }
+            // A boss phase: its death effects spawn the next phase (Character.OnDeath -> m_deathEffects.Create). Outside the
+            // switch: Humanoid takes the Character case there.
+            if (go.TryGetComponent<Character>(out var ch) && ch.m_deathEffects?.m_effectPrefabs != null)
+                foreach (var fx in ch.m_deathEffects.m_effectPrefabs)
+                    if (fx != null && fx.m_enabled && fx.m_prefab && fx.m_prefab.GetComponent<Character>()) Spawned(RelationKind.Spawn, id, 0, fx.m_prefab);
+            // A lure piece calls wisps at night (WispSpawner.TrySpawn instantiates m_wispPrefab); the spawner sits on a child.
+            if (go.GetComponentInChildren<WispSpawner>(true) is WispSpawner ws && ws.m_wispPrefab) Spawned(RelationKind.Spawn, id, 0, ws.m_wispPrefab);
             // No named component above: the hover text vanilla shows on it (HoverText.m_text, a $token), else BrowserIndex keeps
             // SourceNames.Readable(id).
             if (!named && go.TryGetComponent<HoverText>(out var hover)) Name(hover.m_text);

@@ -26,12 +26,12 @@ namespace Morgott.UI.ItemBrowser
 
         /// <summary>Stage anchors of a location / room: what stands in it counts only for prefabs with no open-world
         /// placement (StageGraph); a boss comes from its altar, not from standing there. A scan without the objects column
-        /// hides sources, so the world is incomplete and no stage can be derived from it.</summary>
-        public void Place(Scanned s, Heightmap.Biome biome)
+        /// hides sources, so the prefab goes to <see cref="StageWorld.Stale"/> (stages above its biome stay unknown).</summary>
+        public void Place(Scanned s, Heightmap.Biome biome, string key)
         {
-            if (s.Objects == null)
+            if (s == null || s.Objects == null)
             {
-                World.Complete = false;
+                World.Stale[key] = (World.Stale.TryGetValue(key, out var had) ? had : Heightmap.Biome.None) | biome;
                 return;
             }
             foreach (var (c, k) in s.Creatures) if (k != Origin.Boss) World.Anchor(c, biome, false);

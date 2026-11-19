@@ -75,6 +75,18 @@ namespace Morgott.UI.ItemBrowser
         public static string Line(string prefab, Func<Heightmap.Biome, string> biome) =>
             Data != null && Data.ByPrefab.TryGetValue(prefab, out var o) ? FoundIn.Text(o, Browser.Localize, biome) : null;
 
+        private static readonly SortedSet<string> _staleTable = new SortedSet<string>(StringComparer.Ordinal), _failed = new SortedSet<string>(StringComparer.Ordinal);
+
+        /// <summary>Autotest: why the table needs a rebuild (empty = current): vanilla prefabs it lacks + prefabs that failed to load.
+        /// Rebuild = the forced scan of check item-browser-found-in, then its found-in-table.txt over ItemBrowser\FoundInTable.txt.</summary>
+        public static string[] Stale()
+        {
+            var all = new List<string>();
+            foreach (var k in _staleTable) all.Add("missing " + k);
+            foreach (var k in _failed) all.Add("unread " + k);
+            return all.ToArray();
+        }
+
         private static readonly List<SoftReference<GameObject>> _loadedRefs = new List<SoftReference<GameObject>>();
         /// <summary>Prefabs this scan loaded that are still loaded 2 s after it (ours released; the game may hold some).</summary>
         public static int StillLoaded { get; private set; }
@@ -105,6 +117,8 @@ namespace Morgott.UI.ItemBrowser
             var cacheDirty = false;
             var version = GameVersion();
             if (ForceLazy) _vanilla.Clear();
+            _staleTable.Clear();
+            _failed.Clear();
 
             // One scan per prefab key: from the table (vanilla, this build), the cache, or a lazy load.
             IEnumerable<object> Lookup(string key, SoftReference<GameObject> r, string owner, Action<Scanned> got)
@@ -112,15 +126,17 @@ namespace Morgott.UI.ItemBrowser
                 Scanned s = null;
                 if (owner == null) table?.TryGetValue(key, out s);
                 var ckey = key + "@" + (owner ?? version);
-                if (s == null) cache.TryGetValue(ckey, out s);
-                if (s == null) // an entry without the objects column is used as is: stages never cost a prefab load
+                if (s == null && table != null && owner == null) _staleTable.Add(key); // a vanilla prefab the table lacks: rebuild it
+                if (s == null && cache.TryGetValue(ckey, out var c) && c.Objects != null) s = c; // a line without objects (old cache) is reread once
+                if (s == null)
                 {
                     at = key;
                     loads++;
                     foreach (var y in Lazy(r, x => s = x)) yield return y;
                     if (s == null)
                     {
-                        d.World.Complete = false;
+                        _failed.Add(key);
+                        got(new Scanned()); // no objects column: Place marks it stale, only stages above its biome stay unknown
                         yield break;
                     }
                     cache[ckey] = s;
@@ -148,7 +164,7 @@ namespace Morgott.UI.ItemBrowser
                          {
                              var plain = s.Interior ? Origin.Dungeon : Origin.Location;
                              foreach (var (c, k) in s.Creatures) d.Add(c, biome, k == Origin.World ? plain : k);
-                             d.Place(s, biome);
+                             d.Place(s, biome, "L:" + pair.Key);
                              if (s.Themes != 0) themes.Add(((Room.Theme)s.Themes, biome, s.Interior));
                          }))
                 { Tick(); yield return null; _slice.Restart(); }
@@ -179,7 +195,7 @@ namespace Morgott.UI.ItemBrowser
                                  if (inside != Heightmap.Biome.None) d.Add(c, inside, k == Origin.World ? Origin.Dungeon : k);
                                  if (outside != Heightmap.Biome.None) d.Add(c, outside, k == Origin.World ? Origin.Location : k);
                              }
-                             d.Place(s, inside | outside);
+                             d.Place(s, inside | outside, "R:" + name);
                          }))
                 { Tick(); yield return null; _slice.Restart(); }
                 if (Over) { Tick(); yield return null; _slice.Restart(); }
@@ -198,7 +214,7 @@ namespace Morgott.UI.ItemBrowser
             _loadedRefs.Clear();
             WorstMs = worst;
             Loaded = loads;
-            Stats = FormattableString.Invariant($"{wall.Elapsed.TotalSeconds:F1} s, worst slice {worst:F1} ms ({worstAt}), loaded {loads} (still loaded {StillLoaded}), table {(table != null ? "current" : "off")}");
+            Stats = FormattableString.Invariant($"{wall.Elapsed.TotalSeconds:F1} s, worst slice {worst:F1} ms ({worstAt}), loaded {loads} (still loaded {StillLoaded}), table {(table != null ? "current" : "off")}, stale {_staleTable.Count + _failed.Count}");
             Done = true;
             Plugin.Log.LogInfo($"[Morgott.UI] item browser found-in: {d.ByPrefab.Count} prefabs, {locs.Count} locations, {Stats}; " +
                                $"creatures without a source ({none.Count}): {string.Join(", ", none)}");
@@ -337,6 +353,7 @@ namespace Morgott.UI.ItemBrowser
         private static Dictionary<string, Scanned> _table;
 
         // The embedded vanilla table, null (one Warning) when it was dumped from another game build.
+        // Rebuild (game update, or Stale() not empty): one autotest run with check item-browser-found-in (forced scan) -> copy <shots>\found-in-table.txt over FoundInTable.txt.
         private static Dictionary<string, Scanned> Table()
         {
             if (_tableRead) return _table;

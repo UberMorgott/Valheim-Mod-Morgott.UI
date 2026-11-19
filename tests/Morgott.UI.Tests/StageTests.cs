@@ -360,13 +360,16 @@ namespace Morgott.UI.Tests
         }
 
         [Fact]
-        public void Without_the_placed_objects_of_every_location_no_stage_is_derived()
+        public void An_unread_location_leaves_only_stages_above_its_biome_unknown()
         {
             var (ix, d) = Chain();
-            d.Place(new Scanned(), Heightmap.Biome.BlackForest); // a table line from before the objects column
+            d.Place(new Scanned(), Heightmap.Biome.BlackForest, "L:Mine"); // failed load / line from before the objects column
             var s = Solve(ix, d);
-            Assert.Equal(-1, s.Result("Bronze").Stage);
-            Assert.Equal(-1, s.Result("Stone").Stage);
+            Assert.Equal(-1, s.Result("Bronze").Stage); // Ashlands rubble would be a wrong, too late answer: the mine may hold its ore
+            Assert.Equal("stale:L:Mine", s.Missing("Bronze"));
+            Assert.Equal(0, s.Result("Stone").Stage); // at or below the location's biome nothing it holds can lower it
+            Assert.Equal(StageVia.Derived, s.Result("Stone").Via);
+            Assert.Equal(2, s.Result("SurtlingCore").Stage);
             Assert.Equal(10, s.Result("MistRelic").Stage); // authored data describes its item either way
         }
 
@@ -374,7 +377,7 @@ namespace Morgott.UI.Tests
         public void With_the_ore_deposits_placed_the_bronze_chain_lands_in_the_black_forest()
         {
             var (ix, d) = Chain();
-            d.Place(new Scanned { Objects = new List<string> { "MineRock_Copper", "MineRock_Tin" } }, Heightmap.Biome.BlackForest);
+            d.Place(new Scanned { Objects = new List<string> { "MineRock_Copper", "MineRock_Tin" } }, Heightmap.Biome.BlackForest, "L:Mine");
             var s = Solve(ix, d);
             foreach (var id in new[] { "Copper", "Tin", "forge", "Bronze", "SwordBronze" })
             {
@@ -493,6 +496,16 @@ namespace Morgott.UI.Tests
         }
 
         [Fact]
+        public void Sub_line_drops_whole_parts_instead_of_cutting_a_name()
+        {
+            float M(string s) => s.Length;
+            Assert.Equal("7500 HP · Trophy, Tear", ListBlocks.WholeParts("7500 HP · Trophy, Tear, Crystal", 25f, M));
+            Assert.Equal("7500 HP", ListBlocks.WholeParts("7500 HP · Trophy, Tear, Crystal", 10f, M));
+            Assert.Equal("Averyverylongname", ListBlocks.WholeParts("Averyverylongname", 5f, M)); // one part: the ellipsis takes it
+            Assert.Equal("· 30 min · Pot 5", ListBlocks.WholeParts("· 30 min · Pot 5", 99f, M));
+        }
+
+        [Fact]
         public void Blocks_group_by_stage_keep_search_order_and_wrap_grid_rows()
         {
             var info = new Dictionary<string, StageInfo>
@@ -516,13 +529,15 @@ namespace Morgott.UI.Tests
         }
 
         [Fact]
-        public void Table_lines_without_objects_leave_derived_stages_unknown()
+        public void Table_lines_without_objects_leave_derived_stages_above_them_unknown()
         {
             var old = FoundInTable.Parse("L:Altar\t0\t0\tBonemass:b,Draugr:w\n", out _, out _)["L:Altar"];
-            Assert.Null(old.Objects); // no prefab load is owed for it: FoundInScan.Lookup only loads missing entries
+            Assert.Null(old.Objects); // FoundInScan.Lookup rereads such a cache line once; the table never has one
             var d = new FoundIn();
-            d.Place(old, Heightmap.Biome.Swamp);
+            d.Place(old, Heightmap.Biome.Swamp, "L:Altar");
             Assert.False(d.World.Complete);
+            Assert.Equal(4, d.World.StaleCap(out var why));
+            Assert.Equal("stale:L:Altar", why);
             var ix = new BrowserIndex();
             ix.Add(new Relation { Kind = RelationKind.CreatureDrop, Source = "Bonemass", Outputs = new[] { new Stack("Wishbone") } });
             ix.Add(new Relation { Kind = RelationKind.Pickable, Source = "ChestOnlyInLocation", Outputs = new[] { new Stack("Thing") } });

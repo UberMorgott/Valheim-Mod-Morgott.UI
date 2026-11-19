@@ -67,7 +67,7 @@ namespace Morgott.UI.ItemBrowser
             }
             if (generation != _gen) yield break;
 
-            if (!w.Complete) Plugin.Log.LogWarning("[Morgott.UI] item browser stages: location data without placed objects, derived stages stay unknown; regenerate FoundInTable.txt");
+            if (!w.Complete) Plugin.Log.LogWarning($"[Morgott.UI] item browser stages: no placed objects for {string.Join(", ", w.Stale.Keys)}: stages above their lowest biome stay unknown; regenerate FoundInTable.txt");
             var facts = ItemFacts.Collect();
             var byPrefab = new Dictionary<string, ItemFact>(StringComparer.Ordinal);
             foreach (var f in facts) byPrefab[f.Prefab] = f;
