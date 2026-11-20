@@ -83,7 +83,7 @@ namespace Morgott.UI.PlayerHud
         // Tile labels take the body floor (the tile grows with its font, HudMath.StatusTile), not the number tier: names /
         // times drew 15.8 px at 1080 (m4-text-min, run 20261119-173338).
         private static float LabelFloor => ThemeTokens.GetFloat("floor.text.body.px", 16f);
-        private static float StripFont => StripMath.FontFloor(ThemeTokens.GetFloat("size.hud.font.status", 15f), LabelFloor, TextFloor.RootPx);
+        private static float StripFont => StripMath.FontFloor(ThemeTokens.GetFloat("size.hud.font.status", 15f), TextFloor.At1080(LabelFloor), TextFloor.RootPx);
         // Tile width follows the widest label of both groups (user 2026-11-08: tiles closer together), one width for both
         // so the rows stay a grid (HudCluster.Status sizes the rows from it).
         private static readonly float[] LabelW = { -1f, -1f };
@@ -416,7 +416,9 @@ namespace Morgott.UI.PlayerHud
             {
                 WorldHud.TextLook.ApplyHudNumber(t); // over the world: the shared outlined HUD text style
                 t.overflowMode = TextOverflowModes.Ellipsis; // long mod / EpicLoot names end in "...", never overlap
-                t.GetComponent<TextFloor>().Px = LabelFloor;
+                var floor = t.GetComponent<TextFloor>();
+                floor.Px = LabelFloor;
+                floor.Per1080 = true;
             }
             return c;
         }

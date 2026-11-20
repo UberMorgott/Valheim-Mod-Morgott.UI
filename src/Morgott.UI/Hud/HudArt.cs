@@ -230,6 +230,13 @@ namespace Morgott.UI.PlayerHud
         // Readable minimum in screen px; Base = the theme font size (strip units) before any floor raise.
         public float Px;
         public float Base;
+        // Px in the check's measure (px on a 1080 px screen, m4-text-min) instead of raw screen px: above 1080 a raw 16
+        // is 12 px@1080 at 1440p, status labels stayed at their 15.8 px base (run 20261120-143632). Never under raw Px.
+        public bool Per1080;
+
+        public static float At1080(float px) => px * Mathf.Max(1f, Screen.height / 1080f);
+
+        private float Floor => Per1080 ? At1080(Px) : Px;
 
         // The HUD strip root and its screen px per unit (HudCluster, every relayout): texts under it are raised to their
         // floor there; a text created later (pooled frames) applies it once on Start.
@@ -255,7 +262,7 @@ namespace Morgott.UI.PlayerHud
         public float MinSize()
         {
             var unit = TryGetComponent<TMP_Text>(out var t) ? Unit(t) : 0f;
-            return unit > 0f ? Px / unit : 0f;
+            return unit > 0f ? Floor / unit : 0f;
         }
 
         public void Apply()
@@ -264,7 +271,8 @@ namespace Morgott.UI.PlayerHud
             var unit = Unit(t);
             if (!(unit > 0f)) return;
             if (Base <= 0f) Base = t.fontSize;
-            var size = StripMath.FontFloor(Base, Px, unit);
+            var px = Floor;
+            var size = StripMath.FontFloor(Base, px, unit);
             if (!Mathf.Approximately(t.fontSize, size)) t.fontSize = size;
             if (!t.enableAutoSizing) return;
             if (_baseMax <= 0f)
@@ -273,8 +281,8 @@ namespace Morgott.UI.PlayerHud
                 _baseMax = t.fontSizeMax;
             }
             // auto-size range from the theme's, both ends raised to the floor at this scale (and back when it grows)
-            var max = StripMath.FontFloor(_baseMax, Px, unit);
-            var min = Mathf.Min(max, StripMath.FontFloor(_baseMin, Px, unit));
+            var max = StripMath.FontFloor(_baseMax, px, unit);
+            var min = Mathf.Min(max, StripMath.FontFloor(_baseMin, px, unit));
             if (!Mathf.Approximately(t.fontSizeMax, max)) t.fontSizeMax = max;
             if (!Mathf.Approximately(t.fontSizeMin, min)) t.fontSizeMin = min;
         }
