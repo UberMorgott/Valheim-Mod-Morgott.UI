@@ -111,6 +111,16 @@ namespace Morgott.UI.Tests
             Assert.Null(StorageMath.Pick(fresh, null, r => r.Key)); // nothing selected
         }
 
+        [Fact]
+        public void SelectionHiddenBySearchIsNotKept()
+        {
+            // run 20261121-034726: the take bar kept a selection the search hid; StoreBar picks among the shown rows
+            var stock = new[] { new Row { Prefab = "Obsidian", Name = "Obsidian", Key = "o" }, new Row { Prefab = "TrophyBoar", Name = "Boar trophy", Key = "t" } };
+            var rows = StorageMath.Rows(stock, r => r.Name.Contains("trophy"), r => r.Name, r => r.Quality);
+            Assert.Null(StorageMath.Pick(rows, "o", r => r.Key));
+            Assert.Same(stock[1], StorageMath.Pick(rows, "t", r => r.Key));
+        }
+
         [Theory]
         [InlineData(1, 1, true, false)] // one sword: only "Take", no count
         [InlineData(1, 50, true, true)] // one wood: only "Take", stackable shows its count

@@ -152,8 +152,9 @@ namespace Morgott.UI.ItemBrowser
         // Take bar under the grid; returns the grid's bottom (mockup units).
         private float StoreBar(float h)
         {
-            // Selection keeps its identity across re-Stock (new entry objects): found again by Key, else the first row.
-            var keep = StorageMath.Pick(_stock, _sel?.Key, s => s.Key);
+            // Selection keeps its identity across re-Stock (new entry objects): found again by Key among the shown rows, else the
+            // first row; searched in the whole stock, a selection the search / category hid stayed in the bar (run 20261121-034726).
+            var keep = StorageMath.Pick(_rows, _sel?.Key, s => s.Key);
             if (keep != null) _sel = keep;
             else Select(_rows.Count > 0 ? _rows[0] : null);
             var stock = _sel?.Count ?? 0;
