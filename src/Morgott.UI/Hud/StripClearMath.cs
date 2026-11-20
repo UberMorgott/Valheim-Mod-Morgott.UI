@@ -30,12 +30,16 @@ namespace Morgott.UI.PlayerHud
         public static float Units(float px, float pxPerUnit) => pxPerUnit > 0f ? px / pxPerUnit : 0f;
 
         // Sibling index the strip must take so every tracked element (their top-level sibling indices under the same
-        // parent) draws after it, i.e. above it; -1 = already below all of them (or nothing tracked).
-        public static int SiblingBelow(int stripIndex, IEnumerable<int> elementIndices)
+        // parent) draws after it, i.e. above it; -1 = already below all of them (or nothing tracked). A list, indexed: an
+        // IEnumerable parameter boxed the caller's List enumerator every frame.
+        public static int SiblingBelow(int stripIndex, IReadOnlyList<int> elementIndices)
         {
             var min = int.MaxValue;
-            foreach (var i in elementIndices)
+            for (var n = 0; n < elementIndices.Count; n++)
+            {
+                var i = elementIndices[n];
                 if (i >= 0 && i < min) min = i;
+            }
             return min == int.MaxValue || stripIndex < min ? -1 : min;
         }
 

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq.Expressions;
 using System.Reflection;
 using BepInEx.Bootstrap;
 using HarmonyLib;
@@ -48,7 +49,39 @@ namespace Morgott.UI.InventoryScreen
             _isCustom = AccessTools.Property(slotType, "IsCustomSlot");
             foreach (var m in new[] { _sizeVisible, _visibleRows, _id, _index, _isActive, _isQuick, _isEquipment, _isCustom })
                 if (m == null) return Missing();
+            // Compiled getters: PropertyInfo.GetValue boxed every int / bool (VisibleRows runs per frame, the slot read
+            // every 30 frames).
+            try
+            {
+                _getVisibleRows = Static<int>(_visibleRows);
+                _getSizeVisible = Static<int>(_sizeVisible);
+                _getId = Instance<string>(_id);
+                _getIndex = Instance<int>(_index);
+                _getActive = Instance<bool>(_isActive);
+                _getQuick = Instance<bool>(_isQuick);
+                _getEquipment = Instance<bool>(_isEquipment);
+                _getCustom = Instance<bool>(_isCustom);
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.LogWarning($"[Morgott.UI] EAQS getters: {e.Message}");
+                return Missing();
+            }
             return true;
+        }
+
+        private static Func<int> _getVisibleRows, _getSizeVisible;
+        private static Func<object, string> _getId;
+        private static Func<object, int> _getIndex;
+        private static Func<object, bool> _getActive, _getQuick, _getEquipment, _getCustom;
+
+        private static Func<T> Static<T>(PropertyInfo p) =>
+            Expression.Lambda<Func<T>>(Expression.Convert(Expression.Property(null, p), typeof(T))).Compile();
+
+        private static Func<object, T> Instance<T>(PropertyInfo p)
+        {
+            var o = Expression.Parameter(typeof(object), "o");
+            return Expression.Lambda<Func<object, T>>(Expression.Convert(Expression.Property(Expression.Convert(o, p.DeclaringType), p), typeof(T)), o).Compile();
         }
 
         private static bool Missing()
@@ -81,7 +114,7 @@ namespace Morgott.UI.InventoryScreen
         public static int VisibleRows(int fallback)
         {
             if (!Available) return fallback;
-            try { return (int)_visibleRows.GetValue(null); }
+            try { return _getVisibleRows(); }
             catch { return fallback; }
         }
 
@@ -93,18 +126,18 @@ namespace Morgott.UI.InventoryScreen
             try
             {
                 var slots = (Array)_slots.GetValue(null);
-                var first = (int)_sizeVisible.GetValue(null);
+                var first = _getSizeVisible();
                 var count = Math.Min(slots.Length, elementCount - first);
                 for (var i = 0; i < count; i++)
                 {
                     var slot = slots.GetValue(i);
-                    if (!(bool)_isActive.GetValue(slot)) continue;
+                    if (slot == null || !_getActive(slot)) continue;
                     Kind kind;
-                    if ((bool)_isEquipment.GetValue(slot)) kind = Kind.Equipment;
-                    else if ((bool)_isQuick.GetValue(slot)) kind = Kind.Quick;
-                    else if ((bool)_isCustom.GetValue(slot)) kind = Kind.Custom;
+                    if (_getEquipment(slot)) kind = Kind.Equipment;
+                    else if (_getQuick(slot)) kind = Kind.Quick;
+                    else if (_getCustom(slot)) kind = Kind.Custom;
                     else continue;
-                    into.Add(new SlotInfo { Id = (string)_id.GetValue(slot), Index = (int)_index.GetValue(slot), Element = first + i, Kind = kind });
+                    into.Add(new SlotInfo { Id = _getId(slot), Index = _getIndex(slot), Element = first + i, Kind = kind });
                 }
             }
             catch (Exception e)
@@ -141,9 +174,9 @@ namespace Morgott.UI.InventoryScreen
                 {
                     // Every quick cell (active or not): the potion count comes from MorgottTweaks live and EAQS turns
                     // the cells on a moment later.
-                    if (slot == null || !(bool)_isQuick.GetValue(slot)) continue;
+                    if (slot == null || !_getQuick(slot)) continue;
                     var key = _shortcutText != null ? _shortcutText.Invoke(slot, null) as string : null;
-                    into.Add(new QuickInfo { Pos = (Vector2i)_gridPos.GetValue(slot), Key = key, Active = (bool)_isActive.GetValue(slot) });
+                    into.Add(new QuickInfo { Pos = (Vector2i)_gridPos.GetValue(slot), Key = key, Active = _getActive(slot) });
                 }
             }
             catch (Exception e)

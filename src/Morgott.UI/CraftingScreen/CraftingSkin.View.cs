@@ -220,7 +220,12 @@ namespace Morgott.UI.CraftingScreen
                 _ctl.gameObject.SetActive(false);
                 return;
             }
-            if (!_ctl) BuildControls();
+            if (!_ctl)
+            {
+                BuildControls();
+                _caption = _showLang = null; // fresh texts: written once by the passes below
+                _badgeCount = -1;
+            }
             if (!_ctl.gameObject.activeSelf) _ctl.gameObject.SetActive(true);
             GamepadGroup(true);
             var k = _in.Scale;
@@ -242,8 +247,14 @@ namespace Morgott.UI.CraftingScreen
             }
             var index = Array.IndexOf(SortKeys, view.Sort);
             if (_sortDrop.value != index) _sortDrop.SetValueWithoutNotify(index);
-            var caption = Localization.instance.Localize("$ui_craft_sort") + ": " + _sortDrop.options[Mathf.Max(0, index)].text;
-            if (_sortDrop.captionText && _sortDrop.captionText.text != caption) _sortDrop.captionText.text = caption;
+            // Caption / badge / segment labels rebuilt only when the language or the value changes (they allocated per frame).
+            if (_captionIndex != index || _captionLang != lang || _caption == null)
+            {
+                _captionIndex = index;
+                _captionLang = lang;
+                _caption = Words.Get("$ui_craft_sort") + ": " + _sortDrop.options[Mathf.Max(0, index)].text;
+            }
+            if (_sortDrop.captionText && _sortDrop.captionText.text != _caption) _sortDrop.captionText.text = _caption;
             if (_sortDrop.captionText)
             {
                 Geo.Place(_canvas, _sortDrop.captionText.rectTransform, new Box(sortBox.X + 8f * k, sortBox.Y, Mathf.Max(1f, sortBox.W - sortBox.H - 8f * k), sortBox.H));
@@ -273,8 +284,11 @@ namespace Morgott.UI.CraftingScreen
             var glyphColor = ThemeTokens.GetColor(view.NewOnly ? "color.text.accent" : "color.text.body", Color.white);
             if (_newGlyph.color != glyphColor) _newGlyph.color = glyphColor;
             var active = CraftingMath.ActiveFilters((int)view.Show, view.NewOnly);
-            var badge = active > 0 ? active.ToString(System.Globalization.CultureInfo.InvariantCulture) : "";
-            if (_badge.text != badge) _badge.text = badge;
+            if (active != _badgeCount)
+            {
+                _badgeCount = active;
+                _badge.text = active > 0 ? active.ToString(System.Globalization.CultureInfo.InvariantCulture) : "";
+            }
             var side = filterBox.H * 0.55f;
             var dot = new Box(filterBox.Right - side * 0.8f, filterBox.Y - side * 0.3f, side, side);
             Shown(_badgeDot, active > 0 && _badgeDot.enabled);
@@ -295,12 +309,15 @@ namespace Morgott.UI.CraftingScreen
                 if (!Mathf.Approximately(button.targetGraphic.canvasRenderer.GetAlpha(), a)) button.targetGraphic.canvasRenderer.SetAlpha(a);
                 Geo.Place(_canvas, (RectTransform)button.transform, CraftingMath.Inset(cell, cell.H * 0.08f, cell.H * 0.08f));
                 var label = _showLabels[i];
-                var text = Localization.instance.Localize("$ui_craft_show_" + ShowKeys[i].ToString().ToLowerInvariant());
-                if (label.text != text) label.text = text;
+                if (_showLang != lang) label.text = Words.Get("$ui_craft_show_" + ShowKeys[i].ToString().ToLowerInvariant());
                 Geo.Place(_canvas, label.rectTransform, cell);
                 Label(label, TextAlignmentOptions.Center, font);
             }
+            _showLang = lang;
         }
+
+        private string _caption, _captionLang, _showLang;
+        private int _captionIndex = -1, _badgeCount = -1;
 
         // ---------------------------------------------------------------- recipe rows
 

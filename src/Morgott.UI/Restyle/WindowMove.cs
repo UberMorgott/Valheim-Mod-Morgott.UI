@@ -54,7 +54,17 @@ namespace Morgott.UI.Restyle
 
         public static string FilePath => Path.Combine(BepInEx.Paths.CachePath, "Morgott.UI", "window-positions.txt");
 
-        private static string Key(string id) => WindowMoveMath.Key(id, Screen.width, Screen.height);
+        // Place / Offset run every frame per window: the key string is built once per id and resolution, not per call.
+        private static readonly Dictionary<string, (int W, int H, string Key)> Keys = new Dictionary<string, (int, int, string)>();
+
+        private static string Key(string id)
+        {
+            int w = Screen.width, h = Screen.height;
+            if (Keys.TryGetValue(id, out var k) && k.W == w && k.H == h) return k.Key;
+            var key = WindowMoveMath.Key(id, w, h);
+            Keys[id] = (w, h, key);
+            return key;
+        }
 
         private static Dictionary<string, (float X, float Y)> Store
         {

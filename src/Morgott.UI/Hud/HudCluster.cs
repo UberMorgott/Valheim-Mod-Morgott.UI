@@ -276,7 +276,7 @@ namespace Morgott.UI.PlayerHud
                     for (var i = 0; i < root.childCount; i++)
                     {
                         var c = root.GetChild(i);
-                        if (c.name.StartsWith("AbilityBar", System.StringComparison.Ordinal)) { _abilityBar = c; break; }
+                        if (Morgott.UI.Restyle.NameCache.Of(c).StartsWith("AbilityBar", System.StringComparison.Ordinal)) { _abilityBar = c; break; } // cached: re-scanned every frame while absent
                     }
             }
             Hide(_hotbar ? _hotbar.transform : null);
@@ -553,12 +553,21 @@ namespace Morgott.UI.PlayerHud
         // Places the resource row from the weights (StripMath.RowSplit), its knot dividers and the bar block frame.
         private readonly float[] _rowShare = new float[RowEntries];
 
+        private static readonly string[] RowShareTokens = BuildRowShareTokens(); // per-frame while the row slides
+
+        private static string[] BuildRowShareTokens()
+        {
+            var t = new string[RowEntries];
+            for (var k = 0; k < RowEntries; k++) t[k] = "share.hud.strip.row." + k;
+            return t;
+        }
+
         private void RowPlace()
         {
             if (_stripKey == int.MinValue) return;
             var gap = ThemeTokens.GetFloat("size.hud.strip.row.gap", 18f);
             // target panel: stamina | eitr channels of unequal length (share.hud.strip.row.<k> scales the weights)
-            for (var k = 0; k < RowEntries; k++) _rowShare[k] = _rowWeight[k] * ThemeTokens.GetFloat("share.hud.strip.row." + k, 1f);
+            for (var k = 0; k < RowEntries; k++) _rowShare[k] = _rowWeight[k] * ThemeTokens.GetFloat(RowShareTokens[k], 1f);
             var total = StripMath.RowSplit(_barsInnerW, gap, _rowShare, RowEntries, _rowX, _rowW);
             var pxPerUnitY = _root.lossyScale.y;
             var y = HudMath.Snap(_rowY, pxPerUnitY);

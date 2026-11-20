@@ -228,9 +228,19 @@ namespace Morgott.UI.WorldHud
                 if (c.color != want) c.color = want;
             }
             var t = _hud.m_hoverName;
-            if (t && t.text.IndexOf("<color=yellow>", StringComparison.Ordinal) >= 0)
-                t.text = t.text.Replace("<color=yellow>", _goldTag);
+            if (!t) return;
+            // Vanilla writes the hover text every frame (Hud.cs:838): the gold copy is made once per distinct text.
+            var raw = t.text;
+            if (ReferenceEquals(raw, _hoverGold)) return;
+            if (!string.Equals(raw, _hoverRaw, StringComparison.Ordinal))
+            {
+                _hoverRaw = raw;
+                _hoverGold = raw != null && raw.IndexOf("<color=yellow>", StringComparison.Ordinal) >= 0 ? raw.Replace("<color=yellow>", _goldTag) : null;
+            }
+            if (_hoverGold != null) t.text = _hoverGold;
         }
+
+        private string _hoverRaw, _hoverGold;
     }
 
     // ---- Action progress, stagger, event line, mount -----------------------------------------------------------------
@@ -659,7 +669,7 @@ namespace Morgott.UI.WorldHud
             {
                 var c = small.GetChild(i) as RectTransform;
                 if (!c) continue;
-                if (c.gameObject.activeSelf || c.name.StartsWith("RuneSkin_", StringComparison.Ordinal) || c.name == "Key tip") Add(c);
+                if (c.gameObject.activeSelf || Morgott.UI.Restyle.NameCache.Of(c).StartsWith("RuneSkin_", StringComparison.Ordinal) || Morgott.UI.Restyle.NameCache.Of(c) == "Key tip") Add(c);
             }
             if (x0 == float.MaxValue) return false;
             r = Rect.MinMaxRect(x0, y0, x1, y1);
