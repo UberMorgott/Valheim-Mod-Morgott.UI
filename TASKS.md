@@ -28,6 +28,8 @@ Finished work: History below (one line per milestone); details in `git log` / ta
 - Note: Комплект lists line names only (user: one clean list). Sets sharing line + biome (SetTiers.yml authored: 9
   groups, e.g. raider bronze / vigorous_bronze, shadow troll / rogue_bronze, wanderer rags / leather / stag) are not
   separately selectable; Тир / Слот filters narrow them (per-set entries tried 2026-11-20, rejected: raw/duplicate names).
+- [x] 0.40.14 (next wave): "Used in" no longer empty under its header on trophies: rows taller than the page view (incinerator
+  any-one-of ~50 trophies) split into rows that fit (`PageModel.SplitByLines`); run 20261120-184239 PASS.
 - Note: without Morgott.Power the armour Комплект / Тир facets are empty (line facts come from Power); not handled,
   Power always ships in the pack (Codex review 2026-11-20, lead: skip).
 
