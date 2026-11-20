@@ -311,9 +311,9 @@ namespace Morgott.UI.Restyle
         private static string ClearToken(Sprite s)
         {
             if (ClearTokens.TryGetValue(s, out var token)) return token;
-            var name = s.name;
+            var spriteName = s.name;
             if (ClearTokens.Count > 256) ClearTokens.Clear(); // dead sprites of reloaded themes
-            return ClearTokens[s] = "clear." + (name.EndsWith("(Clone)", System.StringComparison.Ordinal) ? name.Substring(0, name.Length - 7) : name);
+            return ClearTokens[s] = "clear." + (spriteName.EndsWith("(Clone)", System.StringComparison.Ordinal) ? spriteName.Substring(0, spriteName.Length - 7) : spriteName);
         }
 
         private float CapClearance(float pad)

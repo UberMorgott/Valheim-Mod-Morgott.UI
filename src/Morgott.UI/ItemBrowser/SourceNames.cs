@@ -46,7 +46,7 @@ namespace Morgott.UI.ItemBrowser
         /// Container.m_name hid its Piece's token: English in every language), plain text beats the readable prefab name.</summary>
         public static string BestName(string current, IEnumerable<string> candidates, Func<string, string> localize, string readable)
         {
-            bool Token(string s) => s != null && s.StartsWith("$", StringComparison.Ordinal) && Translated(s, localize);
+            bool Token(string s) => !string.IsNullOrEmpty(s) && s[0] == '$' && Translated(s, localize);
             if (Token(current)) return current;
             var plain = !string.IsNullOrEmpty(current) && current[0] != '$' ? current : null;
             foreach (var c in candidates)
