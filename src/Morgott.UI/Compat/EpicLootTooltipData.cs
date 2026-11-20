@@ -25,7 +25,7 @@ namespace Morgott.UI.Compat
         {
             public string Kind, DisplayName, RarityName, RarityColor, ItemTypeName, SetLabel, SetColor, Description;
             public bool IsMagic;
-            public int MaterialRarity = -1;
+            public int MaterialRarity = -1, Rarity = -1;
             public List<Stat> Stats = new List<Stat>();
             public List<Effect> Effects = new List<Effect>();
             public Sockets Sockets;
@@ -67,6 +67,7 @@ namespace Morgott.UI.Compat
                 Description = S(src, "Description"),
                 IsMagic = F(src, "IsMagic") is bool m && m,
                 MaterialRarity = F(src, "MaterialRarity") is int r ? r : -1,
+                Rarity = F(src, "Rarity") is int rr ? rr : -1,
             };
             foreach (var x in L(src, "Stats")) d.Stats.Add(new Stat { Id = S(x, "Id"), Variant = S(x, "Variant") });
             foreach (var x in L(src, "Effects")) d.Effects.Add(new Effect { Text = S(x, "Text") });

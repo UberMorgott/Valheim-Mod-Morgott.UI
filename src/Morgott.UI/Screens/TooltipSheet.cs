@@ -252,6 +252,20 @@ namespace Morgott.UI.Screens
             "$ui_tip_skill_damage: <color=orange>" + skill + " " +
             ((modifier - 1f) * 100f).ToString("+0;-0", System.Globalization.CultureInfo.InvariantCulture) + "%</color>";
 
+        // Epic Loot shard (gem) header: "<rarity> · Gem", the rarity's full word in its colour. Epic Loot's ItemTypeName of a
+        // shard is its own lowercased name (MagicItem.GetItemTypeName) and its RU rarity names are abbreviated ("Мифическ.").
+        public static string GemSubtitle(int rarity, string colorHex)
+        {
+            if (rarity < 0 || rarity > 5) return "$ui_tip_type_gem"; // ItemRarity Magic..Ancient
+            var word = "$ui_tip_rarity_" + rarity;
+            return (colorHex == null ? word : "<color=#" + colorHex + ">" + word + "</color>") + " · $ui_tip_type_gem";
+        }
+
+        // Epic Loot's uniform shard preview line "  <color=X>All slots: effect</color>" (TooltipRenderer.AddShardPreview,
+        // slot name localized by TooltipGatherer.GatherShardPreview) -> the effect only; per-slot lines keep their names.
+        public static string DropAllSlots(string raw, string allSlots) =>
+            string.IsNullOrEmpty(raw) || string.IsNullOrEmpty(allSlots) ? raw : raw.Replace(">" + allSlots + ": ", ">");
+
         // The line without colour tags, trimmed: Epic Loot recolours every orange / yellow value (TooltipRenderer.Finish).
         private static string Bare(string line) => StripColors(line).Trim();
 

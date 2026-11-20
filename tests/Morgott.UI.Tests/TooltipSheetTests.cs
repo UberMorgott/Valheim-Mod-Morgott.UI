@@ -9,6 +9,23 @@ namespace Morgott.UI.Tests
     {
         private static readonly TooltipSheet.Style S = new TooltipSheet.Style();
 
+        [Fact]
+        public void GemSubtitleIsFullRarityWordInItsColourWithoutTheName()
+        {
+            Assert.Equal("<color=#0070DDFF>$ui_tip_rarity_0</color> · $ui_tip_type_gem", TooltipSheet.GemSubtitle(0, "0070DDFF"));
+            Assert.Equal("$ui_tip_rarity_3 · $ui_tip_type_gem", TooltipSheet.GemSubtitle(3, null));
+            Assert.Equal("$ui_tip_type_gem", TooltipSheet.GemSubtitle(-1, "FFFFFFFF"));
+        }
+
+        [Fact]
+        public void UniformGemDropsAllSlotsLabelPerSlotKeepsNames()
+        {
+            const string all = "$mod_epicloot_shard_ifsocketed:\n  <color=#A335EE>All slots: +5% armor</color>\n";
+            Assert.Equal("$mod_epicloot_shard_ifsocketed:\n  <color=#A335EE>+5% armor</color>\n", TooltipSheet.DropAllSlots(all, "All slots"));
+            const string per = "$mod_epicloot_shard_ifsocketed:\n  <color=#A335EE>Armor: +5% armor</color>\n  <color=#A335EE>Shield: +3 block</color>\n";
+            Assert.Equal(per, TooltipSheet.DropAllSlots(per, "All slots"));
+        }
+
         private const string Axe =
             "$item_axe_bronze_description\n" +
             "\n$item_onehanded" +

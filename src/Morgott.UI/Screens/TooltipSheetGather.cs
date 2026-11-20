@@ -122,6 +122,11 @@ namespace Morgott.UI.Screens
                 d.NameColor = rarity;
                 d.MagicColor = rarity;
                 d.Subtitle = string.IsNullOrEmpty(el.ItemTypeName) ? el.RarityName : el.RarityName + " · " + el.ItemTypeName;
+                if (el.Kind == "Shard")
+                {
+                    d.Subtitle = TooltipSheet.GemSubtitle(el.Rarity, rarity);
+                    raw = TooltipSheet.DropAllSlots(raw, Localization.instance.Localize("$mod_epicloot_shard_allslots"));
+                }
                 if (!string.IsNullOrEmpty(el.Description)) d.Description = el.Description;
                 if (!string.IsNullOrEmpty(el.SetLabel)) d.DropLines.Add(el.SetLabel);
                 if (el.Kind != "Shard") d.ElEffectsColor = el.RarityColor;
