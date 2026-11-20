@@ -96,7 +96,6 @@ namespace Morgott.UI.ItemBrowser
             foreach (var f in facts) if (f.Magic) data.MagicFacts.Add(f.Prefab);
             var members = StageRules.SetMembers(facts, ix.Entries.Keys, SetName);
             var setBiomes = StageRules.SetBiomes(members, solver.Result);
-            var shared = StageRules.SharedSets(members, setBiomes);
             foreach (var e in ix.Entries.Values)
             {
                 try
@@ -105,7 +104,7 @@ namespace Morgott.UI.ItemBrowser
                     if (e.Hidden == null || e.Hidden == BrowserIndex.UnlistedReason)
                     {
                         byPrefab.TryGetValue(e.Id, out var fact);
-                        AddFacets(data.Facets, ix, e, fact, members, setBiomes, shared);
+                        AddFacets(data.Facets, ix, e, fact, members, setBiomes);
                     }
                 }
                 catch (Exception ex) { Warn(e.Id, ex); }
@@ -157,14 +156,14 @@ namespace Morgott.UI.ItemBrowser
             return null;
         }
 
-        private static void AddFacets(FacetTable t, BrowserIndex ix, Entry e, ItemFact fact, Dictionary<string, ItemFact> members, Dictionary<string, int> setBiomes, HashSet<string> shared)
+        private static void AddFacets(FacetTable t, BrowserIndex ix, Entry e, ItemFact fact, Dictionary<string, ItemFact> members, Dictionary<string, int> setBiomes)
         {
             t.AddIndexFacets(ix, e, Browser.ModName);
             var go = Browser.Prefab(e.Id);
             if (!go) return;
             switch (e.Type)
             {
-                case EntryType.Item when go.TryGetComponent<ItemDrop>(out var d) && d.m_itemData?.m_shared != null: Item(t, ix, e, d.m_itemData.m_shared, fact, members, setBiomes, shared); break;
+                case EntryType.Item when go.TryGetComponent<ItemDrop>(out var d) && d.m_itemData?.m_shared != null: Item(t, ix, e, d.m_itemData.m_shared, fact, members, setBiomes); break;
                 case EntryType.Piece when go.TryGetComponent<Piece>(out var p): PieceFacets(t, e, p); break;
                 case EntryType.Station: StationFacets(t, e, go); break;
                 case EntryType.Creature when go.TryGetComponent<Character>(out var c): Creature(t, e, c, fact); break;
@@ -176,7 +175,7 @@ namespace Morgott.UI.ItemBrowser
             if (v > 0f) t.Add("damage", id, kind, "$inventory_" + kind);
         }
 
-        private static void Item(FacetTable t, BrowserIndex ix, Entry e, ItemDrop.ItemData.SharedData s, ItemFact fact, Dictionary<string, ItemFact> members, Dictionary<string, int> setBiomes, HashSet<string> shared)
+        private static void Item(FacetTable t, BrowserIndex ix, Entry e, ItemDrop.ItemData.SharedData s, ItemFact fact, Dictionary<string, ItemFact> members, Dictionary<string, int> setBiomes)
         {
             var id = e.Id;
             var type = s.m_itemType.ToString().ToLowerInvariant();
@@ -203,12 +202,6 @@ namespace Morgott.UI.ItemBrowser
                     if (!members.TryGetValue(id, out var set)) break;
                     t.Add("line", id, set.LineId, set.LineNameToken ?? set.LineId);
                     if (setBiomes.TryGetValue(id, out var biome)) t.Add("tier", id, biome.ToString(), Morgott.UI.MapScreen.MapFilterMath.NameKey(FoundIn.Order[biome]));
-                    var key = StageRules.SetKey(set);
-                    if (!shared.Contains(key)) break;
-                    // Second Комплект value: the set itself; a piece without a vanilla set keeps a label one of its set gave.
-                    var label = StageRules.SetLabel(s.m_setStatusEffect ? s.m_setStatusEffect.m_name : null, s.m_setName, Browser.Localize);
-                    if (label == null) label = t.Facets["line"].Labels.TryGetValue(key, out var had) ? had : (set.LineNameToken ?? set.LineId) + " " + (set.LineTier + 1);
-                    t.Add("line", id, key, label);
                     break;
                 case ItemCategory.Utility:
                     if (Contracts.RingPrefabs.Contains(id)) t.Add("type", id, "ring", "$ib_f_ring");

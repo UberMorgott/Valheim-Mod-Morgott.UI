@@ -508,29 +508,6 @@ namespace Morgott.UI.Tests
             Assert.Equal(3, b["CapeTrollHide"]);
         }
 
-        [Fact]
-        public void Sets_sharing_line_and_biome_get_their_own_entry()
-        {
-            var m = new Dictionary<string, ItemFact>
-            {
-                ["HelmetBronze"] = new ItemFact { Prefab = "HelmetBronze", LineId = "raider", LineTier = 0 },
-                ["ArmorBronzeChest"] = new ItemFact { Prefab = "ArmorBronzeChest", LineId = "raider", LineTier = 0 },
-                ["HelmetVigorous"] = new ItemFact { Prefab = "HelmetVigorous", LineId = "raider", LineTier = 1 },
-                ["HelmetIron"] = new ItemFact { Prefab = "HelmetIron", LineId = "raider", LineTier = 2 },
-                ["HelmetTroll"] = new ItemFact { Prefab = "HelmetTroll", LineId = "shadow", LineTier = 0 },
-            };
-            var biomes = new Dictionary<string, int> { ["HelmetBronze"] = 1, ["ArmorBronzeChest"] = 1, ["HelmetVigorous"] = 1, ["HelmetIron"] = 2, ["HelmetTroll"] = 1 };
-            var shared = StageRules.SharedSets(m, biomes);
-            Assert.Equal(new[] { "raider#0", "raider#1" }, shared.OrderBy(k => k, System.StringComparer.Ordinal));
-        }
-
-        [Theory]
-        [InlineData("$se_troll", "$set_troll", "$se_troll")]
-        [InlineData("$set_fenrir_thoradus_TW", "$set_fenrir_thoradus_TW", "Fenrir Thoradus")] // no translation: "[key]"
-        [InlineData(null, "SetEffect_LeatherMountain_MP", "Leather Mountain")]
-        [InlineData(null, null, null)]
-        public void Set_label_is_the_set_effect_name_else_a_readable_id(string effect, string set, string want) =>
-            Assert.Equal(want, StageRules.SetLabel(effect, set, k => k == "$se_troll" ? "Тролль" : "[" + k.TrimStart('$') + "]"));
 
         [Theory]
         [InlineData(30f, 15f, 90f, "eitr")]

@@ -158,45 +158,6 @@ namespace Morgott.UI.ItemBrowser
         /// <summary>One set = one tier of one line.</summary>
         public static string SetKey(ItemFact f) => f.LineId + "#" + f.LineTier;
 
-        /// <summary>Sets sharing line and biome with another set of their line (raider bronze / vigorous_bronze): line x Тир
-        /// cannot tell them apart, so they get their own Комплект entry. Returns their <see cref="SetKey"/>s.</summary>
-        public static HashSet<string> SharedSets(Dictionary<string, ItemFact> members, Dictionary<string, int> biomes)
-        {
-            var groups = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
-            foreach (var kv in members)
-            {
-                if (kv.Value.LineTier < 0 || !biomes.TryGetValue(kv.Key, out var b)) continue;
-                var g = kv.Value.LineId + "\n" + b;
-                if (!groups.TryGetValue(g, out var sets)) groups[g] = sets = new HashSet<string>(StringComparer.Ordinal);
-                sets.Add(SetKey(kv.Value));
-            }
-            var shared = new HashSet<string>(StringComparer.Ordinal);
-            foreach (var sets in groups.Values) if (sets.Count > 1) shared.UnionWith(sets);
-            return shared;
-        }
-
-        /// <summary>Own Комплект entry label: the set effect's name, as the item tooltip shows it (ItemDrop.GetTooltip:
-        /// m_setStatusEffect.m_name); untranslated ("[key]") or none -> the set id made readable ("SetEffect_LeatherMountain_MP"
-        /// -> "Leather Mountain"); no vanilla set at all -> null.</summary>
-        public static string SetLabel(string effectName, string setName, Func<string, string> localize)
-        {
-            var shown = string.IsNullOrEmpty(effectName) ? null : localize(effectName);
-            if (shown != null && !(shown.StartsWith("[", StringComparison.Ordinal) && shown.EndsWith("]", StringComparison.Ordinal))) return effectName;
-            if (string.IsNullOrEmpty(setName)) return null;
-            var s = setName.TrimStart('$');
-            foreach (var pre in new[] { "SetEffect_", "set_", "Set_" }) if (s.StartsWith(pre, StringComparison.Ordinal)) s = s.Substring(pre.Length);
-            foreach (var suf in new[] { "_MP", "_TW", "Set", "_set" }) if (s.Length > suf.Length && s.EndsWith(suf, StringComparison.Ordinal)) s = s.Substring(0, s.Length - suf.Length);
-            var b = new System.Text.StringBuilder(s.Length + 8);
-            for (var i = 0; i < s.Length; i++)
-            {
-                var c = s[i];
-                var gap = c == '_' || i > 0 && char.IsUpper(c) && char.IsLower(s[i - 1]);
-                if (gap && b.Length > 0 && b[b.Length - 1] != ' ') b.Append(' ');
-                if (c != '_') b.Append(b.Length == 0 || b[b.Length - 1] == ' ' ? char.ToUpperInvariant(c) : c);
-            }
-            return b.ToString().TrimEnd();
-        }
-
         public static string SourceKey(RelationKind k)
         {
             switch (k)
