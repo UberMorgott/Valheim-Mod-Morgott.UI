@@ -110,8 +110,9 @@ namespace Morgott.UI.ItemBrowser
         }
 
         /// <summary>Visible entries matching the query: words against the localized name or the prefab id, "@x" against
-        /// the mod GUID / name; type null = All (Other included), Favorites passes its own filter.</summary>
-        public List<Entry> Search(string query, EntryType? type, Func<Entry, bool> filter, Func<string, string> localize, Func<string, string> modName, bool unlisted = false)
+        /// the mod GUID / name (also: extra lower-case text a word may match, gem sources "bonemass"); type null = All (Other
+        /// included), Favorites passes its own filter.</summary>
+        public List<Entry> Search(string query, EntryType? type, Func<Entry, bool> filter, Func<string, string> localize, Func<string, string> modName, bool unlisted = false, Func<Entry, string> also = null)
         {
             var words = Words(query);
             var hits = new List<KeyValuePair<string, Entry>>();
@@ -119,7 +120,7 @@ namespace Morgott.UI.ItemBrowser
             {
                 if (e.Hidden != null && !(unlisted && e.Hidden == UnlistedReason) || type.HasValue && e.Type != type.Value || filter != null && !filter(e)) continue;
                 var name = NoTags(localize(e.Name) ?? e.Id);
-                if (Matches(words, name.ToLowerInvariant(), e.Id.ToLowerInvariant(), (e.Mod ?? "valheim").ToLowerInvariant() + " " + (modName(e.Mod) ?? "").ToLowerInvariant()))
+                if (Matches(words, name.ToLowerInvariant() + also?.Invoke(e), e.Id.ToLowerInvariant(), (e.Mod ?? "valheim").ToLowerInvariant() + " " + (modName(e.Mod) ?? "").ToLowerInvariant()))
                     hits.Add(new KeyValuePair<string, Entry>(name, e));
             }
             hits.Sort((a, b) =>
@@ -134,7 +135,7 @@ namespace Morgott.UI.ItemBrowser
         }
 
         // Game names may carry rich text (<color=orange>...): it must not decide the order or match a search word.
-        private static string NoTags(string s)
+        public static string NoTags(string s)
         {
             for (var open = s.IndexOf('<'); open >= 0; open = s.IndexOf('<', open))
             {

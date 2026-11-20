@@ -27,7 +27,7 @@ namespace Morgott.UI.ItemBrowser
         private static readonly string[] TypeTokens = { "$ib_type_all", "$ib_type_items", "$ib_type_pieces", "$ib_type_creatures", "$ib_type_stations", null };
         private static readonly float[] TypeW = { 62f, 94f, 94f, 101f, 93f, 36f };
         private static readonly EntryType?[] TypeOf = { null, EntryType.Item, EntryType.Piece, EntryType.Creature, EntryType.Station, null };
-        private static readonly string[] CatKeys = { "weapons", "armor", "utility", "ammo", "tools", "food", "meads", "materials", "trophies", "fish", "misc" };
+        private static readonly string[] CatKeys = { "weapons", "armor", "utility", "ammo", "tools", "food", "meads", "materials", "trophies", "fish", "gems", "misc" };
 
         public static BrowserPanel Instance { get; private set; }
         public static bool Up => Instance && Instance._up;

@@ -185,8 +185,9 @@ namespace Morgott.UI.ItemBrowser
                 _chipOpen = -1;
                 if (!_filters.TryGetValue(scope, out _fs)) _filters[scope] = _fs = new FilterState();
             }
+            FacetTable.DropHidden(_fs, FacetTable.ChipsOf(scope, dev)); // devcommands off hides the Mod chip: its pick stops filtering
             _scoped = Browser.Index.Search(_query, TypeOf[_type],
-                e => (cat < 0 || (int)e.Category == cat) && (!known || Browser.Known(e)) && (fav == null || fav.Contains(e.Id)), L, Browser.ModName, dev);
+                e => (cat < 0 || (int)e.Category == cat) && (!known || Browser.Known(e)) && (fav == null || fav.Contains(e.Id)), L, Browser.ModName, dev, GemWords);
             if (_plainGrid) return _scoped;
             try { return Staged(); }
             catch (Exception e)
@@ -306,7 +307,7 @@ namespace Morgott.UI.ItemBrowser
 
         private void LayoutChips(float y)
         {
-            var defs = FacetTable.ChipsOf(_scope);
+            var defs = FacetTable.ChipsOf(_scope, Browser.Devcommands);
             while (_chips.Count < defs.Length)
             {
                 var n = _chips.Count;
@@ -445,7 +446,7 @@ namespace Morgott.UI.ItemBrowser
         private string FilterCaption(string what, int count)
         {
             string part = null;
-            foreach (var chip in FacetTable.ChipsOf(_scope))
+            foreach (var chip in FacetTable.ChipsOf(_scope, Browser.Devcommands))
                 if ((part = FirstPicked(chip, out _)) != null) break;
             if (part == null && _fs.Plaques != 0 && (_fs.Plaques & (_fs.Plaques - 1)) == 0)
             {
@@ -642,7 +643,7 @@ namespace Morgott.UI.ItemBrowser
             Text(c.D, "★", 16f);
             c.D.enabled = fav.Contains(c.Id);
             Off(c.B);
-            var nameW = Marker(r, StageScan.Info(e.Id), y) - 8f - nameX; // name and sub line use all the room the marker leaves
+            var nameW = Marker(r, StageScan.Info(e.Id), y, e.Category == ItemCategory.Gems && GemBosses(e.Id).Count == 0 ? L("$ib_f_elite") : null) - 8f - nameX; // name and sub line use all the room the marker leaves
             var entryName = L(e.Name);
             var tagged = e.Type == EntryType.Creature && StageScan.Data != null && StageScan.Data.Solver != null && IsBoss(e.Id);
             var shownW = Mathf.Min(MeasureF(entryName, 19f) + 3f, nameW - (tagged ? 60f : e.Type == EntryType.Creature ? 26f : 0f));
@@ -697,10 +698,11 @@ namespace Morgott.UI.ItemBrowser
         private static Color RuleColor => ThemeTokens.GetColor("color.ib.rule", new Color(0.24f, 0.51f, 0.56f));
 
         // Returns the left edge of the marker with its glyphs.
-        private float Marker(RowParts r, StageInfo i, float y)
+        // tag: a word after the stage name (monster gems: "? Elite", mockup 2026-11-21-gems-tab).
+        private float Marker(RowParts r, StageInfo i, float y, string tag = null)
         {
             var group = StageRules.Group(i);
-            var text = (i.Via == StageVia.Authored ? "≈ " : "") + GroupName(group);
+            var text = (i.Via == StageVia.Authored ? "≈ " : "") + GroupName(group) + (tag != null ? " " + tag : "");
             var right = UnitW - 16f;
             var w = Mathf.Min(MeasureF(text, 16f) + 3f, 150f);
             Put(r.Marker, right - w, y + 3f, w, ListRowH - 6f);
@@ -761,6 +763,10 @@ namespace Morgott.UI.ItemBrowser
                 var sh = d.m_itemData.m_shared;
                 switch (e.Category)
                 {
+                    case ItemCategory.Gems:
+                        var bosses = GemBosses(e.Id);
+                        Join(sb, bosses.Count > 0 ? $"{L("$ib_gem_boss")} · {string.Join(", ", bosses)}" : $"{L("$ib_gem_monster")} · {L("$ib_gem_monster_src")}");
+                        break;
                     case ItemCategory.Weapons:
                         var parts = new List<string>();
                         var dm = sh.m_damages;
@@ -803,6 +809,31 @@ namespace Morgott.UI.ItemBrowser
                 Join(sb, StationText(e.Id));
             }
             return _subs[e.Id] = sb.ToString();
+        }
+
+        // Gems (mockup docs\mockups\2026-11-21-gems-tab): a boss gem = a boss kill drops it (Morgott.EpicLoot KillDrop rows);
+        // any other gem is a monster gem (elite tables, Hildir's minibosses).
+        private static List<string> GemBosses(string id)
+        {
+            var list = new List<string>();
+            foreach (var r in Browser.Index.ObtainedFrom(id))
+                if (r.Kind == RelationKind.KillDrop && IsBoss(r.Source) && !list.Contains(NameOf(r.Source))) list.Add(NameOf(r.Source));
+            return list;
+        }
+
+        private readonly Dictionary<string, string> _gemWords = new Dictionary<string, string>(StringComparer.Ordinal);
+        private int _gemWordsGen = -1;
+
+        // Search text of a gem beyond its name: its kill-drop sources' names + prefab ids ("bonemass" finds the T3 boss gems).
+        private string GemWords(Entry e)
+        {
+            if (e == null || e.Category != ItemCategory.Gems) return "";
+            if (_gemWordsGen != Browser.Generation) { _gemWordsGen = Browser.Generation; _gemWords.Clear(); }
+            if (_gemWords.TryGetValue(e.Id, out var s)) return s;
+            var sb = new System.Text.StringBuilder();
+            foreach (var r in Browser.Index.ObtainedFrom(e.Id))
+                if (r.Kind == RelationKind.KillDrop) sb.Append('\n').Append(BrowserIndex.NoTags(NameOf(r.Source))).Append('\n').Append(r.Source);
+            return _gemWords[e.Id] = sb.ToString().ToLowerInvariant();
         }
 
         // Item page: why an entry has no stage (the first requirement nothing provides).

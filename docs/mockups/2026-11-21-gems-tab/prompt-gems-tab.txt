@@ -1,0 +1,75 @@
+Valheim game UI mockup, exactly 1920x1080 PNG, faithful to real in-game screenshots of the Morgott.UI skin mod. Show THREE copies of the real crafting panel ("РЕМЕСЛО", tab "ПРЕДМЕТЫ" active) side by side as a design demo of one new item-browser category "Камни" (gems). Same dark forest background as the reference, no character panel, no inventory, keep the bottom hotbar/HUD bars out (background only below the panels).
+
+OPEN AND MATCH THESE FILES FIRST (truth for frame art, proportions, fonts, colours, icon style):
+- E:\DEV\Valheim\docs\mockups\item-browser-progression\ref-ingame-panel-crop.png = the real panel 1:1 (600 x 940 px).
+- E:\DEV\Valheim\docs\mockups\item-browser-progression\01-weapons.png = APPROVED list style (stage strip, facet chips, caption, stage headers, rows with stage marker). Copy this style exactly.
+- E:\DEV\Valheim\docs\mockups\item-browser-progression\ref-ingame-browser.png = full real screen (background, category icon row with ember glyphs).
+- E:\DEV\Valheim\docs\mockups\item-browser-progression\ref-style-tooltip.png = rune frame + teal accents + text hierarchy.
+- E:\DEV\Valheim\docs\gems\icons\_sheet.png and E:\DEV\Valheim\docs\gems\icons\rotting_heart_T3.png, storm_heart_T3.png, barkskin_T3.png, bone_lock_T3.png, venom_spool_T3.png, corpse_rot_T3.png, ashen_crown_T7.png, pyre_ember_T7.png = the REAL gem icons; paint row icons in this exact style (faceted gem, tier colour).
+
+Panels: three equal panels, each 600 px wide x 940 px tall, top y=15, at x = 30, 660, 1290. Each keeps unchanged from the reference: carved dark slate frame, copper diagonal corner braces, glowing cyan rune corners, header plaque "РЕМЕСЛО" with knotwork, tabs "СОЗДАТЬ" / "ПРЕДМЕТЫ" (ПРЕДМЕТЫ active, gold text, teal rim), search field, type tabs "Все", "Предметы" (active), "Постройки", "Существа", "Станции", star; then the CATEGORY ICON ROW of small square ember-glyph buttons as in 01-weapons.png (sword, shirt, ring, arrow, pickaxe, food, flask, ..., trophy, fish, "..."), with ONE NEW button inserted before "...": a faceted gem glyph in the same ember-orange line style. In panels 1 and 2 the gem button is SELECTED (teal rim, soft glow).
+
+PALETTE: panel glass #121d23 to #0b1419, thin lines #2395b7, rune glow #4fe0e6, body text #e3e6e8, secondary text #8a9096, gold #e8b64a. Font: PT Sans style as the reference. Glow only on selected controls. Flat, crisp, no perspective, no extra decoration. All text in Russian exactly as written below, spelled correctly; boss names in Latin as written. Nothing else invented. No watermark, no captions outside the UI.
+BIOME COLOURS: Луга #9CC95A, Чёрный лес #3E8B45, Болото #8A5A48, Горы #EEF2F6, Равнины #D9B84A, Туманные земли #8E7BB8, Пепельные земли #C8402E, Глубокий север #BFE0F2, unknown grey #8a9096.
+
+PANEL 1 (x 30-630) = list, search by boss name.
+Search field text (white, not placeholder): "bonemass" with a small "✕" clear glyph at its right.
+Stage strip (9 plaques as in 01-weapons): Луг 0, Лес 0, Бол 33, Гор 0, Рав 0, Тум 0, Пеп 0, Сев 0, ? 0; zero plaques dimmed; Бол not selected.
+Facet chips: "Источник: Bonemass" (value gold), "Тир", "Мод", then "✕".
+Caption row: left "Камни · 33", right "Показывать неизученные" with teal checkbox.
+List: header "БОЛОТО · ПОСЛЕ БОССА · 33" in the swamp colour with a thin line.
+Rows (gem icon cell 38x38, name white 18 px, sub line grey 14 px, right marker = swamp diamond + "Болото"):
+- "Гнилое сердце T3" / "Камень босса · Bonemass"  (this row HIGHLIGHTED: teal hairline rim, slightly lighter fill = selected)
+- "Сердце бури T3" / "Камень босса · Bonemass"
+- "Корокожа T3" / "Камень босса · Bonemass"
+- "Костяной замок T3" / "Камень босса · Bonemass"
+- "Веретено яда T3" / "Камень босса · Bonemass"
+- "Трупная гниль T3" / "Камень босса · Bonemass"
+- "Укоренённый камень T3" / "Камень босса · Bonemass"
+- "Ледниковый панцирь T3" / "Камень босса · Bonemass" (may be cut by the list bottom)
+Thin cyan scrollbar at the far right.
+
+PANEL 2 (x 660-1260) = list, no search, scrolled to the end.
+Search field shows placeholder "Поиск..." (grey).
+Stage strip: Луг 33, Лес 33, Бол 33, Гор 33, Рав 33, Тум 33, Пеп 33, Сев 0 (dimmed), ? 45.
+Facet chips: "Источник", "Тир", "Мод", "✕".
+Caption: "Камни · 276", right "Показывать неизученные" + checkbox.
+List: header "ПЕПЕЛЬНЫЕ ЗЕМЛИ · ПОСЛЕ БОССА · 33" (ashlands red), rows with right marker = red diamond + "Пепельные земли":
+- "Пепельная корона T7" / "Камень босса · Fader"
+- "Уголь костра T7" / "Камень босса · Fader"
+- "Расплавленный отпор T7" / "Камень босса · Fader"
+then header "КАМНИ МОНСТРОВ · 45" in gold-orange (legendary colour #e8a040) with a thin line, rows with right marker = grey "?" + "Элита":
+- "Призма Шаврон" / "Камень монстра · Элитные мобы, Hildir"
+- "Магия крови" / "Камень монстра · Элитные мобы, Hildir"
+- "Эйтровая крепость" / "Камень монстра · Элитные мобы, Hildir"
+- "Непоколебимая стойка" / "Камень монстра · Элитные мобы, Hildir"
+- "Аватар огня" / "Камень монстра · Элитные мобы, Hildir"
+Monster gem icons = same gem style but orange-gold legendary tint.
+
+PANEL 3 (x 1290-1890) = item page of the selected gem (same layout as the browser item page: replaces the list area under the type tabs; search shows "bonemass"; category row with gem button selected).
+Top: back arrow "‹ Назад" small at left. Big gem icon 64x64 (rotting_heart_T3 style, swamp-green/brown faceted gem) in a slot frame; name "Гнилое сердце T3" in ember-orange 24 px; star outline at right.
+Line under name, grey: "Камни · Камень босса · Тир 3".
+Short description, white 15 px, 2 lines: "Самоцвет для вставки в предмет. Эффект зависит от тира."
+Line grey 13 px: "Epic Loot · 1013_Mythic_ShardStone".
+Section header "ДОБЫВАЕТСЯ" (small caps, teal line). Rows, each with a 32 px source icon at left, text, value right-aligned gold:
+- icon Bonemass trophy head; "Bonemass" ; right "3.3% за убийство"
+- icon EL chest/rune glyph; "Набор Epic Loot: камни боссов, тир 3"; right "1–2 шт."
+- icon enchanting table; "Улучшение: 3 × Гнилое сердце T2"; second grey line "+ Железо ×5 · Слизь ×3 · Редк. Пыль ×5"
+- icon enchanting table; "Обмен: 3 любых камня тира 3 → 1"
+Section header "ИСПОЛЬЗУЕТСЯ". Rows:
+- icon enchanting table; "Улучшение до Гнилое сердце T4"; grey line "Стол чар · уровень 3"
+- icon socket glyph; "Гнездо предмета"; right "вставка"
+Keep empty space at the bottom as dark glass.
+
+STRICT STYLE FIXES (previous attempt deviated from 01-weapons.png):
+- EVERY list row has a 38x38 square item slot with a thin bevelled steel frame (exactly as 01-weapons.png); the gem icon sits INSIDE the slot, all icons the same size (boss and monster gems alike). Name text starts right after the slot with the same small gap as 01-weapons.png.
+- Gem icons: faceted gems with the crisp facets and gold setting of _sheet.png; monster gems use the same style, warm gold-orange tint, NO strong glow around them.
+- Stage strip plaques and facet chips: SAME height, width and contrast as 01-weapons.png (plaques ~52x60, chips 30 px tall). Zero-count plaques dimmed like in 01-weapons.png, not near-black.
+- Stage marker diamonds in rows are FILLED (solid), swamp colour #8A5A48 brown for Болото.
+- Selected row highlight subtle (thin teal rim, faint lighter fill), not bright.
+- Item page: section headers "ДОБЫВАЕТСЯ" / "ИСПОЛЬЗУЕТСЯ" in muted small caps (#8a9096 text, thin #2395b7 line), not bright cyan. Big gem slot with the same bevelled steel frame as the row slots.
+- Background: same dark green forest as ref-ingame-browser.png, not blue.
+- "ПРЕДМЕТЫ" tab text the same gold #e8b64a as the reference, crisp.
+TEXT FIXES: use "3,3 % за убийство" (Russian decimal comma); "Улучшение до «Гнилое сердце T4»" written as: Улучшение до «Гнилого сердца T4». Keep "Редк. Пыль" exactly (real game name).
+
+Save the final image to D:\tmp\cx-valheim\work\gems-tab.png

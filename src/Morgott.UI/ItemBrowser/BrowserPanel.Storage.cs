@@ -99,10 +99,10 @@ namespace Morgott.UI.ItemBrowser
                 return false;
             }
             var sh = s.Item.m_shared;
-            if (cat >= 0 && (int)PageModel.Categorize(sh.m_itemType, sh.m_skillType, sh.m_buildPieces, sh.m_food, sh.m_foodStamina, sh.m_foodEitr, sh.m_consumeStatusEffect) != cat) return false;
+            if (cat >= 0 && (int)PageModel.Categorize(sh.m_itemType, sh.m_skillType, sh.m_buildPieces, sh.m_food, sh.m_foodStamina, sh.m_foodEitr, sh.m_consumeStatusEffect, sh.m_ammoType) != cat) return false;
             var id = PrefabOf(s) ?? "";
             var mod = Browser.Index.Entries.TryGetValue(id, out var e) ? e.Mod : null;
-            return BrowserIndex.Matches(words, L(sh.m_name).ToLowerInvariant(), id.ToLowerInvariant(), (mod ?? "valheim").ToLowerInvariant() + " " + (Browser.ModName(mod) ?? "").ToLowerInvariant());
+            return BrowserIndex.Matches(words, BrowserIndex.NoTags(L(sh.m_name)).ToLowerInvariant() + GemWords(e), id.ToLowerInvariant(), (mod ?? "valheim").ToLowerInvariant() + " " + (Browser.ModName(mod) ?? "").ToLowerInvariant());
         }
 
         private void Select(StorageEntry entry)

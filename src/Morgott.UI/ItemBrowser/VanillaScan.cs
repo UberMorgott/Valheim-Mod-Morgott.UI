@@ -57,7 +57,7 @@ namespace Morgott.UI.ItemBrowser
                     Name = s.m_name,
                     Desc = s.m_description,
                     MaxQuality = Math.Max(1, s.m_maxQuality),
-                    Category = PageModel.Categorize(s.m_itemType, s.m_skillType, s.m_buildPieces, s.m_food, s.m_foodStamina, s.m_foodEitr, s.m_consumeStatusEffect)
+                    Category = PageModel.Categorize(s.m_itemType, s.m_skillType, s.m_buildPieces, s.m_food, s.m_foodStamina, s.m_foodEitr, s.m_consumeStatusEffect, s.m_ammoType)
                 };
                 if (s.m_icons == null || s.m_icons.Length == 0) e.Hidden = "no icon";
             }

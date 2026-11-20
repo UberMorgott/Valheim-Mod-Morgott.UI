@@ -5,7 +5,7 @@ using Morgott.Core;
 namespace Morgott.UI.ItemBrowser
 {
     // Category row under "Items" (mockup docs\mockups\2026-11-04\04-items-right-panel.png), enum order = button order.
-    public enum ItemCategory { Weapons, Armor, Utility, Ammo, Tools, Food, Meads, Materials, Trophies, Fish, Misc }
+    public enum ItemCategory { Weapons, Armor, Utility, Ammo, Tools, Food, Meads, Materials, Trophies, Fish, Gems, Misc }
 
     // Item page section a hover key opens (ItemBrowser.RecipeKey / UsedInKey).
     public enum PageSection { None, Recipe, UsedIn }
@@ -35,8 +35,9 @@ namespace Morgott.UI.ItemBrowser
         public const float RowH = 61f, UsedRowH = 83f, LineH = 34f, InputsPerLine = 2;
 
         // Tools first (a weapon whose skill is Pickaxes / Fishing is a tool), then the item type.
-        public static ItemCategory Categorize(ItemDrop.ItemData.ItemType type, Skills.SkillType skill, bool buildPieces, float food, float stamina, float eitr, bool consumeEffect)
+        public static ItemCategory Categorize(ItemDrop.ItemData.ItemType type, Skills.SkillType skill, bool buildPieces, float food, float stamina, float eitr, bool consumeEffect, string ammoType = null)
         {
+            if (IsGem(type, ammoType)) return ItemCategory.Gems;
             if (type == ItemDrop.ItemData.ItemType.Tool || buildPieces || skill == Skills.SkillType.Pickaxes && Weapon(type) || skill == Skills.SkillType.Fishing && Weapon(type))
                 return ItemCategory.Tools;
             if (Weapon(type) || type == ItemDrop.ItemData.ItemType.Shield || type == ItemDrop.ItemData.ItemType.Torch) return ItemCategory.Weapons;
@@ -59,6 +60,11 @@ namespace Morgott.UI.ItemBrowser
                 default: return ItemCategory.Misc;
             }
         }
+
+        /// <summary>Epic Loot shardstone (boss + monster gems): its own test, EpicLoot Shards.IsShard (Material, m_ammoType
+        /// "{type}|{rarity}|ShardStone"); item data only, so storage rows of items outside the index categorize too.</summary>
+        public static bool IsGem(ItemDrop.ItemData.ItemType type, string ammoType) =>
+            type == ItemDrop.ItemData.ItemType.Material && ammoType != null && ammoType.EndsWith("ShardStone", StringComparison.Ordinal);
 
         private static bool Weapon(ItemDrop.ItemData.ItemType t) =>
             t == ItemDrop.ItemData.ItemType.OneHandedWeapon || t == ItemDrop.ItemData.ItemType.TwoHandedWeapon || t == ItemDrop.ItemData.ItemType.TwoHandedWeaponLeft ||

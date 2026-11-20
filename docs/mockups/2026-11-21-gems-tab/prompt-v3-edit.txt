@@ -1,0 +1,12 @@
+Edit task. Open D:\tmp\cx-valheim\work\gems-tab-v2.png (1920x1080 Valheim UI mockup, three item-browser panels). Produce the same image, same layout, same text and positions, with ONLY these corrections. Compare with the references while editing:
+E:\DEV\Valheim\docs\mockups\item-browser-progression\01-weapons.png (approved style), E:\DEV\Valheim\docs\mockups\item-browser-progression\ref-ingame-panel-crop.png (real panel), E:\DEV\Valheim\docs\gems\icons\_sheet.png (real gem icons).
+
+1. Category icon row in all three panels: keep the FISH glyph (as in 01-weapons.png: sword, shirt, ring, arrow, pickaxe, food, flask, sausage, antlers, fish, ...). Insert the gem glyph button AFTER the fish and BEFORE "...". Make the buttons slightly narrower so all 12 fit in the same row width. Gem button stays selected (teal rim).
+2. Stage strip labels must read exactly: Луг, Лес, Бол, Гор, Рав, Тум, Пеп, Сев, ? (fix "Пен" to "Пеп"). The Лес diamond is dark forest green #2E6B35 (slightly brightened), not lime.
+3. Panel 2 row text must read exactly "Магия крови" and "Расплавленный отпор T7" and "Элитные мобы, Hildir" (capital Э, Cyrillic) in every monster row.
+4. Monster gem icons (panel 2): use the real colours from _sheet.png style, each a different colour (blue, red, violet, green, orange), crisp facets, no orange glow wash. Boss gem icons: crisper facets and the gold setting like _sheet.png.
+5. Facet chips row: chip widths and gaps like 01-weapons.png (compact, left-aligned, not stretched).
+6. List rows: each row inside its own thin dark outlined row box like 01-weapons.png, not only hairline separators. Name text regular weight like 01-weapons.png.
+7. Active tab "ПРЕДМЕТЫ" text gold #e8b64a, less yellow and less glow, crisp outline as the reference. Reduce the cyan glow on frames to the reference level.
+8. Item page (panel 3) text: "Улучшение: 3 × «Гнилое сердце T2»"; keep "Редк. Пыль ×5" exactly (real in-game name).
+Everything else unchanged. Russian spelled correctly. Save to D:\tmp\cx-valheim\work\gems-tab.png

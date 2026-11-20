@@ -237,6 +237,44 @@ namespace Morgott.UI.Tests
             Assert.Equal(want, PageModel.Categorize(type, skill, pieces, food, 0f, 0f, effect));
 
         [Fact]
+        public void EpicLootShardstonesAreGems()
+        {
+            const ItemDrop.ItemData.ItemType mat = ItemDrop.ItemData.ItemType.Material;
+            Assert.Equal(ItemCategory.Gems, PageModel.Categorize(mat, Skills.SkillType.Swords, false, 0f, 0f, 0f, false, "1013|Mythic|ShardStone"));
+            Assert.Equal(ItemCategory.Gems, PageModel.Categorize(mat, Skills.SkillType.Swords, false, 0f, 0f, 0f, false, "72|Legendary|ShardStone"));
+            Assert.Equal(ItemCategory.Materials, PageModel.Categorize(mat, Skills.SkillType.Swords, false, 0f, 0f, 0f, false, "MagicCraftingMaterial"));
+            Assert.Equal(ItemCategory.Materials, PageModel.Categorize(mat, Skills.SkillType.Swords, false, 0f, 0f, 0f, false));
+            Assert.Equal(ItemCategory.Trophies, PageModel.Categorize(ItemDrop.ItemData.ItemType.Trophy, Skills.SkillType.Swords, false, 0f, 0f, 0f, false, "x|ShardStone"));
+            Assert.Equal(ItemCategory.Misc - 1, ItemCategory.Gems); // the button row: gems right before "..."
+        }
+
+        [Fact]
+        public void ModChipOnlyWithDevcommands()
+        {
+            Assert.Contains(FacetTable.ChipsOf("gems", true), c => c.Token == "$ib_f_mod");
+            Assert.DoesNotContain(FacetTable.ChipsOf("gems", false), c => c.Token == "$ib_f_mod");
+            Assert.Empty(FacetTable.ChipsOf("items", false)); // Plain = Mod only
+            Assert.Contains(FacetTable.ChipsOf("armor", false), c => c.Token == "$ib_f_set" && c.Facets.Contains("mod")); // the set chip keeps its mod section
+            var s = new FilterState();
+            s.Toggle("mod", "valheim", false);
+            s.Toggle("source", "killdrop", true);
+            FacetTable.DropHidden(s, FacetTable.ChipsOf("gems", false));
+            Assert.False(s.Picked.ContainsKey("mod"));
+            Assert.True(s.Picked.ContainsKey("source"));
+        }
+
+        [Fact]
+        public void SearchMatchesExtraText()
+        {
+            var ix = new BrowserIndex();
+            ix.Add(new Entry { Id = "1013_Mythic_ShardStone", Name = "Rotting Heart T3", Type = EntryType.Item, Category = ItemCategory.Gems });
+            ix.Add(new Entry { Id = "Iron", Name = "Iron", Type = EntryType.Item });
+            var hits = ix.Search("bonemass", null, null, n => n, m => m, false, e => e.Category == ItemCategory.Gems ? "\nbonemass\nbonemass" : "");
+            Assert.Equal("1013_Mythic_ShardStone", Assert.Single(hits).Id);
+            Assert.Empty(ix.Search("bonemass", null, null, n => n, m => m));
+        }
+
+        [Fact]
         public void EitrOrStaminaFoodIsFood()
         {
             Assert.Equal(ItemCategory.Food, PageModel.Categorize(ItemDrop.ItemData.ItemType.Consumable, Skills.SkillType.Swords, false, 0f, 0f, 30f, true));

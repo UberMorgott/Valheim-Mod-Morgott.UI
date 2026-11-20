@@ -1489,6 +1489,7 @@
     { "role": "ib.cat.materials", "sprite": "sprite.ib.glyph.log", "color": "color.text.ember", "imageType": "Simple", "preserveAspect": true },
     { "role": "ib.cat.trophies", "sprite": "sprite.ib.glyph.trophies", "color": "color.text.ember", "imageType": "Simple", "preserveAspect": true },
     { "role": "ib.cat.fish", "sprite": "sprite.ib.glyph.fish", "color": "color.text.ember", "imageType": "Simple", "preserveAspect": true },
+    { "role": "ib.cat.gems", "sprite": "sprite.gem.rarity", "color": "color.text.ember", "imageType": "Simple", "preserveAspect": true },
     { "role": "ib.cat.misc", "sprite": "sprite.ib.glyph.more", "color": "color.text.ember", "imageType": "Simple", "preserveAspect": true },
     { "role": "ib.star.full", "sprite": "sprite.ib.glyph.star.full", "color": "color.text.ember", "imageType": "Simple", "preserveAspect": true },
     { "role": "ib.star.empty", "sprite": "sprite.ib.glyph.star.empty", "color": "color.state.disabled", "imageType": "Simple", "preserveAspect": true },

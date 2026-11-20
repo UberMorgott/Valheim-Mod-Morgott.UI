@@ -208,13 +208,27 @@ namespace Morgott.UI.ItemBrowser
             ["materials"] = new[] { new FacetChip("$ib_f_source", "source"), new FacetChip("$ib_f_usedin", "usedin"), Mod },
             ["trophies"] = new[] { new FacetChip("$ib_f_source", "source", "creature"), Mod },
             ["fish"] = new[] { new FacetChip("$ib_f_source", "source", "creature"), Mod },
+            ["gems"] = new[] { new FacetChip("$ib_f_source", "source", "creature"), Mod },
             ["misc"] = new[] { new FacetChip("$ib_f_source", "source"), Mod },
             ["piece"] = new[] { new FacetChip("$ib_f_section", "section"), new FacetChip("$ib_f_station", "station"), new FacetChip("$ib_f_comfort", "comfort"), Mod },
             ["station"] = new[] { new FacetChip("$ib_f_kind", "stationkind"), Mod },
             ["creature"] = new[] { new FacetChip("$ib_f_kind", "kind"), new FacetChip("$ib_f_habitat", "habitat"), new FacetChip("$ib_f_loot", "loot"), new FacetChip("$ib_f_faction", "faction") },
         };
 
-        public static FacetChip[] ChipsOf(string scope) => Chips.TryGetValue(scope, out var c) ? c : Plain;
+                /// <summary>Chips of a scope; the "Mod" chip only with devcommands on (user, 2026-11-21: a dev filter).</summary>
+        public static FacetChip[] ChipsOf(string scope, bool dev = true)
+        {
+            var all = Chips.TryGetValue(scope, out var c) ? c : Plain;
+            return dev ? all : Array.FindAll(all, x => x != Mod);
+        }
+
+        /// <summary>Picks of facets no shown chip lists (the Mod chip hidden again) are dropped, so nothing invisible filters.</summary>
+        public static void DropHidden(FilterState state, FacetChip[] shown)
+        {
+            var keep = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var chip in shown) keep.UnionWith(chip.Facets);
+            foreach (var id in new List<string>(state.Picked.Keys)) if (!keep.Contains(id)) state.Picked.Remove(id);
+        }
 
         /// <summary>Facets computable from the index alone: mod, sources, where used, creature loot / source.</summary>
         public void AddIndexFacets(BrowserIndex ix, Entry e, Func<string, string> modName)
