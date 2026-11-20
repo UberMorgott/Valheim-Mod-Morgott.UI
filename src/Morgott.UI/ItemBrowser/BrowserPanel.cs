@@ -1069,27 +1069,25 @@ namespace Morgott.UI.ItemBrowser
 
             // Scrolled body: the two sections as blocks of real heights, scrolled block by block.
             _sockets.Used = _inChips.Used = _titles.Used = _stations.Used = _chances.Used = _rules.Used = _rowQuals.Used = 0;
-            var from = PageModel.Obtain(ix, e.Id, _quality);
-            var used = PageModel.UsedIn(ix, e.Id);
-            var blocks = new List<(int Kind, PageRow Row)> { (0, null) };
-            if (from.Count == 0) blocks.Add((2, null));
-            foreach (var r in from) blocks.Add((1, r));
-            blocks.Add((3, null));
-            if (used.Count == 0) blocks.Add((5, null));
-            foreach (var r in used) blocks.Add((4, r));
             // Input chips flow at their rendered widths (a name is never cut while it fits the input span): a row's line
-            // count comes from that flow, cached per page / quality / index / scale (wheel ticks relayout).
-            var key = $"{e.Id}|{_quality}|{Browser.Generation}|{_k:0.###}";
-            if (key != _flowKey) { _flowKey = key; _flows.Clear(); _notes.Clear(); }
+            // count comes from that flow, cached per page / quality / index / scale / view (wheel ticks relayout).
+            var key = $"{e.Id}|{_quality}|{Browser.Generation}|{_k:0.###}|{h - top:0.#}";
+            if (key != _flowKey)
+            {
+                _flowKey = key;
+                _flows.Clear();
+                _notes.Clear();
+                _pageBlocks = Blocks(ix, e.Id, h - top);
+            }
+            var blocks = _pageBlocks;
             var heights = new List<float>(blocks.Count);
             for (var b = 0; b < blocks.Count; b++)
             {
                 var (kind, row) = blocks[b];
                 if (kind == 0 || kind == 3) { heights.Add(44f); continue; }
                 if (kind == 2 || kind == 5) { heights.Add(34f); continue; }
-                if (!_flows.TryGetValue(b, out var flow)) _flows[b] = flow = Flow(row, kind == 4 ? 94f : 81f);
-                if (!_notes.TryGetValue(b, out var notes)) _notes[b] = notes = NoteLines(row, kind == 4);
-                heights.Add(PageModel.Height(row, kind == 4, flow.Count == 0 ? 1 : flow[flow.Count - 1].Line + 1) + notes.Count * NoteLineH);
+                var flow = _flows[b];
+                heights.Add(PageModel.Height(row, kind == 4, flow.Count == 0 ? 1 : flow[flow.Count - 1].Line + 1) + _notes[b].Count * NoteLineH);
             }
             _pageScrollMax = PageModel.MaxFirst(heights, h - top);
             if (_jump != PageSection.None)
@@ -1152,7 +1150,42 @@ namespace Morgott.UI.ItemBrowser
         private readonly Dictionary<int, List<Chipped>> _flows = new Dictionary<int, List<Chipped>>();
         private readonly Dictionary<int, List<string>> _notes = new Dictionary<int, List<string>>();
         private string _flowKey;
+        private List<(int Kind, PageRow Row)> _pageBlocks;
         private const float NoteLineH = 22f, NoteFont = 16f;
+
+        // Page body blocks: section headers (0 / 3), empty notes (2 / 5), rows (1 / 4) with their flows / notes cached.
+        private List<(int Kind, PageRow Row)> Blocks(BrowserIndex ix, string id, float view)
+        {
+            var from = PageModel.Obtain(ix, id, _quality);
+            var used = PageModel.UsedIn(ix, id);
+            var blocks = new List<(int Kind, PageRow Row)> { (0, null) };
+            if (from.Count == 0) blocks.Add((2, null));
+            foreach (var r in from) AddRow(blocks, 1, r, view);
+            blocks.Add((3, null));
+            if (used.Count == 0) blocks.Add((5, null));
+            foreach (var r in used) AddRow(blocks, 4, r, view);
+            return blocks;
+        }
+
+        // Block scroll shows a block only whole (or alone at the top): a row taller than the view under its section
+        // header (the incinerator's "any one of" ~50 trophies) left "Used in" empty. Its inputs split into rows of the
+        // same relation, each fitting under the header.
+        private void AddRow(List<(int Kind, PageRow Row)> blocks, int kind, PageRow r, float view)
+        {
+            var used = kind == 4;
+            float x0 = used ? 94f : 81f;
+            var flow = Flow(r, x0);
+            var notes = NoteLines(r, used);
+            var lines = new int[flow.Count];
+            for (var i = 0; i < flow.Count; i++) lines[i] = flow[i].Line;
+            var room = view - 44f - notes.Count * NoteLineH - (used ? PageModel.UsedRowH : PageModel.RowH);
+            foreach (var part in PageModel.SplitByLines(r, lines, 1 + Math.Max(0, (int)(room / PageModel.LineH))))
+            {
+                _flows[blocks.Count] = part == r ? flow : Flow(part, x0);
+                _notes[blocks.Count] = notes;
+                blocks.Add((kind, part));
+            }
+        }
 
         // A row's conditions that do not fit its chance box on one line: wrapped lines under the row (empty = as before).
         private List<string> NoteLines(PageRow r, bool used)

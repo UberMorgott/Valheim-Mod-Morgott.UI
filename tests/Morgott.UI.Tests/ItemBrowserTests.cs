@@ -363,6 +363,22 @@ namespace Morgott.UI.Tests
         }
 
         [Fact]
+        public void Row_taller_than_the_view_splits_into_rows_that_fit()
+        {
+            var ins = new Stack[7];
+            for (var i = 0; i < ins.Length; i++) ins[i] = new Stack("T" + i, 1, 1);
+            var row = new PageRow { Icon = "Coal", Inputs = ins, BaseQuality = 2, Right = "incinerator", Recipe = true };
+            var lines = new[] { 0, 0, 1, 1, 2, 2, 3 };
+            Assert.Same(row, Assert.Single(PageModel.SplitByLines(row, lines, 4)));
+            var parts = PageModel.SplitByLines(row, lines, 2);
+            Assert.Equal(new[] { 4, 3 }, parts.ConvertAll(p => p.Inputs.Length));
+            Assert.Equal(new[] { "T4", "T5", "T6" }, parts[1].Inputs.Select(s => s.Prefab));
+            Assert.Equal(new[] { 2, 0 }, parts.ConvertAll(p => p.BaseQuality)); // the upgrade base is only the first input
+            Assert.All(parts, p => Assert.Equal("incinerator", p.Right));
+            Assert.Equal(4, PageModel.SplitByLines(row, lines, 1).Count);
+        }
+
+        [Fact]
         public void Long_conditions_wrap_at_word_bounds()
         {
             float M(string s) => s.Length; // one unit per char

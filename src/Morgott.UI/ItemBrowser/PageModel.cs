@@ -171,6 +171,33 @@ namespace Morgott.UI.ItemBrowser
         }
 
         // lines = input lines as laid out (the panel flows chips at rendered widths); 0 = two per line.
+        /// <summary>A row whose inputs flow over more than <paramref name="maxLines"/> lines (<paramref name="lineOf"/> = flow
+        /// line per input) as rows of the same relation, each at most that many lines; a row that fits = itself.</summary>
+        public static List<PageRow> SplitByLines(PageRow row, IList<int> lineOf, int maxLines)
+        {
+            var parts = new List<PageRow>();
+            if (lineOf.Count == 0 || lineOf[lineOf.Count - 1] < maxLines) { parts.Add(row); return parts; }
+            for (int start = 0, i = 0; i <= lineOf.Count; i++)
+            {
+                if (i < lineOf.Count && lineOf[i] - lineOf[start] < maxLines) continue;
+                var ins = new Stack[i - start];
+                Array.Copy(row.Inputs, start, ins, 0, ins.Length);
+                parts.Add(new PageRow
+                {
+                    R = row.R,
+                    Icon = row.Icon,
+                    Quality = row.Quality,
+                    Inputs = ins,
+                    BaseQuality = start == 0 ? row.BaseQuality : 0,
+                    Right = row.Right,
+                    Recipe = row.Recipe,
+                    Tag = row.Tag
+                });
+                start = i;
+            }
+            return parts;
+        }
+
         public static float Height(PageRow row, bool used, int lines = 0) => (used ? UsedRowH : RowH) + LineH * ((lines > 0 ? lines : row.Lines) - 1);
 
         /// <summary>Word wrap at rendered widths: a row's conditions too long for its chance box ("any creature killed in
