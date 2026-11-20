@@ -23,6 +23,13 @@ Finished work: History below (one line per milestone); details in `git log` / ta
 - Note (lead 2026-11-20): mockup `02-armour.png` is the outlier: its stage strip is ~40 px tall, `01`/`03`/`04` and
   the game use the 70-unit strip (`BrowserPanel.Filters.cs` `StripH`), so the armour list sits ~50 px lower than `02`.
   Kept as is; do not match `02`.
+- [x] Wave-10d (0.40.13): drop conditions wrap, source names translated ("Chest"), Set facet lists sets by name, Tier =
+  biome of the whole set, facet popup opaque and inside its window; attached capes count in their set's biome.
+- Note: Комплект lists line names only (user: one clean list). Sets sharing line + biome (SetTiers.yml authored: 9
+  groups, e.g. raider bronze / vigorous_bronze, shadow troll / rogue_bronze, wanderer rags / leather / stag) are not
+  separately selectable; Тир / Слот filters narrow them (per-set entries tried 2026-11-20, rejected: raw/duplicate names).
+- Note: without Morgott.Power the armour Комплект / Тир facets are empty (line facts come from Power); not handled,
+  Power always ships in the pack (Codex review 2026-11-20, lead: skip).
 
 ### Item icons
 
@@ -32,21 +39,24 @@ Finished work: History below (one line per milestone); details in `git log` / ta
   the wip 4 px shift could not clear (texts never moved later in the frame). Fix 0.29.25: BuildHudSkin sets the
   description top 6 units under the name (PlayHudMath.DescriptionTop, token size.build.desc.gap). Run
   20261108-063521: description top 320 vs name bottom 321 (padded), PASS.
-- [ ] Needs regen without yellow cast: 217 restyled icons reverted to their original sprite (2026-11-08,
-      fix/revert-yellow-icons) because the restyle tinted them yellow: wood / plank family, honey, bee, berries,
-      mushrooms + every override with Lab `b*` up >= 12 into the yellow hue band vs its original. List:
-      `docs/icons-yellow-reverted.txt` (also `pack_exclude.txt` in Morgott.Patcher `tools\iconstyle`). Fix the warm
-      shift in iconstyle (median `b*` +4.5 over all 1566 compared icons), re-stylize these, drop them from the exclude
-      list, pack.
+- [x] Yellow-cast regen of the 217 reverted icons (`docs/icons-yellow-reverted.txt`): regen rejected by the user
+      2026-11-20, the 217 stay vanilla (`E:\DEV\Valheim\docs\decisions\Morgott.UI.md` icon-restyle-distinguishability).
 
 ### Perf / leaks
 
-- [ ] Remaining allocations: CharacterPreview.LateUpdate (camera render window), InventorySkin / CraftingSkin LateUpdate
-      0.9-3.6 KB/frame, HUD idle (HudCluster / BarView; PlayHud.cs:228, BarView.cs:410). Real per-method numbers need an
-      exact per-thread counter; none works in the 6000.0.75f1 player (Profiler.GetMonoUsedSizeLong counts every thread /
-      mod, harness gates the excess over the time-share expectation since w28).
-- [ ] uifix-lag: frame time flat (7.01 -> 7.56 ms) but objects under InventoryGui grew 1187 -> 2449 over 3 tab walks
-      (run 20261103-005216); breakdown logged by tools 88f5633 on the next run.
+- [x] Per-frame allocations in InventorySkin / CraftingSkin LateUpdate and HUD idle (HudCluster / BarView) dropped
+      (wave-10d 1d6e00a, 0.40.13).
+- [x] uifix-lag InventoryGui object growth (1187 -> 2449 over 3 tab walks) fixed with the same track (wave-10d, 0.40.13).
+
+### Wave-10d left-overs (0.40.13)
+
+- [ ] Design calls (lead / user): two-line plate labels; wider crafting recipe column; HUD fixed cells below 16 px
+      (hotbar keys 13.3, food pip 10.5 / timer 12.2, health 14.8 / 12.7@1440, quality badge 14.6, window title 12.2,
+      res_name); other mods' small texts CR_AuraLabel 12 / CR_RaidName 14 (Creatures), PA_ChainTree 15.3 (Power).
+- [ ] Power data: `SetTiers.yml` chaos_t4 mixes Mistlands + DeepNorth pieces (Morgott.Power owner).
+- [ ] Codex leftovers: per-frame allocs in ChangelogPanel.Fit / Centre and BrowserPanel.SetBody / Icons; StatusStrip
+      dead plate branch; drop-condition / StatusStrip widths not rebuilt on live language / resolution change;
+      changelog red tag text weight.
 
 ### Text / fonts (own track, per-screen in-game iterations)
 
@@ -61,7 +71,7 @@ Finished work: History below (one line per milestone); details in `git log` / ta
       Players 2, 8, m6c; one each: AchContainer 9.8, AvailableBountiesPanel 14, BuildHud res_name 15.8, Cost 14.1,
       Description 14, EnemyHud 14, HotKeyBar 12, Inventory_screen 15.3, LoadingGUI 15, RecipeList 14.2, TreasureMap 13.
       Latest per check (runs 20261107..20261119; m7 / m6c have no text-min line since the Oct purge): status / buff
-      tile names + times 15.8 and stats sub-lines 14.8 / 15.7 floored (fix/text-floor-wave10d). Left, fixed cells /
+      tile names + times 15.8 and stats sub-lines 14.8 / 15.7 + stats values: fixed in 0.40.13 (wave-10d). Left, fixed cells /
       theme tiers (container sizing = layout call): strip keys 13.3 (Hotbar / Potion / Ability Key), food AutoPip 10.5 /
       14 + Timer 12.2, Health Value 14.8 (floor.text.number.px 14), cell quality 14.6, window title 12.2 (m2 title room
       rule), RecipeElement name 14.2 / 15 (shrink item below), res_name 10.8-13 (excluded, socket); other mods' texts:
