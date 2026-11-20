@@ -475,6 +475,15 @@ namespace Morgott.UI.Tests
         }
 
         [Theory]
+        [InlineData("$se_troll", "troll_armor", "$se_troll")]
+        [InlineData(null, "SetEffect_LeatherMountain_MP", "Leather Mountain")]
+        [InlineData("", "ChaosT4Set", "Chaos T4")]
+        [InlineData(null, "$set_spellslinger_Mistlands_TW", "Spellslinger Mistlands")]
+        [InlineData(null, "berserker_armor", "Berserker Armor")]
+        public void Set_label_is_the_set_effect_name_else_a_readable_id(string effect, string set, string want) =>
+            Assert.Equal(want, StageRules.SetLabel(effect, set));
+
+        [Theory]
         [InlineData(30f, 15f, 90f, "eitr")]
         [InlineData(50f, 45f, 0f, "balanced")]
         [InlineData(50f, 20f, 0f, "health")]

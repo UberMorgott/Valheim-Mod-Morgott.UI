@@ -132,6 +132,25 @@ namespace Morgott.UI.ItemBrowser
             return biome;
         }
 
+        /// <summary>Set facet label: the set effect's name, as the item tooltip shows it (ItemDrop.GetTooltip: m_setStatusEffect
+        /// .m_name); without one, the set id made readable ("SetEffect_LeatherMountain_MP" -> "Leather Mountain").</summary>
+        public static string SetLabel(string effectName, string setName)
+        {
+            if (!string.IsNullOrEmpty(effectName)) return effectName;
+            var s = setName.TrimStart('$');
+            foreach (var pre in new[] { "SetEffect_", "set_", "Set_" }) if (s.StartsWith(pre, StringComparison.Ordinal)) s = s.Substring(pre.Length);
+            foreach (var suf in new[] { "_MP", "_TW", "Set", "_set" }) if (s.Length > suf.Length && s.EndsWith(suf, StringComparison.Ordinal)) s = s.Substring(0, s.Length - suf.Length);
+            var b = new System.Text.StringBuilder(s.Length + 8);
+            for (var i = 0; i < s.Length; i++)
+            {
+                var c = s[i];
+                var gap = c == '_' || i > 0 && char.IsUpper(c) && char.IsLower(s[i - 1]);
+                if (gap && b.Length > 0 && b[b.Length - 1] != ' ') b.Append(' ');
+                if (c != '_') b.Append(b.Length == 0 || b[b.Length - 1] == ' ' ? char.ToUpperInvariant(c) : c);
+            }
+            return b.ToString().TrimEnd();
+        }
+
         public static string SourceKey(RelationKind k)
         {
             switch (k)
