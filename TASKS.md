@@ -17,6 +17,12 @@ Finished work: History below (one line per milestone); details in `git log` / ta
 - [ ] Codex 8/10 leftovers: body / title / mod-name faces read smaller and narrower than the mockup; inner glass flat
   (mockup has a faint dark gradient).
 
+### Item browser progression filters (`E:\DEV\Valheim\docs\mockups\item-browser-progression`)
+
+- Note (lead 2026-11-20): mockup `02-armour.png` is the outlier: its stage strip is ~40 px tall, `01`/`03`/`04` and
+  the game use the 70-unit strip (`BrowserPanel.Filters.cs` `StripH`), so the armour list sits ~50 px lower than `02`.
+  Kept as is; do not match `02`.
+
 ### Item icons
 
 - [x] Build strip: piece description glyphs 1-6 px into the display-face name (`m6-build-help-clear`, thatch roof 45,

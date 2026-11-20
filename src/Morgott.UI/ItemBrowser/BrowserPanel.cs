@@ -1080,7 +1080,7 @@ namespace Morgott.UI.ItemBrowser
             // Input chips flow at their rendered widths (a name is never cut while it fits the input span): a row's line
             // count comes from that flow, cached per page / quality / index / scale (wheel ticks relayout).
             var key = $"{e.Id}|{_quality}|{Browser.Generation}|{_k:0.###}";
-            if (key != _flowKey) { _flowKey = key; _flows.Clear(); }
+            if (key != _flowKey) { _flowKey = key; _flows.Clear(); _notes.Clear(); }
             var heights = new List<float>(blocks.Count);
             for (var b = 0; b < blocks.Count; b++)
             {
@@ -1088,7 +1088,8 @@ namespace Morgott.UI.ItemBrowser
                 if (kind == 0 || kind == 3) { heights.Add(44f); continue; }
                 if (kind == 2 || kind == 5) { heights.Add(34f); continue; }
                 if (!_flows.TryGetValue(b, out var flow)) _flows[b] = flow = Flow(row, kind == 4 ? 94f : 81f);
-                heights.Add(PageModel.Height(row, kind == 4, flow.Count == 0 ? 1 : flow[flow.Count - 1].Line + 1));
+                if (!_notes.TryGetValue(b, out var notes)) _notes[b] = notes = NoteLines(row, kind == 4);
+                heights.Add(PageModel.Height(row, kind == 4, flow.Count == 0 ? 1 : flow[flow.Count - 1].Line + 1) + notes.Count * NoteLineH);
             }
             _pageScrollMax = PageModel.MaxFirst(heights, h - top);
             if (_jump != PageSection.None)
@@ -1110,7 +1111,7 @@ namespace Morgott.UI.ItemBrowser
                     case 3: Header(_usedHeader, _usedLabel, L(loot ? "$ib_loot" : "$ib_used_in"), y); break;
                     case 2: Put(_fromNote, 0f, y, UnitW, 30f); Fit(_fromNote, L("$ib_no_source"), 17f); break;
                     case 5: Put(_usedNote, 0f, y, UnitW, 30f); Fit(_usedNote, L(loot ? "$ib_no_loot" : "$ib_not_used"), 17f); break;
-                    default: Row(row, y, heights[i], kind == 4, _flows[i]); break;
+                    default: Row(row, y, heights[i], kind == 4, _flows[i], _notes[i]); break;
                 }
                 y += heights[i];
             }
@@ -1149,7 +1150,20 @@ namespace Morgott.UI.ItemBrowser
         // rule at 390); a chip wider than the span is cut to it (its name gets the ellipsis).
         private const float InputEnd = 380f, ChipIcon = 34f, ChipGap = 14f, ChipFont = 18f;
         private readonly Dictionary<int, List<Chipped>> _flows = new Dictionary<int, List<Chipped>>();
+        private readonly Dictionary<int, List<string>> _notes = new Dictionary<int, List<string>>();
         private string _flowKey;
+        private const float NoteLineH = 22f, NoteFont = 16f;
+
+        // A row's conditions that do not fit its chance box on one line: wrapped lines under the row (empty = as before).
+        private List<string> NoteLines(PageRow r, bool used)
+        {
+            if (r.R.Conditions == null) return new List<string>();
+            var right = r.Right != null || r.Recipe && r.Inputs.Length > 0;
+            Text(_measure, "", right ? 15f : 18f); // the chance box's own size (Row)
+            if (Measure(Chance(r, used ? r.Icon : _pageId, used)) <= (right ? UnitW - 400f : UnitW - 340f) - 2f) return new List<string>();
+            Text(_measure, "", NoteFont);
+            return PageModel.Wrap(L(r.R.Conditions), UnitW - 10f - (used ? 94f : 81f), Measure);
+        }
 
         private struct Chipped
         {
@@ -1197,8 +1211,10 @@ namespace Morgott.UI.ItemBrowser
 
         // One page row (mockup 05): "Obtained from" = socket + inputs (or source name + chance) + station; "Used in" = socket,
         // ember title (+quality), inputs line(s), station. A divider closes every row.
-        private void Row(PageRow r, float y, float h, bool used, List<Chipped> flow)
+        private void Row(PageRow r, float y, float full, bool used, List<Chipped> flow, List<string> notes)
         {
+            var h = full - notes.Count * NoteLineH; // the row as before; wrapped conditions below it
+            var cond = notes.Count == 0;
             var sock = _sockets.Next(n => NewSlot(_pageView.transform, "RowIcon" + n, "craft.socket"));
             sock.Id = r.Icon;
             sock.Quality = Math.Max(1, r.Quality);
@@ -1250,11 +1266,12 @@ namespace Morgott.UI.ItemBrowser
                 st.Quality = 1;
                 var label = r.Right == null ? L("$ib_by_hand") : r.R.StationLevel > 1 ? $"{NameOf(r.Right)} {L("$ib_level_short")}{r.R.StationLevel}" : NameOf(r.Right);
                 // Output amount / conditions ("any one ingredient", per star) under the station when there are any.
-                var note = Chance(r, used ? r.Icon : _pageId, used);
+                var note = Chance(r, used ? r.Icon : _pageId, used, cond);
                 Chip(st, 398f, note.Length > 0 ? y + 2f : y + (h - 42f) / 2f, UnitW - 398f, note.Length > 0 ? 34f : 42f, r.Right == null ? 0f : note.Length > 0 ? 34f : 40f, label, 18f);
                 if (note.Length > 0)
                 {
                     var t = _chances.Next(n => Txt(_pageView.transform, "Chance" + n, "text.accent", TextAlignmentOptions.Right));
+                    t.alignment = TextAlignmentOptions.Right; // pooled: a note line set Left
                     Put(t, 398f, y + 34f, UnitW - 400f, 24f);
                     Fit(t, note, 15f);
                 }
@@ -1262,10 +1279,19 @@ namespace Morgott.UI.ItemBrowser
             else
             {
                 var t = _chances.Next(n => Txt(_pageView.transform, "Chance" + n, "text.accent", TextAlignmentOptions.Right));
+                t.alignment = TextAlignmentOptions.Right;
                 Put(t, 330f, y, UnitW - 340f, h);
-                Fit(t, Chance(r, used ? r.Icon : _pageId, used), 18f);
+                Fit(t, Chance(r, used ? r.Icon : _pageId, used, cond), 18f);
             }
-            Rule(0f, y + h - 2f, UnitW, 1.5f);
+            var x0n = used ? 94f : 81f;
+            for (var i = 0; i < notes.Count; i++)
+            {
+                var t = _chances.Next(n => Txt(_pageView.transform, "Chance" + n, "text.accent", TextAlignmentOptions.Right));
+                t.alignment = TextAlignmentOptions.Left;
+                Put(t, x0n, y + h - 8f + i * NoteLineH, UnitW - 10f - x0n, NoteLineH + 2f);
+                Text(t, notes[i], NoteFont);
+            }
+            Rule(0f, y + full - 2f, UnitW, 1.5f);
         }
 
         // Clear hit area with an optional icon (size 0 = text only) and its text.
@@ -1300,7 +1326,7 @@ namespace Morgott.UI.ItemBrowser
         private static string Amount(Stack s) => s.Min == s.Max ? s.Min.ToString() : $"{s.Min}-{s.Max}";
 
         // Source row / creature drop: amount, base chance (weighted tables: no number), conditions.
-        private static string Chance(PageRow r, string item, bool used)
+        private static string Chance(PageRow r, string item, bool used, bool cond = true)
         {
             var o = r.R.Outputs.Length > 0 ? r.R.Outputs[0] : default;
             foreach (var s in r.R.Outputs) if (s.Prefab == item) o = s;
@@ -1309,7 +1335,7 @@ namespace Morgott.UI.ItemBrowser
             if (o.Prefab != null && !(o.Min == 1 && o.Max == 1)) parts.Add("x" + Amount(o));
             if (float.IsNaN(o.Chance)) parts.Add(L("$ib_weighted"));
             else if (o.Chance < 1f) parts.Add($"{L("$ib_chance")} {o.Chance * 100f:0.#}%");
-            if (r.R.Conditions != null) parts.Add(L(r.R.Conditions));
+            if (cond && r.R.Conditions != null) parts.Add(L(r.R.Conditions));
             return string.Join("  ", parts);
         }
     }
