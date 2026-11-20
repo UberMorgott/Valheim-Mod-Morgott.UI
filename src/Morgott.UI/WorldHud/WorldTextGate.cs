@@ -6,11 +6,13 @@ namespace Morgott.UI.WorldHud
     // World-anchored texts (Chat NPC / raven / creature bubbles m_npcTexts, say / shout / ping m_worldTexts; both
     // instantiated under the Chat object, Chat.cs:383/692) are hidden while a modal is open (pause menu with its quit /
     // logout dialogs, UnifiedPopup; ModalLayer.AnyOpen). User 2026-10-23: "Я принес весть." drew inside the quit
-    // dialog. Vanilla keeps updating and timing them out (Chat.LateUpdate); this only zeroes a CanvasGroup alpha on
-    // each live instance, so they reappear in place when the modal closes. Lives on the Chat object.
+    // dialog. Vanilla keeps updating and timing them out (Chat.LateUpdate); this only gates each live instance (RenderGate:
+    // a CanvasGroup at alpha 0 was still batched, overdraw-menu alpha0 Chat/DialogBox(Clone), run 20261121-020139), so they
+    // reappear in place when the modal closes. Lives on the Chat object.
     [DisallowMultipleComponent]
     public sealed class WorldTextGate : MonoBehaviour, IRevertible
     {
+        private const string Owner = "worldtext";
         private Chat _chat;
         private bool _hidden;
 
@@ -33,31 +35,18 @@ namespace Morgott.UI.WorldHud
             // once on the change back.
             if (!hide && !_hidden) return;
             _hidden = hide;
-            var a = hide ? 0f : 1f;
-            foreach (var n in _chat.m_npcTexts) if (n != null) Set(n.m_gui, a);
-            foreach (var w in _chat.m_worldTexts) if (w != null) Set(w.m_gui, a);
-        }
-
-        private static void Set(GameObject gui, float alpha)
-        {
-            if (!gui) return;
-            if (!gui.TryGetComponent<CanvasGroup>(out var g))
+            if (!hide)
             {
-                if (alpha >= 1f) return;
-                g = gui.AddComponent<CanvasGroup>();
-                g.interactable = false;
-                g.blocksRaycasts = false;
+                RenderGate.ReleaseAll(Owner);
+                return;
             }
-            if (!Mathf.Approximately(g.alpha, alpha)) g.alpha = alpha;
+            foreach (var n in _chat.m_npcTexts) if (n != null && n.m_gui && !RenderGate.Holds(n.m_gui.transform, Owner)) RenderGate.Set(n.m_gui, Owner, true);
+            foreach (var w in _chat.m_worldTexts) if (w != null && w.m_gui && !RenderGate.Holds(w.m_gui.transform, Owner)) RenderGate.Set(w.m_gui, Owner, true);
         }
 
         public void Revert()
         {
-            if (_chat)
-            {
-                foreach (var n in _chat.m_npcTexts) if (n != null) Set(n.m_gui, 1f);
-                foreach (var w in _chat.m_worldTexts) if (w != null) Set(w.m_gui, 1f);
-            }
+            RenderGate.ReleaseAll(Owner);
             Hidden = false;
             Destroy(this);
         }
