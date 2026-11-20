@@ -86,7 +86,7 @@ namespace Morgott.UI.InventoryScreen
                 }
             }
             var gui = InventoryGui.instance;
-            var standing = StandingShown(gui) || LargeMapShown();
+            var standing = StandingShown(gui) || LargeMapShown() || MenuShown();
             if (standing != _standing)
             {
                 _standing = standing;
@@ -127,6 +127,15 @@ namespace Morgott.UI.InventoryScreen
             return map && map.m_mode == Minimap.MapMode.Large && map.m_largeRoot && map.m_largeRoot.activeInHierarchy;
         }
 
+        // The open game menu's panel backings cover the HUD drawn before it (crosshair / stealth eye under
+        // MenuRoot/Menu/MenuEntries/RuneSkinPanel/Backing, overdraw-menu covered=1, runs 20261028-020046 .. 20261104-013852).
+        // Vanilla shows / hides it via m_root (Menu.Show / Hide, Menu.cs:224 / :271).
+        private static bool MenuShown()
+        {
+            var menu = Menu.instance;
+            return menu && menu.m_root && menu.m_root.gameObject.activeInHierarchy;
+        }
+
         private static void Cull(InventoryGui gui)
         {
             if (Time.unscaledTime < _nextCull) return;
@@ -148,6 +157,7 @@ namespace Morgott.UI.InventoryScreen
             }
             if (_standing && gui && StandingShown(gui)) AddStanding(gui.m_inventoryRoot);
             if (LargeMapShown()) AddStanding(Minimap.instance.m_largeRoot.transform);
+            if (MenuShown()) AddStanding(Menu.instance.m_root);
             CoverCull.Refresh(CoverWindows, CoverRects);
         }
 
