@@ -444,6 +444,36 @@ namespace Morgott.UI.Tests
             Assert.False(t.Matches("Sword", none));
         }
 
+        [Fact]
+        public void Set_tier_is_the_biome_of_its_latest_ingredient_not_the_order_in_its_line()
+        {
+            var s = new StageSolver();
+            s.Add("LeatherScraps", new StagePath { Kind = "spawn", Base = 0 });
+            s.Add("TrollHide", new StagePath { Kind = "spawn", Base = 2 });
+            s.Add("WolfPelt", new StagePath { Kind = "spawn", Base = 6 });
+            s.Add("Silver", new StagePath { Kind = "mine", Base = 6 });
+            s.Add("ArmorWolfChest", new StagePath { Kind = "craft" }.Need("Silver").Need("WolfPelt"));
+            s.Add("ArmorWolfLegs", new StagePath { Kind = "craft" }.Need("WolfPelt"));
+            s.Add("HelmetDrake", new StagePath { Kind = "craft" }.Need("LeatherScraps")); // early piece of a Mountain set
+            s.Add("ArmorTrollLeatherChest", new StagePath { Kind = "craft" }.Need("TrollHide"));
+            s.Solve();
+            var facts = new[]
+            {
+                new ItemFact { Prefab = "ArmorWolfChest", LineId = "wolfguard", LineTier = 0 },
+                new ItemFact { Prefab = "ArmorWolfLegs", LineId = "wolfguard", LineTier = 0 },
+                new ItemFact { Prefab = "HelmetDrake", LineId = "wolfguard", LineTier = 0 },
+                new ItemFact { Prefab = "ArmorTrollLeatherChest", LineId = "shadow", LineTier = 0 },
+                new ItemFact { Prefab = "Unsolved", LineId = "x", LineTier = 0 },
+                new ItemFact { Prefab = "Weapon", Biome = 2 },
+            };
+            var b = StageRules.SetBiomes(facts, s.Result);
+            Assert.Equal(3, b["ArmorWolfChest"]); // Mountain, though tier 0 of its line
+            Assert.Equal(3, b["HelmetDrake"]);    // the set aligns to its latest piece
+            Assert.Equal(1, b["ArmorTrollLeatherChest"]);
+            Assert.False(b.ContainsKey("Unsolved"));
+            Assert.False(b.ContainsKey("Weapon"));
+        }
+
         [Theory]
         [InlineData(30f, 15f, 90f, "eitr")]
         [InlineData(50f, 45f, 0f, "balanced")]

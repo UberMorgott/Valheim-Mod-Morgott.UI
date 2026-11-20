@@ -110,6 +110,28 @@ namespace Morgott.UI.ItemBrowser
             return Math.Min(health, stamina) >= hi * 0.8f ? "balanced" : health > stamina ? "health" : "stamina";
         }
 
+        /// <summary>Tier facet: piece -> biome of its set (one tier of one line), = the latest biome any of its pieces is
+        /// obtainable in, so a set sits where its last ingredient drops (user 2026-11-20). No known piece = no value.</summary>
+        public static Dictionary<string, int> SetBiomes(IEnumerable<ItemFact> facts, Func<string, StageInfo> info)
+        {
+            var sets = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+            foreach (var f in facts)
+            {
+                if (f.LineId == null || f.LineTier < 0) continue;
+                var key = f.LineId + "\n" + f.LineTier;
+                if (!sets.TryGetValue(key, out var pieces)) sets[key] = pieces = new List<string>();
+                pieces.Add(f.Prefab);
+            }
+            var biome = new Dictionary<string, int>(StringComparer.Ordinal);
+            foreach (var pieces in sets.Values)
+            {
+                var max = -1;
+                foreach (var p in pieces) max = Math.Max(max, info(p).Biome);
+                if (max >= 0) foreach (var p in pieces) biome[p] = max;
+            }
+            return biome;
+        }
+
         public static string SourceKey(RelationKind k)
         {
             switch (k)
@@ -151,7 +173,7 @@ namespace Morgott.UI.ItemBrowser
         private static readonly Dictionary<string, FacetChip[]> Chips = new Dictionary<string, FacetChip[]>(StringComparer.Ordinal)
         {
             ["weapons"] = new[] { new FacetChip("$ib_f_class", "class", "grip"), new FacetChip("$ib_f_damage", "damage"), new FacetChip("$ib_f_source", "source"), Mod },
-            ["armor"] = new[] { new FacetChip("$ib_f_line", "line", "set", "mod"), new FacetChip("$ib_f_slot", "slot"), new FacetChip("$ib_f_tier", "tier") },
+            ["armor"] = new[] { new FacetChip("$ib_f_set", "line", "set", "mod"), new FacetChip("$ib_f_slot", "slot"), new FacetChip("$ib_f_tier", "tier") },
             ["utility"] = new[] { new FacetChip("$ib_f_type", "type"), Mod },
             ["ammo"] = new[] { new FacetChip("$ib_f_type", "type"), Mod },
             ["tools"] = new[] { new FacetChip("$ib_f_type", "type"), new FacetChip("$ib_f_level", "level"), Mod },

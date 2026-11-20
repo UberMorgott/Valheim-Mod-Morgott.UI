@@ -389,13 +389,17 @@ namespace Morgott.UI.ItemBrowser
         private void LayoutPopup(FacetChip chip, float x, float y)
         {
             FillPopup(chip);
-            var shown = Math.Min(PopRows, Math.Max(1, _popItems.Count));
+            // Rows that fit above the panel's bottom; the box widens to its longest label, at most the panel (then ellipsis).
+            var shown = Mathf.Clamp(Mathf.FloorToInt((_a.H / _k - y - 8f) / PopRowH), 1, Math.Min(PopRows, Math.Max(1, _popItems.Count)));
             _popMax = Math.Max(0, _popItems.Count - shown);
             _popScroll = Mathf.Clamp(_popScroll, 0, _popMax);
-            x = Mathf.Min(x, UnitW - PopW);
+            var popW = PopW;
+            foreach (var it in _popItems) popW = Mathf.Max(popW, MeasureF(it.Label, 17f) + (it.Header ? 16f : 78f) + 4f);
+            popW = Mathf.Min(popW, UnitW);
+            x = Mathf.Clamp(x, 0f, UnitW - popW);
             Put(_popBlock, 0f, 0f, UnitW, _a.H / _k);
             _popBlock.transform.SetAsLastSibling();
-            Put(_popBack, x, y, PopW, shown * PopRowH + 8f);
+            Put(_popBack, x, y, popW, shown * PopRowH + 8f);
             PlateFit(_popBack, 1.6f);
             _popBack.transform.SetAsLastSibling();
             while (_popRows.Count < shown) _popRows.Add(NewPopRow(_popRows.Count));
@@ -407,16 +411,16 @@ namespace Morgott.UI.ItemBrowser
                 var it = _popItems[at];
                 r.Item = at;
                 var ry = y + 4f + i * PopRowH;
-                Put(r.Back, x + 2f, ry, PopW - 4f, PopRowH);
+                Put(r.Back, x + 2f, ry, popW - 4f, PopRowH);
                 var on = !it.Header && _fs.Picked.TryGetValue(it.Facet, out var set) && set.Contains(it.Key);
                 if (on) Put(r.Check, x + 7f, ry + 7f, 16f, 16f);
                 else Off(r.Check);
-                Put(r.Label, x + (it.Header ? 8f : 28f), ry, PopW - (it.Header ? 16f : 78f), PopRowH);
+                Put(r.Label, x + (it.Header ? 8f : 28f), ry, popW - (it.Header ? 16f : 78f), PopRowH);
                 Fit(r.Label, it.Header ? $"<color=#{Hex("color.text.unavailable", Color.gray)}>{it.Label}</color>" : on ? $"<color=#{Hex("color.text.active", Color.yellow)}>{it.Label}</color>" : it.Label, 17f);
                 if (it.Header) Off(r.Count);
                 else
                 {
-                    Put(r.Count, x + PopW - 50f, ry, 42f, PopRowH);
+                    Put(r.Count, x + popW - 50f, ry, 42f, PopRowH);
                     Fit(r.Count, it.Count.ToString(), 16f);
                 }
             }
