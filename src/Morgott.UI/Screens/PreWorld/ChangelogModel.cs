@@ -138,6 +138,12 @@ namespace Morgott.UI.PreWorld
 
         public static string Day(DateTime d) => d.ToString("dd.MM.yyyy", CultureInfo.InvariantCulture);
 
+        // Image.pixelsPerUnitMultiplier that draws a sliced sprite's cap (capPx border) as half the rect height: Unity draws
+        // a sprite px as 1 / (imagePpu x multiplier) units (imagePpu = Image.pixelsPerUnit = sprite PPU / canvas refPpu).
+        // 0 when the inputs are not usable (rect not laid out yet).
+        public static float CapMultiplier(float capPx, float rectHeight, float imagePpu) =>
+            capPx > 0f && rectHeight > 0f && imagePpu > 0f ? capPx / (rectHeight / 2f) / imagePpu : 0f;
+
         // "2 341" (mockup footer).
         public static string Count(int n) => n.ToString("#,0", CultureInfo.InvariantCulture).Replace(",", " ");
     }

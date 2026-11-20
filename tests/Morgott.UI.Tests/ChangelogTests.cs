@@ -145,6 +145,19 @@ namespace Morgott.UI.Tests
             Assert.Equal("2 341", ChangelogModel.Count(2341));
         }
 
+        [Theory]
+        [InlineData(24f, 32f, 2f, 0.75f)]  // 48 px pill on a 32-unit chip, Valheim canvas refPpu 50 (sprite PPU 100)
+        [InlineData(24f, 30f, 1f, 1.6f)]   // 30-unit tag, refPpu 100
+        public void CapMultiplierDrawsTheCapAsHalfTheHeight(float capPx, float h, float ppu, float want)
+        {
+            var mul = ChangelogModel.CapMultiplier(capPx, h, ppu);
+            Assert.Equal(want, mul, 4);
+            Assert.Equal(h / 2f, capPx / (ppu * mul), 3); // drawn cap = border px / (Image.pixelsPerUnit x multiplier)
+        }
+
+        [Fact]
+        public void CapMultiplierIsZeroBeforeLayout() => Assert.Equal(0f, ChangelogModel.CapMultiplier(24f, 0f, 2f));
+
         [Fact]
         public void HandlesAThousandsOfEntriesQuickly()
         {

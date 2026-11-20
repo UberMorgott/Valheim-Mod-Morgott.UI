@@ -8,14 +8,15 @@ Finished work: History below (one line per milestone); details in `git log` / ta
 
 ### Pack changelog window (0.35.0, mockup `docs/mockups/2026-11-16-changelog/02-sidebar.png`, Codex 8/10)
 
-- [ ] Art: rounded pill sprite (9-slice, white rim + dark glass) for type chips / line tags; they use the square
-  `field_search` plate + 4 rim lines now (`ChangelogPanel.Rim`).
-- [ ] Art: small rune glyph sprite for the selected tab (mockup "Сборка" tab, left of the label); no centred rune
-  sprite or runic font exists.
-- [ ] Chip / tag accent fills render brighter than their 0.22 / 0.18 alpha (run 20261116-134647, Codex: mockup =
-  dark plates; yellow tag text on the ochre fill reads weakly): tune after checking the UI colour space.
-- [ ] Codex 8/10 leftovers: body / title / mod-name faces read smaller and narrower than the mockup; inner glass flat
-  (mockup has a faint dark gradient).
+- [x] Art: rounded pill sprite (9-slice, white rim + dark glass) for type chips / line tags (approved 1b, mockups
+  `docs/mockups/2026-11-20-changelog-art`): Codex rim + fill mask `Assets\ChangelogPill*.png`, tinted per type
+  (`ChangelogPanel.Pill` / `TintPill`).
+- [x] Art: small rune glyph sprite for the selected tab (approved 2a): Codex Algiz `Assets\ChangelogRune.png`, cyan,
+  left of the selected label.
+- [x] Chip / tag accent fills render brighter than their 0.22 / 0.18 alpha (approved 3a): fill = type colour x 0.28
+  at alpha 0.92 (near-opaque, so the colour space no longer brightens it), labels white, counts / tag text coloured.
+- [ ] Codex 8/10 leftovers: body / title / mod-name faces read smaller and narrower than the mockup. (Inner glass
+  gradient done, approved 4a: `ChangelogPanel.Shade`, clear top to black 0.2 bottom.)
 
 ### Item browser progression filters (`E:\DEV\Valheim\docs\mockups\item-browser-progression`)
 
