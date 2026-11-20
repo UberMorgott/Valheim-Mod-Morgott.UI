@@ -11,7 +11,7 @@
     <AssemblyName>Morgott.UI</AssemblyName>
     <RootNamespace>Morgott.UI</RootNamespace>
     <!-- Keep in sync with Plugin.Version. -->
-    <Version>0.40.20</Version>
+    <Version>0.40.21</Version>
     <!-- Plugin internals are not public API (the public contract is Morgott.Core). -->
     <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
