@@ -413,6 +413,7 @@ namespace Morgott.UI.PreWorld
             Enforce();
             if (Fit()) _dirty = true;
             Centre();
+            if (!_gameTab) FitPills();
             if (!_dirty) return;
             _dirty = false;
             var sw = Stopwatch.StartNew();
@@ -591,7 +592,7 @@ namespace Morgott.UI.PreWorld
 
         private void Stamp()
         {
-            var serif = ThemeTokens.GetFont("font.display");
+            var serif = ThemeTokens.GetFont("font.map.header");
             if (serif) foreach (var t in _serif) if (t && t.font != serif) t.font = serif;
             var header = ThemeTokens.GetColor("color.text.header", Hex("#D9DCE0"));
             var title = ThemeTokens.GetColor("color.text.item.title", Hex("#F0C419"));
@@ -789,7 +790,7 @@ namespace Morgott.UI.PreWorld
             foreach (var t in new[] { r.A, r.B })
             {
                 _serif.Add(t);
-                if (ThemeTokens.GetFont("font.display") is TMP_FontAsset f) t.font = f;
+                if (ThemeTokens.GetFont("font.map.header") is TMP_FontAsset f) t.font = f;
             }
             r.Rule = Rule(r.Rt, "Rule", Hex("#3D8290"));
             return r;
@@ -904,20 +905,32 @@ namespace Morgott.UI.PreWorld
 
         // Rim in the colour over opaque dark glass, tinted 10 % towards the colour when on (mockup 3a fills sampled: e.g. red
         // 36,30,34 / cyan 12,44,50 on glass 14,32,36; the former colour x 0.28 read warm and saturated, Codex 6/10).
-        // Caps stay round at any height: the multiplier maps the 48 px sprite onto the rect height (sprite px drawn as
-        // refPpu / (100 x multiplier) units, Restyler.CanvasPpuFactor).
         private static void TintPill(Image fill, Image rim, Color c, bool on)
         {
-            // Canvas factor with inactive parents: the first layout runs at menu build with the menu hierarchy inactive,
-            // where Graphic.canvas is null, and the 100 fallback left Valheim's refPpu 50 halving the caps (run
-            // 20261120-145927: ~5 px corners on 30 px chips).
-            var mul = PillPx / Mathf.Max(rim.rectTransform.rect.height, 1f) * Restyler.CanvasPpuFactor(rim);
-            foreach (var img in new[] { fill, rim })
-                if (!Mathf.Approximately(img.pixelsPerUnitMultiplier, mul)) img.pixelsPerUnitMultiplier = mul;
+            FitPill(fill, rim);
             if (rim.color != c) rim.color = c;
             var glass = Hex("#0E2024");
             var f = on ? Color.Lerp(glass, new Color(c.r, c.g, c.b, 1f), 0.1f) : glass;
             if (fill.color != f) fill.color = f;
+        }
+
+        // Caps = half the rect height: multiplier from the live Image.pixelsPerUnit (sprite PPU / the canvas refPpu Unity
+        // meshes with). Only while drawn: the canvas value read at menu build (inactive hierarchy, nested window canvas)
+        // did not match the drawn one (runs 20261120-145927 / -151529: ~5 px corners on 30 px chips either way).
+        private static void FitPill(Image fill, Image rim)
+        {
+            if (!rim.isActiveAndEnabled || !rim.canvas) return;
+            var mul = ChangelogModel.CapMultiplier(PillPx / 2f, rim.rectTransform.rect.height, rim.pixelsPerUnit);
+            if (mul <= 0f) return;
+            foreach (var img in new[] { fill, rim })
+                if (!Mathf.Approximately(img.pixelsPerUnitMultiplier, mul)) img.pixelsPerUnitMultiplier = mul;
+        }
+
+        // Every frame (6 chips + the tags in view, compare-only): the canvas refPpu is only final once the window draws.
+        private void FitPills()
+        {
+            for (var i = 0; i < 6; i++) FitPill(_chipFills[i], _chipRims[i]);
+            for (var i = 0; i < _lines.Used; i++) FitPill(_lines.Items[i].Rule, _lines.Items[i].Rim);
         }
 
         private static void SetRim(Image[] rim, Color c)
