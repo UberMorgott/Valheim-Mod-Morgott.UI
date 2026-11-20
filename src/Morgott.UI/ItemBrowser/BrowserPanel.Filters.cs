@@ -135,7 +135,7 @@ namespace Morgott.UI.ItemBrowser
             _popBlock = Img(g, "FacetBlock", "content", true);
             _popBlock.color = Color.clear;
             OnClick(_popBlock, CloseChip);
-            _popBack = Img(g, "FacetPopup", "ib.square", true);
+            _popBack = Img(g, "FacetPopup", "dropdown.list", true); // the game's opaque dropdown list plate (crafting sort list)
             _popBlock.gameObject.SetActive(false);
             _popBack.gameObject.SetActive(false);
         }
@@ -389,19 +389,24 @@ namespace Morgott.UI.ItemBrowser
         private void LayoutPopup(FacetChip chip, float x, float y)
         {
             FillPopup(chip);
+            // Everything sits inside the plate's rim (its sliced border at the native scale, like the game's dropdown list).
+            var s = _popBack.sprite;
+            var pad = (s ? Mathf.Max(Mathf.Max(s.border.x, s.border.z), Mathf.Max(s.border.y, s.border.w)) / Mathf.Max(_popBack.pixelsPerUnit, 1e-3f) / _k : 0f) + 4f;
             // Rows that fit above the panel's bottom; the box widens to its longest label, at most the panel (then ellipsis).
-            var shown = Mathf.Clamp(Mathf.FloorToInt((_a.H / _k - y - 8f) / PopRowH), 1, Math.Min(PopRows, Math.Max(1, _popItems.Count)));
+            var shown = Mathf.Clamp(Mathf.FloorToInt((_a.H / _k - y - 2f * pad) / PopRowH), 1, Math.Min(PopRows, Math.Max(1, _popItems.Count)));
             _popMax = Math.Max(0, _popItems.Count - shown);
             _popScroll = Mathf.Clamp(_popScroll, 0, _popMax);
             var popW = PopW;
-            foreach (var it in _popItems) popW = Mathf.Max(popW, MeasureF(it.Label, 17f) + (it.Header ? 16f : 78f) + 4f);
+            foreach (var it in _popItems) popW = Mathf.Max(popW, MeasureF(it.Label, 17f) + (it.Header ? 8f : 70f) + 2f * pad);
             popW = Mathf.Min(popW, UnitW);
             x = Mathf.Clamp(x, 0f, UnitW - popW);
             Put(_popBlock, 0f, 0f, UnitW, _a.H / _k);
             _popBlock.transform.SetAsLastSibling();
-            Put(_popBack, x, y, popW, shown * PopRowH + 8f);
-            PlateFit(_popBack, 1.6f);
+            Put(_popBack, x, y, popW, shown * PopRowH + 2f * pad);
             _popBack.transform.SetAsLastSibling();
+            x += pad;
+            y += pad;
+            popW -= 2f * pad;
             while (_popRows.Count < shown) _popRows.Add(NewPopRow(_popRows.Count));
             for (var i = 0; i < _popRows.Count; i++)
             {
@@ -410,17 +415,17 @@ namespace Morgott.UI.ItemBrowser
                 if (i >= shown || at >= _popItems.Count) { Off(r.Back); Off(r.Check); Off(r.Label); Off(r.Count); continue; }
                 var it = _popItems[at];
                 r.Item = at;
-                var ry = y + 4f + i * PopRowH;
-                Put(r.Back, x + 2f, ry, popW - 4f, PopRowH);
+                var ry = y + i * PopRowH;
+                Put(r.Back, x, ry, popW, PopRowH);
                 var on = !it.Header && _fs.Picked.TryGetValue(it.Facet, out var set) && set.Contains(it.Key);
-                if (on) Put(r.Check, x + 7f, ry + 7f, 16f, 16f);
+                if (on) Put(r.Check, x + 3f, ry + 7f, 16f, 16f);
                 else Off(r.Check);
-                Put(r.Label, x + (it.Header ? 8f : 28f), ry, popW - (it.Header ? 16f : 78f), PopRowH);
+                Put(r.Label, x + (it.Header ? 0f : 22f), ry, popW - (it.Header ? 0f : 70f), PopRowH);
                 Fit(r.Label, it.Header ? $"<color=#{Hex("color.text.unavailable", Color.gray)}>{it.Label}</color>" : on ? $"<color=#{Hex("color.text.active", Color.yellow)}>{it.Label}</color>" : it.Label, 17f);
                 if (it.Header) Off(r.Count);
                 else
                 {
-                    Put(r.Count, x + popW - 50f, ry, 42f, PopRowH);
+                    Put(r.Count, x + popW - 42f, ry, 42f, PopRowH);
                     Fit(r.Count, it.Count.ToString(), 16f);
                 }
             }

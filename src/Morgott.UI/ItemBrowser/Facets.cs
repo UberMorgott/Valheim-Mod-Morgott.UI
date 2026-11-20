@@ -133,10 +133,12 @@ namespace Morgott.UI.ItemBrowser
         }
 
         /// <summary>Set facet label: the set effect's name, as the item tooltip shows it (ItemDrop.GetTooltip: m_setStatusEffect
-        /// .m_name); without one, the set id made readable ("SetEffect_LeatherMountain_MP" -> "Leather Mountain").</summary>
-        public static string SetLabel(string effectName, string setName)
+        /// .m_name); without one, or when it has no translation (Localization gives "[key]"), the set id made readable
+        /// ("SetEffect_LeatherMountain_MP" -> "Leather Mountain").</summary>
+        public static string SetLabel(string effectName, string setName, Func<string, string> localize)
         {
-            if (!string.IsNullOrEmpty(effectName)) return effectName;
+            var shown = string.IsNullOrEmpty(effectName) ? null : localize(effectName);
+            if (shown != null && !(shown.StartsWith("[", StringComparison.Ordinal) && shown.EndsWith("]", StringComparison.Ordinal))) return effectName;
             var s = setName.TrimStart('$');
             foreach (var pre in new[] { "SetEffect_", "set_", "Set_" }) if (s.StartsWith(pre, StringComparison.Ordinal)) s = s.Substring(pre.Length);
             foreach (var suf in new[] { "_MP", "_TW", "Set", "_set" }) if (s.Length > suf.Length && s.EndsWith(suf, StringComparison.Ordinal)) s = s.Substring(0, s.Length - suf.Length);

@@ -480,8 +480,9 @@ namespace Morgott.UI.Tests
         [InlineData("", "ChaosT4Set", "Chaos T4")]
         [InlineData(null, "$set_spellslinger_Mistlands_TW", "Spellslinger Mistlands")]
         [InlineData(null, "berserker_armor", "Berserker Armor")]
+        [InlineData("$set_fenrir_thoradus_TW", "$set_fenrir_thoradus_TW", "Fenrir Thoradus")] // no translation: "[key]"
         public void Set_label_is_the_set_effect_name_else_a_readable_id(string effect, string set, string want) =>
-            Assert.Equal(want, StageRules.SetLabel(effect, set));
+            Assert.Equal(want, StageRules.SetLabel(effect, set, k => k == "$se_troll" ? "Тролль" : "[" + k.TrimStart('$') + "]"));
 
         [Theory]
         [InlineData(30f, 15f, 90f, "eitr")]

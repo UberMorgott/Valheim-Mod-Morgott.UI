@@ -192,7 +192,7 @@ namespace Morgott.UI.ItemBrowser
                     break;
                 case ItemCategory.Armor:
                     t.Add("slot", id, type, "$ib_itemtype_" + type);
-                    if (!string.IsNullOrEmpty(s.m_setName)) t.Add("set", id, s.m_setName, StageRules.SetLabel(s.m_setStatusEffect ? s.m_setStatusEffect.m_name : null, s.m_setName));
+                    if (!string.IsNullOrEmpty(s.m_setName)) t.Add("set", id, s.m_setName, StageRules.SetLabel(s.m_setStatusEffect ? s.m_setStatusEffect.m_name : null, s.m_setName, Localization.instance.Localize));
                     if (fact?.LineId != null) t.Add("line", id, fact.LineId, fact.LineNameToken ?? fact.LineId);
                     if (setBiomes.TryGetValue(id, out var biome)) t.Add("tier", id, biome.ToString(), Morgott.UI.MapScreen.MapFilterMath.NameKey(FoundIn.Order[biome]));
                     break;
