@@ -215,7 +215,7 @@ namespace Morgott.UI.ItemBrowser
             ["creature"] = new[] { new FacetChip("$ib_f_kind", "kind"), new FacetChip("$ib_f_habitat", "habitat"), new FacetChip("$ib_f_loot", "loot"), new FacetChip("$ib_f_faction", "faction") },
         };
 
-                /// <summary>Chips of a scope; the "Mod" chip only with devcommands on (user, 2026-11-21: a dev filter).</summary>
+        /// <summary>Chips of a scope; the "Mod" chip only with devcommands on (user, 2026-11-21: a dev filter).</summary>
         public static FacetChip[] ChipsOf(string scope, bool dev = true)
         {
             var all = Chips.TryGetValue(scope, out var c) ? c : Plain;
