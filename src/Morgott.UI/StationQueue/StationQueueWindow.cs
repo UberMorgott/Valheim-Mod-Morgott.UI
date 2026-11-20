@@ -732,7 +732,7 @@ namespace Morgott.UI.StationQueue
             return p;
         }
 
-        private const string HintsName = "Hints", Serif = "font.map.header";
+        private const string HintsName = "Hints", Serif = "font.display"; // 3rd face (Averia) is map-list only (biome-overlay-design.md)
         private const float CloseColumn = 58f, BadgeW = 150f, MultiH = 680f;
         private readonly List<TMP_Text> _serif = new List<TMP_Text>();
 

@@ -591,7 +591,7 @@ namespace Morgott.UI.PreWorld
 
         private void Stamp()
         {
-            var serif = ThemeTokens.GetFont("font.map.header");
+            var serif = ThemeTokens.GetFont("font.display");
             if (serif) foreach (var t in _serif) if (t && t.font != serif) t.font = serif;
             var header = ThemeTokens.GetColor("color.text.header", Hex("#D9DCE0"));
             var title = ThemeTokens.GetColor("color.text.item.title", Hex("#F0C419"));
@@ -789,7 +789,7 @@ namespace Morgott.UI.PreWorld
             foreach (var t in new[] { r.A, r.B })
             {
                 _serif.Add(t);
-                if (ThemeTokens.GetFont("font.map.header") is TMP_FontAsset f) t.font = f;
+                if (ThemeTokens.GetFont("font.display") is TMP_FontAsset f) t.font = f;
             }
             r.Rule = Rule(r.Rt, "Rule", Hex("#3D8290"));
             return r;
