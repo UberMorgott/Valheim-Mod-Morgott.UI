@@ -602,7 +602,9 @@ namespace Morgott.UI.InfoScreens
 
         private void Font(TMP_Text text, float designSize)
         {
-            var size = designSize * _scale;
+            // never under the rendered readable floor: at 1080 _scale drew 16.5 / 17.5 design sub-lines at 14.8 / 15.7 px
+            // (stats-text-min, run 20261113-180637); the rows' sub boxes have the height for it
+            var size = Mathf.Max(designSize * _scale, Readable.Units(text, T("size.text.readable", 16f)));
             if (Mathf.Abs(text.fontSize - size) > 0.05f) text.fontSize = size;
         }
 
@@ -843,7 +845,7 @@ namespace Morgott.UI.InfoScreens
             Font(r.Label, r.Kind == Kind.Name ? T("size.stats.font.name", 20f) : label);
             Font(r.Value, value);
             r.Value.fontSizeMax = value * _scale;
-            r.Value.fontSizeMin = floor * _scale;
+            r.Value.fontSizeMin = Mathf.Min(r.Value.fontSizeMax, Mathf.Max(floor * _scale, Readable.Units(r.Value, T("size.text.readable", 16f))));
             var s = Mathf.Max(_scale, 0.05f);
             var need = r.Value.preferredWidth / s + 8f;
             var valueW = r.Kind == Kind.Wide ? span * 0.66f : r.Kind == Kind.Name ? 1f

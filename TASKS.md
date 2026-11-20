@@ -53,22 +53,28 @@ Finished work: History below (one line per milestone); details in `git log` / ta
       hudroot 5, 10.9; root 5, 7.2; EnchantingUI(Clone) 4, 10, m7; Player 3, 8; ListView 2, 14, info; Panel 2, 14.1, m7;
       Players 2, 8, m6c; one each: AchContainer 9.8, AvailableBountiesPanel 14, BuildHud res_name 15.8, Cost 14.1,
       Description 14, EnemyHud 14, HotKeyBar 12, Inventory_screen 15.3, LoadingGUI 15, RecipeList 14.2, TreasureMap 13.
+      Latest per check (runs 20261107..20261119; m7 / m6c have no text-min line since the Oct purge): status / buff
+      tile names + times 15.8 and stats sub-lines 14.8 / 15.7 floored (fix/text-floor-wave10d). Left, fixed cells /
+      theme tiers (container sizing = layout call): strip keys 13.3 (Hotbar / Potion / Ability Key), food AutoPip 10.5 /
+      14 + Timer 12.2, Health Value 14.8 (floor.text.number.px 14), cell quality 14.6, window title 12.2 (m2 title room
+      rule), RecipeElement name 14.2 / 15 (shrink item below), res_name 10.8-13 (excluded, socket); other mods' texts:
+      CR_AuraLabel 12 / CR_RaidName 14 (Creatures), PA_ChainTree 15.3 (Power).
 - [ ] Shrink-to-fit floor (0.28.4, `<prefix>-shrink-min` gated everywhere): TextInset / crafting Label + FitName /
       item browser / ammo name stop at the rendered 16 px and ellipsize. Exceptions with a shrink below it, by layout:
       plate labels (PlateLabelFit / Restyler.Fit, size.text.fit.min 13: at 16 the pre-world buttons truncated) and crafting
       recipe rows (`CraftingSkin` row name min 12: mockup column width, 20 names per list ellipsized at 16; run
       20261107-021204). Both need container sizing (wider column / two-line plates) before they can take the floor.
-- [ ] Faces outside the two-font theme (`<prefix>-two-fonts`): `HUD/hudroot/HotKeyBar/HotKeyElement(Clone)/binding`
-      Valheim-AveriaSansLibre (m1, m4-m7); `IngameGui/EnemyHud/HudRoot/HudBase(Clone)/Alerted` Valheim-AveriaSerifLibre
-      (m6; EnemyHudSkin.AlertFace applied, awaits a ui-runeskin-m4 run).
+- [ ] Faces outside the two-font theme (`<prefix>-two-fonts`): HotKeyBar binding gone (vanilla bar alpha 0, HudCluster;
+      m4 runs to 20261119-173338 PASS), EnemyHud Alerted gone (AlertFace; m6 20261108-000904 PASS). Open: the mockup
+      serif `font.map.header` (Valheim-AveriaSerifLibre: changelog = m5-two-fonts FAIL run 20261119-173338, map legend
+      headers, station queue title) - harness allow-list it as the approved third face, or drop it (lead / user call).
+      `IngameGui/TextViewer/.../MorgottUI_RuneLayer` Valheim-Rune (m6b) = decorative rune layer, same call.
 
 ### Pre-existing harness FAILs (not re-run since; no current code touches them)
 
 - [ ] m4-bar-caps-1920x1080 / -2560x1440 problems=[bars=Stamina,Health] layout=strip-0.16 (runs 20261026-102357, -171856).
 - [ ] m4-maphint-inset-1920x1080 / -2560x1440 "no large-map UITooltip with text" (run 20261026-171856).
 - [ ] overdraw-map 1920x1080 + 2560x1440 (runs 20261023-161531, 20261026-102357, -171856).
-- [ ] m5-text-min settings stepper value 14.9 px (CommonSettings/InputLayout/GUIStepper/Value/Text; run 20261026-171058,
-      PASS in 20261026-171856).
 - [ ] grid-cells-chest-large-1280x720: container cells past the right edge at the cell floor (runs 20261024-134656 ..
       -175034, layout A).
 
