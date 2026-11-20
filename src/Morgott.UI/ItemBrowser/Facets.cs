@@ -112,15 +112,16 @@ namespace Morgott.UI.ItemBrowser
 
         /// <summary>Tier facet: piece -> biome of its set (one tier of one line), = the latest biome any of its pieces is
         /// obtainable in, so a set sits where its last ingredient drops (user 2026-11-20). No known piece = no value.</summary>
-        public static Dictionary<string, int> SetBiomes(IEnumerable<ItemFact> facts, Func<string, StageInfo> info)
+        public static Dictionary<string, int> SetBiomes(Dictionary<string, ItemFact> members, Func<string, StageInfo> info)
         {
             var sets = new Dictionary<string, List<string>>(StringComparer.Ordinal);
-            foreach (var f in facts)
+            foreach (var kv in members)
             {
+                var f = kv.Value;
                 if (f.LineId == null || f.LineTier < 0) continue;
-                var key = f.LineId + "\n" + f.LineTier;
+                var key = SetKey(f);
                 if (!sets.TryGetValue(key, out var pieces)) sets[key] = pieces = new List<string>();
-                pieces.Add(f.Prefab);
+                pieces.Add(kv.Key);
             }
             var biome = new Dictionary<string, int>(StringComparer.Ordinal);
             foreach (var pieces in sets.Values)
@@ -140,6 +141,60 @@ namespace Morgott.UI.ItemBrowser
             foreach (var f in facts)
                 if (f.LineId != null && setName(f.Prefab) is string s && s.Length > 0 && !d.ContainsKey(s)) d[s] = f;
             return d;
+        }
+
+        /// <summary>Piece -> the line fact of its set: its own, or for armour outside every line (capes, variants) the one of a
+        /// line piece with the same m_setName, so attached pieces count in the set's biome too.</summary>
+        public static Dictionary<string, ItemFact> SetMembers(IEnumerable<ItemFact> facts, IEnumerable<string> prefabs, Func<string, string> setName)
+        {
+            var bySet = LinesBySet(facts, setName);
+            var d = new Dictionary<string, ItemFact>(StringComparer.Ordinal);
+            foreach (var f in facts) if (f.LineId != null) d[f.Prefab] = f;
+            foreach (var p in prefabs)
+                if (!d.ContainsKey(p) && setName(p) is string s && s.Length > 0 && bySet.TryGetValue(s, out var f)) d[p] = f;
+            return d;
+        }
+
+        /// <summary>One set = one tier of one line.</summary>
+        public static string SetKey(ItemFact f) => f.LineId + "#" + f.LineTier;
+
+        /// <summary>Sets sharing line and biome with another set of their line (raider bronze / vigorous_bronze): line x Тир
+        /// cannot tell them apart, so they get their own Комплект entry. Returns their <see cref="SetKey"/>s.</summary>
+        public static HashSet<string> SharedSets(Dictionary<string, ItemFact> members, Dictionary<string, int> biomes)
+        {
+            var groups = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
+            foreach (var kv in members)
+            {
+                if (kv.Value.LineTier < 0 || !biomes.TryGetValue(kv.Key, out var b)) continue;
+                var g = kv.Value.LineId + "\n" + b;
+                if (!groups.TryGetValue(g, out var sets)) groups[g] = sets = new HashSet<string>(StringComparer.Ordinal);
+                sets.Add(SetKey(kv.Value));
+            }
+            var shared = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var sets in groups.Values) if (sets.Count > 1) shared.UnionWith(sets);
+            return shared;
+        }
+
+        /// <summary>Own Комплект entry label: the set effect's name, as the item tooltip shows it (ItemDrop.GetTooltip:
+        /// m_setStatusEffect.m_name); untranslated ("[key]") or none -> the set id made readable ("SetEffect_LeatherMountain_MP"
+        /// -> "Leather Mountain"); no vanilla set at all -> null.</summary>
+        public static string SetLabel(string effectName, string setName, Func<string, string> localize)
+        {
+            var shown = string.IsNullOrEmpty(effectName) ? null : localize(effectName);
+            if (shown != null && !(shown.StartsWith("[", StringComparison.Ordinal) && shown.EndsWith("]", StringComparison.Ordinal))) return effectName;
+            if (string.IsNullOrEmpty(setName)) return null;
+            var s = setName.TrimStart('$');
+            foreach (var pre in new[] { "SetEffect_", "set_", "Set_" }) if (s.StartsWith(pre, StringComparison.Ordinal)) s = s.Substring(pre.Length);
+            foreach (var suf in new[] { "_MP", "_TW", "Set", "_set" }) if (s.Length > suf.Length && s.EndsWith(suf, StringComparison.Ordinal)) s = s.Substring(0, s.Length - suf.Length);
+            var b = new System.Text.StringBuilder(s.Length + 8);
+            for (var i = 0; i < s.Length; i++)
+            {
+                var c = s[i];
+                var gap = c == '_' || i > 0 && char.IsUpper(c) && char.IsLower(s[i - 1]);
+                if (gap && b.Length > 0 && b[b.Length - 1] != ' ') b.Append(' ');
+                if (c != '_') b.Append(b.Length == 0 || b[b.Length - 1] == ' ' ? char.ToUpperInvariant(c) : c);
+            }
+            return b.ToString().TrimEnd();
         }
 
         public static string SourceKey(RelationKind k)

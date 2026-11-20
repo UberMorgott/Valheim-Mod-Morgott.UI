@@ -466,7 +466,7 @@ namespace Morgott.UI.Tests
                 new ItemFact { Prefab = "Unsolved", LineId = "x", LineTier = 0 },
                 new ItemFact { Prefab = "Weapon", Biome = 2 },
             };
-            var b = StageRules.SetBiomes(facts, s.Result);
+            var b = StageRules.SetBiomes(StageRules.SetMembers(facts, new string[0], _ => null), s.Result);
             Assert.Equal(3, b["ArmorWolfChest"]); // Mountain, though tier 0 of its line
             Assert.Equal(3, b["HelmetDrake"]);    // the set aligns to its latest piece
             Assert.Equal(1, b["ArmorTrollLeatherChest"]);
@@ -488,6 +488,49 @@ namespace Morgott.UI.Tests
             Assert.Equal("shadow", d["troll"].LineId); // CapeTrollHide (set "troll", no line fact) lists under shadow
             Assert.Single(d);
         }
+
+        [Fact]
+        public void An_attached_cape_counts_in_its_set_biome()
+        {
+            var s = new StageSolver();
+            s.Add("TrollHide", new StagePath { Kind = "spawn", Base = 2 });
+            s.Add("WolfPelt", new StagePath { Kind = "spawn", Base = 6 });
+            s.Add("ArmorTrollLeatherChest", new StagePath { Kind = "craft" }.Need("TrollHide"));
+            s.Add("CapeTrollHide", new StagePath { Kind = "craft" }.Need("WolfPelt")); // later than its set's line pieces
+            s.Solve();
+            var facts = new[] { new ItemFact { Prefab = "ArmorTrollLeatherChest", LineId = "shadow", LineTier = 0 } };
+            var set = new Dictionary<string, string> { ["ArmorTrollLeatherChest"] = "troll", ["CapeTrollHide"] = "troll" };
+            var m = StageRules.SetMembers(facts, new[] { "ArmorTrollLeatherChest", "CapeTrollHide", "SwordIron" }, p => set.TryGetValue(p, out var n) ? n : null);
+            Assert.Equal("shadow", m["CapeTrollHide"].LineId);
+            Assert.False(m.ContainsKey("SwordIron"));
+            var b = StageRules.SetBiomes(m, s.Result);
+            Assert.Equal(3, b["ArmorTrollLeatherChest"]); // the cape raises the whole set
+            Assert.Equal(3, b["CapeTrollHide"]);
+        }
+
+        [Fact]
+        public void Sets_sharing_line_and_biome_get_their_own_entry()
+        {
+            var m = new Dictionary<string, ItemFact>
+            {
+                ["HelmetBronze"] = new ItemFact { Prefab = "HelmetBronze", LineId = "raider", LineTier = 0 },
+                ["ArmorBronzeChest"] = new ItemFact { Prefab = "ArmorBronzeChest", LineId = "raider", LineTier = 0 },
+                ["HelmetVigorous"] = new ItemFact { Prefab = "HelmetVigorous", LineId = "raider", LineTier = 1 },
+                ["HelmetIron"] = new ItemFact { Prefab = "HelmetIron", LineId = "raider", LineTier = 2 },
+                ["HelmetTroll"] = new ItemFact { Prefab = "HelmetTroll", LineId = "shadow", LineTier = 0 },
+            };
+            var biomes = new Dictionary<string, int> { ["HelmetBronze"] = 1, ["ArmorBronzeChest"] = 1, ["HelmetVigorous"] = 1, ["HelmetIron"] = 2, ["HelmetTroll"] = 1 };
+            var shared = StageRules.SharedSets(m, biomes);
+            Assert.Equal(new[] { "raider#0", "raider#1" }, shared.OrderBy(k => k, System.StringComparer.Ordinal));
+        }
+
+        [Theory]
+        [InlineData("$se_troll", "$set_troll", "$se_troll")]
+        [InlineData("$set_fenrir_thoradus_TW", "$set_fenrir_thoradus_TW", "Fenrir Thoradus")] // no translation: "[key]"
+        [InlineData(null, "SetEffect_LeatherMountain_MP", "Leather Mountain")]
+        [InlineData(null, null, null)]
+        public void Set_label_is_the_set_effect_name_else_a_readable_id(string effect, string set, string want) =>
+            Assert.Equal(want, StageRules.SetLabel(effect, set, k => k == "$se_troll" ? "Тролль" : "[" + k.TrimStart('$') + "]"));
 
         [Theory]
         [InlineData(30f, 15f, 90f, "eitr")]

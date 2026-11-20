@@ -372,7 +372,7 @@ namespace Morgott.UI.ItemBrowser
                     if (kv.Key != Facet.NoneKey) rows.Add(new PopItem { Facet = id, Key = kv.Key, Label = ValueLabel(id, kv.Key), Count = kv.Value });
                 rows.Sort((a, b) => id == "duration" || id == "tier" || id == "level" ? string.CompareOrdinal(a.Key, b.Key) : StringComparer.CurrentCultureIgnoreCase.Compare(a.Label, b.Label));
                 if (rows.Count == 0) continue;
-                if (_popItems.Count > 0) _popItems.Add(new PopItem { Header = true, Label = L("$ib_f_" + id) }); // the chip names the first section
+                if (id != chip.Facets[0]) _popItems.Add(new PopItem { Header = true, Label = L("$ib_f_" + id) }); // the chip names its own first facet
                 _popItems.AddRange(rows);
                 if (counts.TryGetValue(Facet.NoneKey, out var none)) _popItems.Add(new PopItem { Facet = id, Key = Facet.NoneKey, Label = L("$ib_f_none"), Count = none });
             }
@@ -400,7 +400,7 @@ namespace Morgott.UI.ItemBrowser
             FillPopup(chip);
             // Everything sits inside the plate's rim (its sliced border at the native scale, like the game's dropdown list).
             var s = _popBack.sprite;
-            var pad = (s ? Mathf.Max(Mathf.Max(s.border.x, s.border.z), Mathf.Max(s.border.y, s.border.w)) / Mathf.Max(_popBack.pixelsPerUnit, 1e-3f) / _k : 0f) + 4f;
+            var pad = (s ? Mathf.Max(Mathf.Max(s.border.x, s.border.z), Mathf.Max(s.border.y, s.border.w)) / Mathf.Max(_popBack.pixelsPerUnit * _popBack.pixelsPerUnitMultiplier, 1e-3f) / _k : 0f) + 4f;
             // Rows that fit above the panel's bottom; the box widens to its longest label, at most the panel (then ellipsis).
             var shown = Mathf.Clamp(Mathf.FloorToInt((_a.H / _k - y - 2f * pad) / PopRowH), 1, Math.Min(PopRows, Math.Max(1, _popItems.Count)));
             _popMax = Math.Max(0, _popItems.Count - shown);
