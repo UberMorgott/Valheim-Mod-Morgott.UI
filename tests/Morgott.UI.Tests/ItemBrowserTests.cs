@@ -544,6 +544,17 @@ namespace Morgott.UI.Tests
 
         // Run 20261108-193552: "[enemy_deerwhite]", DvergerTest, "EL:loottable:Tier3Mob" without a name / icon.
         [Fact]
+        public void Translated_token_beats_a_literal_container_name()
+        {
+            string Loc(string t) => t == "$piece_chest" ? "Сундук" : t == "$enemy_hive" ? "[enemy_hive]" : t;
+            Assert.Equal("$piece_chest", SourceNames.BestName("Chest", new[] { "Chest", "$piece_chest" }, Loc, "Readable"));
+            Assert.Equal("Chest", SourceNames.BestName("Chest", new string[] { null, "Chest" }, Loc, "Readable"));       // no token: the literal stays
+            Assert.Equal("Hive", SourceNames.BestName("$enemy_hive", new[] { "$enemy_hive", "Hive" }, Loc, "Readable")); // untranslated token
+            Assert.Equal("Readable", SourceNames.BestName("$enemy_hive", new[] { "$enemy_hive" }, Loc, "Readable"));
+            Assert.Equal("$piece_chest", SourceNames.BestName("$piece_chest", new[] { "Chest" }, Loc, "Readable"));
+        }
+
+        [Fact]
         public void Untranslated_tokens_dev_prefabs_and_tier_mob_tables()
         {
             string Loc(string t) => t == "$enemy_hive" ? "[enemy_hive]" : t == "$enemy_troll" ? "Troll" : t;

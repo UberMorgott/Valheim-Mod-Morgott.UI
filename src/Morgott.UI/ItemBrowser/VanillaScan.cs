@@ -78,10 +78,14 @@ namespace Morgott.UI.ItemBrowser
         // else its readable prefab name. Tokens vanilla never defines get a curated word in our Translations (enemy_deerwhite).
         private static void ResolveName(GameObject go)
         {
-            if (!_ix.Entries.TryGetValue(go.name, out var e) || SourceNames.Translated(e.Name, Browser.Localize)) return;
+            if (!_ix.Entries.TryGetValue(go.name, out var e)) return;
+            e.Name = SourceNames.BestName(e.Name, Names(go), Browser.Localize, SourceNames.Readable(go.name));
+        }
+
+        private static IEnumerable<string> Names(GameObject go)
+        {
             foreach (var c in go.GetComponents<Component>())
-            {
-                var token = c switch
+                yield return c switch
                 {
                     Character ch => ch.m_name,
                     Piece p => p.m_name,
@@ -94,9 +98,6 @@ namespace Morgott.UI.ItemBrowser
                     Plant pl => pl.m_name,
                     _ => null
                 };
-                if (SourceNames.Translated(token, Browser.Localize)) { e.Name = token; return; }
-            }
-            e.Name = SourceNames.Readable(go.name);
         }
 
         private static void Gear(GameObject[] items)

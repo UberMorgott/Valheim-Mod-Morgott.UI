@@ -42,6 +42,21 @@ namespace Morgott.UI.ItemBrowser
         public static bool Translated(string token, Func<string, string> localize) =>
             !string.IsNullOrEmpty(token) && localize(token) is string s && s.Length > 0 && s[0] != '[';
 
+        /// <summary>Display name of an entry: a translated $token beats plain text (a mod container's literal "Chest" in
+        /// Container.m_name hid its Piece's token: English in every language), plain text beats the readable prefab name.</summary>
+        public static string BestName(string current, IEnumerable<string> candidates, Func<string, string> localize, string readable)
+        {
+            bool Token(string s) => s != null && s.StartsWith("$", StringComparison.Ordinal) && Translated(s, localize);
+            if (Token(current)) return current;
+            var plain = !string.IsNullOrEmpty(current) && current[0] != '$' ? current : null;
+            foreach (var c in candidates)
+            {
+                if (Token(c)) return c;
+                if (plain == null && !string.IsNullOrEmpty(c) && c[0] != '$') plain = c;
+            }
+            return plain ?? readable;
+        }
+
         public static bool EpicLootPseudo(string id) =>
             id != null && (id.StartsWith(LootTablePrefix, StringComparison.Ordinal) || id.StartsWith(ItemSetPrefix, StringComparison.Ordinal));
 
