@@ -30,6 +30,8 @@ Finished work: History below (one line per milestone); details in `git log` / ta
   separately selectable; Тир / Слот filters narrow them (per-set entries tried 2026-11-20, rejected: raw/duplicate names).
 - [x] 0.40.14 (next wave): "Used in" no longer empty under its header on trophies: rows taller than the page view (incinerator
   any-one-of ~50 trophies) split into rows that fit (`PageModel.SplitByLines`); run 20261120-184239 PASS.
+- [x] 0.40.15 (next wave): ItemDrawers text patch dropped (drawer mod localizes itself); run 20261120-184430 PASS (RU).
+  Release note: requires ItemDrawers-Fork >= 1.4.4-morgott.1 (which requires Core >= 0.26.0) in the same publish, else drawer texts show in English.
 - Note: without Morgott.Power the armour Комплект / Тир facets are empty (line facts come from Power); not handled,
   Power always ships in the pack (Codex review 2026-11-20, lead: skip).
 
