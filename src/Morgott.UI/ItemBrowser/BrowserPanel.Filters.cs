@@ -372,7 +372,7 @@ namespace Morgott.UI.ItemBrowser
                     if (kv.Key != Facet.NoneKey) rows.Add(new PopItem { Facet = id, Key = kv.Key, Label = ValueLabel(id, kv.Key), Count = kv.Value });
                 rows.Sort((a, b) => id == "duration" || id == "tier" || id == "level" ? string.CompareOrdinal(a.Key, b.Key) : StringComparer.CurrentCultureIgnoreCase.Compare(a.Label, b.Label));
                 if (rows.Count == 0) continue;
-                if (chip.Facets.Length > 1) _popItems.Add(new PopItem { Header = true, Label = L("$ib_f_" + id) });
+                if (_popItems.Count > 0) _popItems.Add(new PopItem { Header = true, Label = L("$ib_f_" + id) }); // the chip names the first section
                 _popItems.AddRange(rows);
                 if (counts.TryGetValue(Facet.NoneKey, out var none)) _popItems.Add(new PopItem { Facet = id, Key = Facet.NoneKey, Label = L("$ib_f_none"), Count = none });
             }

@@ -474,15 +474,20 @@ namespace Morgott.UI.Tests
             Assert.False(b.ContainsKey("Weapon"));
         }
 
-        [Theory]
-        [InlineData("$se_troll", "troll_armor", "$se_troll")]
-        [InlineData(null, "SetEffect_LeatherMountain_MP", "Leather Mountain")]
-        [InlineData("", "ChaosT4Set", "Chaos T4")]
-        [InlineData(null, "$set_spellslinger_Mistlands_TW", "Spellslinger Mistlands")]
-        [InlineData(null, "berserker_armor", "Berserker Armor")]
-        [InlineData("$set_fenrir_thoradus_TW", "$set_fenrir_thoradus_TW", "Fenrir Thoradus")] // no translation: "[key]"
-        public void Set_label_is_the_set_effect_name_else_a_readable_id(string effect, string set, string want) =>
-            Assert.Equal(want, StageRules.SetLabel(effect, set, k => k == "$se_troll" ? "Тролль" : "[" + k.TrimStart('$') + "]"));
+        [Fact]
+        public void Armour_outside_a_line_joins_the_line_of_its_vanilla_set()
+        {
+            var facts = new[]
+            {
+                new ItemFact { Prefab = "ArmorTrollLeatherChest", LineId = "shadow", LineTier = 0 },
+                new ItemFact { Prefab = "HelmetTrollLeather", LineId = "shadow", LineTier = 0 },
+                new ItemFact { Prefab = "SwordIron", Biome = 2 },
+            };
+            var set = new Dictionary<string, string> { ["ArmorTrollLeatherChest"] = "troll", ["HelmetTrollLeather"] = "troll", ["SwordIron"] = "" };
+            var d = StageRules.LinesBySet(facts, p => set.TryGetValue(p, out var s) ? s : null);
+            Assert.Equal("shadow", d["troll"].LineId); // CapeTrollHide (set "troll", no line fact) lists under shadow
+            Assert.Single(d);
+        }
 
         [Theory]
         [InlineData(30f, 15f, 90f, "eitr")]
@@ -501,7 +506,7 @@ namespace Morgott.UI.Tests
                 Assert.InRange(chips.Length, 1, 4);
             }
             Assert.Contains(FacetTable.ChipsOf("weapons"), c => c.Facets.Contains("grip"));
-            Assert.Contains(FacetTable.ChipsOf("armor"), c => c.Facets.Contains("set") && c.Facets.Contains("mod"));
+            Assert.Contains(FacetTable.ChipsOf("armor"), c => c.Token == "$ib_f_set" && c.Facets[0] == "line" && c.Facets.Contains("mod") && !c.Facets.Contains("set"));
         }
 
         [Fact]

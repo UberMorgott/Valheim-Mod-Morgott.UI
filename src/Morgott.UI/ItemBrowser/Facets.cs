@@ -132,25 +132,14 @@ namespace Morgott.UI.ItemBrowser
             return biome;
         }
 
-        /// <summary>Set facet label: the set effect's name, as the item tooltip shows it (ItemDrop.GetTooltip: m_setStatusEffect
-        /// .m_name); without one, or when it has no translation (Localization gives "[key]"), the set id made readable
-        /// ("SetEffect_LeatherMountain_MP" -> "Leather Mountain").</summary>
-        public static string SetLabel(string effectName, string setName, Func<string, string> localize)
+        /// <summary>Комплект facet for armour outside every line (capes, variants): the line of a line piece with the same
+        /// vanilla set (m_setName), so the whole set lists under its line. Set name -> that piece's fact.</summary>
+        public static Dictionary<string, ItemFact> LinesBySet(IEnumerable<ItemFact> facts, Func<string, string> setName)
         {
-            var shown = string.IsNullOrEmpty(effectName) ? null : localize(effectName);
-            if (shown != null && !(shown.StartsWith("[", StringComparison.Ordinal) && shown.EndsWith("]", StringComparison.Ordinal))) return effectName;
-            var s = setName.TrimStart('$');
-            foreach (var pre in new[] { "SetEffect_", "set_", "Set_" }) if (s.StartsWith(pre, StringComparison.Ordinal)) s = s.Substring(pre.Length);
-            foreach (var suf in new[] { "_MP", "_TW", "Set", "_set" }) if (s.Length > suf.Length && s.EndsWith(suf, StringComparison.Ordinal)) s = s.Substring(0, s.Length - suf.Length);
-            var b = new System.Text.StringBuilder(s.Length + 8);
-            for (var i = 0; i < s.Length; i++)
-            {
-                var c = s[i];
-                var gap = c == '_' || i > 0 && char.IsUpper(c) && char.IsLower(s[i - 1]);
-                if (gap && b.Length > 0 && b[b.Length - 1] != ' ') b.Append(' ');
-                if (c != '_') b.Append(b.Length == 0 || b[b.Length - 1] == ' ' ? char.ToUpperInvariant(c) : c);
-            }
-            return b.ToString().TrimEnd();
+            var d = new Dictionary<string, ItemFact>(StringComparer.Ordinal);
+            foreach (var f in facts)
+                if (f.LineId != null && setName(f.Prefab) is string s && s.Length > 0 && !d.ContainsKey(s)) d[s] = f;
+            return d;
         }
 
         public static string SourceKey(RelationKind k)
@@ -194,7 +183,7 @@ namespace Morgott.UI.ItemBrowser
         private static readonly Dictionary<string, FacetChip[]> Chips = new Dictionary<string, FacetChip[]>(StringComparer.Ordinal)
         {
             ["weapons"] = new[] { new FacetChip("$ib_f_class", "class", "grip"), new FacetChip("$ib_f_damage", "damage"), new FacetChip("$ib_f_source", "source"), Mod },
-            ["armor"] = new[] { new FacetChip("$ib_f_set", "line", "set", "mod"), new FacetChip("$ib_f_slot", "slot"), new FacetChip("$ib_f_tier", "tier") },
+            ["armor"] = new[] { new FacetChip("$ib_f_set", "line", "mod"), new FacetChip("$ib_f_slot", "slot"), new FacetChip("$ib_f_tier", "tier") },
             ["utility"] = new[] { new FacetChip("$ib_f_type", "type"), Mod },
             ["ammo"] = new[] { new FacetChip("$ib_f_type", "type"), Mod },
             ["tools"] = new[] { new FacetChip("$ib_f_type", "type"), new FacetChip("$ib_f_level", "level"), Mod },
