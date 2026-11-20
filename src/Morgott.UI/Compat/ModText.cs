@@ -9,7 +9,7 @@ using HarmonyLib;
 
 namespace Morgott.UI.Compat
 {
-    // Hardcoded English HUD / hover / message texts of RossItemDrawers, PlantEasily and ValheimPlus in the game language (ModWords),
+    // Hardcoded English HUD / hover / message texts of PlantEasily and ValheimPlus in the game language (ModWords),
     // the same way as BuildCameraText: every listed literal in the mod's assemblies is followed by a call to Tr. And
     // PlantEverything's own "$pe*" words: it adds them in English only (PluginInitUtils.InitLocalization, from its
     // ZNetScene.Awake patch), over the ones Jotunn already added from Russian.json, so they are added again after it.
@@ -22,15 +22,8 @@ namespace Morgott.UI.Compat
         internal static void Register(ConfigFile config, Harmony harmony)
         {
             if (!config.Bind("Compat", "ModText", true,
-                    "Translate the hardcoded English texts of RossItemDrawers, PlantEasily, ValheimPlus and PlantEverything into the game language. " +
+                    "Translate the hardcoded English texts of PlantEasily, ValheimPlus and PlantEverything into the game language. " +
                     "Does nothing without them.").Value) return;
-            if (Loaded(ModCompat.ItemDrawersGuid) is Assembly drawers)
-            {
-                Patch(harmony, drawers);
-                // Refusal messages (DrawerOutcome.Refused reasons) live in its pure logic assembly.
-                if (Type.GetType("ItemDrawers.Core.DrawerOutcome, ItemDrawers.Core") is Type outcome) Patch(harmony, outcome.Assembly);
-                else Plugin.Log.LogWarning("[Compat] ItemDrawers.Core not found; drawer refusal messages stay English.");
-            }
             if (Loaded(ModCompat.PlantEasilyGuid) is Assembly easily) Patch(harmony, easily);
             if (Loaded(ModCompat.ValheimPlusGuid) is Assembly plus) Patch(harmony, plus);
             if (Loaded(ModCompat.PlantEverythingGuid) is Assembly everything)

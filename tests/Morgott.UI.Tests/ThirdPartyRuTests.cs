@@ -8,7 +8,7 @@ using Xunit;
 namespace Morgott.UI.Tests
 {
     // Russian for third-party texts that ship English only (Jotunn's version-compat dialog, PlantEverything) or are
-    // hardcoded (ModWords: RossItemDrawers, PlantEasily, ValheimPlus).
+    // hardcoded (ModWords: PlantEasily, ValheimPlus).
     public class ThirdPartyRuTests
     {
         private static Dictionary<string, string> Load(string language)
