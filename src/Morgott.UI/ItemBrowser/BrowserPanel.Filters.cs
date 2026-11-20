@@ -39,7 +39,7 @@ namespace Morgott.UI.ItemBrowser
         private Button _reset, _layoutBtn;
         private TMP_Text _resetLabel, _fm, _pageWhy;
         private CanvasGroup _resetFade;
-        private Image _layoutGrid, _layoutList, _popBack, _popBlock;
+        private Image _layoutGrid, _layoutList, _popBack, _popBlock, _popFill;
         private readonly Pool<Head> _heads = new Pool<Head>();
         private readonly Pool<Image> _rowRules = new Pool<Image>();
         private readonly List<PopRow> _popRows = new List<PopRow>();
@@ -135,7 +135,15 @@ namespace Morgott.UI.ItemBrowser
             _popBlock = Img(g, "FacetBlock", "content", true);
             _popBlock.color = Color.clear;
             OnClick(_popBlock, CloseChip);
-            _popBack = Img(g, "FacetPopup", "dropdown.list", true); // the game's opaque dropdown list plate (crafting sort list)
+            // Solid fill under the list plate: the plate let ~5 % of the list rows through (run 20261120-170547: row text
+            // 227 -> 17 over the 7,16,23 plate); same opaque backing as InfoPage.Backing.
+            _popFill = Img(g, "FacetPopupFill", "content");
+            _popFill.preserveAspect = false;
+            var fill = ThemeTokens.GetColor("color.info.page.bg", new Color(0f, 0.086f, 0.11f, 1f));
+            fill.a = 1f;
+            _popFill.color = fill;
+            _popBack = Img(g, "FacetPopup", "dropdown.list", true); // the game's dropdown list plate (crafting sort list)
+            _popFill.gameObject.SetActive(false);
             _popBlock.gameObject.SetActive(false);
             _popBack.gameObject.SetActive(false);
         }
@@ -154,6 +162,7 @@ namespace Morgott.UI.ItemBrowser
             Off(_reset);
             Off(_layoutBtn);
             Off(_popBlock);
+            Off(_popFill);
             Off(_popBack);
             _heads.Used = _rowRules.Used = 0;
             RestList();
@@ -341,7 +350,7 @@ namespace Morgott.UI.ItemBrowser
             Fit(_resetLabel, "×", 20f);
             _resetFade.alpha = _fs.Any ? 1f : 0.45f;
             if (_chipOpen >= 0 && _chipOpen < defs.Length) LayoutPopup(defs[_chipOpen], _chips[_chipOpen].X, y + ChipH + 3f);
-            else { Off(_popBlock); Off(_popBack); }
+            else { Off(_popBlock); Off(_popFill); Off(_popBack); }
         }
 
         // ---------------------------------------------------------------- dropdown
@@ -402,6 +411,8 @@ namespace Morgott.UI.ItemBrowser
             x = Mathf.Clamp(x, 0f, UnitW - popW);
             Put(_popBlock, 0f, 0f, UnitW, _a.H / _k);
             _popBlock.transform.SetAsLastSibling();
+            Put(_popFill, x + pad - 4f, y + pad - 4f, popW - 2f * pad + 8f, shown * PopRowH + 8f); // inside the rim: the corners stay the plate's
+            _popFill.transform.SetAsLastSibling();
             Put(_popBack, x, y, popW, shown * PopRowH + 2f * pad);
             _popBack.transform.SetAsLastSibling();
             x += pad;
@@ -495,6 +506,7 @@ namespace Morgott.UI.ItemBrowser
             if (_chipOpen >= 0) // cells built this pass must stay under the open dropdown
             {
                 _popBlock.transform.SetAsLastSibling();
+                _popFill.transform.SetAsLastSibling();
                 _popBack.transform.SetAsLastSibling();
             }
             if (_gridScrollMax > 0)
