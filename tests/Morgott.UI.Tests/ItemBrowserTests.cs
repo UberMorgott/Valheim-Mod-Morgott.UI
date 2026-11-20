@@ -362,6 +362,16 @@ namespace Morgott.UI.Tests
             Assert.Equal(0, PageModel.MaxFirst(new float[0], 10f));
         }
 
+        [Fact]
+        public void Long_conditions_wrap_at_word_bounds()
+        {
+            float M(string s) => s.Length; // one unit per char
+            Assert.Equal(new[] { "Any creature", "killed in", "this biome" }, PageModel.Wrap("Any creature killed in  this biome", 12f, M));
+            Assert.Equal(new[] { "short" }, PageModel.Wrap("short", 12f, M));
+            Assert.Equal(new[] { "a", "Averyverylongword", "b" }, PageModel.Wrap("a Averyverylongword b", 5f, M)); // own line, never split
+            Assert.Empty(PageModel.Wrap("", 5f, M));
+        }
+
         [Theory]
         [InlineData(true, false, true)]   // KnownOnly on: filtered
         [InlineData(true, true, false)]   // devcommands overrides KnownOnly

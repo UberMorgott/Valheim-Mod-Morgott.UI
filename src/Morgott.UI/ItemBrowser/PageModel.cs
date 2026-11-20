@@ -173,6 +173,22 @@ namespace Morgott.UI.ItemBrowser
         // lines = input lines as laid out (the panel flows chips at rendered widths); 0 = two per line.
         public static float Height(PageRow row, bool used, int lines = 0) => (used ? UsedRowH : RowH) + LineH * ((lines > 0 ? lines : row.Lines) - 1);
 
+        /// <summary>Word wrap at rendered widths: a row's conditions too long for its chance box ("any creature killed in
+        /// this biome...") read in full under the row instead of an ellipsis. A word wider than the span keeps its own line.</summary>
+        public static List<string> Wrap(string text, float width, Func<string, float> measure)
+        {
+            var lines = new List<string>();
+            var line = "";
+            foreach (var word in text.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                var next = line.Length == 0 ? word : line + " " + word;
+                if (line.Length > 0 && measure(next) > width) { lines.Add(line); next = word; }
+                line = next;
+            }
+            if (line.Length > 0) lines.Add(line);
+            return lines;
+        }
+
         /// <summary>Materials of a recipe row (Ctrl take): prefab, amount, quality (the upgrade base at quality - 1).</summary>
         public static List<(string Prefab, int Amount, int Quality)> Materials(PageRow row)
         {
