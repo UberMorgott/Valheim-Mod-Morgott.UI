@@ -78,8 +78,8 @@ namespace Morgott.UI.PreWorld
         private readonly Image[][] _presetRims = new Image[3][];
         private readonly TMP_Text[] _presetLabels = new TMP_Text[3];
         private readonly Button[] _chips = new Button[6];
-        private readonly Image[][] _chipRims = new Image[6][];
-        private readonly Image[] _chipFills = new Image[6];
+        private readonly Image[] _chipRims = new Image[6], _chipFills = new Image[6];
+        private Image _rune;
         private readonly TMP_Text[] _chipLabels = new TMP_Text[6], _chipCounts = new TMP_Text[6], _chipDots = new TMP_Text[6];
         private readonly Pool _modHeads = new Pool(), _lines = new Pool();
         private readonly List<ModRow> _modRows = new List<ModRow>();
@@ -88,8 +88,8 @@ namespace Morgott.UI.PreWorld
         {
             public RectTransform Rt;
             public TMP_Text A, B;
-            public Image Tag, Rule;
-            public Image[] Rim;
+            public RectTransform Tag;
+            public Image Rule, Rim;
         }
 
         private sealed class Pool
@@ -234,6 +234,13 @@ namespace Morgott.UI.PreWorld
 
             _root = NewRect(RootName, _window);
             Stretch(_root, -PadX, -PadT, -PadX, -PadB); // root = the drawn frame (layout units)
+            // Mockup 4a: soft vertical dark gradient over the inner glass (window rect), under everything of ours.
+            var shade = new GameObject("Shade", typeof(RectTransform)).AddComponent<Image>();
+            shade.rectTransform.SetParent(_root, false);
+            Stretch(shade.rectTransform, PadX, PadT, PadX, PadB);
+            shade.sprite = Shade;
+            shade.raycastTarget = false;
+            DollCell.Mark(shade, "content", "changelog glass gradient");
             // Below the close button (ChangelogClose adds it as the last sibling); the button in the frame band right of the
             // title, labelled "× Close (Esc)" (mockup).
             if (_window.Find(ChangelogClose.ButtonName) is RectTransform close)
@@ -264,6 +271,14 @@ namespace Morgott.UI.PreWorld
             Put(_tabPack, -330f, 74f, 320f, 52f, 0.5f);
             Put(_tabGame, 10f, 74f, 320f, 52f, 0.5f);
             _underline = Rule(_root, "TabUnderline", Hex("#4FE0E6"));
+            // Mockup 2a: cyan rune left of the selected tab label (placed in Stamp).
+            _rune = new GameObject("TabRune", typeof(RectTransform)).AddComponent<Image>();
+            _rune.rectTransform.SetParent(_root, false);
+            _rune.sprite = _runeSprite ? _runeSprite : _runeSprite = Art("Morgott.UI.ChangelogRune.png", Vector4.zero);
+            _rune.preserveAspect = true;
+            _rune.raycastTarget = false;
+            _rune.color = Hex("#4FE0E6");
+            DollCell.Mark(_rune, "content", "changelog selected tab rune");
             Band(Rule(_root, "TabRule", Hex("#2395B7")), 28f, 28f, 140f, 1f);
 
             _pack = NewRect("Pack", _root);
@@ -322,14 +337,13 @@ namespace Morgott.UI.PreWorld
             for (var i = 0; i < 6; i++)
             {
                 var n = i;
-                // Mockup chip: dark glass pill (field plate), thin rim in the type colour, coloured dot, light label,
-                // count in the type colour.
-                _chips[i] = Btn(p, "Type" + i, "field", out _chipLabels[i], () => { _filter.Types[n] = !_filter.Types[n]; _scroll = 0; _dirty = true; });
-                _chipRims[i] = Rim(_chips[i].transform);
+                // Mockup chip (1b / 3a): pill with a rim in the type colour over a dark tint of it, coloured dot, white
+                // label, count in the type colour.
+                _chips[i] = Btn(p, "Type" + i, null, out _chipLabels[i], () => { _filter.Types[n] = !_filter.Types[n]; _scroll = 0; _dirty = true; });
+                (_chipFills[i], _chipRims[i]) = Pill(_chips[i].transform);
                 _chipLabels[i].alignment = TextAlignmentOptions.Left;
                 _chipLabels[i].text = L("$ui_changelog_type_" + ChangelogModel.Types[i]);
                 _chipLabels[i].fontSize = 20f;
-                _chipFills[i] = Fill(_chips[i].transform);
                 Stretch(_chipLabels[i].rectTransform, 38f, 0f, 76f, 0f);
                 _chipDots[i] = Txt(_chips[i].transform, "Dot", "text.body", TextAlignmentOptions.Center, 18f);
                 _chipDots[i].text = "●";
@@ -541,8 +555,7 @@ namespace Morgott.UI.PreWorld
             {
                 var on = _filter.Types[i];
                 var c = TypeColor(i);
-                SetRim(_chipRims[i], on ? c : new Color(Muted.r, Muted.g, Muted.b, 0.5f));
-                _chipFills[i].color = on ? new Color(c.r, c.g, c.b, 0.22f) : Color.clear; // style sheet: active chip ~25% accent
+                TintPill(_chipFills[i], _chipRims[i], on ? c : new Color(Muted.r, Muted.g, Muted.b, 0.5f), on);
                 _chipDots[i].color = on ? c : Muted;
                 _chipLabels[i].color = on ? Body : Muted;
                 _chipCounts[i].text = _view.TypeCounts[i].ToString();
@@ -595,6 +608,13 @@ namespace Morgott.UI.PreWorld
             // Selected tab: gold rim (mockup tabs-c glass + rune).
             SetRim(_tabRims[0], _gameTab ? Color.clear : Gold);
             SetRim(_tabRims[1], _gameTab ? Gold : Color.clear);
+            // Rune + label centred as a pair (mockup 2a): the selected label moves right by half the rune slot.
+            const float RuneW = 18f, RuneGap = 8f;
+            var sel = _gameTab ? _tabGameLabel : _tabPackLabel;
+            Stretch(sel.rectTransform, 4f + RuneW + RuneGap, 0f, 4f, 0f);
+            Stretch((_gameTab ? _tabPackLabel : _tabGameLabel).rectTransform, 4f, 0f, 4f, 0f);
+            var mid = (_gameTab ? 10f : -330f) + 160f + (RuneW + RuneGap) / 2f;
+            Put(_rune, mid - sel.GetPreferredValues(sel.text).x / 2f - RuneGap - RuneW, 88f, RuneW, 24f, 0.5f);
         }
 
         private int ModVisible => Mathf.Max(1, Mathf.FloorToInt(_modList.rect.height / ModRowH));
@@ -733,8 +753,6 @@ namespace Morgott.UI.PreWorld
             }
             var l = Next(_lines, NewLineRow);
             var col = TypeColor(e.Type);
-            SetRim(l.Rim, col);
-            l.Rule.color = new Color(col.r, col.g, col.b, 0.18f); // style sheet: accent text on accent @ 0.18
             l.B.color = col;
             l.B.text = L("$ui_changelog_type_" + ChangelogModel.Types[e.Type]);
             var tagW = Mathf.Min(TagCol, l.B.GetPreferredValues(l.B.text).x + 28f);
@@ -744,6 +762,7 @@ namespace Morgott.UI.PreWorld
             var h = Mathf.Max(LineH, l.A.GetPreferredValues(l.A.text, textW, 0f).y + 12f);
             Put(l.Rt, 0f, y, listW, h);
             Put(l.Tag, 4f, 5f, tagW, TagH);
+            TintPill(l.Rule, l.Rim, col, true);
             Put(l.B, 4f, 5f, tagW, TagH);
             Put(l.A, textX, 6f, textW, h - 6f);
             return h;
@@ -778,9 +797,8 @@ namespace Morgott.UI.PreWorld
         private Row NewLineRow(int n)
         {
             var r = new Row { Rt = NewRect("Line" + n, _list) };
-            r.Tag = Img(r.Rt, "Tag", "field");
-            r.Rim = Rim(r.Tag.transform);
-            r.Rule = Fill(r.Tag.transform); // tag fill (Rule slot unused on line rows)
+            r.Tag = NewRect("Tag", r.Rt);
+            (r.Rule, r.Rim) = Pill(r.Tag); // Rule slot = tag fill on line rows
             r.B = Txt(r.Rt, "B", "text.body", TextAlignmentOptions.Center, 19f);
             r.B.color = Body;
             r.A = Txt(r.Rt, "A", "text.body", TextAlignmentOptions.TopLeft, 22f);
@@ -833,6 +851,67 @@ namespace Morgott.UI.PreWorld
             img.raycastTarget = false;
             DollCell.Mark(img, "content", "changelog chip / tag fill");
             return img;
+        }
+
+        // Changelog art (Codex, docs\mockups\2026-11-20-changelog-art, embedded): white pill rim + its fill mask, 48 px
+        // tall, caps = half the height (9-slice); rune glyph; the glass gradient is a generated alpha ramp.
+        private const float PillPx = 48f;
+        private static Sprite _pillRim, _pillFill, _runeSprite, _shade;
+
+        private static Sprite Art(string resource, Vector4 border)
+        {
+            var tex = Icons.ModStatusIcons.LoadEmbedded(resource, resource);
+            return tex ? Sprite.Create(tex, new Rect(0f, 0f, tex.width, tex.height), new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect, border) : null;
+        }
+
+        // Clear at the top, black 0.2 at the bottom (mockup 4a: ~8 % darker at the bottom, no edge vignette).
+        private static Sprite Shade
+        {
+            get
+            {
+                if (_shade) return _shade;
+                var tex = new Texture2D(1, 32, TextureFormat.RGBA32, false) { name = "UI_ChangelogShade", wrapMode = TextureWrapMode.Clamp };
+                for (var y = 0; y < 32; y++) tex.SetPixel(0, y, new Color(0f, 0f, 0f, 0.2f * (1f - y / 31f)));
+                tex.Apply(false, true);
+                return _shade = Sprite.Create(tex, new Rect(0f, 0f, 1f, 32f), new Vector2(0.5f, 0.5f), 100f);
+            }
+        }
+
+        // Pill over the whole host: fill under the rim, both under the host's other children; tinted in TintPill.
+        private static (Image fill, Image rim) Pill(Transform host)
+        {
+            if (!_pillRim) _pillRim = Art("Morgott.UI.ChangelogPill.png", Vector4.one * (PillPx / 2f));
+            if (!_pillFill) _pillFill = Art("Morgott.UI.ChangelogPillFill.png", Vector4.one * (PillPx / 2f));
+            var rim = PillPart(host, "PillRim", _pillRim);
+            var fill = PillPart(host, "PillFill", _pillFill);
+            return (fill, rim);
+        }
+
+        private static Image PillPart(Transform host, string name, Sprite sprite)
+        {
+            var img = new GameObject(name, typeof(RectTransform)).AddComponent<Image>();
+            img.rectTransform.SetParent(host, false);
+            img.rectTransform.SetSiblingIndex(0);
+            Stretch(img.rectTransform, 0f, 0f, 0f, 0f);
+            img.sprite = sprite;
+            img.type = Image.Type.Sliced;
+            img.color = Color.clear;
+            img.raycastTarget = false;
+            DollCell.Mark(img, "content", "changelog pill " + name);
+            return img;
+        }
+
+        // Rim in the colour, fill a dark tint of it when on (mockup 3a: dark plates keep the coloured text readable).
+        // Caps stay round at any height: the multiplier maps the 48 px sprite onto the rect height.
+        private static void TintPill(Image fill, Image rim, Color c, bool on)
+        {
+            var refPpu = rim.canvas ? rim.canvas.referencePixelsPerUnit : 100f;
+            var mul = PillPx / Mathf.Max(rim.rectTransform.rect.height, 1f) * refPpu / 100f;
+            foreach (var img in new[] { fill, rim })
+                if (!Mathf.Approximately(img.pixelsPerUnitMultiplier, mul)) img.pixelsPerUnitMultiplier = mul;
+            if (rim.color != c) rim.color = c;
+            var f = on ? new Color(c.r * 0.28f, c.g * 0.28f, c.b * 0.28f, 0.92f) : Color.clear;
+            if (fill.color != f) fill.color = f;
         }
 
         private static void SetRim(Image[] rim, Color c)
@@ -950,9 +1029,15 @@ namespace Morgott.UI.PreWorld
             return t;
         }
 
+        // role null: clear hit plate (own art drawn inside, e.g. the type pills).
         private static Button Btn(Transform parent, string name, string role, out TMP_Text label, Action click)
         {
-            var image = InfoArt.OwnImage(parent, name, role, "changelog button " + name);
+            var image = role != null ? InfoArt.OwnImage(parent, name, role, "changelog button " + name) : NewRect(name, parent).gameObject.AddComponent<Image>();
+            if (role == null)
+            {
+                image.color = Color.clear;
+                DollCell.Mark(image, "content", "changelog button hit area " + name);
+            }
             image.preserveAspect = false;
             image.raycastTarget = true;
             var b = image.gameObject.AddComponent<Button>();
@@ -960,7 +1045,7 @@ namespace Morgott.UI.PreWorld
             b.navigation = new Navigation { mode = Navigation.Mode.None };
             b.onClick.AddListener(() => click());
             // Styled after the Button exists: the role's sprite states go on its targetGraphic (BrowserPanel.Btn).
-            if (image.GetComponent<SkinMark>() is SkinMark m) m.Outcome = Restyler.Apply(image, m, ThemeTokens.Role(role)) ? Outcome.Styled : Outcome.Degraded;
+            if (role != null && image.GetComponent<SkinMark>() is SkinMark m) m.Outcome = Restyler.Apply(image, m, ThemeTokens.Role(role)) ? Outcome.Styled : Outcome.Degraded;
             label = Txt(image.transform, "Label", "text.body", TextAlignmentOptions.Center, 18f);
             Stretch(label.rectTransform, 4f, 0f, 4f, 0f);
             return b;

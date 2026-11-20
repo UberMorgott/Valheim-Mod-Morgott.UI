@@ -33,6 +33,11 @@
     <EmbeddedResource Include="Assets\MapBossIcon.png" LogicalName="Morgott.UI.MapBossIcon.png" />
     <EmbeddedResource Include="Assets\PortalPencil.png" LogicalName="Morgott.UI.PortalPencil.png" />
     <EmbeddedResource Include="Assets\PortalCustomColor.png" LogicalName="Morgott.UI.PortalCustomColor.png" />
+    <!-- Changelog window art (Codex, mockups docs\mockups\2026-11-20-changelog-art): white pill rim + its fill mask
+         (9-slice, tinted per type), selected-tab rune. -->
+    <EmbeddedResource Include="Assets\ChangelogPill.png" LogicalName="Morgott.UI.ChangelogPill.png" />
+    <EmbeddedResource Include="Assets\ChangelogPillFill.png" LogicalName="Morgott.UI.ChangelogPillFill.png" />
+    <EmbeddedResource Include="Assets\ChangelogRune.png" LogicalName="Morgott.UI.ChangelogRune.png" />
     <!-- Portal style icons, Core PortalStyle ids 1..32 (tools\portalatlas packs Assets\PortalIcons\NN_name.png). -->
     <EmbeddedResource Include="Assets\PortalIcons.png" LogicalName="Morgott.UI.PortalIcons.png" />
   </ItemGroup>
