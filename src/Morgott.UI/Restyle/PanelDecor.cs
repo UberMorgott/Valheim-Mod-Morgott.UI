@@ -304,6 +304,18 @@ namespace Morgott.UI.Restyle
             return Mathf.Max(H(_corners[0]) + H(_corners[2]), H(_corners[1]) + H(_corners[3]));
         }
 
+        // "clear.<asset>" theme token of a cap sprite, built once per sprite: ContentInset runs every frame (crafting column,
+        // tooltips) and Sprite.name + the concat allocated per corner per call. Sprites are never renamed.
+        private static readonly Dictionary<Sprite, string> ClearTokens = new Dictionary<Sprite, string>();
+
+        private static string ClearToken(Sprite s)
+        {
+            if (ClearTokens.TryGetValue(s, out var token)) return token;
+            var name = s.name;
+            if (ClearTokens.Count > 256) ClearTokens.Clear(); // dead sprites of reloaded themes
+            return ClearTokens[s] = "clear." + (name.EndsWith("(Clone)", System.StringComparison.Ordinal) ? name.Substring(0, name.Length - 7) : name);
+        }
+
         private float CapClearance(float pad)
         {
             var inset = 0f;
@@ -312,8 +324,7 @@ namespace Morgott.UI.Restyle
             {
                 if (!corner || !corner.TryGetComponent<Image>(out var image) || !image.enabled || !image.sprite) continue;
                 var s = image.sprite;
-                var asset = s.name.EndsWith("(Clone)", System.StringComparison.Ordinal) ? s.name.Substring(0, s.name.Length - 7) : s.name;
-                inset = Mathf.Max(inset, PanelMath.CapInset(ThemeTokens.GetFloat("clear." + asset, 0f), s.pixelsPerUnit, pad));
+                inset = Mathf.Max(inset, PanelMath.CapInset(ThemeTokens.GetFloat(ClearToken(s), 0f), s.pixelsPerUnit, pad));
             }
             return inset;
         }

@@ -133,7 +133,7 @@ namespace Morgott.UI.PlayerHud
                     {
                         ItemType = (int)it.m_shared.m_itemType,
                         AmmoType = it.m_shared.m_ammoType,
-                        Prefab = it.m_dropPrefab ? it.m_dropPrefab.name : it.m_shared.m_name,
+                        Prefab = it.m_dropPrefab ? Morgott.UI.Restyle.NameCache.Of(it.m_dropPrefab) : it.m_shared.m_name, // 4x/s: cached name
                         GridX = it.m_gridPos.x,
                         GridY = it.m_gridPos.y,
                         Stack = it.m_stack
@@ -219,8 +219,8 @@ namespace Morgott.UI.PlayerHud
             var theme = _theme != ThemeTokens.Revision;
             if (theme) Layout();
             var empty = ammo == null;
-            var label = Localization.instance != null ? Localization.instance.Localize(empty ? weapon.m_shared.m_ammoType : ammo.m_shared.m_name) : "";
-            var count = AmmoMath.CountText(total);
+            // cached localizer: this runs on every refresh tick, the "same" check below needs the label
+            var label = Localization.instance != null ? Words.Get(empty ? weapon.m_shared.m_ammoType : ammo.m_shared.m_name) : "";
             var same = !theme && ReferenceEquals(weapon, _weapon) && ReferenceEquals(ammo, _ammo) && empty == _empty && total == _total &&
                        loaded == _loaded && capacity == _capacity && label == _nameText;
             if (same) return;
@@ -242,6 +242,7 @@ namespace Morgott.UI.PlayerHud
             var inert = ThemeTokens.GetColor("color.hud.inert", Color.gray);
             if (_nameText != label) _name.text = _nameText = label;
             _name.color = empty ? inert : ThemeTokens.GetColor("color.hud.text", Color.white);
+            var count = AmmoMath.CountText(total);
             if (_countText != count) _count.text = _countText = count;
             _count.color = empty ? inert : ThemeTokens.GetColor("color.text.accent", Color.cyan);
             Readout();

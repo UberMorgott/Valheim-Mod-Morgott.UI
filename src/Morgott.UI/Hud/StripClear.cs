@@ -164,8 +164,10 @@ namespace Morgott.UI.PlayerHud
             var want = e.Flush ? StripClearMath.Flush(home, _stripTop, gap) : StripClearMath.Lift(home, left, right, _stripTop, _stripLeft, _stripRight, gap);
             if (under != null) want = Mathf.Max(want, StripClearMath.Lift(home, left, right, under.Top, under.Left, under.Right, gap));
             if (clearStatus)
-                foreach (var s in new[] { _statusA, _statusB })
-                    if (s.height >= 1f) want = Mathf.Max(want, StripClearMath.Lift(home, left, right, s.yMax, s.xMin, s.xMax, gap));
+            {
+                if (_statusA.height >= 1f) want = Mathf.Max(want, StripClearMath.Lift(home, left, right, _statusA.yMax, _statusA.xMin, _statusA.xMax, gap));
+                if (_statusB.height >= 1f) want = Mathf.Max(want, StripClearMath.Lift(home, left, right, _statusB.yMax, _statusB.xMin, _statusB.xMax, gap));
+            }
             e.Top = StripClearMath.BottomAtHome(top, e.LiftPx) + want;
             e.Left = left;
             e.Right = right;

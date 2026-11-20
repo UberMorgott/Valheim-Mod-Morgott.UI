@@ -39,7 +39,8 @@ namespace Morgott.UI.CraftingScreen
         // 0.25 s: HaveRequirements also counts ValheimPlus CraftFromChest chests), vanilla's m_multiCraftAmount to restore.
         // _want = the player's pick; _amount = _want clamped to the live max each layout. A dip of the max (a chest not
         // counted for a moment, another recipe) must not overwrite the pick (2026-11-13: amount 2 crafted 1).
-        private int _amount = 1, _want = 1, _max = 1, _vanillaMulti;
+        private int _amount = 1, _want = 1, _max = 1, _vanillaMulti, _amountWritten = -1;
+        private string _amountShown;
         private bool _amountOwned;
         private Recipe _maxRecipe;
         private float _maxAt;
@@ -1004,7 +1005,7 @@ namespace Morgott.UI.CraftingScreen
             Geo.Place(_canvas, _netBox.rectTransform, new Box(row.X, row.Y, side, side));
             var gap = side * 0.4f;
             Geo.Place(_canvas, _netLabel.rectTransform, new Box(row.X + side + gap, row.Y, Mathf.Max(0f, row.W - side - gap), side));
-            var text = Localization.instance.Localize("$ui_craft_network");
+            var text = Words.Get("$ui_craft_network");
             if (_netLabel.text != text) _netLabel.text = text;
             Label(_netLabel, TextAlignmentOptions.Left, ThemeTokens.GetFloat("size.craft.font.tab", 18f) * _in.Scale);
             var station = Station();
@@ -1014,13 +1015,15 @@ namespace Morgott.UI.CraftingScreen
             StockChanged(); // other stations' chests joined / left: chain verdicts of the cells are stale (also a remote toggle)
         }
 
+        private static readonly RowFit NoRow = new RowFit(); // read only: no row, no arrows
+
         private void Categories(CraftingLayout o)
         {
             var filter = Filter();
             if (!filter)
             {
-                _catArrows.Show(_canvas, new RowFit());
-                _subArrows.Show(_canvas, new RowFit());
+                _catArrows.Show(_canvas, NoRow);
+                _subArrows.Show(_canvas, NoRow);
                 return;
             }
             var tabsRoot = filter.Find("Tabs") as RectTransform;
@@ -1658,6 +1661,13 @@ namespace Morgott.UI.CraftingScreen
                 Mathf.Abs(was.W - w) < 0.1f && Mathf.Abs(was.H - h) < 0.1f && Mathf.Abs(was.Max - max) < 0.01f) return;
             _nameFit[n] = new NameFitState { Text = text, W = w, H = h, Max = max };
             if (string.IsNullOrEmpty(text) || w <= 1f || h <= 1f) return;
+            MeasureName(n, text, w, h, max);
+        }
+
+        // Own method: its measuring lambda captures n / text, and a closure over FitName's locals was allocated on every
+        // call (each cell, each frame), the unchanged early return included.
+        private static void MeasureName(TMP_Text n, string text, float w, float h, float max)
+        {
             var min = Readable.ShrinkFloor(n, max);
             if (n.enableAutoSizing) n.enableAutoSizing = false;
             var unit = Mathf.Max(0.01f, n.fontSize);
@@ -1767,6 +1777,8 @@ namespace Morgott.UI.CraftingScreen
         // with the theme outline. Cancel: the vanilla m_craftCancelButton itself, moved beside the bar and plated like the
         // craft button (role craft.button); its onClick stays vanilla's OnCraftCancelPressed (:2008).
         private int _stateRevision = -1;
+        private string _stateWord, _stateText;
+        private (int, int) _stateKey;
 
         private void ProgressCue(CraftRow r)
         {
@@ -1821,8 +1833,17 @@ namespace Morgott.UI.CraftingScreen
 
                 if (Localization.instance.textMeshStrings.TryGetValue(state, out var token))
                 {
-                    var want = Localization.instance.Localize(token) + (_queue.Running ? " " + _queue.Step : _gui.m_multiCrafting ? " x " + _gui.m_multiCraftAmount : "");
-                    if (state.text != want) state.text = want;
+                    // Rebuilt only when its parts change (the concat + Localize allocated every frame).
+                    // suffix key: queue step (done, total), else the vanilla multi-craft amount, else none
+                    var key = _queue.Running ? (_queue.Done, _queue.Total) : _gui.m_multiCrafting ? (-1, _gui.m_multiCraftAmount) : (-2, 0);
+                    var word = Words.Get(token);
+                    if (!ReferenceEquals(word, _stateWord) || key != _stateKey || _stateText == null)
+                    {
+                        _stateWord = word;
+                        _stateKey = key;
+                        _stateText = word + (_queue.Running ? " " + _queue.Step : key.Item1 == -1 ? " x " + key.Item2 : "");
+                    }
+                    if (state.text != _stateText) state.text = _stateText;
                 }
             }
             var cancel = _gui.m_craftCancelButton;
@@ -1832,7 +1853,7 @@ namespace Morgott.UI.CraftingScreen
             if (!cancelLabel) return;
             if (!cancelLabel.gameObject.activeSelf) cancelLabel.gameObject.SetActive(true);
             if (!cancelLabel.enabled) cancelLabel.enabled = true;
-            var cancelText = Localization.instance.Localize("$menu_cancel");
+            var cancelText = Words.Get("$menu_cancel");
             if (cancelLabel.text != cancelText) cancelLabel.text = cancelText;
             if (cancelLabel.raycastTarget) cancelLabel.raycastTarget = false;
             SameFace(cancelLabel);
@@ -1894,9 +1915,11 @@ namespace Morgott.UI.CraftingScreen
 
         private void ShowAmount(bool on)
         {
-            foreach (var go in new[] { _minus ? _minus.gameObject : null, _plus ? _plus.gameObject : null, _amountField ? _amountField.gameObject : null })
-                if (go && go.activeSelf != on) go.SetActive(on);
+            if (_minus) Shown(_minus, on);
+            if (_plus) Shown(_plus, on);
+            if (_amountField) Shown(_amountField, on);
         }
+
 
         private void StepGlyph(Button b, Box box, float side)
         {
@@ -1928,8 +1951,14 @@ namespace Morgott.UI.CraftingScreen
             }
             if (!_amountField.isFocused)
             {
-                var s = _amount.ToString(System.Globalization.CultureInfo.InvariantCulture);
-                if (_amountField.text != s) _amountField.SetTextWithoutNotify(s);
+                // formatted only when the amount or the field text changed (ToString allocated every frame)
+                if (_amount != _amountWritten || !ReferenceEquals(_amountField.text, _amountShown))
+                {
+                    _amountWritten = _amount;
+                    var s = _amount.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                    if (_amountField.text != s) _amountField.SetTextWithoutNotify(s);
+                    _amountShown = _amountField.text;
+                }
             }
         }
 

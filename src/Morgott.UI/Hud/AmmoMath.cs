@@ -71,8 +71,11 @@ namespace Morgott.UI.PlayerHud
             if (items == null || selected < 0 || selected >= items.Count) return 0;
             var s = items[selected];
             var total = 0;
-            foreach (var c in items)
+            for (var i = 0; i < items.Count; i++) // indexed: foreach over IList boxed the List enumerator (4x/s)
+            {
+                var c = items[i];
                 if (c.Prefab == s.Prefab && c.AmmoType == s.AmmoType) total += Math.Max(0, c.Stack);
+            }
             return total;
         }
 
