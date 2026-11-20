@@ -844,12 +844,12 @@ namespace Morgott.UI.InfoScreens
             var floor = T("size.stats.font.min", 16f);
             Font(r.Label, r.Kind == Kind.Name ? T("size.stats.font.name", 20f) : label);
             Font(r.Value, value);
-            r.Value.fontSizeMax = value * _scale;
+            r.Value.fontSizeMax = r.Value.fontSize; // Font() already raised it to the readable floor
             r.Value.fontSizeMin = Mathf.Min(r.Value.fontSizeMax, Mathf.Max(floor * _scale, Readable.Units(r.Value, T("size.text.readable", 16f))));
             var s = Mathf.Max(_scale, 0.05f);
             var need = r.Value.preferredWidth / s + 8f;
             var valueW = r.Kind == Kind.Wide ? span * 0.66f : r.Kind == Kind.Name ? 1f
-                : StatsMath.ValueColumn(span, r.Label.preferredWidth / s, need, 6f, 36f, 0.72f, floor / value);
+                : StatsMath.ValueColumn(span, r.Label.preferredWidth / s, need, 6f, 36f, 0.72f, r.Value.fontSizeMin / r.Value.fontSizeMax);
             r.Value.enableAutoSizing = r.Kind == Kind.Wide || need > valueW + 0.5f;
             Place(r.Label.rectTransform, D(textX, b.Y, right - textX - valueW - 6f, lineH));
             Place(r.Value.rectTransform, D(right - valueW, b.Y, valueW, lineH));

@@ -922,8 +922,8 @@ namespace Morgott.UI.PreWorld
             if (!rim.isActiveAndEnabled || !rim.canvas) return;
             var mul = ChangelogModel.CapMultiplier(PillPx / 2f, rim.rectTransform.rect.height, rim.pixelsPerUnit);
             if (mul <= 0f) return;
-            foreach (var img in new[] { fill, rim })
-                if (!Mathf.Approximately(img.pixelsPerUnitMultiplier, mul)) img.pixelsPerUnitMultiplier = mul;
+            if (!Mathf.Approximately(fill.pixelsPerUnitMultiplier, mul)) fill.pixelsPerUnitMultiplier = mul;
+            if (!Mathf.Approximately(rim.pixelsPerUnitMultiplier, mul)) rim.pixelsPerUnitMultiplier = mul;
         }
 
         // Every frame (6 chips + the tags in view, compare-only): the canvas refPpu is only final once the window draws.
