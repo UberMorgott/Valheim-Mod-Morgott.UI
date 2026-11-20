@@ -237,7 +237,8 @@ namespace Morgott.UI.PreWorld
             // Mockup 4a: soft vertical dark gradient over the inner glass (window rect), under everything of ours.
             var shade = new GameObject("Shade", typeof(RectTransform)).AddComponent<Image>();
             shade.rectTransform.SetParent(_root, false);
-            Stretch(shade.rectTransform, PadX, PadT, PadX, PadB);
+            var glass = PadX + ThemeTokens.GetFloat("size.panel.glass.inset", 11.5f); // inside the glass: no straight edge over the frame (Codex, run 20261120-145927)
+            Stretch(shade.rectTransform, glass, PadT, glass, PadB + glass - PadX);
             shade.sprite = Shade;
             shade.raycastTarget = false;
             DollCell.Mark(shade, "content", "changelog glass gradient");
@@ -609,12 +610,12 @@ namespace Morgott.UI.PreWorld
             SetRim(_tabRims[0], _gameTab ? Color.clear : Gold);
             SetRim(_tabRims[1], _gameTab ? Gold : Color.clear);
             // Rune + label centred as a pair (mockup 2a): the selected label moves right by half the rune slot.
-            const float RuneW = 18f, RuneGap = 8f;
+            const float RuneW = 15f, RuneGap = 8f; // Codex: 18 x 24 read ~4 px larger than mockup 2a
             var sel = _gameTab ? _tabGameLabel : _tabPackLabel;
             Stretch(sel.rectTransform, 4f + RuneW + RuneGap, 0f, 4f, 0f);
             Stretch((_gameTab ? _tabPackLabel : _tabGameLabel).rectTransform, 4f, 0f, 4f, 0f);
             var mid = (_gameTab ? 10f : -330f) + 160f + (RuneW + RuneGap) / 2f;
-            Put(_rune, mid - sel.GetPreferredValues(sel.text).x / 2f - RuneGap - RuneW, 88f, RuneW, 24f, 0.5f);
+            Put(_rune, mid - sel.GetPreferredValues(sel.text).x / 2f - RuneGap - RuneW, 90f, RuneW, 20f, 0.5f);
         }
 
         private int ModVisible => Mathf.Max(1, Mathf.FloorToInt(_modList.rect.height / ModRowH));
@@ -864,14 +865,14 @@ namespace Morgott.UI.PreWorld
             return tex ? Sprite.Create(tex, new Rect(0f, 0f, tex.width, tex.height), new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect, border) : null;
         }
 
-        // Clear at the top, black 0.2 at the bottom (mockup 4a: ~8 % darker at the bottom, no edge vignette).
+        // Clear at the top, black 0.14 at the bottom (mockup 4a: ~8 % darker at the bottom, no edge vignette; 0.2 read darker).
         private static Sprite Shade
         {
             get
             {
                 if (_shade) return _shade;
                 var tex = new Texture2D(1, 32, TextureFormat.RGBA32, false) { name = "UI_ChangelogShade", wrapMode = TextureWrapMode.Clamp };
-                for (var y = 0; y < 32; y++) tex.SetPixel(0, y, new Color(0f, 0f, 0f, 0.2f * (1f - y / 31f)));
+                for (var y = 0; y < 32; y++) tex.SetPixel(0, y, new Color(0f, 0f, 0f, 0.14f * (1f - y / 31f)));
                 tex.Apply(false, true);
                 return _shade = Sprite.Create(tex, new Rect(0f, 0f, 1f, 32f), new Vector2(0.5f, 0.5f), 100f);
             }
@@ -901,16 +902,21 @@ namespace Morgott.UI.PreWorld
             return img;
         }
 
-        // Rim in the colour, fill a dark tint of it when on (mockup 3a: dark plates keep the coloured text readable).
-        // Caps stay round at any height: the multiplier maps the 48 px sprite onto the rect height.
+        // Rim in the colour over opaque dark glass, tinted 10 % towards the colour when on (mockup 3a fills sampled: e.g. red
+        // 36,30,34 / cyan 12,44,50 on glass 14,32,36; the former colour x 0.28 read warm and saturated, Codex 6/10).
+        // Caps stay round at any height: the multiplier maps the 48 px sprite onto the rect height (sprite px drawn as
+        // refPpu / (100 x multiplier) units, Restyler.CanvasPpuFactor).
         private static void TintPill(Image fill, Image rim, Color c, bool on)
         {
-            var refPpu = rim.canvas ? rim.canvas.referencePixelsPerUnit : 100f;
-            var mul = PillPx / Mathf.Max(rim.rectTransform.rect.height, 1f) * refPpu / 100f;
+            // Canvas factor with inactive parents: the first layout runs at menu build with the menu hierarchy inactive,
+            // where Graphic.canvas is null, and the 100 fallback left Valheim's refPpu 50 halving the caps (run
+            // 20261120-145927: ~5 px corners on 30 px chips).
+            var mul = PillPx / Mathf.Max(rim.rectTransform.rect.height, 1f) * Restyler.CanvasPpuFactor(rim);
             foreach (var img in new[] { fill, rim })
                 if (!Mathf.Approximately(img.pixelsPerUnitMultiplier, mul)) img.pixelsPerUnitMultiplier = mul;
             if (rim.color != c) rim.color = c;
-            var f = on ? new Color(c.r * 0.28f, c.g * 0.28f, c.b * 0.28f, 0.92f) : Color.clear;
+            var glass = Hex("#0E2024");
+            var f = on ? Color.Lerp(glass, new Color(c.r, c.g, c.b, 1f), 0.1f) : glass;
             if (fill.color != f) fill.color = f;
         }
 
