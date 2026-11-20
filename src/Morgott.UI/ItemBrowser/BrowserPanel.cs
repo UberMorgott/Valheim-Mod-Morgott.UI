@@ -1366,10 +1366,8 @@ namespace Morgott.UI.ItemBrowser
             var parts = new List<string>();
             if (used && r.R.Kind == RelationKind.Grow) parts.Add(L("$ib_kind_grow")); // the page's creature / sapling grows into the row's
             if (o.Prefab != null && !(o.Min == 1 && o.Max == 1)) parts.Add("x" + Amount(o));
-            if (float.IsNaN(o.Chance)) parts.Add(L("$ib_weighted"));
-            else if (o.Chance < 1f) parts.Add($"{L("$ib_chance")} {o.Chance * 100f:0.#}%");
-            if (cond && r.R.Conditions != null) parts.Add(L(r.R.Conditions));
-            return string.Join("  ", parts);
+            var chance = float.IsNaN(o.Chance) ? L("$ib_weighted") : o.Chance < 1f ? $"{L("$ib_chance")} {o.Chance * 100f:0.#}%" : null;
+            return PageModel.JoinChance(parts, chance, cond && r.R.Conditions != null ? L(r.R.Conditions) : null);
         }
     }
 }

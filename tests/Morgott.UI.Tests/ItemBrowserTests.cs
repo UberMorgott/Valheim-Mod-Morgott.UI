@@ -58,6 +58,15 @@ namespace Morgott.UI.Tests
         private static string Mod(string guid) => guid == "morgott.hearthcraft" ? "Hearthcraft" : null;
 
         [Fact]
+        public void ChanceConditionReadsAsOnePhrase()
+        {
+            Assert.Equal("Chance 3.3% per kill", PageModel.JoinChance(new List<string>(), "Chance 3.3%", "per kill"));
+            Assert.Equal("x1-2  Chance 50%", PageModel.JoinChance(new List<string> { "x1-2" }, "Chance 50%", null));
+            Assert.Equal("x2  night", PageModel.JoinChance(new List<string> { "x2" }, null, "night"));
+            Assert.Equal("", PageModel.JoinChance(new List<string>(), null, null));
+        }
+
+        [Fact]
         public void EqualRelationIsDeduped()
         {
             var ix = Sample();

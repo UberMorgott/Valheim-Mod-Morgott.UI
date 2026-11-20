@@ -125,6 +125,15 @@ namespace Morgott.UI.ItemBrowser
         }
 
         /// <summary>Source row label: "Grows from: calf" for a Growup source, the readable prefab tag when names collide.</summary>
+        /// <summary>Source row tail: parts two spaces apart; a condition reads with the chance before it, one space
+        /// ("Chance 3.3% per kill", mockup 2026-11-21-gems-tab).</summary>
+        public static string JoinChance(List<string> parts, string chance, string condition)
+        {
+            if (chance != null && condition != null) parts.Add(chance + " " + condition);
+            else if ((chance ?? condition) != null) parts.Add(chance ?? condition);
+            return string.Join("  ", parts);
+        }
+
         public static string SourceLabel(PageRow r, string name, string growsFrom)
         {
             if (r.Tag != null) name = $"{name} ({r.Tag})";
