@@ -58,37 +58,46 @@ namespace Morgott.UI.StationQueue
             return string.Join(Separator, list);
         }
 
-        // Card text: "50 × Fine wood" / "Wood — ∞" / until template ({0} item, {1} condition item, {2} comparator, {3} threshold).
-        public static string CardText(StationQueueEntry e, string item, string cond, string untilTemplate)
+        // Card text: "50 × Fine wood" / "Wood — ∞" / until template ({0} item, {1} condition item, {2} comparator, {3} threshold)
+        // / keep-in-stock count ({0} item, {1} its output, {2} target).
+        public static string CardText(StationQueueEntry e, string item, string cond, string untilTemplate, string keepTemplate = null, string output = null)
         {
             switch (e.Mode)
             {
-                case StationQueueMode.Count: return Group(e.Target) + " × " + item;
+                case StationQueueMode.Count: return e.Keep && keepTemplate != null ? Format(keepTemplate, item, output, Group(e.Target)) : Group(e.Target) + " × " + item;
                 case StationQueueMode.Infinite: return item + " — ∞";
                 default: return Format(untilTemplate, item, cond, CompareText(e.Compare), Group(e.Threshold));
             }
         }
 
         // Editor summary line: count {0} item {1} target; infinite {0} item; until {0} item {1} condition {2} comparator
-        // {3} threshold {4} current network count of the condition item.
-        public static string Summary(StationQueueEntry e, string item, string cond, int current, string countTemplate, string infiniteTemplate, string untilTemplate)
+        // {3} threshold {4} current count of the condition item (network + pending); keep-in-stock count {0} item {1} its
+        // output (passed as cond) {2} target {3} current (passed as current); keep until = the until line + keepTail.
+        public static string Summary(StationQueueEntry e, string item, string cond, int current, string countTemplate, string infiniteTemplate, string untilTemplate,
+            string keepTemplate = null, string keepTail = null)
         {
             switch (e.Mode)
             {
-                case StationQueueMode.Count: return Format(countTemplate, item, Group(e.Target));
+                case StationQueueMode.Count:
+                    return e.Keep && keepTemplate != null ? Format(keepTemplate, item, cond, Group(e.Target), Group(current)) : Format(countTemplate, item, Group(e.Target));
                 case StationQueueMode.Infinite: return Format(infiniteTemplate, item);
-                default: return Format(untilTemplate, item, cond, CompareText(e.Compare), Group(e.Threshold), Group(current));
+                default:
+                    return Format(untilTemplate, item, cond, CompareText(e.Compare), Group(e.Threshold), Group(current)) + (e.Keep && !string.IsNullOrEmpty(keepTail) ? " " + keepTail : "");
             }
         }
 
-        // The first entry runs; its card shows the cyan rim + progress while the station works or waits for input.
-        public static bool IsActive(int index, StationQueueStatus status) =>
-            index == 0 && (status == StationQueueStatus.Working || status == StationQueueStatus.Waiting);
+        // Keep in stock means something for count / until entries (infinite never ends anyway).
+        public static bool CanKeep(StationQueueMode mode) => mode != StationQueueMode.Infinite;
 
-        // Progress bar share: count mode = fed / target, else the item being processed now.
-        public static float Share(StationQueueEntry e, float progress)
+        // The running entry (provider's Active: resting keep entries are skipped) shows the cyan rim + progress while the
+        // station works or waits for input.
+        public static bool IsActive(int index, int active, StationQueueStatus status) =>
+            index == active && (status == StationQueueStatus.Working || status == StationQueueStatus.Waiting);
+
+        // Progress bar share: count mode = fed / target (keep: stock / target), else the item being processed now.
+        public static float Share(StationQueueEntry e, float progress, int stock = 0)
         {
-            var share = e.Mode == StationQueueMode.Count && e.Target > 0 ? (float)e.Fed / e.Target : progress;
+            var share = e.Mode == StationQueueMode.Count && e.Target > 0 ? (float)(e.Keep ? stock : e.Fed) / e.Target : progress;
             return share < 0f ? 0f : share > 1f ? 1f : share;
         }
 

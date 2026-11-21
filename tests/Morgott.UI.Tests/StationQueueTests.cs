@@ -74,12 +74,40 @@ namespace Morgott.UI.Tests
         public void RussianPlural(int n, string want) => Assert.Equal(want, StationQueueMath.Plural(n, "сундук", "сундука", "сундуков"));
 
         [Fact]
-        public void ActiveOnlyFirstWhileRunning()
+        public void ActiveIsTheProvidersEntryWhileRunning()
         {
-            Assert.True(StationQueueMath.IsActive(0, StationQueueStatus.Working));
-            Assert.True(StationQueueMath.IsActive(0, StationQueueStatus.Waiting));
-            Assert.False(StationQueueMath.IsActive(0, StationQueueStatus.Paused));
-            Assert.False(StationQueueMath.IsActive(1, StationQueueStatus.Working));
+            Assert.True(StationQueueMath.IsActive(0, 0, StationQueueStatus.Working));
+            Assert.True(StationQueueMath.IsActive(0, 0, StationQueueStatus.Waiting));
+            Assert.False(StationQueueMath.IsActive(0, 0, StationQueueStatus.Paused));
+            Assert.False(StationQueueMath.IsActive(1, 0, StationQueueStatus.Working));
+            Assert.True(StationQueueMath.IsActive(1, 1, StationQueueStatus.Working)); // a resting keep entry above it
+            Assert.False(StationQueueMath.IsActive(0, -1, StationQueueStatus.Working)); // all resting
+        }
+
+        [Fact]
+        public void KeepInStockTexts()
+        {
+            var e = StationQueueMath.NewEntry("Wood", StationQueueMode.Count, "Coal");
+            e.Target = 1;
+            e.Keep = true;
+            Assert.Equal("Древесина — держать\n1 × Уголь в запасе", StationQueueMath.CardText(e, "Древесина", "Уголь", Until, "{0} — держать\n{2} × {1} в запасе", "Уголь"));
+            Assert.Equal("1 × Древесина", StationQueueMath.CardText(e, "Древесина", "Уголь", Until)); // no keep template: plain count
+            Assert.Equal("Древесина: Уголь < 1 (3)", StationQueueMath.Summary(e, "Древесина", "Уголь", 3, "{0}: {1}", "{0}", "", "{0}: {1} < {2} ({3})"));
+            e.Mode = StationQueueMode.Until;
+            Assert.Equal("Древесина пока Уголь < 100 (0). Остаётся.", StationQueueMath.Summary(e, "Древесина", "Уголь", 0, "", "", "{0} пока {1} {2} {3} ({4}).", "", "Остаётся."));
+            Assert.False(StationQueueMath.CanKeep(StationQueueMode.Infinite));
+            Assert.True(StationQueueMath.CanKeep(StationQueueMode.Until));
+        }
+
+        [Fact]
+        public void KeepShareIsStockOverTarget()
+        {
+            var e = StationQueueMath.NewEntry("Wood", StationQueueMode.Count, "Coal");
+            e.Fed = 9;
+            e.Keep = true;
+            Assert.Equal(0.3f, StationQueueMath.Share(e, 0f, 3), 3);
+            e.Keep = false;
+            Assert.Equal(0.9f, StationQueueMath.Share(e, 0f, 3), 3);
         }
 
         [Fact]

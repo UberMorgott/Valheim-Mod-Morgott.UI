@@ -142,6 +142,9 @@ namespace Morgott.UI.StationQueue
         private readonly Image[][] _sModeRims = new Image[3][];
         private readonly TMP_Text[] _sModeLabels = new TMP_Text[3];
         private Stepper _sCount, _sThreshold;
+        private Button _sKeep;
+        private TMP_Text _sKeepLabel;
+        private Image[] _sKeepRim;
 
         // editor
         private Image _eIcon, _eCondIcon;
@@ -150,9 +153,11 @@ namespace Morgott.UI.StationQueue
         private readonly Image[][] _eModeRims = new Image[3][];
         private readonly TMP_Text[] _eModeLabels = new TMP_Text[3];
         private Image[] _eLessRim, _eAtLeastRim, _eUntilRim;
-        private CanvasGroup _eCountGroup, _eUntilGroup;
+        private CanvasGroup _eCountGroup, _eUntilGroup, _eKeepGroup;
         private Stepper _eCount, _eThreshold;
-        private Button _eDelete;
+        private Button _eDelete, _eKeep;
+        private TMP_Text _eKeepLabel;
+        private Image[] _eKeepRim;
 
         // item picker (until-condition dropdown)
         private RectTransform _picker;
@@ -358,6 +363,9 @@ namespace Morgott.UI.StationQueue
         private static Sprite Icon(ItemDrop d) => d ? d.m_itemData.GetIcon() : null;
         private int Net(string prefab) => prefab != null && _state.Network.TryGetValue(prefab, out var n) ? n : 0;
 
+        // Network + what the queued stations still turn out: what keep-in-stock and until conditions judge.
+        private int Have(string prefab) => Net(prefab) + (prefab != null && _state.Pending.TryGetValue(prefab, out var n) ? n : 0);
+
         private string OutputOf(string input)
         {
             foreach (var i in _state.Inputs) if (i.Item && i.Item.name == input) return i.Output ? i.Output.name : null;
@@ -454,8 +462,9 @@ namespace Morgott.UI.StationQueue
             card.Num.text = (index + 1).ToString(System.Globalization.CultureInfo.InvariantCulture);
             card.Icon.sprite = Icon(item);
             card.Icon.enabled = card.Icon.sprite;
-            card.Text.text = StationQueueMath.CardText(e, item ? Name(item) : e.Item, Name(e.Condition), W("card_until"));
-            var active = StationQueueMath.IsActive(index, _state.Status);
+            var output = OutputOf(e.Item);
+            card.Text.text = StationQueueMath.CardText(e, item ? Name(item) : e.Item, Name(e.Condition), W("card_until"), W("card_keep"), Name(output));
+            var active = StationQueueMath.IsActive(index, _state.Active, _state.Status);
             SetRim(card.Rim, active ? Cyan : Dim);
             SetActive(card.Trough, active);
             SetActive(card.Fed, active && e.Mode == StationQueueMode.Count);
@@ -463,13 +472,14 @@ namespace Morgott.UI.StationQueue
             Put(textRt, 126f, active ? 6f : 0f, 230f, active ? 44f : CardH);
             if (active)
             {
-                var share = StationQueueMath.Share(e, _state.Progress);
+                var share = StationQueueMath.Share(e, _state.Progress, Have(output));
                 FillBar(card.Fill, card.Trough, share);
                 card.Pct.text = Mathf.RoundToInt(share * 100f) + "%";
-                card.Fed.text = StationQueueMath.Group(e.Fed) + " / " + StationQueueMath.Group(e.Target);
+                card.Fed.text = StationQueueMath.Group(e.Keep ? Have(output) : e.Fed) + " / " + StationQueueMath.Group(e.Target);
             }
-            card.Chip.text = e.Mode == StationQueueMode.Count ? W("mode_count") : e.Mode == StationQueueMode.Infinite ? "∞" : W("mode_until");
-            var chip = e.Mode == StationQueueMode.Count ? Cyan : Gold;
+            // keep-in-stock entries: the "stock" chip (gold), an until one keeps its condition icon
+            card.Chip.text = e.Keep && StationQueueMath.CanKeep(e.Mode) ? W("chip_keep") : e.Mode == StationQueueMode.Count ? W("mode_count") : e.Mode == StationQueueMode.Infinite ? "∞" : W("mode_until");
+            var chip = e.Mode == StationQueueMode.Count && !e.Keep ? Cyan : Gold;
             card.Chip.color = chip;
             SetRim(card.ChipRim, new Color(chip.r, chip.g, chip.b, 0.7f));
             Put(card.Chip.transform.parent, 372f, active ? 14f : (CardH - ChipH) / 2f, 84f, ChipH); // kiln.png: centred, on top of the running card
@@ -512,11 +522,15 @@ namespace Morgott.UI.StationQueue
             SetActive(_sCountBox, mode == 1);
             SetActive(_sInfBox, mode == 0 || mode < 0);
             SetActive(_sUntilBox, mode == 2);
+            SetActive(_sKeep, mode > 0);
             if (e == null) return;
+            KeepLabel(_sKeepLabel, _sKeepRim, e.Keep);
             if (mode == 1)
             {
                 SetField(_sCount, e.Target);
-                _sFed.text = StationQueueMath.Format(W("fed"), StationQueueMath.Group(e.Fed), StationQueueMath.Group(e.Target));
+                _sFed.text = e.Keep
+                    ? StationQueueMath.Format(W("in_stock"), StationQueueMath.Group(Have(input.Output ? input.Output.name : null)), StationQueueMath.Group(e.Target))
+                    : StationQueueMath.Format(W("fed"), StationQueueMath.Group(e.Fed), StationQueueMath.Group(e.Target));
             }
             if (mode == 2)
             {
@@ -526,7 +540,7 @@ namespace Morgott.UI.StationQueue
                 _sCondName.text = cond ? Name(cond) : e.Condition;
                 _sCompare.text = StationQueueMath.CompareText(e.Compare);
                 SetField(_sThreshold, e.Threshold);
-                var now = Net(e.Condition);
+                var now = Have(e.Condition);
                 _sNow.text = StationQueueMath.Format(W("now"), StationQueueMath.Group(now), StationQueueMath.Group(e.Threshold));
                 FillBar(_sNowFill, _sNowTrough, StationQueueMath.Share(now, e.Threshold));
             }
@@ -632,6 +646,8 @@ namespace Morgott.UI.StationQueue
             }
             Group(_eCountGroup, _draft.Mode == StationQueueMode.Count);
             Group(_eUntilGroup, _draft.Mode == StationQueueMode.Until);
+            Group(_eKeepGroup, StationQueueMath.CanKeep(_draft.Mode));
+            KeepLabel(_eKeepLabel, _eKeepRim, _draft.Keep && StationQueueMath.CanKeep(_draft.Mode));
             SetRim(_eUntilRim, _draft.Mode == StationQueueMode.Until ? Cyan : Dim);
             SetField(_eCount, StationQueueMath.ShownTarget(_draft.Target));
             SetField(_eThreshold, _draft.Threshold);
@@ -641,9 +657,18 @@ namespace Morgott.UI.StationQueue
             _eCondName.text = cond ? Name(cond) : _draft.Condition ?? "";
             SetRim(_eLessRim, _draft.Compare == StationQueueCompare.Less ? Cyan : Dim);
             SetRim(_eAtLeastRim, _draft.Compare == StationQueueCompare.AtLeast ? Cyan : Dim);
-            _eSummary.text = StationQueueMath.Summary(_draft, _eName.text, _eCondName.text, Net(_draft.Condition),
-                W("sum_count"), W("sum_infinite"), W("sum_until"));
+            var keepCount = _draft.Keep && _draft.Mode == StationQueueMode.Count;
+            var output = OutputOf(_draft.Item);
+            _eSummary.text = StationQueueMath.Summary(_draft, _eName.text, keepCount ? Name(output) : _eCondName.text, Have(keepCount ? output : _draft.Condition),
+                W("sum_count"), W("sum_infinite"), W("sum_until"), W("sum_keep"), W("keep_tail"));
             SetActive(_eDelete, _editIndex >= 0);
+        }
+
+        // Keep-in-stock toggle: a mode-style button, its radio mark + cyan rim when on.
+        private static void KeepLabel(TMP_Text label, Image[] rim, bool on)
+        {
+            ModeLabel(label, on, W("keep"));
+            SetRim(rim, on ? Cyan : Dim);
         }
 
         // Mode button text (mockups): the selected one gold with a cyan radio mark.
@@ -1054,6 +1079,10 @@ namespace Morgott.UI.StationQueue
             Put(_sNow, 20f, 104f, 400f, 28f);
             _sNowTrough = Bar(_sUntilBox, out _sNowFill);
             Put(_sNowTrough, 20f, 134f, W0 - 56f - 40f, 22f);
+            _sKeep = Btn(box.transform, "Keep", "field", out _sKeepLabel, () => SingleEdit(e => e.Keep = !e.Keep));
+            _sKeepLabel.fontSize = 20f;
+            _sKeepRim = Rim(_sKeep.transform);
+            Put(_sKeep, 430f, 94f, 214f, 36f);
 
             Put(Rule(_single, "Rule2", Dim), 28f, 570f, W0 - 56f, 1f);
             var pause = PlainBtn(_single, "Pause", out _sPause, () => Commit(Entries(), !_state.Paused), Light);
@@ -1157,7 +1186,7 @@ namespace Morgott.UI.StationQueue
 
         private void BuildEditor()
         {
-            const float W0 = 620f, H0 = 576f;
+            const float W0 = 620f, H0 = 628f;
             _editorLayer = NewRect("EditorLayer", _root);
             Stretch(_editorLayer, 0f, 0f, 0f, 0f);
             var dim = _editorLayer.gameObject.AddComponent<Image>();
@@ -1222,25 +1251,36 @@ namespace Morgott.UI.StationQueue
             Put(atLeast, 300f, 51f, 40f, 40f);
             _eThreshold = NewStepper(until, 356f, 51f, () => _draft.Threshold, v => { _draft.Threshold = v; RefreshEditor(); });
 
+            _eKeep = Btn(_editor, "Keep", "field", out _eKeepLabel, () =>
+            {
+                if (!StationQueueMath.CanKeep(_draft.Mode)) return;
+                _draft.Keep = !_draft.Keep;
+                RefreshEditor();
+            });
+            _eKeepLabel.fontSize = 20f;
+            _eKeepRim = Rim(_eKeep.transform);
+            _eKeepGroup = _eKeep.gameObject.AddComponent<CanvasGroup>();
+            Put(_eKeep, 28f, 428f, 280f, 40f);
+
             _eSummary = Txt(_editor, "Summary", "text.body", TextAlignmentOptions.TopLeft, 19f);
             _eSummary.textWrappingMode = TextWrappingModes.Normal;
-            Put(_eSummary, 36f, 428f, W0 - 72f, 56f);
-            Put(Rule(_editor, "Rule1", Dim), 28f, 492f, W0 - 56f, 1f);
+            Put(_eSummary, 36f, 480f, W0 - 72f, 56f);
+            Put(Rule(_editor, "Rule1", Dim), 28f, 544f, W0 - 56f, 1f);
             var red = ThemeTokens.GetColor("color.text.missing", Hex("#E0413A"));
             _eDelete = PlainBtn(_editor, "Delete", out var dl, EditorDelete, red);
             dl.text = W("delete");
             dl.color = red;
             dl.fontSize = 22f;
-            Put(_eDelete, 40f, 506f, 160f, 44f);
+            Put(_eDelete, 40f, 558f, 160f, 44f);
             var cancel = PlainBtn(_editor, "Cancel", out var cl, EditorClose, Light);
             cl.text = W("cancel");
             cl.fontSize = 22f;
-            Put(cancel, 230f, 506f, 160f, 44f);
+            Put(cancel, 230f, 558f, 160f, 44f);
             var save = PlainBtn(_editor, "Save", out var sl, EditorSave, Gold);
             sl.text = W("save");
             sl.fontSize = 22f;
             sl.color = Gold;
-            Put(save, 420f, 506f, 160f, 44f);
+            Put(save, 420f, 558f, 160f, 44f);
         }
 
         // Plain rimmed plate (mockups: footer / dialog buttons are flat rectangles with a coloured rim, no knotwork).
