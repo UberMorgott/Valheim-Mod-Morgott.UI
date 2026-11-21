@@ -23,7 +23,7 @@ namespace Morgott.UI
     [BepInProcess("valheim.exe")]
     public sealed class Plugin : BaseUnityPlugin
     {
-        public const string Version = "0.41.1";
+        public const string Version = "0.42.0";
 
         public static ManualLogSource Log { get; private set; }
         // Our Jotunn localization (Translations\*.json): Compat\ModText re-adds words a mod overwrites in English.
