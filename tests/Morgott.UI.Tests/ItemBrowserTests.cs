@@ -628,6 +628,10 @@ namespace Morgott.UI.Tests
             Assert.True(SourceNames.DevPrefab("DvergerTest"));
             Assert.True(SourceNames.DevPrefab("Rock_destructible_test"));
             Assert.False(SourceNames.DevPrefab("Troll"));
+            Assert.True(SourceNames.TemplatePrefab("_ShardStone"));
+            Assert.True(SourceNames.TemplatePrefab("JVLmock_Wood"));
+            Assert.False(SourceNames.TemplatePrefab("1013_Mythic_ShardStone"));
+            Assert.False(SourceNames.TemplatePrefab(null));
             Assert.Equal("$ib_el_loottable $ib_el_set_elitemob, $ib_el_tier 3", SourceNames.EpicLootName("EL:loottable:Tier3EliteMob", _ => null));
             Assert.Equal("$ib_el_loottable $ib_el_set_mob, $ib_el_tier 0", SourceNames.EpicLootName("EL:loottable:Tier0Mob", _ => null));
         }

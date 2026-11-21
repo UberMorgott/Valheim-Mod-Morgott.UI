@@ -37,6 +37,11 @@ namespace Morgott.UI.ItemBrowser
         /// <summary>Vanilla dev / test prefab ("DvergerTest", "Rock_destructible_test").</summary>
         public static bool DevPrefab(string id) => id != null && id.EndsWith("test", StringComparison.OrdinalIgnoreCase);
 
+        /// <summary>Mod template prefab the player never holds: Jotunn mocks and "_" prefixed originals a mod clones its
+        /// real items from (Epic Loot's _ShardStone behind every {type}_{rarity}_ShardStone gem).</summary>
+        public static bool TemplatePrefab(string id) =>
+            id != null && (id.StartsWith("JVLmock_", StringComparison.Ordinal) || id.StartsWith("_", StringComparison.Ordinal));
+
         /// <summary>The token has a translation: Localization answers "[key]" for a key it lacks (Localization.Translate).
         /// Plain text and an absent Localization (localize returns its input) count as translated.</summary>
         public static bool Translated(string token, Func<string, string> localize) =>

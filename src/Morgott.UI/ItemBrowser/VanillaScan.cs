@@ -69,7 +69,7 @@ namespace Morgott.UI.ItemBrowser
             e.Id = id;
             e.Mod = _mod(id);
             if (string.IsNullOrEmpty(e.Name)) e.Hidden = "no name";
-            else if (id.StartsWith("JVLmock_", StringComparison.Ordinal)) e.Hidden = "Jotunn mock";
+            else if (SourceNames.TemplatePrefab(id)) e.Hidden = "template";
             _ix.Add(e);
         }
 
