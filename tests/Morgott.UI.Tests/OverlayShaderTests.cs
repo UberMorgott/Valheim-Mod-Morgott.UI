@@ -20,7 +20,7 @@ namespace Morgott.UI.Tests
         {
             var s = Shader();
             Assert.Contains("Shader \"Morgott/Overlay\"", s);
-            foreach (var name in new[] { "_MainTex", "_TintColor", "_ZTest", "_Dash", "_DashFill" }) Assert.Contains($" {name} (\"", s);
+            foreach (var name in new[] { "_MainTex", "_TintColor", "_ZTest", "_Dash", "_DashFill", "_DstBlend", "_Outline", "_OutlineColor" }) Assert.Contains($" {name} (\"", s);
         }
 
         [Fact]
@@ -29,10 +29,19 @@ namespace Morgott.UI.Tests
             var s = Shader();
             Assert.Contains("[Enum(UnityEngine.Rendering.CompareFunction)] _ZTest (\"ZTest\", Float) = 8", s);
             Assert.Contains("ZTest [_ZTest]", s);
-            Assert.Contains("Blend One One", s);
+            Assert.Contains("[Enum(UnityEngine.Rendering.BlendMode)] _DstBlend (\"Dst blend\", Float) = 1", s); // 1 One = additive
+            Assert.Contains("Blend One [_DstBlend], Zero One", s);
             Assert.Contains("ZWrite Off", s);
-            Assert.Contains("return fixed4(c.rgb * c.a, 0);", s);
-            Assert.Contains("if (_Dash > 0 && frac(i.dash / _Dash) > _DashFill) discard;", s);
+            Assert.Contains("return fixed4(c.rgb * c.a, c.a);", s);
+            Assert.Contains("if (_Dash > 0 && frac(i.raw.x / _Dash) > _DashFill) discard;", s);
+        }
+
+        [Fact]
+        public void OutlineOffByDefault()
+        {
+            var s = Shader();
+            Assert.Contains("_Outline (\"Outline\", Range(0, 1)) = 0", s);
+            Assert.Contains("if (_Outline > 0)", s);
         }
     }
 }
