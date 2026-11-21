@@ -628,11 +628,12 @@ namespace Morgott.UI.PlayerHud
                 return;
             }
             // the stored item's icon while stocked; the running effect's icon only once the stack is gone (Codex compare:
-            // the status icon over a stocked cell read as a different item); count only above 1
+            // the status icon over a stocked cell read as a different item); count = the stored stack, 1 included, like the
+            // hotbar's amount (vanilla HotkeyBar: any stackable; run 20261121-224313: the last mead showed no count)
             var icon = _cell.Icon ? _cell.Icon : _cell.Active ? _cell.ActiveIcon : null;
             var blocked = _cell.Blocked;
             c.Icon(icon, blocked ? ThemeTokens.GetColor("color.hud.belt.blocked", new Color(1f, 1f, 1f, 0.45f)) : Color.white);
-            c.Count(_cell.Count > 1 ? _cell.Count : 0);
+            c.Count(_cell.Count);
             var active = _cell.Active && !blocked;
             c.Ring(active ? Mathf.Max(0f, BeltMath.Fraction(_cell.ActiveRemaining, _cell.ActiveTotal)) : -1f,
                 ThemeTokens.GetColor(ringToken, Color.cyan));

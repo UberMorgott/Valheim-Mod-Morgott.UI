@@ -338,8 +338,10 @@ namespace Morgott.UI.PlayerHud
             // 2026-11-21: the old 0.56-side icon sat under the autosized label and read as tiny, top-left)
             var row = _h * 0.30f;
             var inset = _side * 0.06f;
-            var strip = _h * 0.24f;
-            Box(_key.rectTransform, inset, _h - strip - inset * 0.5f, _side * 0.66f - inset, strip);
+            // run 20261121-224313: a 0.24h x 0.66w strip autosized "Alt+1" ~10 px tall over the icon's top third, into the
+            // pip; 0.18h x 0.5w = the hotbar digit's ~7 px, top-left corner, clear of the pip (left edge 0.66 of the side)
+            var strip = _h * 0.18f;
+            Box(_key.rectTransform, inset, _h - strip - inset * 0.5f, _side * 0.5f - inset, strip);
             Box(_timer.rectTransform, inset, 0f, _side * 0.6f - inset, row);
             _timer.alignment = TextAlignmentOptions.BottomLeft;
             Box(_count.rectTransform, _side * 0.5f, 0f, _side * 0.5f - inset, row);
