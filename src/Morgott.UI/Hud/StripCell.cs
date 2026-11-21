@@ -334,14 +334,15 @@ namespace Morgott.UI.PlayerHud
                 return;
             }
             // icon keeps Size's hotbar geometry (share.hud.strip.icon of the side, centred) like vanilla HotkeyBar's icon;
-            // the key ("Alt+1") is a small top strip, clear of the "A" pip, never the upper half over the icon (user
+            // the key ("Alt+1") is one small top-left line, clear of the "A" pip, never autosized over the icon (user
             // 2026-11-21: the old 0.56-side icon sat under the autosized label and read as tiny, top-left)
             var row = _h * 0.30f;
             var inset = _side * 0.06f;
-            // run 20261121-224313: a 0.24h x 0.66w strip autosized "Alt+1" ~10 px tall over the icon's top third, into the
-            // pip; 0.18h x 0.5w = the hotbar digit's ~7 px, top-left corner, clear of the pip (left edge 0.66 of the side)
-            var strip = _h * 0.18f;
-            Box(_key.rectTransform, inset, _h - strip - inset * 0.5f, _side * 0.5f - inset, strip);
+            // run 20261121-224313: "Alt+1" ran into the pip (its box starts at 0.66 of the side). Width-bound top-left line
+            // ending at 0.6 of the side; the upper half as height so the readability floor (TextFloor) never trips the
+            // vertical ellipsis; a binding too long at the floor ("Ctrl+Shift+Num6") ends in "..." instead of spilling.
+            Box(_key.rectTransform, inset, _h * 0.5f, _side * 0.6f - inset, _h * 0.5f - inset * 0.5f);
+            _key.overflowMode = TextOverflowModes.Ellipsis;
             Box(_timer.rectTransform, inset, 0f, _side * 0.6f - inset, row);
             _timer.alignment = TextAlignmentOptions.BottomLeft;
             Box(_count.rectTransform, _side * 0.5f, 0f, _side * 0.5f - inset, row);

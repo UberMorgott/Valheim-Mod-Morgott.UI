@@ -633,7 +633,7 @@ namespace Morgott.UI.PlayerHud
             var icon = _cell.Icon ? _cell.Icon : _cell.Active ? _cell.ActiveIcon : null;
             var blocked = _cell.Blocked;
             c.Icon(icon, blocked ? ThemeTokens.GetColor("color.hud.belt.blocked", new Color(1f, 1f, 1f, 0.45f)) : Color.white);
-            c.Count(_cell.Count);
+            c.Count(_cell.Item != null && _cell.Item.m_shared.m_maxStackSize > 1 ? _cell.Count : 0); // = the hotbar's gate
             var active = _cell.Active && !blocked;
             c.Ring(active ? Mathf.Max(0f, BeltMath.Fraction(_cell.ActiveRemaining, _cell.ActiveTotal)) : -1f,
                 ThemeTokens.GetColor(ringToken, Color.cyan));
