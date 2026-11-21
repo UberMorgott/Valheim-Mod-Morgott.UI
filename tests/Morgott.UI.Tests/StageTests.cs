@@ -518,6 +518,19 @@ namespace Morgott.UI.Tests
             Assert.Equal(-1, StageRules.TierBiome("MagicCape", sets, new StageInfo { Stage = -1, Via = StageVia.Magic }));
         }
 
+        [Fact]
+        public void A_vanilla_set_outside_every_line_aligns_to_its_latest_piece()
+        {
+            var stage = new Dictionary<string, int> { ["HelmetX"] = 2, ["ChestX"] = 6, ["LegsX"] = -1, ["Lined"] = 2, ["Solo"] = 4 };
+            var name = new Dictionary<string, string> { ["HelmetX"] = "x", ["ChestX"] = "x", ["LegsX"] = "x", ["Lined"] = "x" };
+            var sets = new Dictionary<string, int> { ["Lined"] = 1 };
+            StageRules.AddNameSets(sets, stage.Keys, p => name.TryGetValue(p, out var n) ? n : null, p => new StageInfo { Stage = stage[p] });
+            Assert.Equal(3, sets["HelmetX"]);
+            Assert.Equal(3, sets["LegsX"]); // an unsolved piece still lists with its set
+            Assert.Equal(1, sets["Lined"]); // a line set keeps its own biome
+            Assert.False(sets.ContainsKey("Solo"));
+        }
+
 
         [Theory]
         [InlineData(30f, 15f, 90f, "eitr")]

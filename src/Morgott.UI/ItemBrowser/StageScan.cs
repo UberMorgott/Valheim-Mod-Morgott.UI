@@ -96,6 +96,7 @@ namespace Morgott.UI.ItemBrowser
             foreach (var f in facts) if (f.Magic) data.MagicFacts.Add(f.Prefab);
             var members = StageRules.SetMembers(facts, ix.Entries.Keys, SetName);
             var setBiomes = StageRules.SetBiomes(members, solver.Result);
+            StageRules.AddNameSets(setBiomes, ix.Entries.Keys, SetName, solver.Result);
             foreach (var e in ix.Entries.Values)
             {
                 try

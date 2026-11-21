@@ -133,6 +133,25 @@ namespace Morgott.UI.ItemBrowser
             return biome;
         }
 
+        /// <summary>Sets outside every line: pieces sharing a vanilla m_setName (no SetTiers line) take the latest biome of
+        /// that set, as line sets do; added to <paramref name="setBiomes"/> for pieces it does not hold yet.</summary>
+        public static void AddNameSets(Dictionary<string, int> setBiomes, IEnumerable<string> prefabs, Func<string, string> setName, Func<string, StageInfo> info)
+        {
+            var sets = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+            foreach (var p in prefabs)
+                if (!setBiomes.ContainsKey(p) && setName(p) is string s && s.Length > 0)
+                {
+                    if (!sets.TryGetValue(s, out var pieces)) sets[s] = pieces = new List<string>();
+                    pieces.Add(p);
+                }
+            foreach (var pieces in sets.Values)
+            {
+                var max = -1;
+                foreach (var p in pieces) max = Math.Max(max, info(p).Biome);
+                if (max >= 0) foreach (var p in pieces) setBiomes[p] = max;
+            }
+        }
+
         /// <summary>Tier value of an armour piece: its set's biome, else (no line set: third-party capes, backpacks, pieces of
         /// mods without SetTiers lines) its own stage biome, so every staged piece sits under a biome; -1 = none.</summary>
         public static int TierBiome(string id, Dictionary<string, int> setBiomes, StageInfo own) =>

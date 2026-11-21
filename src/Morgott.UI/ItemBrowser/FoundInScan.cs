@@ -301,7 +301,7 @@ namespace Morgott.UI.ItemBrowser
             foreach (var alt in AltBiomeList.m_altBiomes)
                 if (alt != null && alt.m_enabled)
                     foreach (var sd in alt.m_spawn)
-                        if (sd != null && sd.m_enabled && !sd.m_devDisabled && sd.m_prefab && (sd.m_biome & alt.m_biome) is var b && b != Heightmap.Biome.None)
+                        if (sd != null && sd.m_enabled && !sd.m_devDisabled && sd.m_prefab && !alt.m_blockSpawnNames.Contains(sd.m_name) && (sd.m_biome & alt.m_biome) is var b && b != Heightmap.Biome.None)
                         {
                             d.Add(sd.m_prefab.name, b, Origin.World);
                             d.World.Anchor(sd.m_prefab.name, b, true, sd.m_requiredGlobalKey);
