@@ -24,7 +24,7 @@ namespace Morgott.UI.ItemBrowser
         private CraftingStation _stockStation;
         private StorageEntry _sel;
 
-        private TMP_Text _netLine, _barName, _barFree, _amountText, _stackLabel, _takeLabel, _allLabel;
+        private TMP_Text _netLine, _barName, _barFree, _barKeys, _amountText, _stackLabel, _takeLabel, _allLabel;
         private Image _selHalo, _selRim, _barRule, _barIcon, _amountBack, _takeHalo;
         private Button _bStack, _bMinus, _bPlus, _bTake, _bAll;
         private TMP_Text _minusLabel, _plusLabel;
@@ -38,6 +38,7 @@ namespace Morgott.UI.ItemBrowser
             _barIcon = Img(g, "TakeIcon", "content");
             _barName = Txt(g, "TakeName", "text.body", TextAlignmentOptions.Left);
             _barFree = Txt(g, "FreeSlots", "text.muted", TextAlignmentOptions.Right);
+            _barKeys = Txt(g, "TakeKeys", "text.muted", TextAlignmentOptions.Left, FontStyles.Italic);
             _bStack = Btn(g, "TakeStack", "ib.square", out _stackLabel, () => { _amount = _barStack; _dirty = true; });
             _bMinus = Btn(g, "TakeMinus", "ib.square", out _minusLabel, () => { _amount--; _dirty = true; });
             _amountBack = Img(g, "TakeAmount", "ib.square");
@@ -126,6 +127,18 @@ namespace Morgott.UI.ItemBrowser
             });
         }
 
+        // Grid RMB: selects the cell and takes at once by the ITEMS tab modifiers, through the same Withdraw as "Take".
+        private void TakeClick(StorageEntry entry)
+        {
+            if (entry == null || _busy) return;
+            Select(entry);
+            var mode = ClickMode();
+            var room = Room(entry.Item, out var stack, out _);
+            var n = StorageMath.ClickAmount(mode == Browser.TakeMode.Stack, mode == Browser.TakeMode.Materials, stack, entry.Count, room);
+            if (n == 0) { Player.m_localPlayer?.Message(MessageHud.MessageType.Center, "$msg_noroom"); return; }
+            Take(n);
+        }
+
         private static string Lang => Localization.instance?.GetSelectedLanguage();
 
         private void NetLine()
@@ -176,6 +189,9 @@ namespace Morgott.UI.ItemBrowser
             else { Off(_barIcon); Off(_barName); }
             Put(_barFree, 330f, top + 10f, UnitW - 330f, 28f);
             Fit(_barFree, string.Format(L("$ib_store_free"), free, L("$ib_store_slot_" + StorageMath.Form(free, Lang))), 18f);
+            // Grid take keys: fixed mouse button + modifiers (no binding to read), labels Latin (memory key-hints-english).
+            Put(_barKeys, 4f, top + 38f, UnitW - 4f, 22f);
+            Fit(_barKeys, string.Format(L("$ib_store_keys"), "RMB", "Shift+RMB", "Ctrl+RMB"), 16f);
 
             var y = h - BarBtnH - 2f;
             Put(_takeHalo, 336f, y - 8f, 118f, BarBtnH + 16f);
@@ -212,7 +228,7 @@ namespace Morgott.UI.ItemBrowser
         // Storage widgets off in the items mode / on the item page.
         private void StoreOff()
         {
-            foreach (var c in new Component[] { _netLine, _selHalo, _selRim, _barRule, _barIcon, _barName, _barFree, _bStack, _bMinus, _amountBack, _bPlus, _takeHalo, _bTake, _bAll }) Off(c);
+            foreach (var c in new Component[] { _netLine, _selHalo, _selRim, _barRule, _barIcon, _barName, _barFree, _barKeys, _bStack, _bMinus, _amountBack, _bPlus, _takeHalo, _bTake, _bAll }) Off(c);
         }
     }
 }

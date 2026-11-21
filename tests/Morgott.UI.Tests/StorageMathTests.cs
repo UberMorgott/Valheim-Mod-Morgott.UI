@@ -19,6 +19,19 @@ namespace Morgott.UI.Tests
         public void AmountClamps(int amount, int stock, int room, int want) => Assert.Equal(want, StorageMath.Clamp(amount, stock, room));
 
         [Theory]
+        [InlineData(false, false, 50, 1240, 700, 1)] // RMB: one
+        [InlineData(true, false, 50, 1240, 700, 50)] // Shift+RMB: a stack
+        [InlineData(false, true, 50, 1240, 700, 700)] // Ctrl+RMB: all that fits
+        [InlineData(false, true, 50, 30, 700, 30)] // Ctrl+RMB: all the network holds
+        [InlineData(true, false, 50, 1240, 14, 14)] // stack, inventory nearly full: partial
+        [InlineData(true, false, 50, 20, 700, 20)] // stack past the stock
+        [InlineData(true, true, 1, 3, 700, 3)] // Ctrl wins over Shift; unstackable
+        [InlineData(false, false, 50, 1240, 0, 0)] // inventory full: nothing
+        [InlineData(true, false, 50, 0, 700, 0)] // gone from the network
+        public void ClickAmountMapsAndCaps(bool stack, bool all, int maxStack, int stock, int room, int want) =>
+            Assert.Equal(want, StorageMath.ClickAmount(stack, all, maxStack, stock, room));
+
+        [Theory]
         [InlineData(1240, 700, 700)]
         [InlineData(12, 700, 12)]
         [InlineData(12, -3, 0)]

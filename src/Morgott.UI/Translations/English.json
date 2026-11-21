@@ -234,6 +234,7 @@
   "ib_store_slot_5": "slots",
   "ib_store_stack": "Stack ({0})",
   "ib_store_take": "Take",
+  "ib_store_keys": "{0} take 1 · {1} stack · {2} all",
   "ib_store_all": "All",
   "ib_search": "Search...",
   "ib_type_all": "All",

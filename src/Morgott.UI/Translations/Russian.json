@@ -234,6 +234,7 @@
   "ib_store_slot_5": "ячеек",
   "ib_store_stack": "Стак ({0})",
   "ib_store_take": "Взять",
+  "ib_store_keys": "{0} взять 1 · {1} стак · {2} всё",
   "ib_store_all": "Всё",
   "ib_search": "Поиск...",
   "ib_type_all": "Все",

@@ -600,7 +600,12 @@ namespace Morgott.UI.ItemBrowser
             Hook(s, e =>
             {
                 if (s.Id == null) return;
-                if (_storage) { if (e.button == PointerEventData.InputButton.Left) Select(s.Store); return; }
+                if (_storage)
+                {
+                    if (e.button == PointerEventData.InputButton.Left) Select(s.Store);
+                    else if (e.button == PointerEventData.InputButton.Right) TakeClick(s.Store);
+                    return;
+                }
                 if (e.button == PointerEventData.InputButton.Right) TakeUI(s.Id, s.Quality, 0);
                 else if (e.button == PointerEventData.InputButton.Middle) { Browser.ToggleFavorite(s.Id); _resultsGen = -1; _dirty = true; }
                 else OpenPage(s.Id);
@@ -928,10 +933,16 @@ namespace Morgott.UI.ItemBrowser
         private static void TakeUI(string id, int quality, int variant)
         {
             if (id == null || !Browser.CanTake) return;
+            var why = Browser.Take(id, quality, ClickMode(), variant);
+            if (why != null) Player.m_localPlayer?.Message(MessageHud.MessageType.Center, why);
+        }
+
+        // RMB modifiers of a take (ITEMS and STORAGE grids): Ctrl = Materials (storage: all), Shift = Stack, else One.
+        private static Browser.TakeMode ClickMode()
+        {
             var shift = ZInput.GetKey(KeyCode.LeftShift) || ZInput.GetKey(KeyCode.RightShift);
             var ctrl = ZInput.GetKey(KeyCode.LeftControl) || ZInput.GetKey(KeyCode.RightControl);
-            var why = Browser.Take(id, quality, ctrl ? Browser.TakeMode.Materials : shift ? Browser.TakeMode.Stack : Browser.TakeMode.One, variant);
-            if (why != null) Player.m_localPlayer?.Message(MessageHud.MessageType.Center, why);
+            return ctrl ? Browser.TakeMode.Materials : shift ? Browser.TakeMode.Stack : Browser.TakeMode.One;
         }
 
         private static string TypeName(Entry e)

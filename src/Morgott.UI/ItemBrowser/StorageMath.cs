@@ -18,6 +18,11 @@ namespace Morgott.UI.ItemBrowser
             return hi == 0 ? 0 : Math.Max(1, Math.Min(amount, hi));
         }
 
+        /// <summary>Units a grid RMB takes (ITEMS tab scheme): RMB 1, Shift+RMB a full stack, Ctrl+RMB all; capped by
+        /// stock and inventory room (partial take when the inventory fills), 0 = nothing fits.</summary>
+        public static int ClickAmount(bool stack, bool all, int maxStack, int stock, int room) =>
+            Max(stock, room) == 0 ? 0 : Clamp(all ? int.MaxValue : stack ? Math.Max(1, maxStack) : 1, stock, room);
+
         /// <summary>Russian plural form of <paramref name="n"/>: 1 (сундук), 2 (сундука), 5 (сундуков). English uses _1 / _5 words.</summary>
         public static int Plural(int n)
         {
