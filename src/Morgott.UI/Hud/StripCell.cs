@@ -283,9 +283,11 @@ namespace Morgott.UI.PlayerHud
                 var r = _pip.rectTransform;
                 r.anchorMin = r.anchorMax = Vector2.zero;
                 r.pivot = new Vector2(1f, 1f);
-                r.sizeDelta = new Vector2(s * 1.6f, s * 1.6f);
+                // one glyph: 0.2 of the side wide (0.76..0.96), so the belt key line (to 0.74) fits "Alt+1" at the floor
+                // (run 20261122-010900: a 0.6 key box read "Al..." at UI scale 1)
+                r.sizeDelta = new Vector2(bw * 0.2f, s * 1.6f);
                 // inside the rim, clear of the contour / ring (Codex re-score 7/10: the "A" merged with the teal contour)
-                r.anchoredPosition = new Vector2((_side + bw) / 2f - bw * 0.08f, top - bw * 0.08f);
+                r.anchoredPosition = new Vector2((_side + bw) / 2f - bw * 0.04f, top - bw * 0.08f);
                 _pip.enableAutoSizing = true;
                 _pip.fontSizeMin = 1f;
                 _pip.fontSizeMax = s * 1.6f;
@@ -338,10 +340,10 @@ namespace Morgott.UI.PlayerHud
             // 2026-11-21: the old 0.56-side icon sat under the autosized label and read as tiny, top-left)
             var row = _h * 0.30f;
             var inset = _side * 0.06f;
-            // run 20261121-224313: "Alt+1" ran into the pip (its box starts at 0.66 of the side). Width-bound top-left line
-            // ending at 0.6 of the side; the upper half as height so the readability floor (TextFloor) never trips the
+            // run 20261121-224313: "Alt+1" ran into the pip. Width-bound top-left line 0.06..0.74 of the side, left of the
+            // pip (0.76..0.96, PlaceBeltMarks); the upper half as height so the readability floor (TextFloor) never trips the
             // vertical ellipsis; a binding too long at the floor ("Ctrl+Shift+Num6") ends in "..." instead of spilling.
-            Box(_key.rectTransform, inset, _h * 0.5f, _side * 0.6f - inset, _h * 0.5f - inset * 0.5f);
+            Box(_key.rectTransform, inset, _h * 0.5f, _side * 0.74f - inset, _h * 0.5f - inset * 0.5f);
             _key.overflowMode = TextOverflowModes.Ellipsis;
             Box(_timer.rectTransform, inset, 0f, _side * 0.6f - inset, row);
             _timer.alignment = TextAlignmentOptions.BottomLeft;
