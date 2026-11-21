@@ -3,7 +3,8 @@
 // skinning): three passes over the same skinned vertices.
 //   Hull  (Cull Front, additive): the rarity line, an inverted hull pushed out along the normal by _Line metres.
 //   Halo  (Cull Front, additive): a wider, softer hull (_HaloWidth x the line); degenerate when _Halo == 0 (magic).
-//   Body  (Cull Back, premultiplied alpha): the tier's Fresnel rim + the infusion surface (_Surface pattern id).
+//   Body  (Cull Back, premultiplied alpha): the tier's Fresnel rim + the infusion surface (_Surface pattern id);
+//         _RimAlpha > 0 makes the rim alpha-over (staff shield bubble on a bright day), 0 = additive rim as before.
 // Per renderer (MaterialPropertyBlock on the shell slot): _Size (creature radius factor). Everything animated runs on
 // _Time, nothing per frame on the CPU. Distance: _FadeNear.._FadeFar fades the whole shell out (rgb, the blend is
 // additive / premultiplied); the line widens with view distance (x1 at 8 m, x2.2 at 40 m), capped at 0.25 m, and never
@@ -38,6 +39,7 @@ Shader "Morgott/Shell"
         _FadeFar ("Fade end (m)", Float) = 45
         _MinPixels ("Min line width (px)", Float) = 1.5
         _Flash ("Flash (shield hit)", Range(0, 1)) = 1
+        _RimAlpha ("Rim opacity (0 additive rim)", Range(0, 1)) = 0
         _ShellRole ("Role (0 shell, 1 silhouette mask)", Float) = 0
         _RarityStencilMask ("Silhouette stencil bit (0 off, 32)", Float) = 0
     }
@@ -49,7 +51,7 @@ Shader "Morgott/Shell"
     float _Line, _LineGlow, _Halo, _HaloWidth, _Pulse, _PulseSpeed, _Band, _RimGlow, _RimPower;
     float _Surface;
     float4 _SurfaceColor;
-    float _SurfaceGlow, _Size, _FadeNear, _FadeFar, _Flash, _MinPixels, _ShellRole;
+    float _SurfaceGlow, _Size, _FadeNear, _FadeFar, _Flash, _MinPixels, _ShellRole, _RimAlpha;
 
     struct appdata
     {
@@ -264,7 +266,9 @@ Shader "Morgott/Shell"
         float4 s = Surface(_Surface, i.op, fres, _Time.y);
         float3 rim = _LineColor.rgb * (_RimGlow * fres * Pulse());
         float fade = i.misc.x * i.misc.z * _Flash;
-        float4 col = float4((s.rgb + rim) * fade, s.a * fade);
+        // _RimAlpha: the rim also covers what is behind (alpha-over), so it keeps its hue on bright ground.
+        float aR = _RimAlpha * fres * Pulse();
+        float4 col = float4((lerp(s.rgb, _LineColor.rgb, aR) + rim) * fade, (s.a + (1.0 - s.a) * aR) * fade);
         float4 fogCol = unity_FogColor * col.a; // premultiplied: no fog where nothing is drawn
         UNITY_APPLY_FOG_COLOR(i.fogCoord, col, fogCol);
         return col;
