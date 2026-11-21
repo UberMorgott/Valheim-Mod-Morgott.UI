@@ -40,7 +40,7 @@ namespace Morgott.UI.ItemBrowser
         /// <summary>Mod template prefab the player never holds: Jotunn mocks and "_" prefixed originals a mod clones its
         /// real items from (Epic Loot's _ShardStone behind every {type}_{rarity}_ShardStone gem).</summary>
         public static bool TemplatePrefab(string id) =>
-            id != null && (id.StartsWith("JVLmock_", StringComparison.Ordinal) || id.StartsWith("_", StringComparison.Ordinal));
+            id != null && (id.StartsWith("JVLmock_", StringComparison.Ordinal) || (id.Length > 0 && id[0] == '_'));
 
         /// <summary>The token has a translation: Localization answers "[key]" for a key it lacks (Localization.Translate).
         /// Plain text and an absent Localization (localize returns its input) count as translated.</summary>
