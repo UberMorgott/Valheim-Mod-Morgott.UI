@@ -311,8 +311,8 @@ namespace Morgott.UI.PlayerHud
         }
 
         // Belt cells (runs 20261029-025439 / -033941, Codex compare 4/10: "Alt+1", "A", "x1", "10m" and the glow filled a
-        // 35 x 40 px potion cell): a square cell = icon 0.63 of the side at the top centre, a bottom row of 0.28 of the
-        // height with the timer left and the count right; texts autosize down; auto = contour only (Glow).
+        // 35 x 40 px potion cell): a square cell = the hotbar's centred icon, a key strip on top, a bottom row of 0.30 of
+        // the height with the timer left and the count right; texts autosize down; auto = contour only (Glow).
         private void BeltText()
         {
             if (!_timerSuffix || _side <= 0f) return;
@@ -333,13 +333,13 @@ namespace Morgott.UI.PlayerHud
                 fr.anchoredPosition = new Vector2(0f, band / 2f + disc * 0.08f);
                 return;
             }
+            // icon keeps Size's hotbar geometry (share.hud.strip.icon of the side, centred) like vanilla HotkeyBar's icon;
+            // the key ("Alt+1") is a small top strip, clear of the "A" pip, never the upper half over the icon (user
+            // 2026-11-21: the old 0.56-side icon sat under the autosized label and read as tiny, top-left)
             var row = _h * 0.30f;
-            var icon = Mathf.Min(_side, _h - row) * 0.80f;
-            var ir = _icon.rectTransform;
-            ir.anchorMin = ir.anchorMax = ir.pivot = new Vector2(0.5f, 0.5f);
-            ir.sizeDelta = new Vector2(icon, icon);
-            ir.anchoredPosition = new Vector2(0f, row / 2f);
             var inset = _side * 0.06f;
+            var strip = _h * 0.24f;
+            Box(_key.rectTransform, inset, _h - strip - inset * 0.5f, _side * 0.66f - inset, strip);
             Box(_timer.rectTransform, inset, 0f, _side * 0.6f - inset, row);
             _timer.alignment = TextAlignmentOptions.BottomLeft;
             Box(_count.rectTransform, _side * 0.5f, 0f, _side * 0.5f - inset, row);
