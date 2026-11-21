@@ -42,7 +42,7 @@ namespace Morgott.UI.InfoScreens
             public string IconToken, Icon2Token, BarToken;
             public Sprite IconSprite;
             public Color IconColor = Color.white, Icon2Color = Color.white;
-            public int LastValueLength = -1;
+            public int LastValueLength = -1, LastValue2Length = -1;
             public Kind LastShape = (Kind)(-1);
             public float FillShare;
             public float H;
@@ -545,10 +545,13 @@ namespace Morgott.UI.InfoScreens
                     if (r.Value2) r.Value2.SetText(r.V2);
                     SetIcon(r.Icon, r.IconSprite ? r.IconSprite : ThemeTokens.GetSprite(r.IconToken));
                     if (r.Icon && r.Icon.color != r.IconColor) r.Icon.color = r.IconColor;
-                    // The label / value split follows the value's width: re-lay out when its length changes.
-                    if (r.V.Length != r.LastValueLength)
+                    // The label / value split follows the value's width: re-lay out when its length changes. Both halves of
+                    // a resistance cell row: only V was watched, so a right cell growing "0%" -> "10%" kept its old
+                    // column and drew "Spirit 10…" (landing media 2026-11-21).
+                    if (r.V.Length != r.LastValueLength || r.V2.Length != r.LastValue2Length)
                     {
                         r.LastValueLength = r.V.Length;
+                        r.LastValue2Length = r.V2.Length;
                         _layoutDirty = true;
                     }
                     // A sub-line appearing / emptying changes the row's shape and height (Shape).
@@ -887,7 +890,9 @@ namespace Morgott.UI.InfoScreens
             Font(label, labelSize);
             Font(value, valueSize);
             var vw = Mathf.Max(T("size.stats.cell.value.w", 40f), value.preferredWidth / Mathf.Max(_scale, 0.05f) + 2f);
-            Place(label.rectTransform, D(lx, b.Y, b.Right - vw - 6f - lx, b.H));
+            // Label box ends 8 px before the value box: EqualizeCells fits the longest name to its box exactly, so the old
+            // 2 px gap drew "Рассекающий30%" with no space (landing media 2026-11-21).
+            Place(label.rectTransform, D(lx, b.Y, b.Right - vw - 12f - lx, b.H));
             Place(value.rectTransform, D(b.Right - vw - 4f, b.Y, vw, b.H));
             label.enableAutoSizing = false;
         }
