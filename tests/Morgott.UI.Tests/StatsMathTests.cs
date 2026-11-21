@@ -32,6 +32,19 @@ namespace Morgott.UI.Tests
             Assert.Equal(36f, StatsMath.ValueColumn(340f, 50f, 10f, 6f, 36f, 0.72f, 0.7f));
             Assert.Equal(340f * 0.72f, StatsMath.ValueColumn(340f, 0f, 400f, 6f, 36f, 0.72f, 0.7f), 3);
         }
+
+        [Fact]
+        public void CellSplitFollowsMeasuredLabelNeeds()
+        {
+            // Both fit ("Дробящий" 184 + "Рассекающий" 215 < 420): each gets its need, slack shared evenly.
+            Assert.Equal(194.5f, StatsMath.CellSplit(420f, 184f, 215f, 0.3f), 3);
+            // Too narrow: split in proportion, both labels shrink by the same factor.
+            var left = StatsMath.CellSplit(372f, 184f, 215f, 0.3f);
+            Assert.Equal(184f / 215f, left / (372f - left), 3);
+            // Clamped to the min share; no needs measured -> even halves.
+            Assert.Equal(300f, StatsMath.CellSplit(1000f, 10f, 990f, 0.3f), 3);
+            Assert.Equal(200f, StatsMath.CellSplit(400f, 0f, 0f, 0.3f), 3);
+        }
         [Fact]
         public void FoodTooltipStatesHealingPerSecond()
         {

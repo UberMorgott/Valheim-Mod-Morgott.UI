@@ -99,6 +99,16 @@ namespace Morgott.UI.InfoScreens
             return Math.Min(Math.Max(w, min), Math.Max(min, span * maxShare));
         }
 
+        /// <summary>Left cell width of a two-cell resistance row (design px): each column gets its measured need (longest
+        /// label + icon/value overhead) and the slack is shared evenly; when both do not fit, the room is split in
+        /// proportion to the needs so both labels shrink by the same factor. Never below <paramref name="minShare"/>.</summary>
+        public static float CellSplit(float total, float needLeft, float needRight, float minShare)
+        {
+            var sum = needLeft + needRight;
+            var left = sum <= 0f ? total / 2f : sum <= total ? needLeft + (total - sum) / 2f : total * needLeft / sum;
+            return Math.Min(Math.Max(left, total * minShare), total * (1f - minShare));
+        }
+
         // Skill steps of the stat breakdown (decompiled 1.0.20): Skills.GetRandomSkillFactor :188-195 (Lerp(0.4, 1, skill)
         // +-0.15, clamped), Attack.GetAttackStamina :481 (-33% x skill), Player.CheckRun :2525 / GetDodgeStaminaUse :5796
         // (Lerp(1, 0.5, skill)), Player.OnSwimming :2637 (Lerp(min, max, skill)).

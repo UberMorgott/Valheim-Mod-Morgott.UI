@@ -46,6 +46,7 @@ namespace Morgott.UI.InfoScreens
             public Kind LastShape = (Kind)(-1);
             public float FillShare;
             public float H;
+            public Box CellBox; // design box of a resistance cell row, re-split by EqualizeCells
             // Breakdown shown while the plate is hovered (Explain2 / Tip2: the right half of a resistance cell).
             public Explain Explain, Explain2;
             public int Arg, Arg2;
@@ -797,9 +798,8 @@ namespace Morgott.UI.InfoScreens
                     }
                 case Kind.Cell:
                     {
-                        var half = (b.W - 6f) / 2f;
-                        CellHalf(r.Plate, r.Icon, r.Label, r.Value, new Box(b.X, b.Y + 2f, half, b.H - 6f), label, value);
-                        CellHalf(r.Plate2, r.Icon2, r.Label2, r.Value2, new Box(b.X + half + 6f, b.Y + 2f, half, b.H - 6f), label, value);
+                        r.CellBox = b;
+                        LayoutCells(r, (b.W - 6f) / 2f, label);
                         return;
                     }
                 case Kind.Dish:
@@ -878,6 +878,18 @@ namespace Morgott.UI.InfoScreens
         internal static Kind Shape(Row r) =>
             r.S.Length > 0 ? r.Kind : r.Kind == Kind.PairSub ? Kind.Pair : r.Kind == Kind.TallSub ? Kind.Tall : r.Kind;
 
+        private void LayoutCells(Row r, float leftW, float labelSize)
+        {
+            var b = r.CellBox;
+            var valueSize = T("size.stats.font.value", 22f);
+            CellHalf(r.Plate, r.Icon, r.Label, r.Value, new Box(b.X, b.Y + 2f, leftW, b.H - 6f), labelSize, valueSize);
+            CellHalf(r.Plate2, r.Icon2, r.Label2, r.Value2, new Box(b.X + leftW + 6f, b.Y + 2f, b.W - 6f - leftW, b.H - 6f), labelSize, valueSize);
+        }
+
+        // Design width a cell needs to show its label whole at the current font: plate - label box + label text.
+        private float CellNeed(Image plate, TMP_Text label) =>
+            (plate.rectTransform.rect.width - label.rectTransform.rect.width + label.preferredWidth) / Mathf.Max(_scale, 0.05f);
+
         private void CellHalf(Image plate, Image icon, TMP_Text label, TMP_Text value, Box b, float labelSize, float valueSize)
         {
             Place(plate.rectTransform, D(b.X, b.Y, b.W, b.H));
@@ -902,6 +914,24 @@ namespace Morgott.UI.InfoScreens
         private void EqualizeCells(Card c, int n)
         {
             var full = T("size.stats.font.label", 21f);
+            // Column split from the measured longest label of each column (+ its icon / value overhead) instead of fixed
+            // halves: the right column holds "Рассекающий" + "100%", the left one only "Дробящий", and even halves cut
+            // the long name to "Рассекающ…" at the floor font (landing media 2026-11-21, 1440p).
+            float needL = 0f, needR = 0f, total = 0f;
+            for (var i = 0; i < n; i++)
+            {
+                var r = c.Rows[i];
+                if (r.Kind != Kind.Cell) continue;
+                needL = Mathf.Max(needL, CellNeed(r.Plate, r.Label));
+                needR = Mathf.Max(needR, CellNeed(r.Plate2, r.Label2));
+                total = r.CellBox.W - 6f;
+            }
+            if (total > 0f)
+            {
+                var leftW = StatsMath.CellSplit(total, needL, needR, 0.3f);
+                for (var i = 0; i < n; i++)
+                    if (c.Rows[i].Kind == Kind.Cell) LayoutCells(c.Rows[i], leftW, full);
+            }
             var size = full;
             for (var i = 0; i < n; i++)
             {
