@@ -133,6 +133,11 @@ namespace Morgott.UI.ItemBrowser
             return biome;
         }
 
+        /// <summary>Tier value of an armour piece: its set's biome, else (no line set: third-party capes, backpacks, pieces of
+        /// mods without SetTiers lines) its own stage biome, so every staged piece sits under a biome; -1 = none.</summary>
+        public static int TierBiome(string id, Dictionary<string, int> setBiomes, StageInfo own) =>
+            setBiomes.TryGetValue(id, out var b) ? b : own.Biome;
+
         /// <summary>Комплект facet for armour outside every line (capes, variants): the line of a line piece with the same
         /// vanilla set (m_setName), so the whole set lists under its line. Set name -> that piece's fact.</summary>
         public static Dictionary<string, ItemFact> LinesBySet(IEnumerable<ItemFact> facts, Func<string, string> setName)

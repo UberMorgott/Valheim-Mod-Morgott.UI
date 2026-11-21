@@ -295,6 +295,17 @@ namespace Morgott.UI.ItemBrowser
                             d.Add(sd.m_prefab.name, sd.m_biome, Origin.World);
                             d.World.Anchor(sd.m_prefab.name, sd.m_biome, true, sd.m_requiredGlobalKey);
                         }
+            // Alt-biome spawns (SpawnSystem.UpdateSpawn :178-186 runs AltBiome.m_spawn of the zone's corner alt biomes, each
+            // entry still gated by its own m_biome, IsSpawnPointGood :335); their vegetation / locations ZoneSystem already
+            // merged into m_vegetation / m_locations (SetupLocations :883-894).
+            foreach (var alt in AltBiomeList.m_altBiomes)
+                if (alt != null && alt.m_enabled)
+                    foreach (var sd in alt.m_spawn)
+                        if (sd != null && sd.m_enabled && !sd.m_devDisabled && sd.m_prefab && (sd.m_biome & alt.m_biome) is var b && b != Heightmap.Biome.None)
+                        {
+                            d.Add(sd.m_prefab.name, b, Origin.World);
+                            d.World.Anchor(sd.m_prefab.name, b, true, sd.m_requiredGlobalKey);
+                        }
 
             if (RandEventSystem.instance)
                 foreach (var ev in RandEventSystem.instance.m_events)

@@ -100,11 +100,11 @@ namespace Morgott.UI.ItemBrowser
             {
                 try
                 {
-                    data.Info[e.Id] = solver.Result(e.Id);
+                    var own = data.Info[e.Id] = solver.Result(e.Id);
                     if (e.Hidden == null || e.Hidden == BrowserIndex.UnlistedReason)
                     {
                         byPrefab.TryGetValue(e.Id, out var fact);
-                        AddFacets(data.Facets, ix, e, fact, members, setBiomes);
+                        AddFacets(data.Facets, ix, e, fact, members, setBiomes, own);
                     }
                 }
                 catch (Exception ex) { Warn(e.Id, ex); }
@@ -156,14 +156,14 @@ namespace Morgott.UI.ItemBrowser
             return null;
         }
 
-        private static void AddFacets(FacetTable t, BrowserIndex ix, Entry e, ItemFact fact, Dictionary<string, ItemFact> members, Dictionary<string, int> setBiomes)
+        private static void AddFacets(FacetTable t, BrowserIndex ix, Entry e, ItemFact fact, Dictionary<string, ItemFact> members, Dictionary<string, int> setBiomes, StageInfo own)
         {
             t.AddIndexFacets(ix, e, Browser.ModName);
             var go = Browser.Prefab(e.Id);
             if (!go) return;
             switch (e.Type)
             {
-                case EntryType.Item when go.TryGetComponent<ItemDrop>(out var d) && d.m_itemData?.m_shared != null: Item(t, ix, e, d.m_itemData.m_shared, fact, members, setBiomes); break;
+                case EntryType.Item when go.TryGetComponent<ItemDrop>(out var d) && d.m_itemData?.m_shared != null: Item(t, ix, e, d.m_itemData.m_shared, fact, members, setBiomes, own); break;
                 case EntryType.Piece when go.TryGetComponent<Piece>(out var p): PieceFacets(t, e, p); break;
                 case EntryType.Station: StationFacets(t, e, go); break;
                 case EntryType.Creature when go.TryGetComponent<Character>(out var c): Creature(t, e, c, fact); break;
@@ -175,7 +175,7 @@ namespace Morgott.UI.ItemBrowser
             if (v > 0f) t.Add("damage", id, kind, "$inventory_" + kind);
         }
 
-        private static void Item(FacetTable t, BrowserIndex ix, Entry e, ItemDrop.ItemData.SharedData s, ItemFact fact, Dictionary<string, ItemFact> members, Dictionary<string, int> setBiomes)
+        private static void Item(FacetTable t, BrowserIndex ix, Entry e, ItemDrop.ItemData.SharedData s, ItemFact fact, Dictionary<string, ItemFact> members, Dictionary<string, int> setBiomes, StageInfo own)
         {
             var id = e.Id;
             var type = s.m_itemType.ToString().ToLowerInvariant();
@@ -199,9 +199,9 @@ namespace Morgott.UI.ItemBrowser
                     break;
                 case ItemCategory.Armor:
                     t.Add("slot", id, type, "$ib_itemtype_" + type);
-                    if (!members.TryGetValue(id, out var set)) break;
-                    t.Add("line", id, set.LineId, set.LineNameToken ?? set.LineId);
-                    if (setBiomes.TryGetValue(id, out var biome)) t.Add("tier", id, biome.ToString(), Morgott.UI.MapScreen.MapFilterMath.NameKey(FoundIn.Order[biome]));
+                    if (members.TryGetValue(id, out var set)) t.Add("line", id, set.LineId, set.LineNameToken ?? set.LineId);
+                    var biome = StageRules.TierBiome(id, setBiomes, own);
+                    if (biome >= 0) t.Add("tier", id, biome.ToString(), Morgott.UI.MapScreen.MapFilterMath.NameKey(FoundIn.Order[biome]));
                     break;
                 case ItemCategory.Utility:
                     if (Contracts.RingPrefabs.Contains(id)) t.Add("type", id, "ring", "$ib_f_ring");

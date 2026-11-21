@@ -508,6 +508,16 @@ namespace Morgott.UI.Tests
             Assert.Equal(3, b["CapeTrollHide"]);
         }
 
+        [Fact]
+        public void Armour_without_a_line_set_takes_its_own_stage_as_tier()
+        {
+            var sets = new Dictionary<string, int> { ["ArmorSpellSlingerChest_BlackForest_TW"] = 1 };
+            Assert.Equal(1, StageRules.TierBiome("ArmorSpellSlingerChest_BlackForest_TW", sets, new StageInfo { Stage = 6 })); // the set wins
+            Assert.Equal(1, StageRules.TierBiome("CapeSpellslinger_Blackforest_TW", sets, new StageInfo { Stage = 2, Via = StageVia.Derived })); // no set: own biome
+            Assert.Equal(-1, StageRules.TierBiome("BackpackUnknown", sets, StageInfo.None));
+            Assert.Equal(-1, StageRules.TierBiome("MagicCape", sets, new StageInfo { Stage = -1, Via = StageVia.Magic }));
+        }
+
 
         [Theory]
         [InlineData(30f, 15f, 90f, "eitr")]
