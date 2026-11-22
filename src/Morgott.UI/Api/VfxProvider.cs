@@ -7,13 +7,13 @@ namespace Morgott.UI.Api
 {
     // Morgott.Core IVfx implementation (plan 5a): the small "morgott_vfx" bundle next to the DLL (unity BuildVfx), loaded on
     // the first call and kept loaded (handed-out shaders / template live as long as consumer copies may).
-    public sealed class VfxProvider : IVfx, IWebVfx, IOverlayVfx, IGemVfx
+    public sealed class VfxProvider : IVfx, IWebVfx, IOverlayVfx, IGemVfx, ISnowVfx
     {
         public const string BundleFile = "morgott_vfx";
 
         private readonly string _path;
         private bool _loaded;
-        private Shader _shell, _telegraph, _bossFx, _bar, _grey;
+        private Shader _shell, _telegraph, _bossFx, _bar, _grey, _snow, _snowMask;
         private Material _particle, _web, _overlay;
 
         public VfxProvider(string pluginDir) => _path = Path.Combine(pluginDir, BundleFile);
@@ -29,6 +29,8 @@ namespace Morgott.UI.Api
         public Material AdditiveParticle() => Load()._particle;
         public Material Web() => BindVanillaWeb(Load()._web);
         public Material Overlay() => Load()._overlay;
+        public Shader Snow() => Load()._snow;
+        public Shader SnowMask() => Load()._snowMask;
 
         private readonly System.Collections.Generic.Dictionary<GemLook, Material> _gem = new();
 
@@ -125,6 +127,8 @@ namespace Morgott.UI.Api
                     case "Morgott/UI Boss FX": _bossFx = s; break;
                     case "Morgott/UI Bar": _bar = s; break;
                     case "Morgott/UI Grey": _grey = s; break;
+                    case "Morgott/Snow": _snow = s; break;
+                    case "Morgott/Snow Mask": _snowMask = s; break;
                 }
             }
             _particle = bundle.LoadAsset<Material>("AdditiveParticle");
@@ -133,7 +137,7 @@ namespace Morgott.UI.Api
             if (_web && (!_web.shader || !_web.shader.isSupported || !_web.mainTexture)) _web = null;
             _overlay = bundle.LoadAsset<Material>("Overlay");
             if (_overlay && (!_overlay.shader || !_overlay.shader.isSupported)) _overlay = null;
-            Plugin.Log.LogInfo($"[Morgott.UI] {BundleFile}: shell {(bool)_shell}, telegraph {(bool)_telegraph}, boss fx {(bool)_bossFx}, bar {(bool)_bar}, grey {(bool)_grey}, particle {(bool)_particle}, web {(bool)_web}, overlay {(bool)_overlay}");
+            Plugin.Log.LogInfo($"[Morgott.UI] {BundleFile}: shell {(bool)_shell}, telegraph {(bool)_telegraph}, boss fx {(bool)_bossFx}, bar {(bool)_bar}, grey {(bool)_grey}, particle {(bool)_particle}, web {(bool)_web}, overlay {(bool)_overlay}, snow {(bool)_snow}, snow mask {(bool)_snowMask}");
             return this;
         }
     }
