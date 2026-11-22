@@ -44,7 +44,7 @@ namespace Morgott.UI.PlayerHud
         private static int EdgeMode => EdgeModeOverride >= 0 ? EdgeModeOverride : (int)ThemeTokens.GetFloat("mode.hud.bar.edge", 2f);
         private float _frontCore, _frontClock;
         // Segmented health bar (user 2026-11-16, docs\mockups\shield-segments): main pool | gear energy shield (blue) |
-        // external shields (vanilla SE_Shield, orchid), each segment its max's share of the window (HudMath.Segments),
+        // external shields (vanilla SE_Shield, same blue as the gear shield, user 2026-11-22), each segment its max's share of the window (HudMath.Segments),
         // filled current / max over the dark track, thin dividers between them, honeycomb shader on the shield fills.
         private Image _gearSeg, _extSeg, _gearDiv, _extDiv;
         private float _gear, _gearMax, _ext, _extMax, _mainW;
@@ -132,7 +132,7 @@ namespace Morgott.UI.PlayerHud
             if (mainValue)
             {
                 _gearSeg = SegmentImage(art, _window, "ShieldGear", "color.hud.shield");
-                _extSeg = SegmentImage(art, _window, "ShieldExt", "color.hud.shield.ext");
+                _extSeg = SegmentImage(art, _window, "ShieldExt", "color.hud.shield");
                 _gearDiv = SegmentImage(art, _window, "ShieldGearDivider", "color.hud.segment.divider", false);
                 _extDiv = SegmentImage(art, _window, "ShieldExtDivider", "color.hud.segment.divider", false);
             }

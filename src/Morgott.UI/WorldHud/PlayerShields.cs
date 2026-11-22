@@ -10,7 +10,7 @@ namespace Morgott.UI.WorldHud
 {
     // Other players' shields as segments of their overhead health bar (family PlayerShields, batch P: was an AugaSkin
     // feature; segmented bar user 2026-11-16, docs\mockups\shield-segments): HP | energy shield (blue) | absorb shield
-    // (orchid), each its max's share of the bar (HudMath.Segments), filled current / max over the dark track, thin
+    // (blue, as the gear shield), each its max's share of the bar (HudMath.Segments), filled current / max over the dark track, thin
     // dividers, honeycomb material (BarView.SegmentMaterial) - the same bar as the local HP bar.
     // Vanilla shows another player's health only on the EnemyHud player HUD (m_baseHudPlayer, ShowHud EnemyHud.cs:126-157,
     // shown in range and not crouching :101-124, health set every frame :213-224). Its GuiBars health_fast / health_slow
@@ -96,7 +96,7 @@ namespace Morgott.UI.WorldHud
             foreach (var n in new[] { "bkg", "darken" })
                 if (health.Find(n) is Transform v && v.TryGetComponent<Image>(out var vi)) vi.enabled = false;
             s.Gear = Segment(parent, GearName, "color.hud.shield", 1);
-            s.Ext = Segment(parent, ExtName, "color.hud.shield.ext", 1);
+            s.Ext = Segment(parent, ExtName, "color.hud.shield", 1);
             s.GearDiv = Segment(parent, GearDividerName, "color.enemy.segment.divider", -1);
             s.ExtDiv = Segment(parent, ExtDividerName, "color.enemy.segment.divider", -1);
         }

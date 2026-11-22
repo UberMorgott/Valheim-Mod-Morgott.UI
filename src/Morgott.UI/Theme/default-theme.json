@@ -90,7 +90,6 @@
     { "token": "color.hud.ally", "value": "#5FBF5AFF" },
     { "token": "color.hud.es.dim", "value": "#70D8E659" },
     { "token": "color.hud.shield", "value": "#00E0FFFF" },
-    { "token": "color.hud.shield.ext", "value": "#F04CCCFF" },
     { "token": "color.hud.segment.divider", "value": "#A9AEB4D9" },
     { "token": "color.hud.segment.track", "value": "#1A1B1DFF" },
     { "token": "color.enemy.segment.divider", "value": "#07080AFF" },
@@ -1649,7 +1648,7 @@
     { "family": "Radial", "requires": [ "font.display", "font.body" ] },
     { "family": "MenuCompendium", "requires": [ "font.display", "font.body" ] },
     { "family": "SummonFrames", "requires": [ "sprite.hud.socket.hotbar", "sprite.glyph.refresh", "sprite.glyph.minus", "sprite.hud.glyph.eitr", "font.body" ] },
-    { "family": "PlayerShields", "requires": [ "color.hud.shield", "color.hud.shield.ext" ] },
+    { "family": "PlayerShields", "requires": [ "color.hud.shield" ] },
     { "family": "Cursor", "requires": [ "texture.cursor" ] },
     { "family": "CharacterStats", "requires": [ "sprite.stats.chrome.tl", "sprite.stats.chrome.tr", "sprite.stats.chrome.bl", "sprite.stats.chrome.br", "sprite.stats.divider", "sprite.stats.bar.trough", "font.display", "font.body" ] }
   ]
