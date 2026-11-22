@@ -894,6 +894,7 @@
     { "token": "size.message.plate.pad", "value": 10 },
     { "token": "size.message.font", "value": 26 },
     { "token": "size.message.center.font", "value": 44 },
+    { "token": "size.message.announce.top", "value": 110 },
     { "token": "size.text.underlay.offset", "value": 0.8 },
     { "token": "size.text.underlay.dilate", "value": 0.6 },
     { "token": "size.text.underlay.softness", "value": 0.3 },

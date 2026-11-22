@@ -22,6 +22,15 @@ namespace Morgott.UI.Tests
         [InlineData(12f, -1f, 12f)]
         public void ReadableRaisesSmallSizesToTheFloor(float size, float min, float expected) => Assert.Equal(expected, PlayHudMath.Readable(size, min));
 
+        [Theory]
+        [InlineData(-0.1f, 0f)]
+        [InlineData(0f, 1f)]
+        [InlineData(12f, 1f)]
+        [InlineData(13f, 0.5f)]
+        [InlineData(14f, 0f)]
+        [InlineData(99f, 0f)]
+        public void AnnounceHoldsThenFades(float age, float expected) => Assert.Equal(expected, PlayHudMath.AnnounceAlpha(age, 12f, 2f), 3);
+
         [Fact]
         public void CenterPlateWrapsTheGlyphBoxNotTheTextRect()
         {

@@ -220,10 +220,10 @@ namespace Morgott.UI.WorldHud
         // Soft plate sprite: white, alpha ramp over SoftRamp texels on every side (smoothstep per axis, so the corners
         // round off), 9-sliced at the ramp; tinted by color.message.band. A mechanical alpha mask, not art.
         private const int SoftSize = 64;
-        private const float SoftRamp = 24f;
+        internal const float SoftRamp = 24f;
         private static Sprite _softPlate;
 
-        private static Sprite SoftPlate(float ppu)
+        internal static Sprite SoftPlate(float ppu)
         {
             if (_softPlate) return _softPlate;
             var tex = new Texture2D(SoftSize, SoftSize, TextureFormat.RGBA32, false) { name = "RuneSkin_SoftPlate", wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear };

@@ -193,5 +193,12 @@ namespace Morgott.UI.WorldHud
             for (var i = 0; i < lefts.Length; i++) lefts[i] -= x * 0.5f;
             return lefts;
         }
+
+        // Server announcement opacity at age seconds: full for hold, then a linear fade; 0 before arrival and after.
+        public static float AnnounceAlpha(float age, float hold, float fade)
+        {
+            if (age < 0f || age >= hold + fade) return 0f;
+            return age <= hold ? 1f : 1f - (age - hold) / fade;
+        }
     }
 }
