@@ -1,7 +1,8 @@
 // Morgott.Core ISnowVfx.SnowMask(): updates the R8 snow trail mask (consumer: Patcher SnowTrails).
 // Pass 0 (Graphics.Blit previous -> next): next(uv) = saturate(previous(uv + _Shift.xy) - _Fade), 0 where uv + _Shift
 // leaves 0..1: re-centre by whole texels and refill in one blit. Pass 1 (GL quads in 0..1 space): UV0 = quad-local -1..1
-// (y = walk direction), vertex colour R = depth 0..1; soft footprint ellipse, BlendOp Max.
+// (y = walk direction), vertex colour R = depth 0..1; soft footprint ellipse, BlendOp Max. Pass 2 (GL quads): same, but a
+// soft-edged rectangle (piece footprint): full inside |uv.x| < colour G and |uv.y| < colour B, 0 at the quad edge.
 Shader "Morgott/Snow Mask"
 {
     Properties
@@ -74,6 +75,48 @@ Shader "Morgott/Snow Mask"
                 // Narrower heel half, wider toe half; soft rim so overlapping prints merge into a trail.
                 float2 q = i.uv * float2(i.uv.y > 0 ? 1 : 1.25, 1);
                 return (1 - smoothstep(0.45, 1, length(q))) * i.depth;
+            }
+            ENDCG
+        }
+
+        Pass
+        {
+            BlendOp Max
+            Blend One One
+
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+            #include "UnityCG.cginc"
+
+            struct appdata
+            {
+                float4 vertex : POSITION;
+                float2 uv : TEXCOORD0;
+                fixed4 color : COLOR;
+            };
+
+            struct v2f
+            {
+                float4 pos : SV_POSITION;
+                float2 uv : TEXCOORD0;
+                fixed4 color : TEXCOORD1;
+            };
+
+            v2f vert(appdata v)
+            {
+                v2f o;
+                o.pos = UnityObjectToClipPos(v.vertex);
+                o.uv = v.uv;
+                o.color = v.color;
+                return o;
+            }
+
+            fixed4 frag(v2f i) : SV_Target
+            {
+                float2 inner = i.color.gb;
+                float2 k = saturate((abs(i.uv) - inner) / max(1 - inner, 1e-3));
+                return (1 - smoothstep(0, 1, max(k.x, k.y))) * i.color.r;
             }
             ENDCG
         }
