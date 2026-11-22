@@ -307,8 +307,9 @@ namespace Morgott.UI.CraftingScreen
                 var a = selected ? 1f : 0f;
                 if (!Mathf.Approximately(button.targetGraphic.canvasRenderer.GetAlpha(), a)) button.targetGraphic.canvasRenderer.SetAlpha(a);
                 // One placement: a first one on the whole cell resized the segment twice every frame (its plate and label
-                // re-fit, layout dirty each frame; run 20261122-234635 nocost-frame).
-                Geo.Place(_canvas, (RectTransform)button.transform, CraftingMath.Inset(cell, cell.H * 0.08f, cell.H * 0.08f));
+                // re-fit, layout dirty each frame; run 20261122-234635 nocost-frame). A cell too narrow for the inset keeps the cell.
+                var inset = CraftingMath.Inset(cell, cell.H * 0.08f, cell.H * 0.08f);
+                Geo.Place(_canvas, (RectTransform)button.transform, inset.IsEmpty ? cell : inset);
                 var label = _showLabels[i];
                 if (_showLang != lang) label.text = Words.Get("$ui_craft_show_" + ShowKeys[i].ToString().ToLowerInvariant());
                 Geo.Place(_canvas, label.rectTransform, cell);
@@ -334,6 +335,7 @@ namespace Morgott.UI.CraftingScreen
         private Recipe _rowSel;
         private int _rowStock = -1;
         private float _rowPollAt;
+        private int _statTheme = -1;
         private readonly Dictionary<Recipe, int> _rowCounts = new Dictionary<Recipe, int>();
 
         private bool RowDataDue() =>
@@ -402,14 +404,14 @@ namespace Morgott.UI.CraftingScreen
         }
 
         // One stat of the sub-line: value then its icon, from x; returns the next x.
-        private static float Stat(TMP_Text text, Image icon, bool on, string value, float x, float y, float h, float size)
+        private static float Stat(TMP_Text text, Image icon, bool on, string value, float x, float y, float h, float size, bool remeasure)
         {
             Shown(text, on);
             Shown(icon, on);
             if (!on) return x;
-            // TMP measures the whole string each call: only a new value or size is measured, else the width At() gave it.
-            // shortcut: a theme font swap at the same size keeps the old width until the value changes; fine while themes share faces.
-            var measure = text.text != value || !Mathf.Approximately(text.fontSize, size);
+            // TMP measures the whole string each call: only a new value, size or theme (font) is measured, else the width
+            // At() gave it.
+            var measure = remeasure || text.text != value || !Mathf.Approximately(text.fontSize, size);
             text.fontSize = size;
             if (text.text != value) text.text = value;
             var w = measure ? text.GetPreferredValues(value).x + 1f : text.rectTransform.sizeDelta.x;
@@ -434,6 +436,8 @@ namespace Morgott.UI.CraftingScreen
             _rowStock = _stockEpoch;
             _rowPollAt = Time.unscaledTime + 2f;
             if (rebuilt) _rowCounts.Clear();
+            var remeasure = _statTheme != ThemeTokens.Revision; // a theme reload may swap the stat face (Stat width cache)
+            _statTheme = ThemeTokens.Revision;
             var regroup = false;
             if (_rowViews.Count > 4 * Mathf.Max(64, rows.Count))
             {
@@ -466,9 +470,9 @@ namespace Morgott.UI.CraftingScreen
                 var food = IsFood(shared);
                 string Value(float value, string color, bool active) =>
                     "<color=" + Hex(color, Color.white, active ? 1f : 0.72f) + ">" + (active ? "<b>" + Num(value) + "</b>" : Num(value)) + "</color>";
-                var x = Stat(v.Health, v.HealthIcon, food, Value(shared.m_food, "color.hud.health", sort == CraftSort.Health), left, 2f, subH, size);
-                x = Stat(v.Stamina, v.StaminaIcon, food, Value(shared.m_foodStamina, "color.hud.stamina", sort == CraftSort.Stamina), x, 2f, subH, size);
-                Stat(v.Eitr, v.EitrIcon, food && shared.m_foodEitr > 0f, Value(shared.m_foodEitr, "color.craft.stat.eitr", sort == CraftSort.Eitr), x, 2f, subH, size);
+                var x = Stat(v.Health, v.HealthIcon, food, Value(shared.m_food, "color.hud.health", sort == CraftSort.Health), left, 2f, subH, size, remeasure);
+                x = Stat(v.Stamina, v.StaminaIcon, food, Value(shared.m_foodStamina, "color.hud.stamina", sort == CraftSort.Stamina), x, 2f, subH, size, remeasure);
+                Stat(v.Eitr, v.EitrIcon, food && shared.m_foodEitr > 0f, Value(shared.m_foodEitr, "color.craft.stat.eitr", sort == CraftSort.Eitr), x, 2f, subH, size, remeasure);
 
                 var count = view.GetMaxCrafts(r.Recipe, 1, cap);
                 if (_rowCounts.TryGetValue(r.Recipe, out var was) && was != count &&
