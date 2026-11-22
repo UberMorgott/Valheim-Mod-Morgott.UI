@@ -445,6 +445,7 @@ namespace Morgott.UI.WorldHud
         private float _compassUnits; // compass left of the block: placed with it (ShipPlacement min-left)
         private Vector2 _blockUnits, _placedAt = new Vector2(float.NaN, float.NaN);
         private readonly Vector3[] _corners = new Vector3[4];
+        private readonly RectTransform[] _round = new RectTransform[2]; // compass socket + ring: kept unrotated
         public int ActiveIndex => _shown;
         // Harness read side: the last placement (screen px top-right corner) and whether it went beside the minimap.
         public Vector2 PlacedTopRight => _placedAt;
@@ -545,7 +546,6 @@ namespace Morgott.UI.WorldHud
             w.anchorMin = w.anchorMax = new Vector2(0f, 1f);
             w.localScale = Vector3.one;
             w.anchoredPosition = new Vector2(-gap - ring * 0.5f, -ring * 0.5f);
-            _compassUnits = gap + ring;
             // The prefab's root graphic (rect not tied to the pivot) drew no disc in game (run 20261122-211132): the socket is ours.
             var own = w.GetComponent<Image>();
             if (own) own.enabled = false;
@@ -553,8 +553,13 @@ namespace Morgott.UI.WorldHud
             disc.preserveAspect = true;
             disc.transform.SetAsFirstSibling();
             Centre(disc.rectTransform, w, socket);
+            _round[0] = disc.rectTransform;
             var circle = w.Find("Circle")?.GetComponent<Image>();
-            if (_art.Reskin(circle, "sprite.hud.gp.ring", "color.hud.ship.track", "ship wind compass ring")) Centre(circle.rectTransform, w, ring);
+            if (_art.Reskin(circle, "sprite.hud.gp.ring", "color.hud.ship.track", "ship wind compass ring"))
+            {
+                Centre(circle.rectTransform, w, ring);
+                _round[1] = circle.rectTransform;
+            }
             var hull = w.Find("Ship")?.GetComponent<Image>();
             Tint(hull, "color.text.active", "ship heading silhouette (vanilla art)");
             if (hull)
@@ -565,11 +570,24 @@ namespace Morgott.UI.WorldHud
             Centre(wind, w, ring);
             var sector = wind.GetComponent<Image>();
             if (sector) sector.enabled = false; // vanilla wedge art, no theme counterpart: the arrow carries the cue
-            if (!_art.Reskin(_windIcon, "sprite.glyph.wind", null, "wind arrow (tint per frame, AfterShipHud)")) return;
-            _windIcon.preserveAspect = true;
-            Centre(icon, w, glyph);
-            icon.localRotation = Quaternion.identity; // vanilla windicon art points right (+90 in the prefab); glyph_wind points up
-            icon.position = wind.TransformPoint(side * ((ring - glyph) * 0.5f * w.lossyScale.x / wind.lossyScale.x));
+            if (_art.Reskin(_windIcon, "sprite.glyph.wind", null, "wind arrow (tint per frame, AfterShipHud)"))
+            {
+                _windIcon.preserveAspect = true;
+                Centre(icon, w, glyph);
+                icon.localRotation = Quaternion.identity; // vanilla windicon art points right (+90 in the prefab); glyph_wind points up
+                icon.position = wind.TransformPoint(side * ((ring - glyph) * 0.5f * w.lossyScale.x / wind.lossyScale.x));
+            }
+            // Keep every rect inside the ladder's top edge whatever the yaw: socket + ring stay unrotated (AfterShipHud), the
+            // rotating rects (hull, arrow) sweep a circle through their farthest corner (rotation-invariant, w-local units).
+            var reach = ring * 0.5f;
+            foreach (var g in w.GetComponentsInChildren<Graphic>(true)) // ShipHud is inactive at Hud.Awake
+            {
+                if (!g.enabled || Array.IndexOf(_round, g.rectTransform) >= 0) continue;
+                g.rectTransform.GetWorldCorners(_corners);
+                foreach (var c in _corners) reach = Mathf.Max(reach, ((Vector2)w.InverseTransformPoint(c)).magnitude);
+            }
+            w.anchoredPosition = new Vector2(-gap - ring * 0.5f, -reach);
+            _compassUnits = gap + ring * 0.5f + reach;
         }
 
         // Square rect of `units` ladder units (w's scale) centred on w's pivot.
@@ -592,7 +610,10 @@ namespace Morgott.UI.WorldHud
         internal void AfterShipHud(Player player)
         {
             var ship = player ? player.GetControlledShip() : null;
-            if (!ship || !_windIcon) return;
+            if (!ship) return;
+            // Round art does not turn with vanilla's yaw rotation: its square rect would stick out by up to sqrt 2 x radius.
+            foreach (var r in _round) if (r) r.rotation = _column.rotation;
+            if (!_windIcon) return;
             var off = ThemeTokens.GetColor("color.text.body", Color.white);
             off.a = ThemeTokens.GetFloat("share.ship.idle.alpha", 0.55f);
             _windIcon.color = Color.Lerp(off, ThemeTokens.GetColor("color.hud.glyph", Color.cyan), ship.GetWindAngleFactor());
