@@ -328,6 +328,7 @@ namespace Morgott.UI.CraftingScreen
             public RectTransform Root;
             public TMP_Text Health, Stamina, Eitr, Count, New;
             public Image HealthIcon, StaminaIcon, EitrIcon, Chain, NewTag;
+            public int Theme = -1; // ThemeTokens.Revision of the stat widths
         }
 
         // Row data (counts, NEW, chain) changes without a list rebuild: any inventory / chest change (StockChanged), a
@@ -335,7 +336,6 @@ namespace Morgott.UI.CraftingScreen
         private Recipe _rowSel;
         private int _rowStock = -1;
         private float _rowPollAt;
-        private int _statTheme = -1;
         private readonly Dictionary<Recipe, int> _rowCounts = new Dictionary<Recipe, int>();
 
         private bool RowDataDue() =>
@@ -436,8 +436,6 @@ namespace Morgott.UI.CraftingScreen
             _rowStock = _stockEpoch;
             _rowPollAt = Time.unscaledTime + 2f;
             if (rebuilt) _rowCounts.Clear();
-            var remeasure = _statTheme != ThemeTokens.Revision; // a theme reload may swap the stat face (Stat width cache)
-            _statTheme = ThemeTokens.Revision;
             var regroup = false;
             if (_rowViews.Count > 4 * Mathf.Max(64, rows.Count))
             {
@@ -470,6 +468,8 @@ namespace Morgott.UI.CraftingScreen
                 var food = IsFood(shared);
                 string Value(float value, string color, bool active) =>
                     "<color=" + Hex(color, Color.white, active ? 1f : 0.72f) + ">" + (active ? "<b>" + Num(value) + "</b>" : Num(value)) + "</color>";
+                var remeasure = v.Theme != ThemeTokens.Revision; // a theme reload may swap the stat face (Stat width cache)
+                v.Theme = ThemeTokens.Revision;
                 var x = Stat(v.Health, v.HealthIcon, food, Value(shared.m_food, "color.hud.health", sort == CraftSort.Health), left, 2f, subH, size, remeasure);
                 x = Stat(v.Stamina, v.StaminaIcon, food, Value(shared.m_foodStamina, "color.hud.stamina", sort == CraftSort.Stamina), x, 2f, subH, size, remeasure);
                 Stat(v.Eitr, v.EitrIcon, food && shared.m_foodEitr > 0f, Value(shared.m_foodEitr, "color.craft.stat.eitr", sort == CraftSort.Eitr), x, 2f, subH, size, remeasure);
