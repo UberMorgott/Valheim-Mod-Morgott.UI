@@ -406,12 +406,13 @@ namespace Morgott.UI.CraftingScreen
         // One stat of the sub-line: value then its icon, from x; returns the next x.
         private static float Stat(TMP_Text text, Image icon, bool on, string value, float x, float y, float h, float size, bool remeasure)
         {
+            var wasShown = text.gameObject.activeSelf;
             Shown(text, on);
             Shown(icon, on);
             if (!on) return x;
-            // TMP measures the whole string each call: only a new value, size or theme (font) is measured, else the width
-            // At() gave it.
-            var measure = remeasure || text.text != value || !Mathf.Approximately(text.fontSize, size);
+            // TMP measures the whole string each call: only a new value, size or theme (font), or a stat shown again (its
+            // width may predate a theme reload), is measured; else the width At() gave it.
+            var measure = remeasure || !wasShown || text.text != value || !Mathf.Approximately(text.fontSize, size);
             text.fontSize = size;
             if (text.text != value) text.text = value;
             var w = measure ? text.GetPreferredValues(value).x + 1f : text.rectTransform.sizeDelta.x;
