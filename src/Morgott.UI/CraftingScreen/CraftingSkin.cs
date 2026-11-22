@@ -1203,13 +1203,14 @@ namespace Morgott.UI.CraftingScreen
             _gui.m_recipeListSpace = pitch;
             var view = ListView();
             if (view) _gui.m_recipeListBaseSize = view.rect.height;
-            if (_gui.m_recipeElementPrefab) StyleRow((RectTransform)_gui.m_recipeElementPrefab.transform, pitch);
+            if (_gui.m_recipeElementPrefab) StyleRow((RectTransform)_gui.m_recipeElementPrefab.transform, pitch, false);
+            var subs = View() is Morgott.Core.ICraftingAvailability craftView && craftView.ControlsShown;
             for (var n = 0; n < rows.Count; n++)
             {
                 var e = rows[n].InterfaceElement;
                 if (!e) continue;
                 var rt = (RectTransform)e.transform;
-                StyleRow(rt, pitch);
+                StyleRow(rt, pitch, SubLine(rows[n], subs));
                 rt.anchoredPosition = new Vector2(0f, -n * pitch);
             }
             if (_gui.m_recipeListRoot)
@@ -1290,13 +1291,19 @@ namespace Morgott.UI.CraftingScreen
             }
         }
 
-        private void StyleRow(RectTransform row, float pitch)
+        // nameBoxOwned: RowViews places the name right after (sub-line rows). Writing the full-row box here first moved
+        // every name twice per rebuild: each of the ~1070 auto-sized names and its TextInset re-measured
+        // (run 20261122-234635 nocost-spike: TMP 6920 GenerateTextMesh calls, 2029 TextInset.Apply in one rebuild).
+        private void StyleRow(RectTransform row, float pitch, bool nameBoxOwned)
         {
             var h = pitch - 2f;
-            row.anchorMin = new Vector2(0f, 1f);
-            row.anchorMax = new Vector2(1f, 1f);
-            row.pivot = new Vector2(0.5f, 1f);
-            row.sizeDelta = new Vector2(0f, h);
+            var top = new Vector2(0f, 1f);
+            if (row.anchorMin != top) row.anchorMin = top;
+            if (row.anchorMax != Vector2.one) row.anchorMax = Vector2.one;
+            var pivot = new Vector2(0.5f, 1f);
+            if (row.pivot != pivot) row.pivot = pivot;
+            var size = new Vector2(0f, h);
+            if (row.sizeDelta != size) row.sizeDelta = size;
             var icon = h - 10f;
             var font = ThemeTokens.GetFloat("size.craft.font.row", 16f) * _in.Scale;
             foreach (var c in Children.Of(row))
@@ -1316,15 +1323,15 @@ namespace Morgott.UI.CraftingScreen
                         // Right column only while the quality level shows (upgrade tab); else the name takes the row
                         // (long names were cut at the fit floor, batch G).
                         var quality = row.Find("QualityLevel");
-                        Anchors(rt, Vector2.zero, Vector2.one, new Vector2(icon + 16f, 2f), new Vector2(quality && quality.gameObject.activeSelf ? -30f : -6f, -2f));
+                        if (!nameBoxOwned) Anchors(rt, Vector2.zero, Vector2.one, new Vector2(icon + 16f, 2f), new Vector2(quality && quality.gameObject.activeSelf ? -30f : -6f, -2f));
                         if (c.TryGetComponent<TMP_Text>(out var name))
                         {
                             if (name.alignment != TextAlignmentOptions.MidlineLeft) name.alignment = TextAlignmentOptions.MidlineLeft;
                             if (name.textWrappingMode != TextWrappingModes.Normal) name.textWrappingMode = TextWrappingModes.Normal;
                             if (name.overflowMode != TextOverflowModes.Ellipsis) name.overflowMode = TextOverflowModes.Ellipsis;
-                            name.enableAutoSizing = true;
-                            name.fontSizeMax = font;
-                            name.fontSizeMin = Mathf.Min(font, 12f); // mockup column width: at the floor 20 names per list ellipsized (m3-layout, run 20261107-021204)
+                            if (!name.enableAutoSizing) name.enableAutoSizing = true;
+                            if (!Mathf.Approximately(name.fontSizeMax, font)) name.fontSizeMax = font;
+                            if (!Mathf.Approximately(name.fontSizeMin, Mathf.Min(font, 12f))) name.fontSizeMin = Mathf.Min(font, 12f); // mockup column width: at the floor 20 names per list ellipsized (m3-layout, run 20261107-021204)
                         }
                         break;
                     case "QualityLevel":

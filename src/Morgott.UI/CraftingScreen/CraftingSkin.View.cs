@@ -302,11 +302,12 @@ namespace Morgott.UI.CraftingScreen
             {
                 var cell = new Box(showBox.X + i * w, showBox.Y, w, showBox.H);
                 var button = _showButtons[i];
-                Geo.Place(_canvas, (RectTransform)button.transform, cell);
                 var selected = view.Show == ShowKeys[i];
                 // Only the chosen segment draws its frame; the others keep their hit area (alpha 0 still raycasts).
                 var a = selected ? 1f : 0f;
                 if (!Mathf.Approximately(button.targetGraphic.canvasRenderer.GetAlpha(), a)) button.targetGraphic.canvasRenderer.SetAlpha(a);
+                // One placement: a first one on the whole cell resized the segment twice every frame (its plate and label
+                // re-fit, layout dirty each frame; run 20261122-234635 nocost-frame).
                 Geo.Place(_canvas, (RectTransform)button.transform, CraftingMath.Inset(cell, cell.H * 0.08f, cell.H * 0.08f));
                 var label = _showLabels[i];
                 if (_showLang != lang) label.text = Words.Get("$ui_craft_show_" + ShowKeys[i].ToString().ToLowerInvariant());
@@ -383,12 +384,16 @@ namespace Morgott.UI.CraftingScreen
             return v;
         }
 
+        // Writes only on change: RowViews runs over every row (1070 under nocost) on each rebuild and poll.
         private static void At(RectTransform rt, Vector2 anchor, float x, float y, float w, float h)
         {
-            rt.anchorMin = rt.anchorMax = anchor;
-            rt.pivot = anchor;
-            rt.anchoredPosition = new Vector2(x, y);
-            rt.sizeDelta = new Vector2(w, h);
+            if (rt.anchorMin != anchor) rt.anchorMin = anchor;
+            if (rt.anchorMax != anchor) rt.anchorMax = anchor;
+            if (rt.pivot != anchor) rt.pivot = anchor;
+            var pos = new Vector2(x, y);
+            if (rt.anchoredPosition != pos) rt.anchoredPosition = pos;
+            var size = new Vector2(w, h);
+            if (rt.sizeDelta != size) rt.sizeDelta = size;
         }
 
         private static void Shown(Component c, bool on)
@@ -402,9 +407,12 @@ namespace Morgott.UI.CraftingScreen
             Shown(text, on);
             Shown(icon, on);
             if (!on) return x;
+            // TMP measures the whole string each call: only a new value or size is measured, else the width At() gave it.
+            // shortcut: a theme font swap at the same size keeps the old width until the value changes; fine while themes share faces.
+            var measure = text.text != value || !Mathf.Approximately(text.fontSize, size);
             text.fontSize = size;
             if (text.text != value) text.text = value;
-            var w = text.GetPreferredValues(value).x + 1f;
+            var w = measure ? text.GetPreferredValues(value).x + 1f : text.rectTransform.sizeDelta.x;
             At(text.rectTransform, Vector2.zero, x, y, w, h);
             var side = h * 0.8f;
             At(icon.rectTransform, Vector2.zero, x + w + 1f, y + (h - side) / 2f, side, side);
@@ -415,6 +423,9 @@ namespace Morgott.UI.CraftingScreen
         // the Create tab rows get the sub-line (food stats, count), NEW and the chain link, the name moves to the upper part;
         // other rows / tabs lose it. A count that changed without a rebuild while the filter or the order depends on it
         // rebuilds the list (vanilla UpdateCraftingPanel keeps the selection, :1140-1150).
+        // A row RowViews gives the sub-line (and so its name box): Create tab rows of a recipe, view controls shown.
+        private static bool SubLine(InventoryGui.RecipeDataPair r, bool on) => on && r.ItemData == null && r.Recipe && r.Recipe.m_item;
+
         private void RowViews(List<InventoryGui.RecipeDataPair> rows, bool rebuilt)
         {
             var view = View();
@@ -439,7 +450,7 @@ namespace Morgott.UI.CraftingScreen
                 var e = r.InterfaceElement;
                 if (!e) continue;
                 _rowViews.TryGetValue(e, out var v);
-                if (!on || r.ItemData != null || !r.Recipe || !r.Recipe.m_item)
+                if (!SubLine(r, on))
                 {
                     if (v != null) Shown(v.Root, false);
                     continue;
@@ -447,7 +458,7 @@ namespace Morgott.UI.CraftingScreen
                 var row = (RectTransform)e.transform;
                 if (v == null) _rowViews[e] = v = NewRowView(row);
                 Shown(v.Root, true);
-                v.Root.SetAsLastSibling();
+                if (v.Root.GetSiblingIndex() != row.childCount - 1) v.Root.SetAsLastSibling();
                 var h = row.rect.height;
                 var left = h - 10f + 16f; // StyleRow: icon h - 10 at x 8, name from icon + 16
                 var subH = h * 0.42f;
