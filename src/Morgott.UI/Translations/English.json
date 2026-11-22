@@ -711,6 +711,7 @@
   "ui_sq_card_keep": "{0} — keep\n{2} × {1} in stock",
   "ui_sq_in_stock": "In stock: {0} / {1}",
   "ui_sq_sum_keep": "{0} goes into the station whenever {1} in network and stations is below {2} (now {3}); stays in the queue.",
+  "ui_sq_sum_keep_fuel": "{0} goes into the station whenever its fuel is below {2} (now {3}); stays in the queue.",
   "ui_sq_keep_tail": "Stays in the queue and runs again when the condition holds.",
   "ui_sq_editor_title": "Queue entry",
   "ui_sq_delete": "Delete",

@@ -384,6 +384,11 @@ namespace Morgott.UI.StationQueue
             return null;
         }
 
+        // A fuel entry (its item is the station's fuel, Patcher Plan) keeps the fuel inside the station, not an output.
+        private bool IsFuel(string item) => _state.Fuel && item == _state.Fuel.name;
+        private int Stocked(string item) => IsFuel(item) ? Mathf.FloorToInt(_state.FuelLevel) : Have(OutputOf(item));
+        private string OutputName(string item) => IsFuel(item) ? W("fuel") : Name(OutputOf(item));
+
         private string StatusWord()
         {
             switch (_state.Status)
@@ -425,6 +430,7 @@ namespace Morgott.UI.StationQueue
             _mStatus.text = StationQueueMath.Join(
                 StationQueueMath.Loaded(W(StationQueueMath.LoadedKey(_state.Name)), _state.Loaded, _state.Capacity, null),
                 first ? StationQueueMath.Format(W("output_net"), Name(first), StationQueueMath.Group(Net(first.name))) : null,
+                _state.Fuel ? Name(_state.Fuel) + " " + Mathf.FloorToInt(_state.FuelLevel) + "/" + _state.FuelMax : null, // as the single window's line
                 NetworkPart());
             _mPause.text = _state.Paused ? W("resume") : W("pause");
 
@@ -475,8 +481,7 @@ namespace Morgott.UI.StationQueue
             card.Num.text = (index + 1).ToString(System.Globalization.CultureInfo.InvariantCulture);
             card.Icon.sprite = Icon(item);
             card.Icon.enabled = card.Icon.sprite;
-            var output = OutputOf(e.Item);
-            card.Text.text = StationQueueMath.CardText(e, item ? Name(item) : e.Item, Name(e.Condition), W("card_until"), W("card_keep"), Name(output));
+            card.Text.text = StationQueueMath.CardText(e, item ? Name(item) : e.Item, Name(e.Condition), W("card_until"), W("card_keep"), OutputName(e.Item));
             var active = StationQueueMath.IsActive(index, _state.Active, _state.Status);
             SetRim(card.Rim, active ? Cyan : Dim);
             SetActive(card.Trough, active);
@@ -485,10 +490,10 @@ namespace Morgott.UI.StationQueue
             Put(textRt, 126f, active ? 6f : 0f, 230f, active ? 44f : CardH);
             if (active)
             {
-                var share = StationQueueMath.Share(e, _state.Progress, Have(output));
+                var share = StationQueueMath.Share(e, _state.Progress, Stocked(e.Item));
                 FillBar(card.Fill, card.Trough, share);
                 card.Pct.text = Mathf.RoundToInt(share * 100f) + "%";
-                card.Fed.text = StationQueueMath.Group(e.Keep ? Have(output) : e.Fed) + " / " + StationQueueMath.Group(e.Target);
+                card.Fed.text = StationQueueMath.Group(e.Keep ? Stocked(e.Item) : e.Fed) + " / " + StationQueueMath.Group(e.Target);
             }
             // keep-in-stock entries: the "stock" chip (gold), an until one keeps its condition icon
             card.Chip.text = e.Keep && StationQueueMath.CanKeep(e.Mode) ? W("chip_keep") : e.Mode == StationQueueMode.Count ? W("mode_count") : e.Mode == StationQueueMode.Infinite ? "∞" : W("mode_until");
@@ -669,9 +674,8 @@ namespace Morgott.UI.StationQueue
             SetRim(_eLessRim, _draft.Compare == StationQueueCompare.Less ? Cyan : Dim);
             SetRim(_eAtLeastRim, _draft.Compare == StationQueueCompare.AtLeast ? Cyan : Dim);
             var keepCount = _draft.Keep && _draft.Mode == StationQueueMode.Count;
-            var output = OutputOf(_draft.Item);
-            _eSummary.text = StationQueueMath.Summary(_draft, _eName.text, keepCount ? Name(output) : _eCondName.text, Have(keepCount ? output : _draft.Condition),
-                W("sum_count"), W("sum_infinite"), W("sum_until"), W("sum_keep"), W("keep_tail"));
+            _eSummary.text = StationQueueMath.Summary(_draft, _eName.text, keepCount ? OutputName(_draft.Item) : _eCondName.text, keepCount ? Stocked(_draft.Item) : Have(_draft.Condition),
+                W("sum_count"), W("sum_infinite"), W("sum_until"), W(IsFuel(_draft.Item) ? "sum_keep_fuel" : "sum_keep"), W("keep_tail"));
             SetActive(_eDelete, _editIndex >= 0);
         }
 

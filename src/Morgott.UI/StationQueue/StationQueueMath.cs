@@ -12,7 +12,8 @@ namespace Morgott.UI.StationQueue
         public const int DefaultCount = 10, DefaultThreshold = 100, MaxValue = 99999;
         public const string Separator = " · ";
 
-        // One input = the single-input window (eitr refinery, windmill, spinning wheel); more = the queue window.
+        // One input = the single-input window (windmill, spinning wheel); more = the queue window, also a fuelled station
+        // (eitr refinery: sap + its fuel, Patcher lists the fuel as the last input).
         public static bool IsSingle(int inputs) => inputs == 1;
 
         // Steps back from the hover reach before the window closes.
