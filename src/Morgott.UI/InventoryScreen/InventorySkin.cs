@@ -479,7 +479,10 @@ namespace Morgott.UI.InventoryScreen
             }
             if (_alpha > 0f)
             {
-                if (_layout != null) ApplyPanels(); // pin over the vanilla close clip while fading out
+                // Pin over the vanilla close clip while fading out. No local player (logout / kick teardown: vanilla
+                // InventoryGui.Update hides and returns on a null Player.m_localPlayer, InventoryGui.cs:512-516) = no
+                // player panel to lay out, same guard as Frame; the fade still runs out and parks.
+                if (_layout != null && Player.m_localPlayer) ApplyPanels();
             }
             else if (_parked.Count == 0) Park();
         }
