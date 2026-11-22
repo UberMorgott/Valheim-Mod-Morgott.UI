@@ -523,41 +523,61 @@ namespace Morgott.UI.WorldHud
             var arrowX = ring * 0.5f + gap + arrow * 0.5f;
             _left = Arrow("RudderLeft", "sprite.glyph.arrow.left", -arrowX, rowY - (ring - arrow) * 0.5f, arrow);
             _right = Arrow("RudderRight", "sprite.glyph.arrow.right", arrowX, rowY - (ring - arrow) * 0.5f, arrow);
-            Compass(hud, ring, gap);
+            Compass(hud, rs, ring, arrow, gap);
             Plugin.Log.LogInfo($"[Morgott.UI] ship HUD attached (block {block.width:0}x{block.height:0} units)");
             PlayHud.Reports.Add(() => Instance && root ? _art.Report(root) : null);
         }
 
-        // Vanilla wind compass (hudroot/ShipHud/WindIndicator: socket, Circle, Ship, Wind/WindIcon) kept live for
-        // Hud.UpdateShipHud (root z = ship yaw vs camera, Wind z = wind vs ship): moved left of the block's top edge
-        // (out of the minimap footprint, follows Place + the large-map hide) and reskinned as the rudder socket.
-        private void Compass(Hud hud, float size, float gap)
+        // Vanilla wind compass (hudroot/ShipHud/WindIndicator: Ship, Circle, Wind/WindIcon) kept live for Hud.UpdateShipHud
+        // (root z = ship yaw vs camera, Wind z = wind vs ship): moved left of the block's top edge (out of the minimap
+        // footprint, follows Place + the large-map hide) and laid out as the rudder button: button_round socket (rs) inside
+        // the gp_ring (ring), hull glyph in the middle, the wind arrow (rudder-arrow size) between hull and ring, on the
+        // orbit side the prefab puts it. Sizes in ladder units, every part centred on the pivot vanilla rotates about.
+        private void Compass(Hud hud, float socket, float ring, float glyph, float gap)
         {
             var w = hud.m_shipWindIndicatorRoot;
-            if (!w) return;
-            // Diameter = farthest graphic corner from the pivot, both ways (WindIcon orbits outside the socket rect).
-            var d = 0f;
-            var c = new Vector3[4];
-            foreach (var g in w.GetComponentsInChildren<Graphic>(true))
-            {
-                g.rectTransform.GetWorldCorners(c);
-                foreach (var p in c) d = Mathf.Max(d, 2f * ((Vector2)w.InverseTransformPoint(p)).magnitude);
-            }
-            w.SetParent(_column, false);
-            w.anchorMin = w.anchorMax = new Vector2(0f, 1f); // pivot kept: vanilla rotates about it, the local origin measured above
-            w.anchoredPosition = new Vector2(-gap - size * 0.5f, -size * 0.5f);
-            if (d > 0f) w.localScale = Vector3.one * (size / d);
-            _compassUnits = gap + size;
-            _art.Reskin(w.GetComponent<Image>(), "sprite.button.round", "color.frame", "ship wind compass socket");
-            _art.Reskin(w.Find("Circle")?.GetComponent<Image>(), "sprite.hud.gp.ring", "color.hud.ship.track", "ship wind compass ring");
-            Tint(w.Find("Ship")?.GetComponent<Image>(), "color.text.active", "ship heading silhouette (vanilla art)");
-            Tint(hud.m_shipWindIconRoot ? hud.m_shipWindIconRoot.GetComponent<Image>() : null, "color.hud.ship.track", "wind sector (vanilla art)");
+            var wind = hud.m_shipWindIconRoot;
             _windIcon = hud.m_shipWindIcon;
-            if (_art.Reskin(_windIcon, "sprite.glyph.wind", null, "wind arrow (tint per frame, AfterShipHud)"))
+            if (!w || !wind || !_windIcon) return;
+            var icon = _windIcon.rectTransform;
+            var side = ((Vector2)wind.InverseTransformPoint(icon.TransformPoint(icon.rect.center))).normalized; // orbit side, Wind-local
+            w.SetParent(_column, false);
+            w.anchorMin = w.anchorMax = new Vector2(0f, 1f);
+            w.localScale = Vector3.one;
+            w.anchoredPosition = new Vector2(-gap - ring * 0.5f, -ring * 0.5f);
+            _compassUnits = gap + ring;
+            // The prefab's root graphic (rect not tied to the pivot) drew no disc in game (run 20261122-211132): the socket is ours.
+            var own = w.GetComponent<Image>();
+            if (own) own.enabled = false;
+            var disc = _art.Image("CompassSocket", w, "sprite.button.round", "color.frame", Image.Type.Simple);
+            disc.preserveAspect = true;
+            disc.transform.SetAsFirstSibling();
+            Centre(disc.rectTransform, w, socket);
+            var circle = w.Find("Circle")?.GetComponent<Image>();
+            if (_art.Reskin(circle, "sprite.hud.gp.ring", "color.hud.ship.track", "ship wind compass ring")) Centre(circle.rectTransform, w, ring);
+            var hull = w.Find("Ship")?.GetComponent<Image>();
+            Tint(hull, "color.text.active", "ship heading silhouette (vanilla art)");
+            if (hull)
             {
-                _windIcon.preserveAspect = true;
-                _windIcon.rectTransform.localRotation = Quaternion.identity; // vanilla windicon art points right (+90 in the prefab); glyph_wind points up
+                hull.preserveAspect = true;
+                Centre(hull.rectTransform, w, ring - 2f * glyph); // clear of the arrow on any side
             }
+            Centre(wind, w, ring);
+            var sector = wind.GetComponent<Image>();
+            if (sector) sector.enabled = false; // vanilla wedge art, no theme counterpart: the arrow carries the cue
+            if (!_art.Reskin(_windIcon, "sprite.glyph.wind", null, "wind arrow (tint per frame, AfterShipHud)")) return;
+            _windIcon.preserveAspect = true;
+            Centre(icon, w, glyph);
+            icon.localRotation = Quaternion.identity; // vanilla windicon art points right (+90 in the prefab); glyph_wind points up
+            icon.position = wind.TransformPoint(side * ((ring - glyph) * 0.5f * w.lossyScale.x / wind.lossyScale.x));
+        }
+
+        // Square rect of `units` ladder units (w's scale) centred on w's pivot.
+        private static void Centre(RectTransform rt, RectTransform w, float units)
+        {
+            rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = Vector2.one * (units * w.lossyScale.x / rt.lossyScale.x);
+            rt.position = w.position;
         }
 
         private void Tint(Image img, string colorToken, string reason)
