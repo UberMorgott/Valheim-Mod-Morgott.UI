@@ -114,6 +114,8 @@ namespace Morgott.UI.Tests
             Assert.False(q[0].Keep); // the read state is never edited in place
             Assert.True(StationQueueMath.IsStock(stock, false));
             Assert.All(StationQueueMath.WithKeep(stock, false), e => Assert.False(e.Keep));
+            stock[0].Keep = false; // an older mixed list: Queue until switched, never shown as Stock while one-shots vanish
+            Assert.False(StationQueueMath.IsStock(stock, true));
             Assert.True(StationQueueMath.NewEntry("Wood", StationQueueMode.Count, "Coal", keep: true).Keep);
         }
 
@@ -183,6 +185,11 @@ namespace Morgott.UI.Tests
             Assert.True(saved[0].Keep);
             Assert.Equal(0, StationQueueMath.Find(now, 1, draft));
             Assert.Equal(-1, StationQueueMath.Find(new List<StationQueueEntry> { done }, 0, draft)); // same input, other entry: never overwritten
+            var fresh = StationQueueMath.NewEntry("Wood", StationQueueMode.Count, null); // opened unnumbered, the owner numbered it since
+            Assert.Equal(1, StationQueueMath.Find(new List<StationQueueEntry> { done, kept }, 1, fresh));
+            var replaced = StationQueueMath.Save(new List<StationQueueEntry> { done, kept }, 1, fresh);
+            Assert.Equal(2, replaced.Count); // replaced, no duplicate
+            Assert.Equal(2, replaced[1].Id); // keeps the owner's number
         }
 
         [Fact]

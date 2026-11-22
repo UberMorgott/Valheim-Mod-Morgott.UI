@@ -616,6 +616,7 @@ namespace Morgott.UI.StationQueue
         private void EditorSave()
         {
             if (!_editing || _draft == null) return;
+            _draft.Keep = Stock; // the selector's mode now, not when the editor opened (another player may have switched it)
             _editing = false;
             _picker.gameObject.SetActive(false);
             Commit(StationQueueMath.Save(_state.Entries, _editIndex, _draft), _state.Paused);

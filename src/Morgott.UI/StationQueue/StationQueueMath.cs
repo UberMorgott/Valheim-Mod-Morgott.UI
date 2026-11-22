@@ -89,13 +89,13 @@ namespace Morgott.UI.StationQueue
         // Keep in stock means something for count / until entries (infinite never ends anyway).
         public static bool CanKeep(StationQueueMode mode) => mode != StationQueueMode.Infinite;
 
-        // Header selector (Queue / Stock): a station keeps stock when any entry does (older mixed lists); an empty queue
-        // shows the window's own choice, which its first entry takes.
+        // Header selector (Queue / Stock): a station keeps stock when every entry does (an older mixed list reads as Queue,
+        // one click makes it all Stock); an empty queue shows the window's own choice, which its first entry takes.
         public static bool IsStock(IList<StationQueueEntry> entries, bool emptyChoice)
         {
             if (entries.Count == 0) return emptyChoice;
-            foreach (var e in entries) if (e.Keep) return true;
-            return false;
+            foreach (var e in entries) if (!e.Keep) return false;
+            return true;
         }
 
         // Selector switch: every entry becomes keep-in-stock (true) or one-shot (false); ids stay, so the owner keeps progress.
@@ -212,7 +212,8 @@ namespace Morgott.UI.StationQueue
                 for (var i = 0; i < entries.Count; i++) if (entries[i].Id == draft.Id) return i;
                 return -1;
             }
-            return index >= 0 && index < entries.Count && entries[index].Id == 0 && entries[index].Item == draft.Item ? index : -1;
+            // a new entry opened before the owner numbered it: still at its row
+            return index >= 0 && index < entries.Count && entries[index].Item == draft.Item ? index : -1;
         }
 
         // Editor save: replaces the edited entry (Find), else appends the draft (a new one, or one the owner finished: dropped there).
@@ -220,8 +221,13 @@ namespace Morgott.UI.StationQueue
         {
             var list = Clone(entries);
             var at = Find(list, index, draft);
-            if (at >= 0) list[at] = draft.Clone();
-            else list.Add(draft.Clone());
+            var copy = draft.Clone();
+            if (at >= 0)
+            {
+                if (copy.Id == 0) copy.Id = list[at].Id; // numbered by the owner since: the same entry, its progress kept
+                list[at] = copy;
+            }
+            else list.Add(copy);
             return list;
         }
 
