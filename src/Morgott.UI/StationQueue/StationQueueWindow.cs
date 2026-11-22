@@ -824,7 +824,8 @@ namespace Morgott.UI.StationQueue
             label = Txt(rt, "Label", "text.accent", TextAlignmentOptions.Center, 22f);
             label.text = W("badge");
             label.color = Gold;
-            Stretch(label.rectTransform, 4f, 0f, 4f, 0f);
+            Stretch(label.rectTransform, 34f, 0f, 6f, 0f);
+            SwapGlyph(rt);
             return rt;
         }
 
@@ -1138,20 +1139,34 @@ namespace Morgott.UI.StationQueue
         }
 
         // Thin cyan "→" between input and output (eitr-refinery.png), drawn from rules: no font glyph to go missing.
-        private static void ArrowGlyph(Transform parent, float x, float yMid, float w)
+        private static RectTransform ArrowGlyph(Transform parent, float x, float yMid, float w, float head = 16f, float t = 3f, bool gold = false)
         {
-            const float T = 3f, Head = 16f;
+            var color = gold ? Gold : Cyan;
             var a = NewRect("Arrow", parent);
-            Put(a, x, yMid - Head / 2f, w, Head);
-            Put(Rule(a, "Shaft", Cyan), 0f, Head / 2f - T / 2f, w - 1f, T);
+            Put(a, x, yMid - head / 2f, w, head);
+            Put(Rule(a, "Shaft", color), 0f, head / 2f - t / 2f, w - 1f, t);
             foreach (var deg in new[] { 40f, -40f })
             {
-                var rt = Rule(a, "Head", Cyan).rectTransform;
+                var rt = Rule(a, "Head", color).rectTransform;
                 rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(1f, 0.5f);
-                rt.sizeDelta = new Vector2(Head, T);
+                rt.sizeDelta = new Vector2(head, t);
                 rt.anchoredPosition = Vector2.zero;
                 rt.localRotation = Quaternion.Euler(0f, 0f, deg);
             }
+            return a;
+        }
+
+        // "⇄" switch mark at the selector badge's left end (Codex review 2026-11-22: the badge read as a static label), drawn
+        // from rules as ArrowGlyph: the header face may lack the glyph.
+        private static void SwapGlyph(RectTransform badge)
+        {
+            const float W = 22f, H = 20f;
+            var g = NewRect("Swap", badge);
+            g.anchorMin = g.anchorMax = g.pivot = new Vector2(0f, 0.5f);
+            g.anchoredPosition = new Vector2(10f, 0f);
+            g.sizeDelta = new Vector2(W, H);
+            ArrowGlyph(g, 0f, 5f, W, 9f, 2f, gold: true);
+            ArrowGlyph(g, W, H - 5f, W, 9f, 2f, gold: true).localScale = new Vector3(-1f, 1f, 1f); // mirrored on its left edge: points back
         }
 
         private TMP_Text Label(Transform parent, string text, float x, float y)
