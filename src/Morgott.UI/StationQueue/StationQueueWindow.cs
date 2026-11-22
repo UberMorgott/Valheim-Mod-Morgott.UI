@@ -302,6 +302,8 @@ namespace Morgott.UI.StationQueue
             _stockChoice = false;
             _inScroll = _cardScroll = 0;
             _editing = false;
+            _dragCard = _hoverCard = -1; // a Hud destroyed mid-drag never ran Hide
+            _dragItem = null;
             _picker.gameObject.SetActive(false);
             _root.gameObject.SetActive(true);
             _nextRead = Time.unscaledTime + RefreshEvery;
@@ -709,6 +711,14 @@ namespace Morgott.UI.StationQueue
             var host = Hud.instance && Hud.instance.m_rootObject ? Hud.instance.m_rootObject.transform : null;
             _buildFail = !Hud.instance ? "no Hud" : !host ? "Hud has no root object" : !host.GetComponentInParent<Canvas>(true) ? "no canvas above " + Path(host) : null;
             if (_buildFail != null) return false;
+            // A rebuild (logout destroys the Hud and our root with it; this component lives on) starts from empty widget
+            // caches: the Build* calls append, and stale rows of the destroyed window threw NREs in RefreshMulti.
+            _rows.Clear();
+            _cards.Clear();
+            _pRows.Clear();
+            _headers.Clear();
+            _serif.Clear();
+            _badgeShare = _sBadgeShare = 0f;
             _root = NewRect(RootName, host);
             Plugin.Log.LogInfo($"[StationQueue] window built under {Path(host)} (layer {host.gameObject.layer})");
             _root.SetAsLastSibling();
