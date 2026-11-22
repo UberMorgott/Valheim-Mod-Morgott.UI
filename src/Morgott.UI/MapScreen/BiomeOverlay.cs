@@ -55,6 +55,8 @@ namespace Morgott.UI.MapScreen
         public Texture2D Texture => _texOutline;
         public Texture2D FillTexture => _texFill;
         public bool Ready => _gridReady && _composed;
+        public bool Shown => _fresh && On;
+        public bool Composing => _composing;
         public RawImage Image => _image;
         public bool LinesShown => _lines && _lines.isActiveAndEnabled && _lines.Count > 0;
         public int LineSegments => _lines ? _lines.Count : 0;
@@ -279,7 +281,13 @@ namespace Morgott.UI.MapScreen
         internal void Explored(int x, int y)
         {
             if (x < 0 || y < 0 || x >= _size || y >= _size) return;
-            if (_composing) { _pending.Add(y * _size + x); return; } // the worker owns the pixel arrays
+            if (_composing)
+            {
+                _pending.Add(y * _size + x); // the worker owns the pixel arrays
+                // A burst it cannot clear meanwhile: hidden until FinishCompose clears + uploads these texels (no stale fog tint).
+                if (_pending.Count > MapFilterMath.ExploreBurst) _fresh = false;
+                return;
+            }
             if (!Ready) return;
             if (_full || ++_burst > MapFilterMath.ExploreBurst)
             {
