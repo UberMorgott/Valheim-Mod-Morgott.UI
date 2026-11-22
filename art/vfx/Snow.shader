@@ -9,8 +9,11 @@
 // slope (_SlopeMin), distance (_FadeNear.._FadeFar from _Center) and the R8 trail mask _TrailTex over _TrailRect (xy world
 // origin, z = 1 / size m; 1 = trampled or under a piece): dy = deep * (1 - trail). Where dy is ~0 the pass is clipped,
 // so vanilla terrain shows. ZWrite on + shadow caster: the snow hides what it buries, casts and receives shadows, fogged.
-// Lambert, albedo ~0.8: Standard (spec + reflection-probe IBL, albedo 0.95) blew the HDR frame out under bloom once the
-// snow filled the view (run 20261123-003403 whiteout); vanilla Standard-lit surfaces read ~2.5x brighter (Core ArmorSkin).
+// Lambert, albedo ~0.8. Ambient is added by hand from the linear SH (noambient): the unity/ project is Gamma
+// (ProjectSettings m_ActiveColorSpace 0) and Valheim Linear, so Unity's own SH ambient compiled here re-encodes the ambient
+// to gamma (ShadeSHPerPixel LinearToGammaSpace, ~2.5x at Valheim's 0.46/0.57/0.71 ambient) and filled the deferred emission
+// buffer: shadows washed out, bloom veiled the whole frame (runs 20261123-003403, -031243). Vanilla Custom/Heightmap has no
+// such conversion.
 Shader "Morgott/Snow"
 {
     Properties
@@ -38,7 +41,7 @@ Shader "Morgott/Snow"
         Offset -1, -1
 
         CGPROGRAM
-        #pragma surface surf Lambert vertex:vert addshadow fullforwardshadows nolightmap nodynlightmap nodirlightmap nometa noinstancing
+        #pragma surface surf Lambert vertex:vert addshadow fullforwardshadows noambient nolightmap nodynlightmap nodirlightmap nometa noinstancing
         #pragma target 3.0
 
         sampler2D _TrailTex, _ClearedMaskTex, _DepthTex, _SnowNormal;
@@ -49,7 +52,9 @@ Shader "Morgott/Snow"
         struct Input
         {
             float3 worldPos;
+            float3 worldNormal;
             float dy;
+            INTERNAL_DATA
         };
 
         half Trail(float2 xz)
@@ -105,6 +110,8 @@ Shader "Morgott/Snow"
             half drift = lerp(1, 0.9 + 0.2 * (Noise(xz * 0.35) * 0.65 + Noise(xz * 1.7) * 0.35), _Drift);
             o.Albedo = saturate(lerp(_Color.rgb * drift, _TrailColor.rgb, t));
             o.Normal = UnpackNormal(tex2D(_SnowNormal, xz * _NormalTile));
+            half4 n = half4(WorldNormalVector(IN, o.Normal), 1);
+            o.Emission = o.Albedo * max(0, SHEvalLinearL0L1(n) + SHEvalLinearL2(n)); // linear ambient whatever the build's colour space
             o.Alpha = 1;
         }
         ENDCG
