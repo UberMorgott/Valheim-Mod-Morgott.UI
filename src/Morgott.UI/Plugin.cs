@@ -142,7 +142,7 @@ namespace Morgott.UI
                 Services.Register<IWebVfx>(VfxProvider.Instance);
                 Services.Register<IOverlayVfx>(VfxProvider.Instance);
                 Services.Register<IGemVfx>(VfxProvider.Instance);
-            Services.Register<ISnowVfx>(VfxProvider.Instance);
+                Services.Register<ISnowVfx>(VfxProvider.Instance);
             }
             if (!CoreApi.Headless) Services.Register<IItemBrowser>(ItemBrowser.BrowserService.Instance); // inactive (false) until the ITEMS tab exists
             // Icons and compat text do not depend on the theme either (MorgottTweaks moved them here, TASKS 4.5).
