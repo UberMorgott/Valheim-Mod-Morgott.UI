@@ -175,18 +175,14 @@ namespace Morgott.UI.InventoryScreen
             if (gameObject.activeSelf) gameObject.SetActive(false);
         }
 
-        private void Awake()
-        {
-            Instance = this;
-            Camera.onPreCull += OnCameraPreCull;
-            Camera.onPostRender += OnCameraPostRender;
-        }
+        private void Awake() => Instance = this;
 
         // Closed (or no longer placed): park now. Still open: a transient disable, the rig stays live (header) but stops
         // rendering (the texture keeps its last frame, as without LateUpdate before the camera loop render).
         private void OnDisable()
         {
             if (_camera) _camera.enabled = false;
+            SwapOut();
             if (!_placed || !IsOpen()) Park("disabled");
         }
 
@@ -210,6 +206,7 @@ namespace Morgott.UI.InventoryScreen
         // (GPU memory included, EnsureTexture) are kept for the next open.
         private void Park(string why)
         {
+            SwapOut();
             if (_rig && _rig.activeSelf)
             {
                 _rig.SetActive(false);
@@ -231,8 +228,6 @@ namespace Morgott.UI.InventoryScreen
 
         private void OnDestroy()
         {
-            Camera.onPreCull -= OnCameraPreCull;
-            Camera.onPostRender -= OnCameraPostRender;
             Teardown("destroyed");
             if (Instance == this) Instance = null;
         }
@@ -272,8 +267,7 @@ namespace Morgott.UI.InventoryScreen
             // Drawn by Unity's camera loop this frame (enabled, depth below every scene / GUI camera), not by Camera.Render():
             // a manual render runs Canvas.willRenderCanvases, i.e. a second full uGUI layout / graphic rebuild of every
             // canvas per frame (run 20261122-234635: CanvasUpdateRegistry.PerformUpdate 2.2 calls/frame, this LateUpdate
-            // 15.2 ms/frame with the 1070-row craft list open). The light / fog / ambient swap follows the camera
-            // (OnCameraPreCull / OnCameraPostRender).
+            // 15.2 ms/frame with the 1070-row craft list open). The light / fog / ambient swap follows the camera (CameraHook).
             _camera.enabled = true;
             if (!_alphaChecked)
             {
@@ -379,6 +373,7 @@ namespace Morgott.UI.InventoryScreen
             var camGo = new GameObject("RuneSkinPreviewCamera");
             camGo.transform.SetParent(_rig.transform, false);
             _camera = camGo.AddComponent<Camera>();
+            camGo.AddComponent<CameraHook>().Owner = this;
             _camera.enabled = false; // enabled by LateUpdate while shown (camera loop); Render only for a readback
             _camera.depth = -100f; // before the cameras whose UI shows the texture: this frame's image, not last frame's
             _camera.clearFlags = CameraClearFlags.SolidColor;
@@ -458,6 +453,7 @@ namespace Morgott.UI.InventoryScreen
             if (_rig) Destroy(_rig);
             _rig = _clone = null;
             _vis = null;
+            SwapOut();
             _camera = null;
             _player = null;
             _worldLights.Clear();
@@ -713,21 +709,34 @@ namespace Morgott.UI.InventoryScreen
 
         // A synchronous render now (CheckAlpha readback, harness path cost); the shown frames are drawn by the camera loop.
         // The swap runs in the camera callbacks either way.
-        private void Render() => DrawCamera();
+        private void Render()
+        {
+            try { DrawCamera(); }
+            finally { SwapOut(); }
+        }
 
         // The camera's render alone (culling, skinning, draw submission; rp-open-hitch inner attribution).
         private void DrawCamera() => _camera.Render();
 
         // Time of day / weather independent: world directional lights off, rig lights on, fog off, flat ambient for this
-        // camera's cull + render only (Camera.onPreCull .. onPostRender, camera loop and manual Render alike).
+        // camera's cull + render only, camera loop and manual Render alike. Per-camera messages on the camera's own object
+        // (CameraHook), not the static Camera.onPreCull / onPostRender: another subscriber throwing there would skip the
+        // restore. SwapOut is idempotent; park, disable and teardown call it too.
+        private sealed class CameraHook : MonoBehaviour
+        {
+            public CharacterPreview Owner;
+            private void OnPreCull() { if (Owner) Owner.SwapIn(); }
+            private void OnPostRender() { if (Owner) Owner.SwapOut(); }
+        }
+
         private bool _swappedIn, _fog;
         private AmbientMode _ambientMode;
         private Color _ambient;
         private float _ambientIntensity;
 
-        private void OnCameraPreCull(Camera cam)
+        private void SwapIn()
         {
-            if (_swappedIn || !ReferenceEquals(cam, _camera)) return; // every camera's cull lands here: reference check only
+            if (_swappedIn) return;
             _swappedIn = true;
             _fog = RenderSettings.fog;
             _ambientMode = RenderSettings.ambientMode;
@@ -748,9 +757,9 @@ namespace Morgott.UI.InventoryScreen
                 if (l) l.enabled = true;
         }
 
-        private void OnCameraPostRender(Camera cam)
+        private void SwapOut()
         {
-            if (!_swappedIn || !ReferenceEquals(cam, _camera)) return;
+            if (!_swappedIn) return;
             _swappedIn = false;
             foreach (var l in _rigLights)
                 if (l) l.enabled = false;
