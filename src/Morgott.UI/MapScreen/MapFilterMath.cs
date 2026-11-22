@@ -258,6 +258,9 @@ namespace Morgott.UI.MapScreen
         // merged = texels explored by others (green cleared, ExploreOthers :1914-1929) render like own exploration.
         public static byte FogRed(bool explored, bool others, bool merged) => explored || merged && others ? (byte)0 : (byte)255;
 
+        // Bit i of a BitArray copied to int words (BitArray.CopyTo(int[]): bit i = word i / 32, bit i % 32).
+        public static bool Bit(int[] words, int i) => (words[i >> 5] >> (i & 31) & 1) != 0;
+
         // One biome border segment in texel-corner lattice units (texel (x, y) spans [x, x + 1) x [y, y + 1)); Id = the
         // colour's biome.
         public struct Segment

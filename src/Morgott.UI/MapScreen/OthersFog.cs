@@ -1,5 +1,8 @@
+using System.Collections.Generic;
+using System.Reflection.Emit;
 using HarmonyLib;
 using Morgott.UI.Ownership;
+using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 
 namespace Morgott.UI.MapScreen
@@ -36,21 +39,32 @@ namespace Morgott.UI.MapScreen
             var merged = Merged(map);
             var stride = (int)GraphicsFormatUtility.GetBlockSize(tex.graphicsFormat);
             var fog = tex.GetPixelData<byte>(0);
-            var explored = map.m_explored;
-            var others = map.m_exploredOthers;
-            for (var i = 0; i < explored.Length; i++) fog[i * stride] = MapFilterMath.FogRed(explored[i], others[i], merged);
+            // Bits as int words (BitArray.CopyTo): no two BitArray indexer calls per texel of a 4M-texel pass.
+            var n = map.m_explored.Length;
+            var explored = new int[(n + 31) >> 5];
+            var others = new int[explored.Length];
+            map.m_explored.CopyTo(explored, 0);
+            map.m_exploredOthers.CopyTo(others, 0);
+            for (var i = 0; i < n; i++) fog[i * stride] = MapFilterMath.FogRed(MapFilterMath.Bit(explored, i), MapFilterMath.Bit(others, i), merged);
             if (apply) tex.Apply();
         }
 
-        // One texel, as Explore(x, y) writes it; the caller uploads (AddSharedMapData :2769, WorldShare).
+        // One texel, as Explore(x, y) writes it, inside ExploreOthers' own SetPixel: one GetPixel / SetPixel pair per texel as
+        // in vanilla (a postfix with its own pair doubled a big shared map's cost); the caller uploads (AddSharedMapData :2769,
+        // WorldShare).
         [HarmonyPatch(typeof(Minimap), nameof(Minimap.ExploreOthers))]
-        [HarmonyPostfix]
-        private static void ExploreOthers_Postfix(Minimap __instance, int x, int y, bool __result)
+        [HarmonyTranspiler]
+        private static IEnumerable<CodeInstruction> ExploreOthers_Transpiler(IEnumerable<CodeInstruction> code) =>
+            new CodeMatcher(code)
+                .MatchForward(false, new CodeMatch(OpCodes.Callvirt, AccessTools.Method(typeof(Texture2D), nameof(Texture2D.SetPixel), new[] { typeof(int), typeof(int), typeof(Color) })))
+                .ThrowIfInvalid("Minimap.ExploreOthers: Texture2D.SetPixel(int, int, Color) not found")
+                .SetInstruction(new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(OthersFog), nameof(SetOthersPixel))))
+                .InstructionEnumeration();
+
+        private static void SetOthersPixel(Texture2D tex, int x, int y, Color c)
         {
-            if (!__result || !Merged(__instance)) return;
-            var c = __instance.m_fogTexture.GetPixel(x, y);
-            c.r = 0f;
-            __instance.m_fogTexture.SetPixel(x, y, c);
+            if (Minimap.instance && Merged(Minimap.instance)) c.r = 0f;
+            tex.SetPixel(x, y, c);
         }
 
         // World load (SetMapData uploads after it, :2178/:2213): every others' texel at once.

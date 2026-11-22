@@ -148,7 +148,16 @@ namespace Morgott.UI.Tests
         [InlineData(false, true, true, 0)]    // merged: drawn like own exploration
         public void FogRedMergesOthersOnlyWhenAsked(bool explored, bool others, bool merged, int red) =>
             Assert.Equal((byte)red, MapFilterMath.FogRed(explored, others, merged));
-        // 4x3 grid: meadows left half, black forest right half, ocean bottom-right corner.
+
+        [Fact]
+        public void BitReadsBitArrayWords()
+        {
+            var bits = new System.Collections.BitArray(100);
+            foreach (var i in new[] { 0, 31, 32, 63, 64, 99 }) bits[i] = true;
+            var words = new int[(bits.Length + 31) >> 5];
+            bits.CopyTo(words, 0);
+            for (var i = 0; i < bits.Length; i++) Assert.Equal(bits[i], MapFilterMath.Bit(words, i));
+        }        // 4x3 grid: meadows left half, black forest right half, ocean bottom-right corner.
         private static readonly byte[] Grid =
         {
             1, 1, 2, 2,

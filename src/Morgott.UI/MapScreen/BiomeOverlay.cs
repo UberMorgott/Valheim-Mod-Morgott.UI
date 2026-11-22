@@ -40,7 +40,7 @@ namespace Morgott.UI.MapScreen
         private Color32[] _palette;
         private Color32 _fog;
         private byte _fill, _outline;
-        private bool _full = true, _dirty, _linesDirty = true;
+        private bool _full = true, _dirty, _linesDirty = true, _cleared;
         private float _nextApply, _nextLines;
         private Thread _worker;
         // Full compose (~350 ms for 2048^2) runs on a worker as soon as the grid is ready, not in the first large-map frame
@@ -89,6 +89,7 @@ namespace Morgott.UI.MapScreen
             if (_worker == null && WorldGenerator.instance != null) StartGrid();
             if (_composeDone) FinishCompose();
             if (_themeRev != ThemeTokens.Revision) { _themeRev = ThemeTokens.Revision; Restyle(); } // ui_reload: new colours
+            if (_cleared) Upload(); // before the worker takes the pixel arrays again
             if (_full && _gridReady && !_composing && On) StartCompose();
         }
 
@@ -146,7 +147,11 @@ namespace Morgott.UI.MapScreen
             if (!_composed) _fresh = false;
             _dirty = _composed;
             _linesDirty = true;
-            if (_composed && _pending.Count > MapFilterMath.ExploreBurst) _full = true;
+            if (_composed && !_full && _pending.Count > MapFilterMath.ExploreBurst) // _full: reset / restyle meanwhile, replayed below
+            {
+                _full = true;
+                foreach (var i in _pending) Clear(i); // compose + cleared texels = current, uploaded before the next compose
+            }
             else if (_composed) foreach (var i in _pending) Explored(i % _size, i / _size);
             _pending.Clear();
         }
@@ -275,8 +280,14 @@ namespace Morgott.UI.MapScreen
         {
             if (x < 0 || y < 0 || x >= _size || y >= _size) return;
             if (_composing) { _pending.Add(y * _size + x); return; } // the worker owns the pixel arrays
-            if (!Ready || _full) return;
-            if (++_burst > MapFilterMath.ExploreBurst) { _full = true; return; } // the old texture stays shown until the recompose lands
+            if (!Ready) return;
+            if (_full || ++_burst > MapFilterMath.ExploreBurst)
+            {
+                // Recompose pending: the shown texture must not keep the fog tint here meanwhile (cleared, uploaded this frame).
+                _full = true;
+                if (_fresh && On) Clear(y * _size + x);
+                return;
+            }
             // The soft fog edge / land blend spread FogReach texels: the whole neighbourhood is redone.
             var r = MapFilterMath.FogReach;
             for (var py = Mathf.Max(0, y - r); py <= Mathf.Min(_size - 1, y + r); py++)
@@ -293,16 +304,33 @@ namespace Morgott.UI.MapScreen
             _linesDirty = true;
         }
 
+        // A texel explored while a recompose is pending: no tint, no fill (the vanilla map) until the recompose lands.
+        private void Clear(int i)
+        {
+            _pxOutline[i] = default;
+            _pxFill[i] = default;
+            _cleared = true;
+        }
+
         // The explored bits were replaced (SetMapData, Reset, ResetSharedMapData, ExploreAll).
         internal void Invalidate()
         {
             _full = true;
+            _cleared = false; // the CPU data is stale now: never uploaded as current
             _fresh = false; // hidden until the recompose is uploaded: forgotten biomes must not show over the new fog
             _nextApply = _nextLines = 0f; // stale lit pixels / lines must not outlive a reset
         }
 
         private static Texture2D NewTexture(int size, string name) =>
             new Texture2D(size, size, TextureFormat.RGBA32, false) { name = name, wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear };
+
+        private void Upload()
+        {
+            _texOutline.Apply(false); // pixels already in its CPU data (compose / Explored): upload only
+            _texFill.Apply(false);
+            _dirty = _cleared = false;
+            _fresh = true;
+        }
 
         // Per frame while the large map is open (MinimapSkin.LargeLateUpdate).
         public void LateUpdate()
@@ -312,10 +340,7 @@ namespace Morgott.UI.MapScreen
             EnsureGrid(); // a compose requested this frame (toggle / reload) starts now, on the worker
             if (_dirty && _composed && !_composing && !_full && Time.unscaledTime >= _nextApply)
             {
-                _texOutline.Apply(false); // pixels already in its CPU data (compose / Explored): upload only
-                _texFill.Apply(false);
-                _dirty = false;
-                _fresh = true;
+                Upload();
                 _nextApply = Time.unscaledTime + 0.5f; // exploring with the map open: at most two uploads a second
             }
             var on = On && _fresh; // nothing drawn until a current compose is uploaded
