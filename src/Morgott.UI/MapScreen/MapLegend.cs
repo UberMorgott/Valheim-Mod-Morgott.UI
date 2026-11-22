@@ -16,7 +16,7 @@ namespace Morgott.UI.MapScreen
     // AdventurePinFilter*: the checkbox clicks the button and reads its grey tint, the vanilla filtered look,
     // Minimap.cs:2632); scrolled by the mouse wheel when the rows do not fit. ИГРОКИ - ZNet.GetPlayerList with a per-session
     // checkbox (hides that player's marker on the large map). СЛОИ - "Подсветка биомов" ([Map] BiomeOverlay) and the biome
-    // colour key. Then the Public toggle panel and the zoom row pinned to the bottom (minus | slider on Minimap.LargeZoom |
+    // colour key, then "Общая карта слоем" ([Map] OthersLayer, OthersFog). Then the Public toggle panel and the zoom row pinned to the bottom (minus | slider on Minimap.LargeZoom |
     // plus). A key hint line runs under the map when the game's KeyHints setting is on (Minimap.SetMapMode, :1237). Buttons
     // stay children of their vanilla panels (mods find them by path); only their LayoutGroups are off and their rects are
     // placed each frame.
@@ -67,7 +67,7 @@ namespace Morgott.UI.MapScreen
         private readonly HashSet<string> _hiddenPlayers = new HashSet<string>();
         private TMP_Text _pinsHeader, _playersHeader, _layersHeader, _zoomLabel;
         private Image _pinsDivider, _playersDivider, _layersDivider, _scrollTrack, _scrollThumb;
-        private PinRow _biomeRow;
+        private PinRow _biomeRow, _othersRow;
         private readonly List<(Image Swatch, TMP_Text Name)> _key = new List<(Image, TMP_Text)>();
         private LegendScroll _scroll;
         private int _firstRow, _firstPlayer;
@@ -114,6 +114,9 @@ namespace Morgott.UI.MapScreen
             _biomeRow = NewRow("LayerRow");
             _biomeRow.Glyph.sprite = MapIcons.Layers;
             _biomeRow.Glyph.enabled = _biomeRow.Glyph.sprite;
+            _othersRow = NewRow("OthersRow");
+            _othersRow.Glyph.sprite = MapIcons.Layers;
+            _othersRow.Glyph.enabled = _othersRow.Glyph.sprite;
             foreach (var biome in MapFilterMath.Biomes)
             {
                 var swatch = _art.Image("BiomeSwatch", _rows, null, "color.frame", Image.Type.Simple);
@@ -388,6 +391,11 @@ namespace Morgott.UI.MapScreen
                 if (MapConfig.BiomeOverlay != null) MapConfig.BiomeOverlay.Value = !MapConfig.BiomeOverlay.Value;
                 return;
             }
+            if (r == _othersRow)
+            {
+                if (MapConfig.OthersLayer != null) MapConfig.OthersLayer.Value = !MapConfig.OthersLayer.Value; // SettingChanged -> OthersFog.Rewrite
+                return;
+            }
             if (_playerRows.Contains(r))
             {
                 var key = r.Name.text;
@@ -501,7 +509,7 @@ namespace Morgott.UI.MapScreen
             }
             var barW2 = ThemeTokens.GetFloat("size.map.legend.scroll", 8f);
             var keyRows = (MapFilterMath.Biomes.Length + 1) / 2;
-            var layersH = section + playerRow + keyRows * keyRow + 6f;
+            var layersH = section + 2f * playerRow + keyRows * keyRow + 6f;
             var players = ZNet.instance ? ZNet.instance.GetPlayerList() : null;
             var playerCount = players?.Count ?? 0;
             var playersShown = Mathf.Min(playerCount, Mathf.RoundToInt(ThemeTokens.GetFloat("count.map.players.max", 4f)));
@@ -630,7 +638,13 @@ namespace Morgott.UI.MapScreen
                 if (name.text != label) name.text = label;
                 name.color = ThemeTokens.GetColor(overlay ? "color.text.body" : "color.state.disabled", Color.white);
             }
-            y += keyRows * keyRow + 6f;
+            y += keyRows * keyRow;
+            LayRow(_othersRow, pad, y, rowW, playerRow, k);
+            _othersRow.Name.text = Words.Get("$ui_map_others_layer");
+            var layered = MapConfig.OthersLayer?.Value ?? false;
+            if (_othersRow.Check.enabled != layered) _othersRow.Check.enabled = layered;
+            _othersRow.Name.color = ThemeTokens.GetColor(layered ? "color.text.body" : "color.state.disabled", Color.white);
+            y += playerRow + 6f;
 
             // Public toggle panel (vanilla toggle + label).
             foreach (var panel in TogglePanels)

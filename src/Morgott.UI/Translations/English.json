@@ -36,6 +36,7 @@
   "ui_pin_shout": "Shout",
   "ui_map_layers": "Layers",
   "ui_map_biomes": "Biome highlight",
+  "ui_map_others_layer": "Shared map as layer",
   "ui_win_crafting": "Crafting",
   "ui_craft_sort": "Sort",
   "ui_craft_sort_default": "Default",

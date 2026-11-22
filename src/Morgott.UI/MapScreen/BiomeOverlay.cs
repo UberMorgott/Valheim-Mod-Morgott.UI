@@ -48,7 +48,7 @@ namespace Morgott.UI.MapScreen
         private volatile bool _composing, _composeDone, _composeOk;
         private bool _fresh; // the uploaded textures match the explored bits (false after a reset until the recompose lands)
         private readonly System.Collections.Generic.List<int> _pending = new System.Collections.Generic.List<int>();
-        private int _themeRev = -1;
+        private int _themeRev = -1, _burst;
         private RectInt _window;
 
         // Harness: overlay textures (read back by the driver), grid / line state.
@@ -85,6 +85,7 @@ namespace Morgott.UI.MapScreen
         // its world after Minimap.Start).
         public void EnsureGrid()
         {
+            _burst = 0;
             if (_worker == null && WorldGenerator.instance != null) StartGrid();
             if (_composeDone) FinishCompose();
             if (_themeRev != ThemeTokens.Revision) { _themeRev = ThemeTokens.Revision; Restyle(); } // ui_reload: new colours
@@ -145,7 +146,8 @@ namespace Morgott.UI.MapScreen
             if (!_composed) _fresh = false;
             _dirty = _composed;
             _linesDirty = true;
-            if (_composed) foreach (var i in _pending) Explored(i % _size, i / _size);
+            if (_composed && _pending.Count > MapFilterMath.ExploreBurst) _full = true;
+            else if (_composed) foreach (var i in _pending) Explored(i % _size, i / _size);
             _pending.Clear();
         }
 
@@ -274,6 +276,7 @@ namespace Morgott.UI.MapScreen
             if (x < 0 || y < 0 || x >= _size || y >= _size) return;
             if (_composing) { _pending.Add(y * _size + x); return; } // the worker owns the pixel arrays
             if (!Ready || _full) return;
+            if (++_burst > MapFilterMath.ExploreBurst) { _full = true; return; } // the old texture stays shown until the recompose lands
             // The soft fog edge / land blend spread FogReach texels: the whole neighbourhood is redone.
             var r = MapFilterMath.FogReach;
             for (var py = Mathf.Max(0, y - r); py <= Mathf.Min(_size - 1, y + r); py++)

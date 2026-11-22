@@ -15,6 +15,7 @@ namespace Morgott.UI.MapScreen
         public static ConfigEntry<float> FillAlpha { get; private set; }
         public static ConfigEntry<float> OutlineAlpha { get; private set; }
         public static ConfigEntry<bool> FogTint { get; private set; }
+        public static ConfigEntry<bool> OthersLayer { get; private set; }
         public static ConfigEntry<bool> PortalPicker { get; private set; }
         public static ConfigEntry<bool> PortalArchIcons { get; private set; }
         public static readonly Dictionary<string, ConfigEntry<bool>> Filters = new Dictionary<string, ConfigEntry<bool>>();
@@ -29,6 +30,8 @@ namespace Morgott.UI.MapScreen
                 "Opacity of the biome border line.", new AcceptableValueRange<float>(0f, 1f)));
             FogTint = config.Bind(MapSection, "FogTint", true,
                 "Large map: tint the unexplored fog toward a cold grey (theme colour color.map.fog).");
+            OthersLayer = config.Bind(MapSection, "OthersLayer", false,
+                "Maps: show areas explored by other players (map table, world map sharing) as vanilla's separate lighter fog layer (checkbox \"Shared map as layer\" in the map's filter list). Off = drawn exactly like your own exploration. Display only: saved exploration is never changed.");
             PortalPicker = config.Bind(MapSection, "PortalPicker", true,
                 "Walking into a portal opens the large map with a portal list to travel to any portal (Morgott.Patcher portals). Off = vanilla paired portals. Read once at startup (restart to change).");
             PortalArchIcons = config.Bind(MapSection, "PortalArchIcons", true,

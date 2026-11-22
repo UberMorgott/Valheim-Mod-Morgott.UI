@@ -135,10 +135,19 @@ namespace Morgott.UI.Tests
         {
             using var s = typeof(MapFilterTests).Assembly.GetManifestResourceStream($"Morgott.UI.Translations.{language}.json");
             var words = JsonSerializer.Deserialize<Dictionary<string, string>>(s!)!;
-            foreach (var key in MapFilterMath.Rows.Select(r => r.NameToken).Concat(new[] { "$ui_map_layers", "$ui_map_biomes", "$ui_map_players", "$ui_map_pins" }))
+            foreach (var key in MapFilterMath.Rows.Select(r => r.NameToken).Concat(new[] { "$ui_map_layers", "$ui_map_biomes", "$ui_map_others_layer", "$ui_map_players", "$ui_map_pins" }))
                 Assert.True(words.TryGetValue(key.TrimStart('$'), out var w) && !string.IsNullOrWhiteSpace(w), $"{language} misses {key}");
         }
 
+        [Theory]
+        [InlineData(false, false, false, 255)]
+        [InlineData(false, false, true, 255)]
+        [InlineData(true, false, false, 0)]
+        [InlineData(true, true, false, 0)]
+        [InlineData(false, true, false, 255)] // layered: others' texel keeps red fog, the shader's lighter layer
+        [InlineData(false, true, true, 0)]    // merged: drawn like own exploration
+        public void FogRedMergesOthersOnlyWhenAsked(bool explored, bool others, bool merged, int red) =>
+            Assert.Equal((byte)red, MapFilterMath.FogRed(explored, others, merged));
         // 4x3 grid: meadows left half, black forest right half, ocean bottom-right corner.
         private static readonly byte[] Grid =
         {

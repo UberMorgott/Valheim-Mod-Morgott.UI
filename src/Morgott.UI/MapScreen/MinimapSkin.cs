@@ -59,6 +59,7 @@ namespace Morgott.UI.MapScreen
             try
             {
                 BiomeOverlay.Attach(map);
+                OthersFog.Attach();
                 MapIcons.ApplyBoss(map);
                 ApplyFilters();
             }

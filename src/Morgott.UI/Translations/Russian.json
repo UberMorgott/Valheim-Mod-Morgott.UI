@@ -36,6 +36,7 @@
   "ui_pin_shout": "Крик",
   "ui_map_layers": "Слои",
   "ui_map_biomes": "Подсветка биомов",
+  "ui_map_others_layer": "Общая карта слоем",
   "ui_win_crafting": "Ремесло",
   "ui_craft_sort": "Сортировка",
   "ui_craft_sort_default": "По умолчанию",

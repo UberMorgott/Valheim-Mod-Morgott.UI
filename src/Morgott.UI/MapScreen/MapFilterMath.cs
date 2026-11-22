@@ -250,6 +250,14 @@ namespace Morgott.UI.MapScreen
         // Texels whose FogAlpha / LandMix / Pixel change when texel (x, y) gets explored: its 5x5 neighbourhood.
         public const int FogReach = Rad;
 
+        // More newly explored texels than this in one frame (a map table, a shared map arriving) recompose the overlay on
+        // the worker instead of redrawing each neighbourhood on the main thread.
+        public const int ExploreBurst = 1024;
+
+        // Fog texture red byte (Minimap.Explore clears red, Minimap.cs:1857-1868; Reset / ResetAndExplore white, :1899):
+        // merged = texels explored by others (green cleared, ExploreOthers :1914-1929) render like own exploration.
+        public static byte FogRed(bool explored, bool others, bool merged) => explored || merged && others ? (byte)0 : (byte)255;
+
         // One biome border segment in texel-corner lattice units (texel (x, y) spans [x, x + 1) x [y, y + 1)); Id = the
         // colour's biome.
         public struct Segment
