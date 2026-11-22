@@ -43,7 +43,12 @@ namespace Morgott.UI.StationQueue
 
         // Harness: the multi window's title badge text ("" when not shown), the shown header / status line, the card being
         // dragged (-1 = none).
-        public static string BadgeText => IsOpen && _instance._badge && _instance._badge.gameObject.activeInHierarchy ? _instance._badgeLabel.text : "";
+        public static string BadgeText => !IsOpen ? "" : _instance._badge && _instance._badge.gameObject.activeInHierarchy ? _instance._badgeLabel.text :
+            _instance._sBadge && _instance._sBadge.gameObject.activeInHierarchy ? _instance._sBadgeLabel.text : "";
+
+        /// <summary>Harness: the header selector's mode (true = keep in stock) and its click (what the badge button does).</summary>
+        public static bool StockMode => IsOpen && _instance.Stock;
+        public static void ToggleStockMode() { if (IsOpen) _instance.ToggleStock(); }
         public static string StatusLine => !IsOpen ? "" : _instance._multi.gameObject.activeSelf ? _instance._mStatus.text : _instance._sStatus.text;
         public static int DraggingCard => _instance ? _instance._dragCard : -1;
 
@@ -109,8 +114,9 @@ namespace Morgott.UI.StationQueue
         private TMP_Text _mStatus, _mHidden, _mPause, _sStatus, _sPause;
         private readonly List<InputRow> _rows = new List<InputRow>();
         private readonly List<Card> _cards = new List<Card>();
-        private RectTransform _rowsRt, _cardsRt, _addHint, _badge;
-        private TMP_Text _badgeLabel;
+        private RectTransform _rowsRt, _cardsRt, _addHint, _badge, _sBadge;
+        private TMP_Text _badgeLabel, _sBadgeLabel;
+        private bool _stockChoice; // header selector of an empty queue (no entry to carry it yet)
 
         private sealed class InputRow
         {
@@ -142,9 +148,6 @@ namespace Morgott.UI.StationQueue
         private readonly Image[][] _sModeRims = new Image[3][];
         private readonly TMP_Text[] _sModeLabels = new TMP_Text[3];
         private Stepper _sCount, _sThreshold;
-        private Button _sKeep;
-        private TMP_Text _sKeepLabel;
-        private Image[] _sKeepRim;
 
         // editor
         private Image _eIcon, _eCondIcon;
@@ -153,11 +156,9 @@ namespace Morgott.UI.StationQueue
         private readonly Image[][] _eModeRims = new Image[3][];
         private readonly TMP_Text[] _eModeLabels = new TMP_Text[3];
         private Image[] _eLessRim, _eAtLeastRim, _eUntilRim;
-        private CanvasGroup _eCountGroup, _eUntilGroup, _eKeepGroup;
+        private CanvasGroup _eCountGroup, _eUntilGroup;
         private Stepper _eCount, _eThreshold;
-        private Button _eDelete, _eKeep;
-        private TMP_Text _eKeepLabel;
-        private Image[] _eKeepRim;
+        private Button _eDelete;
 
         // item picker (until-condition dropdown)
         private RectTransform _picker;
@@ -298,6 +299,7 @@ namespace Morgott.UI.StationQueue
                 return;
             }
             _station = station;
+            _stockChoice = false;
             _inScroll = _cardScroll = 0;
             _editing = false;
             _picker.gameObject.SetActive(false);
@@ -345,6 +347,16 @@ namespace Morgott.UI.StationQueue
         }
 
         private List<StationQueueEntry> Entries() => StationQueueMath.Clone(_state.Entries);
+
+        // Header selector: Queue (one-shot entries) or Stock (every entry keeps its stock and stays); new entries take it.
+        private bool Stock => StationQueueMath.IsStock(_state.Entries, _stockChoice);
+
+        private void ToggleStock()
+        {
+            _stockChoice = !Stock;
+            if (_state.Entries.Count == 0) RefreshAll();
+            else Commit(StationQueueMath.WithKeep(_state.Entries, _stockChoice), _state.Paused);
+        }
 
         // ---------------------------------------------------------------- items
 
@@ -400,6 +412,7 @@ namespace Morgott.UI.StationQueue
             Stamp();
             if (!_editing && _picker.gameObject.activeSelf && !single) _picker.gameObject.SetActive(false);
             LastScreen = _editing ? "editor" : single ? "single" : "multi";
+            _badgeLabel.text = _sBadgeLabel.text = Stock ? W("chip_keep") : W("badge");
             if (single) RefreshSingle();
             else RefreshMulti();
             if (_editing) RefreshEditor();
@@ -522,9 +535,7 @@ namespace Morgott.UI.StationQueue
             SetActive(_sCountBox, mode == 1);
             SetActive(_sInfBox, mode == 0 || mode < 0);
             SetActive(_sUntilBox, mode == 2);
-            SetActive(_sKeep, mode > 0);
             if (e == null) return;
-            KeepLabel(_sKeepLabel, _sKeepRim, e.Keep);
             if (mode == 1)
             {
                 SetField(_sCount, e.Target);
@@ -561,7 +572,7 @@ namespace Morgott.UI.StationQueue
             if (input == null || !input.Item) return;
             var cur = StationQueueMath.SingleEntry(_state.Entries, input.Item.name);
             if (cur == null && mode == null) return;
-            var e = cur != null ? cur.Clone() : StationQueueMath.NewEntry(input.Item.name, mode.Value, input.Output ? input.Output.name : null);
+            var e = cur != null ? cur.Clone() : StationQueueMath.NewEntry(input.Item.name, mode.Value, input.Output ? input.Output.name : null, Stock);
             if (mode != null && e.Mode != mode.Value)
             {
                 e.Mode = mode.Value;
@@ -589,7 +600,7 @@ namespace Morgott.UI.StationQueue
                         if (i.Known && i.Item) { newItem = i.Item.name; break; }
                 if (newItem == null) return;
                 _editIndex = -1;
-                _draft = StationQueueMath.NewEntry(newItem, StationQueueMode.Count, OutputOf(newItem));
+                _draft = StationQueueMath.NewEntry(newItem, StationQueueMode.Count, OutputOf(newItem), Stock);
             }
             _editing = true;
             RefreshAll();
@@ -613,7 +624,8 @@ namespace Morgott.UI.StationQueue
         private void EditorDelete()
         {
             var list = Entries();
-            if (_editIndex >= 0 && _editIndex < list.Count && list[_editIndex].Item == _draft.Item) list.RemoveAt(_editIndex);
+            var at = _editIndex >= 0 ? StationQueueMath.Find(list, _editIndex, _draft) : -1;
+            if (at >= 0) list.RemoveAt(at);
             _editing = false;
             _picker.gameObject.SetActive(false);
             Commit(list, _state.Paused);
@@ -646,8 +658,6 @@ namespace Morgott.UI.StationQueue
             }
             Group(_eCountGroup, _draft.Mode == StationQueueMode.Count);
             Group(_eUntilGroup, _draft.Mode == StationQueueMode.Until);
-            Group(_eKeepGroup, StationQueueMath.CanKeep(_draft.Mode));
-            KeepLabel(_eKeepLabel, _eKeepRim, _draft.Keep && StationQueueMath.CanKeep(_draft.Mode));
             SetRim(_eUntilRim, _draft.Mode == StationQueueMode.Until ? Cyan : Dim);
             SetField(_eCount, StationQueueMath.ShownTarget(_draft.Target));
             SetField(_eThreshold, _draft.Threshold);
@@ -662,13 +672,6 @@ namespace Morgott.UI.StationQueue
             _eSummary.text = StationQueueMath.Summary(_draft, _eName.text, keepCount ? Name(output) : _eCondName.text, Have(keepCount ? output : _draft.Condition),
                 W("sum_count"), W("sum_infinite"), W("sum_until"), W("sum_keep"), W("keep_tail"));
             SetActive(_eDelete, _editIndex >= 0);
-        }
-
-        // Keep-in-stock toggle: a mode-style button, its radio mark + cyan rim when on.
-        private static void KeepLabel(TMP_Text label, Image[] rim, bool on)
-        {
-            ModeLabel(label, on, W("keep"));
-            SetRim(rim, on ? Cyan : Dim);
         }
 
         // Mode button text (mockups): the selected one gold with a cyan radio mark.
@@ -769,29 +772,55 @@ namespace Morgott.UI.StationQueue
         }
 
         private static string Title(string key) => Words.Get(key).ToUpperInvariant();
-        private float _badgeShare;
+        private float _badgeShare, _sBadgeShare;
 
-        // Multi window: the "Очередь" badge in the header's aux slot (right end of the plaque, kiln.png).
+        // The "Очередь" / "Запас" selector badge in the header's aux slot (right end of the plaque, kiln.png).
         private void LateUpdate()
         {
-            if (!IsOpen || !_multi.gameObject.activeSelf || !_badge) return;
-            var h = Header(_multi);
+            if (!IsOpen) return;
+            if (_multi.gameObject.activeSelf) PlaceBadge(_multi, _badge, ref _badgeShare);
+            else if (_single.gameObject.activeSelf) PlaceBadge(_single, _sBadge, ref _sBadgeShare);
+        }
+
+        private void PlaceBadge(RectTransform panel, RectTransform badge, ref float placedShare)
+        {
+            if (!badge) return;
+            var h = Header(panel);
             var rt = (RectTransform)h.transform;
             var hh = rt.rect.height;
             if (!(hh > 0f)) return;
             var share = BadgeW / hh;
-            if (Mathf.Abs(share - _badgeShare) > 0.001f)
+            if (Mathf.Abs(share - placedShare) > 0.001f)
             {
-                _badgeShare = share;
+                placedShare = share;
                 h.Stretch(share);
             }
             var aux = h.AuxLocal;
-            SetActive(_badge, aux.width > 0f);
+            SetActive(badge, aux.width > 0f);
             if (aux.width <= 0f) return;
-            _badge.anchorMin = _badge.anchorMax = _badge.pivot = new Vector2(0.5f, 0.5f);
+            badge.anchorMin = badge.anchorMax = badge.pivot = new Vector2(0.5f, 0.5f);
             var pos = aux.center - rt.rect.center;
-            if ((_badge.anchoredPosition - pos).sqrMagnitude > 0.01f) _badge.anchoredPosition = pos;
-            if ((_badge.sizeDelta - aux.size).sqrMagnitude > 0.01f) _badge.sizeDelta = aux.size;
+            if ((badge.anchoredPosition - pos).sqrMagnitude > 0.01f) badge.anchoredPosition = pos;
+            if ((badge.sizeDelta - aux.size).sqrMagnitude > 0.01f) badge.sizeDelta = aux.size;
+        }
+
+        // Header selector button: gold rimmed plate, click switches Queue / Stock (ToggleStock).
+        private RectTransform NewBadge(RectTransform panel, out TMP_Text label)
+        {
+            var image = Img(Header(panel).transform, "QueueBadge", "button.primary");
+            image.preserveAspect = false;
+            image.raycastTarget = true;
+            var b = image.gameObject.AddComponent<Button>();
+            b.targetGraphic = image;
+            b.navigation = new Navigation { mode = Navigation.Mode.None };
+            b.onClick.AddListener(ToggleStock);
+            var rt = image.rectTransform;
+            SetRim(Rim(rt), Gold);
+            label = Txt(rt, "Label", "text.accent", TextAlignmentOptions.Center, 22f);
+            label.text = W("badge");
+            label.color = Gold;
+            Stretch(label.rectTransform, 4f, 0f, 4f, 0f);
+            return rt;
         }
 
         private static string Hint(string key, string word) => StationQueueMath.KeyHint(key, word, ColorUtility.ToHtmlStringRGB(Gold));
@@ -801,14 +830,7 @@ namespace Morgott.UI.StationQueue
             const float W0 = 1100f, H0 = MultiH;
             _multi = Panel(_root, "Multi", W0, H0, "station.queue", () => Hide("close button"),
                 Hint("Esc", W("close")) + "      " + Hint("LMB", W("drag")) + "      " + Hint("Del", W("delete")));
-            var badge = Img(Header(_multi).transform, "QueueBadge", "button.primary");
-            badge.preserveAspect = false;
-            _badge = badge.rectTransform;
-            SetRim(Rim(_badge), Gold);
-            _badgeLabel = Txt(_badge, "Label", "text.accent", TextAlignmentOptions.Center, 22f);
-            _badgeLabel.text = W("badge");
-            _badgeLabel.color = Gold;
-            Stretch(_badgeLabel.rectTransform, 4f, 0f, 4f, 0f);
+            _badge = NewBadge(_multi, out _badgeLabel);
             _mStatus = Txt(_multi, "Status", "text.body", TextAlignmentOptions.Center, 22f);
             Put(_mStatus, 40f, 70f, W0 - 80f, 32f);
             Put(Rule(_multi, "TopRule", Dim), 28f, 108f, W0 - 56f, 1f);
@@ -898,7 +920,7 @@ namespace Morgott.UI.StationQueue
                 _ghost.gameObject.SetActive(false);
                 if (item == null || !RectTransformUtility.RectangleContainsScreenPoint(_cardsRt, e.position, e.pressEventCamera)) return;
                 var list = Entries();
-                list.Add(StationQueueMath.NewEntry(item, StationQueueMode.Count, OutputOf(item)));
+                list.Add(StationQueueMath.NewEntry(item, StationQueueMode.Count, OutputOf(item), Stock));
                 Commit(list, _state.Paused);
             };
             row.Group = row.Rt.gameObject.AddComponent<CanvasGroup>();
@@ -912,7 +934,7 @@ namespace Morgott.UI.StationQueue
             {
                 if (row.Item == null) return;
                 var list = Entries();
-                list.Add(StationQueueMath.NewEntry(row.Item, StationQueueMode.Count, OutputOf(row.Item)));
+                list.Add(StationQueueMath.NewEntry(row.Item, StationQueueMode.Count, OutputOf(row.Item), Stock));
                 Commit(list, _state.Paused);
             });
             pl.text = "+";
@@ -1012,6 +1034,7 @@ namespace Morgott.UI.StationQueue
         {
             const float W0 = 720f, H0 = 636f;
             _single = Panel(_root, "Single", W0, H0, "station.queue.single", () => Hide("close button"), Hint("Esc", W("close")));
+            _sBadge = NewBadge(_single, out _sBadgeLabel);
             // recipe row: input -> output | fuel (counts = network)
             _sIn = SlotIcon(_single, 80f, 84f, 100f, out _sInCount);
             _sInName = CellName(_single, "InName", 50f);
@@ -1079,10 +1102,6 @@ namespace Morgott.UI.StationQueue
             Put(_sNow, 20f, 104f, 400f, 28f);
             _sNowTrough = Bar(_sUntilBox, out _sNowFill);
             Put(_sNowTrough, 20f, 134f, W0 - 56f - 40f, 22f);
-            _sKeep = Btn(box.transform, "Keep", "field", out _sKeepLabel, () => SingleEdit(e => e.Keep = !e.Keep));
-            _sKeepLabel.fontSize = 20f;
-            _sKeepRim = Rim(_sKeep.transform);
-            Put(_sKeep, 430f, 94f, 214f, 36f);
 
             Put(Rule(_single, "Rule2", Dim), 28f, 570f, W0 - 56f, 1f);
             var pause = PlainBtn(_single, "Pause", out _sPause, () => Commit(Entries(), !_state.Paused), Light);
@@ -1251,20 +1270,10 @@ namespace Morgott.UI.StationQueue
             Put(atLeast, 300f, 51f, 40f, 40f);
             _eThreshold = NewStepper(until, 356f, 51f, () => _draft.Threshold, v => { _draft.Threshold = v; RefreshEditor(); });
 
-            _eKeep = Btn(_editor, "Keep", "field", out _eKeepLabel, () =>
-            {
-                if (!StationQueueMath.CanKeep(_draft.Mode)) return;
-                _draft.Keep = !_draft.Keep;
-                RefreshEditor();
-            });
-            _eKeepLabel.fontSize = 20f;
-            _eKeepRim = Rim(_eKeep.transform);
-            _eKeepGroup = _eKeep.gameObject.AddComponent<CanvasGroup>();
-            Put(_eKeep, 28f, 428f, 280f, 40f);
-
+            // keep in stock = the header selector's Stock mode (no own toggle here): the summary takes the freed band
             _eSummary = Txt(_editor, "Summary", "text.body", TextAlignmentOptions.TopLeft, 19f);
             _eSummary.textWrappingMode = TextWrappingModes.Normal;
-            Put(_eSummary, 36f, 480f, W0 - 72f, 56f);
+            Put(_eSummary, 36f, 432f, W0 - 72f, 104f);
             Put(Rule(_editor, "Rule1", Dim), 28f, 544f, W0 - 56f, 1f);
             var red = ThemeTokens.GetColor("color.text.missing", Hex("#E0413A"));
             _eDelete = PlainBtn(_editor, "Delete", out var dl, EditorDelete, red);

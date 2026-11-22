@@ -100,6 +100,24 @@ namespace Morgott.UI.Tests
         }
 
         [Fact]
+        public void HeaderSelectorSwitchesEveryEntryAndNewOnesTakeIt()
+        {
+            var none = new List<StationQueueEntry>();
+            Assert.False(StationQueueMath.IsStock(none, false));
+            Assert.True(StationQueueMath.IsStock(none, true)); // empty queue: the window's choice
+            var q = new List<StationQueueEntry> { StationQueueMath.NewEntry("Wood", StationQueueMode.Count, "Coal"), StationQueueMath.NewEntry("TinOre", StationQueueMode.Count, "Tin") };
+            q[1].Id = 7;
+            Assert.False(StationQueueMath.IsStock(q, true)); // entries decide once there are any
+            var stock = StationQueueMath.WithKeep(q, true);
+            Assert.All(stock, e => Assert.True(e.Keep));
+            Assert.Equal(7, stock[1].Id); // same entry for the owner's merge
+            Assert.False(q[0].Keep); // the read state is never edited in place
+            Assert.True(StationQueueMath.IsStock(stock, false));
+            Assert.All(StationQueueMath.WithKeep(stock, false), e => Assert.False(e.Keep));
+            Assert.True(StationQueueMath.NewEntry("Wood", StationQueueMode.Count, "Coal", keep: true).Keep);
+        }
+
+        [Fact]
         public void KeepShareIsStockOverTarget()
         {
             var e = StationQueueMath.NewEntry("Wood", StationQueueMode.Count, "Coal");
@@ -148,6 +166,23 @@ namespace Morgott.UI.Tests
             Assert.Equal(77, saved[0].Target);
             Assert.Equal(10, list[0].Target); // source untouched
             Assert.Equal(3, StationQueueMath.Save(list, 1, draft).Count); // index 1 is another input: appended
+        }
+
+        [Fact]
+        public void SaveFindsTheEditedEntryByIdAfterRowsAboveFinished()
+        {
+            var done = StationQueueMath.NewEntry("Wood", StationQueueMode.Count, null);
+            done.Id = 1;
+            var kept = StationQueueMath.NewEntry("Wood", StationQueueMode.Count, null);
+            kept.Id = 2;
+            var draft = kept.Clone(); // editor opened on index 1
+            draft.Keep = true;
+            var now = new List<StationQueueEntry> { kept }; // the owner dropped entry 1 meanwhile
+            var saved = StationQueueMath.Save(now, 1, draft);
+            Assert.Single(saved);
+            Assert.True(saved[0].Keep);
+            Assert.Equal(0, StationQueueMath.Find(now, 1, draft));
+            Assert.Equal(-1, StationQueueMath.Find(new List<StationQueueEntry> { done }, 0, draft)); // same input, other entry: never overwritten
         }
 
         [Fact]

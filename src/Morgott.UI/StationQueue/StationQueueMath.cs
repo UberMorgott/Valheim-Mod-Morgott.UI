@@ -89,6 +89,23 @@ namespace Morgott.UI.StationQueue
         // Keep in stock means something for count / until entries (infinite never ends anyway).
         public static bool CanKeep(StationQueueMode mode) => mode != StationQueueMode.Infinite;
 
+        // Header selector (Queue / Stock): a station keeps stock when any entry does (older mixed lists); an empty queue
+        // shows the window's own choice, which its first entry takes.
+        public static bool IsStock(IList<StationQueueEntry> entries, bool emptyChoice)
+        {
+            if (entries.Count == 0) return emptyChoice;
+            foreach (var e in entries) if (e.Keep) return true;
+            return false;
+        }
+
+        // Selector switch: every entry becomes keep-in-stock (true) or one-shot (false); ids stay, so the owner keeps progress.
+        public static List<StationQueueEntry> WithKeep(IList<StationQueueEntry> entries, bool keep)
+        {
+            var list = Clone(entries);
+            foreach (var e in list) e.Keep = keep;
+            return list;
+        }
+
         // The running entry (provider's Active: resting keep entries are skipped) shows the cyan rim + progress while the
         // station works or waits for input.
         public static bool IsActive(int index, int active, StationQueueStatus status) =>
@@ -122,7 +139,7 @@ namespace Morgott.UI.StationQueue
         // Stepper: 1 per click, 10 with Shift.
         public static int Step(int v, int dir, bool big) => Clamp(v + dir * (big ? 10 : 1));
 
-        public static StationQueueEntry NewEntry(string item, StationQueueMode mode, string condition) => new StationQueueEntry
+        public static StationQueueEntry NewEntry(string item, StationQueueMode mode, string condition, bool keep = false) => new StationQueueEntry
         {
             Item = item,
             Mode = mode,
@@ -130,6 +147,7 @@ namespace Morgott.UI.StationQueue
             Condition = condition,
             Compare = StationQueueCompare.Less,
             Threshold = DefaultThreshold,
+            Keep = keep,
         };
 
         public static List<StationQueueEntry> Clone(IList<StationQueueEntry> entries)
@@ -185,11 +203,24 @@ namespace Morgott.UI.StationQueue
         public static string Loaded(string template, int loaded, int capacity, string unit) =>
             Format(template, loaded, capacity) + (string.IsNullOrEmpty(unit) ? "" : " " + unit);
 
-        // Editor save: replaces entry `index` (still there and the same input), else appends the draft.
+        // The edited entry in a list read since the editor opened: by its owner id (rows above it may have finished and gone
+        // meanwhile), an unnumbered one by `index` while that is still the same input; -1 = gone.
+        public static int Find(IList<StationQueueEntry> entries, int index, StationQueueEntry draft)
+        {
+            if (draft.Id != 0)
+            {
+                for (var i = 0; i < entries.Count; i++) if (entries[i].Id == draft.Id) return i;
+                return -1;
+            }
+            return index >= 0 && index < entries.Count && entries[index].Id == 0 && entries[index].Item == draft.Item ? index : -1;
+        }
+
+        // Editor save: replaces the edited entry (Find), else appends the draft (a new one, or one the owner finished: dropped there).
         public static List<StationQueueEntry> Save(IList<StationQueueEntry> entries, int index, StationQueueEntry draft)
         {
             var list = Clone(entries);
-            if (index >= 0 && index < list.Count && list[index].Item == draft.Item) list[index] = draft.Clone();
+            var at = Find(list, index, draft);
+            if (at >= 0) list[at] = draft.Clone();
             else list.Add(draft.Clone());
             return list;
         }
