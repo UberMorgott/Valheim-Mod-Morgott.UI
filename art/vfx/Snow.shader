@@ -9,13 +9,14 @@
 // slope (_SlopeMin), distance (_FadeNear.._FadeFar from _Center) and the R8 trail mask _TrailTex over _TrailRect (xy world
 // origin, z = 1 / size m; 1 = trampled or under a piece): dy = deep * (1 - trail). Where dy is ~0 the pass is clipped,
 // so vanilla terrain shows. ZWrite on + shadow caster: the snow hides what it buries, casts and receives shadows, fogged.
+// Lambert, albedo ~0.8: Standard (spec + reflection-probe IBL, albedo 0.95) blew the HDR frame out under bloom once the
+// snow filled the view (run 20261123-003403 whiteout); vanilla Standard-lit surfaces read ~2.5x brighter (Core ArmorSkin).
 Shader "Morgott/Snow"
 {
     Properties
     {
-        _Color ("Fresh snow", Color) = (0.93, 0.95, 1, 1)
-        _TrailColor ("Compressed snow", Color) = (0.74, 0.8, 0.9, 1)
-        _Smooth ("Smoothness", Range(0, 1)) = 0.25
+        _Color ("Fresh snow", Color) = (0.8, 0.83, 0.88, 1)
+        _TrailColor ("Compressed snow", Color) = (0.66, 0.71, 0.8, 1)
         _Drift ("Drift shading", Range(0, 1)) = 0.35
         _SnowNormal ("Snow normal (vanilla Heightmap material)", 2D) = "bump" {}
         _NormalTile ("Snow normal tiles per m", Float) = 0.5
@@ -37,13 +38,13 @@ Shader "Morgott/Snow"
         Offset -1, -1
 
         CGPROGRAM
-        #pragma surface surf Standard vertex:vert addshadow fullforwardshadows nolightmap nodynlightmap nodirlightmap nometa noinstancing
+        #pragma surface surf Lambert vertex:vert addshadow fullforwardshadows nolightmap nodynlightmap nodirlightmap nometa noinstancing
         #pragma target 3.0
 
         sampler2D _TrailTex, _ClearedMaskTex, _DepthTex, _SnowNormal;
         float4 _TrailRect, _Center;
         fixed4 _Color, _TrailColor;
-        half _Smooth, _Drift, _NormalTile, _DepthScale, _DepthGrid, _FadeNear, _FadeFar, _WaterLevel, _SlopeMin;
+        half _Drift, _NormalTile, _DepthScale, _DepthGrid, _FadeNear, _FadeFar, _WaterLevel, _SlopeMin;
 
         struct Input
         {
@@ -68,7 +69,7 @@ Shader "Morgott/Snow"
             float bare = 1 - saturate(m.r + m.g + 10 * m.b);
             float n = _DepthGrid;
             float g = tex2Dlod(_DepthTex, float4(v.texcoord.xy * ((n - 1) / n) + 0.5 / n, 0, 0)).r;
-            float3 wn = UnityObjectToWorldNormal(v.normal);
+            float3 wn = UnityObjectToWorldNormal(v.normal + float3(0, 1e-4, 0)); // never normalize a zero normal (NaN)
             float deep = _DepthScale * wSnow * g * bare * smoothstep(_WaterLevel, _WaterLevel + 2.2, wp.y);
             deep *= smoothstep(_SlopeMin, _SlopeMin + 0.15, wn.y) * (1 - smoothstep(_FadeNear, _FadeFar, distance(wp.xz, _Center.xz)));
             float dy = deep * (1 - Trail(wp.xz));
@@ -96,16 +97,14 @@ Shader "Morgott/Snow"
             return lerp(lerp(Hash(i), Hash(i + float2(1, 0)), f.x), lerp(Hash(i + float2(0, 1)), Hash(i + 1), f.x), f.y);
         }
 
-        void surf(Input IN, inout SurfaceOutputStandard o)
+        void surf(Input IN, inout SurfaceOutput o)
         {
             clip(IN.dy - 0.02); // no deep snow here: vanilla terrain (and its thin snow) shows through
             float2 xz = IN.worldPos.xz;
             half t = Trail(xz);
             half drift = lerp(1, 0.9 + 0.2 * (Noise(xz * 0.35) * 0.65 + Noise(xz * 1.7) * 0.35), _Drift);
-            o.Albedo = lerp(_Color.rgb * drift, _TrailColor.rgb, t);
+            o.Albedo = saturate(lerp(_Color.rgb * drift, _TrailColor.rgb, t));
             o.Normal = UnpackNormal(tex2D(_SnowNormal, xz * _NormalTile));
-            o.Smoothness = _Smooth * (1 - 0.5 * t);
-            o.Metallic = 0;
             o.Alpha = 1;
         }
         ENDCG
