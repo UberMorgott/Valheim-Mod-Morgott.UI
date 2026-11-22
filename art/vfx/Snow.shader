@@ -110,7 +110,7 @@ Shader "Morgott/Snow"
             half drift = lerp(1, 0.9 + 0.2 * (Noise(xz * 0.35) * 0.65 + Noise(xz * 1.7) * 0.35), _Drift);
             o.Albedo = saturate(lerp(_Color.rgb * drift, _TrailColor.rgb, t));
             o.Normal = UnpackNormal(tex2D(_SnowNormal, xz * _NormalTile));
-            half4 n = half4(WorldNormalVector(IN, o.Normal), 1);
+            half4 n = half4(normalize(WorldNormalVector(IN, o.Normal)), 1); // L2 assumes a unit normal
             o.Emission = o.Albedo * max(0, SHEvalLinearL0L1(n) + SHEvalLinearL2(n)); // linear ambient whatever the build's colour space
             o.Alpha = 1;
         }
