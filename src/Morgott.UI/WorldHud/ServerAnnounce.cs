@@ -17,7 +17,7 @@ namespace Morgott.UI.WorldHud
     public sealed class ServerAnnounce : MonoBehaviour
     {
         private const float Hold = 12f, Fade = 2f;
-        private const int SortingOrder = 30000; // above every game canvas; ValheimBuildCamera's own panel (32000) sits top-left
+        private const int SortingOrder = short.MaxValue; // Unity's max order: above every canvas, incl. ValheimBuildCamera's F6 panel (32000)
         private static ServerAnnounce _instance;
 
         private MessageHud _hud;
