@@ -422,8 +422,9 @@ namespace Morgott.UI.WorldHud
     // the active speed in slot_cell_selected with its glyph in the rune glow (no text labels, mockup 2026-11-06). Under it,
     // centred on the column's axis, the rudder row: arrow_left | rudder in a button_round socket inside a gp_ring angle
     // arc (vanilla m_shipRudderIndicator, PlayHudMath.RudderArc: slate top-half track, gold zero tick at 12 o'clock) |
-    // arrow_right, the turned side lit (PlayHudMath.RudderSideAlpha). Wind stays on the minimap ring (M4). Vanilla's icons (PowerIcon, Controls
-    // following the tiller, WindIndicator) stay alive for Hud.UpdateShipHud but are drawn at alpha 0.
+    // arrow_right, the turned side lit (PlayHudMath.RudderSideAlpha). Vanilla's wind compass (WindIndicator) stays drawn,
+    // reskinned beside the block (Compass). Vanilla's PowerIcon and Controls (following the tiller) stay alive for
+    // Hud.UpdateShipHud but are drawn at alpha 0.
     // Placement (tester 2026-10-26: the ladder sat on the vanilla PowerIcon spot, under the RuneSkin minimap ring):
     // screen px from the minimap footprint (Minimap.m_smallRoot + its plaque / key tip children, reserved whether the
     // small map shows or not) and the HUD strip top, PlayHudMath.ShipPlacement; hidden while the large map is open.
@@ -437,10 +438,11 @@ namespace Morgott.UI.WorldHud
         private CanvasGroup _group;
         private readonly Image[] _cells = new Image[PlayHudMath.LadderCells];
         private readonly Image[] _glyphs = new Image[PlayHudMath.LadderCells];
-        private Image _left, _right, _arc;
+        private Image _left, _right, _arc, _windIcon;
         private int _shown = -1;
         private float _rudderShown = float.NaN;
         private bool _hiddenForMap;
+        private float _compassUnits; // compass left of the block: placed with it (ShipPlacement min-left)
         private Vector2 _blockUnits, _placedAt = new Vector2(float.NaN, float.NaN);
         private readonly Vector3[] _corners = new Vector3[4];
         public int ActiveIndex => _shown;
@@ -460,14 +462,14 @@ namespace Morgott.UI.WorldHud
             _hud = hud;
             var root = hud.m_shipHudRoot.transform;
             PlayHud.SyncPpu(_art, root);
-            foreach (var t in new[] { hud.m_fullSail ? hud.m_fullSail.transform.parent?.parent : null, hud.m_shipControlsRoot ? hud.m_shipControlsRoot.transform : null, hud.m_shipWindIndicatorRoot })
+            foreach (var t in new[] { hud.m_fullSail ? hud.m_fullSail.transform.parent?.parent : null, hud.m_shipControlsRoot ? hud.m_shipControlsRoot.transform : null })
             {
                 if (!t) continue;
                 var g = t.GetComponent<CanvasGroup>() ?? t.gameObject.AddComponent<CanvasGroup>();
                 g.alpha = 0f;
                 g.blocksRaycasts = false;
                 Morgott.UI.Restyle.RenderGate.Set(t, "shiphud", true); // not drawn (vanilla code keeps writing it)
-                _art.Suppressed(t, $"vanilla ship HUD '{t.name}' (RuneSkin ladder replaces it; wind on the minimap ring)");
+                _art.Suppressed(t, $"vanilla ship HUD '{t.name}' (RuneSkin ladder replaces it)");
             }
             var cell = ThemeTokens.GetFloat("size.ship.cell", 46f);
             var gap = ThemeTokens.GetFloat("size.ship.gap", 6f);
@@ -521,8 +523,59 @@ namespace Morgott.UI.WorldHud
             var arrowX = ring * 0.5f + gap + arrow * 0.5f;
             _left = Arrow("RudderLeft", "sprite.glyph.arrow.left", -arrowX, rowY - (ring - arrow) * 0.5f, arrow);
             _right = Arrow("RudderRight", "sprite.glyph.arrow.right", arrowX, rowY - (ring - arrow) * 0.5f, arrow);
+            Compass(hud, ring, gap);
             Plugin.Log.LogInfo($"[Morgott.UI] ship HUD attached (block {block.width:0}x{block.height:0} units)");
             PlayHud.Reports.Add(() => Instance && root ? _art.Report(root) : null);
+        }
+
+        // Vanilla wind compass (hudroot/ShipHud/WindIndicator: socket, Circle, Ship, Wind/WindIcon) kept live for
+        // Hud.UpdateShipHud (root z = ship yaw vs camera, Wind z = wind vs ship): moved left of the block's top edge
+        // (out of the minimap footprint, follows Place + the large-map hide) and reskinned as the rudder socket.
+        private void Compass(Hud hud, float size, float gap)
+        {
+            var w = hud.m_shipWindIndicatorRoot;
+            if (!w) return;
+            // Diameter = farthest graphic corner from the pivot, both ways (WindIcon orbits outside the socket rect).
+            var d = 0f;
+            var c = new Vector3[4];
+            foreach (var g in w.GetComponentsInChildren<Graphic>(true))
+            {
+                g.rectTransform.GetWorldCorners(c);
+                foreach (var p in c) d = Mathf.Max(d, 2f * ((Vector2)w.InverseTransformPoint(p)).magnitude);
+            }
+            w.SetParent(_column, false);
+            w.anchorMin = w.anchorMax = new Vector2(0f, 1f); // pivot kept: vanilla rotates about it, the local origin measured above
+            w.anchoredPosition = new Vector2(-gap - size * 0.5f, -size * 0.5f);
+            if (d > 0f) w.localScale = Vector3.one * (size / d);
+            _compassUnits = gap + size;
+            _art.Reskin(w.GetComponent<Image>(), "sprite.button.round", "color.frame", "ship wind compass socket");
+            _art.Reskin(w.Find("Circle")?.GetComponent<Image>(), "sprite.hud.gp.ring", "color.hud.ship.track", "ship wind compass ring");
+            Tint(w.Find("Ship")?.GetComponent<Image>(), "color.text.active", "ship heading silhouette (vanilla art)");
+            Tint(hud.m_shipWindIconRoot ? hud.m_shipWindIconRoot.GetComponent<Image>() : null, "color.hud.ship.track", "wind sector (vanilla art)");
+            _windIcon = hud.m_shipWindIcon;
+            if (_art.Reskin(_windIcon, "sprite.glyph.wind", null, "wind arrow (tint per frame, AfterShipHud)"))
+            {
+                _windIcon.preserveAspect = true;
+                _windIcon.rectTransform.localRotation = Quaternion.identity; // vanilla windicon art points right (+90 in the prefab); glyph_wind points up
+            }
+        }
+
+        private void Tint(Image img, string colorToken, string reason)
+        {
+            if (!img) return;
+            img.color = ThemeTokens.GetColor(colorToken, img.color);
+            _art.Note(img, colorToken, true, reason);
+        }
+
+        // Postfix of Hud.UpdateShipHud: vanilla's tint Lerp(s_shipWindIconColor, white, GetWindAngleFactor) in theme
+        // colours (idle glyph -> lit glyph, as the ladder), so a good sailing wind stays visibly brighter.
+        internal void AfterShipHud(Player player)
+        {
+            var ship = player ? player.GetControlledShip() : null;
+            if (!ship || !_windIcon) return;
+            var off = ThemeTokens.GetColor("color.text.body", Color.white);
+            off.a = ThemeTokens.GetFloat("share.ship.idle.alpha", 0.55f);
+            _windIcon.color = Color.Lerp(off, ThemeTokens.GetColor("color.hud.glyph", Color.cyan), ship.GetWindAngleFactor());
         }
 
         // Top-centre anchored rect in the block (x from the centre line, y down from the top).
@@ -632,7 +685,7 @@ namespace Morgott.UI.WorldHud
             var strip = HudCluster.Instance ? HudCluster.Instance.StripTopPx : 0f;
             var floor = strip > 0f ? strip + ThemeTokens.GetFloat("size.hud.strip.clear.gap", 12f) * s : safe.y + margin;
             var gapPx = ThemeTokens.GetFloat("size.ship.screen.gap", 12f) * s;
-            var p = PlayHudMath.ShipPlacement(fp.xMin, fp.xMax, fp.yMin, fp.yMax, boxX + margin, floor, _blockUnits.x * unit, _blockUnits.y * unit, gapPx);
+            var p = PlayHudMath.ShipPlacement(fp.xMin, fp.xMax, fp.yMin, fp.yMax, boxX + margin, floor, (_blockUnits.x + _compassUnits) * unit, _blockUnits.y * unit, gapPx);
             var want = new Vector2(p.right, p.top);
             if (Mathf.Abs(want.x - _placedAt.x) < 0.5f && Mathf.Abs(want.y - _placedAt.y) < 0.5f) return;
             if (!RectTransformUtility.ScreenPointToWorldPointInRectangle(parent, want, cam, out var world)) return;
@@ -763,6 +816,14 @@ namespace Morgott.UI.WorldHud
         {
             var c = CrosshairSkin.Instance;
             if (c) c.AfterCrosshair();
+        }
+
+        [HarmonyPatch(typeof(Hud), nameof(Hud.UpdateShipHud))]
+        [HarmonyPostfix]
+        private static void UpdateShipHud_Postfix(Player player)
+        {
+            var s = ShipHudSkin.Instance;
+            if (s) s.AfterShipHud(player);
         }
 
         // Hud.UpdateBuild calls it every frame in place mode (Hud.cs:1496/1500): the strip hugs what it just filled.
