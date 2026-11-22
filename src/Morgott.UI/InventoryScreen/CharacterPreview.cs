@@ -20,7 +20,7 @@ namespace Morgott.UI.InventoryScreen
     //   hair / beard, model and skin / hair colours and other mods' items follow the standard VisEquipment path.
     //   Refreshed only when the player's equipment / appearance changes (MarkDirty from InventoryAdapter hooks).
     //   No ZDO is ever written (the clone has none): multiplayer-neutral.
-    // - own culling layer (first unnamed layer), own camera (disabled, rendered manually) and light rig (key / fill /
+    // - own culling layer (first unnamed layer), own camera (enabled only while shown: drawn in Unity's camera loop, LateUpdate) and light rig (key / fill /
     //   rim lights culling only that layer); while it renders, the world's directional lights, fog and ambient are
     //   swapped for the rig's and restored right after: the preview looks the same at any time of day / weather.
     // - drag on the image turns the clone; the idle animation runs on the clone's Animator (no events, no root motion).
@@ -175,11 +175,18 @@ namespace Morgott.UI.InventoryScreen
             if (gameObject.activeSelf) gameObject.SetActive(false);
         }
 
-        private void Awake() => Instance = this;
+        private void Awake()
+        {
+            Instance = this;
+            Camera.onPreCull += OnCameraPreCull;
+            Camera.onPostRender += OnCameraPostRender;
+        }
 
-        // Closed (or no longer placed): park now. Still open: a transient disable, the rig stays live (header).
+        // Closed (or no longer placed): park now. Still open: a transient disable, the rig stays live (header) but stops
+        // rendering (the texture keeps its last frame, as without LateUpdate before the camera loop render).
         private void OnDisable()
         {
+            if (_camera) _camera.enabled = false;
             if (!_placed || !IsOpen()) Park("disabled");
         }
 
@@ -224,6 +231,8 @@ namespace Morgott.UI.InventoryScreen
 
         private void OnDestroy()
         {
+            Camera.onPreCull -= OnCameraPreCull;
+            Camera.onPostRender -= OnCameraPostRender;
             Teardown("destroyed");
             if (Instance == this) Instance = null;
         }
@@ -244,6 +253,7 @@ namespace Morgott.UI.InventoryScreen
             if (_clone && _player != player) Teardown("player changed");
             if (!_clone && !Build(player)) return;
             Unpark();
+            _camera.enabled = false; // on again below only when this frame shows the preview
             if (_hidden)
             {
                 _image.enabled = false;
@@ -259,10 +269,16 @@ namespace Morgott.UI.InventoryScreen
             if (_applied != _revision) Refresh();
             _image.enabled = true;
             Frame();
-            Render();
+            // Drawn by Unity's camera loop this frame (enabled, depth below every scene / GUI camera), not by Camera.Render():
+            // a manual render runs Canvas.willRenderCanvases, i.e. a second full uGUI layout / graphic rebuild of every
+            // canvas per frame (run 20261122-234635: CanvasUpdateRegistry.PerformUpdate 2.2 calls/frame, this LateUpdate
+            // 15.2 ms/frame with the 1070-row craft list open). The light / fog / ambient swap follows the camera
+            // (OnCameraPreCull / OnCameraPostRender).
+            _camera.enabled = true;
             if (!_alphaChecked)
             {
                 _alphaChecked = true;
+                Render(); // once per session: the readback needs this frame's image now
                 CheckAlpha();
             }
         }
@@ -363,7 +379,8 @@ namespace Morgott.UI.InventoryScreen
             var camGo = new GameObject("RuneSkinPreviewCamera");
             camGo.transform.SetParent(_rig.transform, false);
             _camera = camGo.AddComponent<Camera>();
-            _camera.enabled = false; // rendered manually (Render)
+            _camera.enabled = false; // enabled by LateUpdate while shown (camera loop); Render only for a readback
+            _camera.depth = -100f; // before the cameras whose UI shows the texture: this frame's image, not last frame's
             _camera.clearFlags = CameraClearFlags.SolidColor;
             _camera.cullingMask = 1 << _layer;
             _camera.fieldOfView = Fov;
@@ -694,47 +711,57 @@ namespace Morgott.UI.InventoryScreen
                 _points.Add(b.center - Origin + Vector3.Scale(b.extents, new Vector3((c & 1) == 0 ? -1 : 1, (c & 2) == 0 ? -1 : 1, (c & 4) == 0 ? -1 : 1)));
         }
 
-        // Time of day / weather independent: world directional lights off, rig lights on, fog off, flat ambient for this render only.
-        private void Render()
+        // A synchronous render now (CheckAlpha readback, harness path cost); the shown frames are drawn by the camera loop.
+        // The swap runs in the camera callbacks either way.
+        private void Render() => DrawCamera();
+
+        // The camera's render alone (culling, skinning, draw submission; rp-open-hitch inner attribution).
+        private void DrawCamera() => _camera.Render();
+
+        // Time of day / weather independent: world directional lights off, rig lights on, fog off, flat ambient for this
+        // camera's cull + render only (Camera.onPreCull .. onPostRender, camera loop and manual Render alike).
+        private bool _swappedIn, _fog;
+        private AmbientMode _ambientMode;
+        private Color _ambient;
+        private float _ambientIntensity;
+
+        private void OnCameraPreCull(Camera cam)
         {
-            var fog = RenderSettings.fog;
-            var ambientMode = RenderSettings.ambientMode;
-            var ambient = RenderSettings.ambientLight;
-            var ambientIntensity = RenderSettings.ambientIntensity;
+            if (_swappedIn || !ReferenceEquals(cam, _camera)) return; // every camera's cull lands here: reference check only
+            _swappedIn = true;
+            _fog = RenderSettings.fog;
+            _ambientMode = RenderSettings.ambientMode;
+            _ambient = RenderSettings.ambientLight;
+            _ambientIntensity = RenderSettings.ambientIntensity;
             _swapped.Clear();
-            try
-            {
-                foreach (var l in _worldLights)
-                    if (l && l.enabled && (l.cullingMask & (1 << _layer)) != 0)
-                    {
-                        l.enabled = false;
-                        _swapped.Add(l);
-                    }
-                RenderSettings.fog = false;
-                RenderSettings.ambientMode = AmbientMode.Flat;
-                RenderSettings.ambientLight = ThemeTokens.GetColor("color.inv.preview.ambient", new Color(0.36f, 0.34f, 0.32f));
-                RenderSettings.ambientIntensity = 1f;
-                foreach (var l in _rigLights)
-                    if (l) l.enabled = true;
-                DrawCamera();
-            }
-            finally
-            {
-                foreach (var l in _rigLights)
-                    if (l) l.enabled = false;
-                foreach (var l in _swapped)
-                    if (l) l.enabled = true;
-                _swapped.Clear();
-                RenderSettings.fog = fog;
-                RenderSettings.ambientMode = ambientMode;
-                RenderSettings.ambientLight = ambient;
-                RenderSettings.ambientIntensity = ambientIntensity;
-            }
+            foreach (var l in _worldLights)
+                if (l && l.enabled && (l.cullingMask & (1 << _layer)) != 0)
+                {
+                    l.enabled = false;
+                    _swapped.Add(l);
+                }
+            RenderSettings.fog = false;
+            RenderSettings.ambientMode = AmbientMode.Flat;
+            RenderSettings.ambientLight = ThemeTokens.GetColor("color.inv.preview.ambient", new Color(0.36f, 0.34f, 0.32f));
+            RenderSettings.ambientIntensity = 1f;
+            foreach (var l in _rigLights)
+                if (l) l.enabled = true;
         }
 
-        // The camera's render alone (culling, skinning, draw submission): its own method so the harness times it apart from
-        // the light / fog / ambient swap around it (rp-open-hitch inner attribution).
-        private void DrawCamera() => _camera.Render();
+        private void OnCameraPostRender(Camera cam)
+        {
+            if (!_swappedIn || !ReferenceEquals(cam, _camera)) return;
+            _swappedIn = false;
+            foreach (var l in _rigLights)
+                if (l) l.enabled = false;
+            foreach (var l in _swapped)
+                if (l) l.enabled = true;
+            _swapped.Clear();
+            RenderSettings.fog = _fog;
+            RenderSettings.ambientMode = _ambientMode;
+            RenderSettings.ambientLight = _ambient;
+            RenderSettings.ambientIntensity = _ambientIntensity;
+        }
 
         // Once per session: shaders that write alpha 0 for opaque surfaces would leave the transparent-cleared texture
         // invisible on the RawImage; then the preview clears to an opaque theme colour instead.
