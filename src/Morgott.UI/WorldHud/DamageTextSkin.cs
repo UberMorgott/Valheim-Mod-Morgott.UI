@@ -1,10 +1,12 @@
 using System;
+using System.Collections.Generic;
 using HarmonyLib;
 using Morgott.UI.Diagnostics;
 using Morgott.UI.PlayerHud;
 using Morgott.UI.Theme;
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 using Morgott.UI.Ownership;
 
 namespace Morgott.UI.WorldHud
@@ -130,13 +132,76 @@ namespace Morgott.UI.WorldHud
                 inst.m_worldPos = pos;
                 return;
             }
-            var step = distance * ThemeTokens.GetFloat("size.damage.stagger", 0.08f);
+            pos = ClearOfEnemyHud(pos, cam);
+            var step = distance * ThemeTokens.GetFloat("size.damage.stagger", 0.05f);
             var right = cam.transform.right;
             right.y = 0f;
             right.Normalize();
             var lane = Lanes.Assign(pos.x, pos.y, pos.z, right.x, right.z, Time.time, step,
                 distance * ThemeTokens.GetFloat("size.damage.lane.height", 0.035f) * s.Scale, inst.m_duration);
             inst.m_worldPos = pos + right * (DamagePopupMath.Side(lane) * step);
+        }
+
+        private static readonly List<Graphic> HudGraphics = new List<Graphic>();
+        private static readonly Vector3[] Corners = new Vector3[4];
+
+        // Typed numbers spawn at the target's GetTopPoint, the same anchor EnemyHud puts its bar / name / alert mark on
+        // (EnemyHud.cs:255-260), so they rose behind that band. Lift a number above the shown HUD of the target it spawned on
+        // (receiver side: the band is this client's own HUD). Band top = last laid-out frame of that HUD (overlay canvas: screen px).
+        private static Vector3 ClearOfEnemyHud(Vector3 pos, Camera cam)
+        {
+            var hud = EnemyHud.instance;
+            if (!hud || hud.m_huds == null) return pos;
+            // The target first (nearest HUD'd character), then its HUD's visibility: a hidden HUD never borrows a neighbour's band.
+            EnemyHud.HudData best = null;
+            var bestD = 1f; // m², network lag between the sender's top point and this client's character
+            foreach (var pair in hud.m_huds)
+            {
+                var data = pair.Value;
+                if (data == null || !data.m_character) continue;
+                var d = (data.m_character.GetTopPoint() - pos).sqrMagnitude;
+                if (d < bestD)
+                {
+                    bestD = d;
+                    best = data;
+                }
+            }
+            // Boss bars are screen-fixed, not on the top point (EnemyHud.cs:246).
+            if (best == null || best.m_character.IsBoss() || !best.m_gui || !best.m_gui.activeInHierarchy) return pos;
+            // Smart bars fade unpicked HUDs out through a CanvasGroup on the template (EnemyHudSkin), not SetActive.
+            var group = best.m_gui.GetComponent<CanvasGroup>();
+            if (group && group.alpha <= 0.01f) return pos;
+            var top = float.MinValue;
+            best.m_gui.GetComponentsInChildren(false, HudGraphics);
+            foreach (var g in HudGraphics)
+            {
+                if (!g.enabled || g.color.a <= 0f) continue;
+                g.rectTransform.GetWorldCorners(Corners);
+                if (Corners[1].y > top) top = Corners[1].y;
+            }
+            HudGraphics.Clear();
+            var p0 = cam.WorldToScreenPointScaled(pos);
+            if (p0.z <= 0f) return pos;
+            var target = top + ThemeTokens.GetFloat("size.damage.hud.margin", 6f);
+            // No room above the band: keep the visible spawn (vanilla culls a number off the top, DamageText.cs:83).
+            if (target >= Screen.height) return pos;
+            // Gap from the popup's own projection (not the HUD anchor: the target may have moved since the hit was sent);
+            // slope sampled 10 cm up so the sample stays in front of a close camera.
+            var h = DamagePopupMath.RaiseAbove(p0.y, top,
+                (cam.WorldToScreenPointScaled(pos + Vector3.up * 0.1f).y - p0.y) / 0.1f, target - top);
+            if (h <= 0f) return pos;
+            // Perspective is not linear over a metre (pitched camera, close target): a few secant steps onto the wanted screen y.
+            for (var i = 0; i < 3; i++)
+            {
+                var a = cam.WorldToScreenPointScaled(pos + Vector3.up * h);
+                var b = cam.WorldToScreenPointScaled(pos + Vector3.up * (h + 0.1f));
+                if (a.z <= 0f || b.z <= 0f) return pos;
+                var y = a.y;
+                var slope = (b.y - y) / 0.1f;
+                if (slope <= 0.001f || Mathf.Abs(target - y) < 0.5f) break;
+                h = Mathf.Max(0f, h + (target - y) / slope);
+            }
+            return pos + Vector3.up * h;
         }
 
         public static void Record()

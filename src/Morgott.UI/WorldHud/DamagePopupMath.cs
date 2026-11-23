@@ -146,6 +146,14 @@ namespace Morgott.UI.WorldHud
         // Side step of a slot in number widths: 0 centre, 1 right, 2 left, 3 two right, 4 two left ... (mockup "·6 ·9 ·4").
         public static int Side(int slot) => slot <= 0 ? 0 : (slot & 1) == 1 ? (slot + 1) / 2 : -(slot / 2);
 
+        // Metres to lift a number spawned at the enemy HUD anchor so it starts above the HUD band (bar, name, alert mark):
+        // band top and anchor in screen px, pxPerMetre = screen px of 1 m up at the anchor. 0 when there is no band above.
+        public static float RaiseAbove(float anchorY, float bandTopY, float pxPerMetre, float marginPx)
+        {
+            if (pxPerMetre <= 0.001f || bandTopY <= anchorY) return 0f;
+            return (bandTopY - anchorY + marginPx) / pxPerMetre;
+        }
+
         // Own damage taken, heals and block / too-hard / bonus texts always get their reserved room.
         public static bool IsPriority(DamageText.TextType type, bool mySelf) => mySelf || type >= DamageText.TextType.Heal;
 

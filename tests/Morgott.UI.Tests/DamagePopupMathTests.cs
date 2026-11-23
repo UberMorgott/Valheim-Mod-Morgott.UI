@@ -6,6 +6,14 @@ namespace Morgott.UI.Tests
     public class DamagePopupMathTests
     {
         [Fact]
+        public void Numbers_start_above_the_enemy_hud_band()
+        {
+            Assert.Equal(1f, DamagePopupMath.RaiseAbove(500f, 596f, 100f, 4f), 3);
+            Assert.Equal(0f, DamagePopupMath.RaiseAbove(500f, 480f, 100f, 4f));
+            Assert.Equal(0f, DamagePopupMath.RaiseAbove(500f, 596f, 0f, 4f));
+        }
+
+        [Fact]
         public void Grade_styles_match_the_approved_mockup()
         {
             var vw = DamagePopupMath.Style(DamageGrade.VeryWeak, false);
