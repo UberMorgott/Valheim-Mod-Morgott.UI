@@ -684,11 +684,11 @@ namespace Morgott.UI.Tests
             s.Add("Draugr", Origin.World);
             s.AddObject("Pickable_X");
             s.AddObject("TreasureChest");
-            s.Summons.Add(("Bonemass", "WitheredBone"));
+            s.Summons.Add(("Bonemass", "WitheredBone", 10));
             var text = FoundInTable.Write("1.0", new Dictionary<string, Scanned> { ["L:Loc"] = s });
             var back = FoundInTable.Parse(text + "L:Old\t0\t0\tBoar:w\n", out _, out _);
             Assert.Equal(new[] { "Pickable_X", "TreasureChest" }, back["L:Loc"].Objects);
-            Assert.Equal(("Bonemass", "WitheredBone"), back["L:Loc"].Summons[0]);
+            Assert.Equal(("Bonemass", "WitheredBone", 10), back["L:Loc"].Summons[0]);
             Assert.Null(back["L:Old"].Objects);
         }
     }

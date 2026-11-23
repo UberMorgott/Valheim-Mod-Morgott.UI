@@ -69,6 +69,20 @@ namespace Morgott.UI.Tests
             Assert.Empty(map["R:empty"].Creatures);
         }
 
+        // Altar offerings carry their count ("boss<item*n"); a line from an older dump (no "*n") reads count 0 = unknown.
+        [Fact]
+        public void Summon_counts_round_trip_and_old_lines_read_unknown()
+        {
+            var s = new Scanned { Objects = new System.Collections.Generic.List<string> { "Rock" } };
+            s.Summons.Add(("Eikthyr", "TrophyDeer", 2));
+            s.Summons.Add(("Dragon", "DragonEgg", 3));
+            var text = FoundInTable.Write("v", new[] { new System.Collections.Generic.KeyValuePair<string, Scanned>("L:Eikthyrnir", s) });
+            Assert.Contains("Rock,Eikthyr<TrophyDeer*2,Dragon<DragonEgg*3", text);
+            Assert.Equal(new[] { ("Eikthyr", "TrophyDeer", 2), ("Dragon", "DragonEgg", 3) }, FoundInTable.Parse(text, out _, out _)["L:Eikthyrnir"].Summons);
+            var old = FoundInTable.Parse("L:GDKing\t0\t0\tgd_king:b\tgd_king<AncientSeed\n", out _, out _)["L:GDKing"];
+            Assert.Equal(("gd_king", "AncientSeed", 0), Assert.Single(old.Summons));
+        }
+
         // The embedded vanilla table (dumped by autotest item-browser-found-in): parses whole, every dumped prefab kept.
         [Fact]
         public void Embedded_table_covers_every_dumped_location()

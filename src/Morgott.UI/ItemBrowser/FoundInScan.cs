@@ -266,13 +266,42 @@ namespace Morgott.UI.ItemBrowser
             if (go.TryGetComponent<OfferingBowl>(out var bowl) && bowl.m_bossPrefab)
             {
                 s.Add(bowl.m_bossPrefab.name, Origin.Boss);
-                var summon = (bowl.m_bossPrefab.name, bowl.m_bossItem ? bowl.m_bossItem.gameObject.name : "");
+                var summon = Offering(bowl);
                 if (!s.Summons.Contains(summon)) s.Summons.Add(summon);
             }
             if (go.TryGetComponent<DungeonGenerator>(out var g)) s.Themes |= (int)g.m_themes;
             if (go.GetComponent<Pickable>() || go.GetComponent<Container>() || go.GetComponent<MineRock>() || go.GetComponent<MineRock5>() || go.GetComponent<TreeBase>() ||
                 go.GetComponent<ResourceRoot>() || go.GetComponent<TreeLog>() || go.GetComponent<Destructible>() || go.GetComponent<DropOnDestroyed>() || go.GetComponent<ItemDrop>() || go.GetComponent<Trader>() || sa)
                 s.AddObject(Utils.GetPrefabName(go));
+        }
+
+        /// <summary>What an altar takes (OfferingBowl.UseItem / Interact): m_bossItems of m_bossItem, or with m_useItemStands one item
+        /// on each stand named m_itemStandPrefix near it (FindItemStands; in the prefab: every such stand of the location).</summary>
+        internal static (string Boss, string Item, int Count) Offering(OfferingBowl bowl)
+        {
+            if (!bowl.m_useItemStands) return (bowl.m_bossPrefab.name, bowl.m_bossItem ? bowl.m_bossItem.gameObject.name : "", bowl.m_bossItem ? bowl.m_bossItems : 0);
+            string item = "";
+            var n = 0;
+            foreach (var st in bowl.transform.root.GetComponentsInChildren<ItemStand>(true))
+                if (st.gameObject.name.StartsWith(bowl.m_itemStandPrefix, StringComparison.Ordinal) && st.m_supportedItems.Count > 0 && st.m_supportedItems[0])
+                {
+                    item = st.m_supportedItems[0].gameObject.name;
+                    n++;
+                }
+            return (bowl.m_bossPrefab.name, item, n);
+        }
+
+        /// <summary>Altar offerings of every location known without a load: the embedded table + the lazy-scan cache (what
+        /// the item browser index lists as "Used in"). shortcut: a mod location scanned after this build counts from the next index build.</summary>
+        internal static List<(string Boss, string Item, int Count)> Offerings()
+        {
+            var list = new List<(string, string, int)>();
+            foreach (var map in new[] { Table(), Cache() })
+                if (map != null)
+                    foreach (var s in map.Values)
+                        foreach (var o in s.Summons)
+                            if (!list.Contains(o)) list.Add(o);
+            return list;
         }
 
         private static void Publish(FoundIn d)

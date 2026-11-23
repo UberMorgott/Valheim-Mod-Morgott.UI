@@ -40,6 +40,8 @@ namespace Morgott.UI.ItemBrowser
                         foreach (var p in t.m_pieces)
                             if (p && p.TryGetComponent<Piece>(out var piece))
                                 Add(RelationKind.Build, go.name, Req(piece.m_resources, 1), new[] { new Stack(p.name) }, Station(piece.m_craftingStation), 0, 0);
+                // Boss altars inside locations (soft references, never loaded here): the found-in table / cache.
+                foreach (var (boss, item, n) in FoundInScan.Offerings()) ix.Offering(boss, item, n);
             }
             finally { _ix = null; _mod = null; }
         }
@@ -183,6 +185,10 @@ namespace Morgott.UI.ItemBrowser
                             if (t?.m_prefab)
                                 Add(RelationKind.Trader, id, new[] { new Stack("Coins", t.m_price, t.m_price) }, new[] { new Stack(t.m_prefab.name, t.m_stack, t.m_stack) }, null, 0, 0,
                                     string.IsNullOrEmpty(t.m_requiredGlobalKey) ? null : "$ib_cond_key " + t.m_requiredGlobalKey, 0, false, false, t.m_requiredGlobalKey);
+                        // Items the trader takes (Hildir's chests, Trader.UseItem)
+                        if (tr.m_useItems != null)
+                            foreach (var u in tr.m_useItems)
+                                if (u?.m_prefab) _ix.Use("use:quest:" + id, tr.m_name, id, null, new[] { new Stack(u.m_prefab.name) }, "$ib_use_quest");
                         break;
                     case Smelter sm:
                         foreach (var cv in sm.m_conversion)
@@ -197,7 +203,29 @@ namespace Morgott.UI.ItemBrowser
                     case CookingStation cs:
                         foreach (var cv in cs.m_conversion)
                             if (cv?.m_from && cv.m_to) Add(RelationKind.Conversion, id, new[] { new Stack(cv.m_from.name) }, new[] { new Stack(cv.m_to.name) }, id, 0, 0);
+                        if (cs.m_useFuel) Fuel(id, cs.m_fuelItem);
                         break;
+                    case Fireplace fp:
+                        if (fp.m_canRefill && !fp.m_infiniteFuel) Fuel(id, fp.m_fuelItem); // Fireplace.Interact / UseItem
+                        if (fp.m_canRefill && fp.m_fireworkItemList != null)
+                            foreach (var fw in fp.m_fireworkItemList)
+                                if (fw.m_fireworkItem) _ix.Use("use:firework:" + id, "$ib_use_firework", id, id, new[] { new Stack(fw.m_fireworkItem.name, fw.m_fireworkItemCount, fw.m_fireworkItemCount) }, null);
+                        break;
+                    case ShieldGenerator sg: Fuel(id, sg.m_fuelItems?.ToArray()); break;
+                    case Turret tu:
+                        if (tu.m_allowedAmmo != null)
+                            _ix.Use("use:ammo:" + id, "$ib_use_ammo", id, id, Items(tu.m_allowedAmmo.ConvertAll(a => a.m_ammo)), null, true);
+                        if (tu.m_configTargets != null) // a trophy sets what it shoots (Turret.UseItem)
+                            foreach (var tt in tu.m_configTargets)
+                                if (tt.m_item)
+                                {
+                                    var who = tt.m_targets?.Find(c => c);
+                                    _ix.Use("use:target:" + id + ":" + tt.m_item.name, who ? who.m_name : tt.m_nameOverride, who ? who.name : tt.m_item.name, id, new[] { new Stack(tt.m_item.name) }, "$ib_use_target");
+                                }
+                        break;
+                    case BossStone bs when bs.m_itemStand: Power(id, bs.m_itemStand); break;
+                    case ItemStand st: Power(id, st); break;
+                    case OfferingBowl ob when ob.m_bossPrefab: var (boss, item, n) = FoundInScan.Offering(ob); _ix.Offering(boss, item, n); break;
                     case Incinerator inc when inc.m_conversions != null:
                         foreach (var cv in inc.m_conversions)
                         {
@@ -219,6 +247,22 @@ namespace Morgott.UI.ItemBrowser
             // No named component above: the hover text vanilla shows on it (HoverText.m_text, a $token), else BrowserIndex keeps
             // SourceNames.Readable(id).
             if (!named && go.TryGetComponent<HoverText>(out var hover)) Name(hover.m_text);
+        }
+
+        // Consumed over time, no product (Fireplace / CookingStation / ShieldGenerator fuel): any one of the items.
+        private static void Fuel(string host, params ItemDrop[] items) => _ix.Use("use:fuel:" + host, "$ib_use_fuel", host, host, Items(items), null, true);
+
+        // A guardian stone (BossStone -> its ItemStand with m_guardianPower): the trophy it takes.
+        private static void Power(string host, ItemStand st)
+        {
+            if (st.m_guardianPower) _ix.Use("use:power:" + host, st.m_guardianPower.m_name, host, null, Items(st.m_supportedItems?.ToArray()), "$ib_use_power", true);
+        }
+
+        private static Stack[] Items(IEnumerable<ItemDrop> items)
+        {
+            var list = new List<Stack>();
+            if (items != null) foreach (var i in items) if (i && !list.Exists(s => s.Prefab == i.name)) list.Add(new Stack(i.name));
+            return list.ToArray();
         }
 
         // One relation per table entry; a lone entry keeps the table's drop chance, a weighted table reports NaN (design 3).

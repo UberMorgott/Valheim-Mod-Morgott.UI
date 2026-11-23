@@ -89,6 +89,26 @@ namespace Morgott.UI.ItemBrowser
             return true;
         }
 
+        /// <summary>"Used in" of something that consumes items and makes none (fuel, ammo, a guardian power, a turret target, a
+        /// quest delivery): hidden pseudo entry <paramref name="id"/> ("use:&lt;kind&gt;:&lt;host&gt;...") that is its own output, like
+        /// Morgott.EpicLoot's "EL:" cost sinks. Nothing to consume = nothing added.</summary>
+        public void Use(string id, string name, string icon, string station, Stack[] inputs, string cond, bool any = false)
+        {
+            if (inputs.Length == 0) return;
+            Add(new Entry { Id = id, Name = name, Icon = icon, Type = EntryType.Other, Hidden = "use" });
+            Add(new Relation { Kind = RelationKind.Other, Source = id, Station = station, Inputs = inputs, Outputs = new[] { new Stack(id) }, Conditions = cond, AnyInput = any });
+        }
+
+        /// <summary>An altar offering (OfferingBowl): <paramref name="count"/> x <paramref name="item"/> summon <paramref name="boss"/>;
+        /// count 0 = unknown (shown "x?").</summary>
+        public void Offering(string boss, string item, int count)
+        {
+            if (string.IsNullOrEmpty(boss) || string.IsNullOrEmpty(item)) return;
+            var id = "use:altar:" + boss;
+            Add(new Entry { Id = id, Name = "$piece_offerbowl", Icon = item, Type = EntryType.Other, Hidden = "use" });
+            Add(new Relation { Kind = RelationKind.Other, Source = id, Inputs = new[] { new Stack(item, count, count) }, Outputs = new[] { new Stack(boss) } });
+        }
+
         private static void To(Dictionary<string, List<Relation>> map, string id, Relation r)
         {
             if (!map.TryGetValue(id, out var list)) map[id] = list = new List<Relation>();

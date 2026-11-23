@@ -355,6 +355,34 @@ namespace Morgott.UI.Tests
             Assert.Empty(PageModel.UsedIn(ix, "EL:enchant:Rare"));
         }
 
+        // Consumers that make no item (fuel, guardian stone, turret target) and altar offerings: a "Used in" row on the
+        // consumed item's page, hidden pseudo entries, nothing added to the host's own "Obtained from".
+        [Fact]
+        public void UsesAndOfferingsReachUsedIn()
+        {
+            var ix = Sword();
+            ix.Use("use:power:BossStone_Eikthyr", "$GP_Eikthyr", "BossStone_Eikthyr", null, new[] { new Stack("TrophyEikthyr") }, "$ib_use_power", true);
+            ix.Use("use:target:piece_turret:TrophyGreydwarf", "$enemy_greydwarf", "Greydwarf", "piece_turret", new[] { new Stack("TrophyGreydwarf") }, "$ib_use_target");
+            ix.Use("use:fuel:fire_pit", "$ib_use_fuel", "fire_pit", "fire_pit", new[] { new Stack("Wood") }, null, true);
+            ix.Use("use:fuel:empty", "$ib_use_fuel", "empty", "empty", new Stack[0], null);
+            ix.Offering("Eikthyr", "TrophyDeer", 2);
+            ix.Offering("Dragon", "", 0); // an older table line without the item: nothing
+            var power = Assert.Single(PageModel.UsedIn(ix, "TrophyEikthyr"));
+            Assert.Equal("use:power:BossStone_Eikthyr", power.Icon);
+            Assert.Null(power.Right); // a sink is its own title, no chip repeating it
+            Assert.Equal("piece_turret", Assert.Single(PageModel.UsedIn(ix, "TrophyGreydwarf")).Right);
+            Assert.Contains(PageModel.UsedIn(ix, "Wood"), r => r.Icon == "use:fuel:fire_pit" && r.Right == "fire_pit");
+            var altar = Assert.Single(PageModel.UsedIn(ix, "TrophyDeer"));
+            Assert.Equal("Eikthyr", altar.Icon);
+            Assert.Equal("use:altar:Eikthyr", altar.Right);
+            Assert.Equal(2, altar.Inputs[0].Min);
+            Assert.Equal("use:altar:Eikthyr", Assert.Single(ix.ObtainedFrom("Eikthyr")).Source);
+            Assert.Empty(ix.ObtainedFrom("fire_pit"));
+            Assert.False(ix.Entries.ContainsKey("use:fuel:empty"));
+            Assert.False(ix.Entries.ContainsKey("use:altar:Dragon"));
+            Assert.All(new[] { "use:power:BossStone_Eikthyr", "use:altar:Eikthyr", "use:fuel:fire_pit" }, id => Assert.Equal("use", ix.Entries[id].Hidden));
+        }
+
         [Fact]
         public void VariantFeedsTheMaterialsTake()
         {

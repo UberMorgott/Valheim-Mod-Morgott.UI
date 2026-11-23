@@ -36,7 +36,7 @@ namespace Morgott.UI.ItemBrowser
             }
             foreach (var (c, k) in s.Creatures) if (k != Origin.Boss) World.Anchor(c, biome, false);
             foreach (var o in s.Objects) World.Anchor(o, biome, false);
-            foreach (var (boss, item) in s.Summons) World.Summons.Add((boss, item, biome));
+            foreach (var (boss, item, _) in s.Summons) World.Summons.Add((boss, item, biome));
         }
 
         /// <summary>Map legend order (MapFilterMath.Biomes), Ocean last.</summary>

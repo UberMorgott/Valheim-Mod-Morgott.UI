@@ -1367,7 +1367,7 @@ namespace Morgott.UI.ItemBrowser
 
         private void Rule(float x, float y, float w, float h) => Put(_rules.Next(n => Img(_pageView.transform, "Rule" + n, "ib.rule")), x, y, w, h);
 
-        private static string Amount(Stack s) => s.Min == s.Max ? s.Min.ToString() : $"{s.Min}-{s.Max}";
+        private static string Amount(Stack s) => s.Max == 0 ? "?" : s.Min == s.Max ? s.Min.ToString() : $"{s.Min}-{s.Max}"; // 0 = unknown (an altar from an older found-in table)
 
         // Source row / creature drop: amount, base chance (weighted tables: no number), conditions.
         private static string Chance(PageRow r, string item, bool used, bool cond = true)

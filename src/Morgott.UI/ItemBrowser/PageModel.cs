@@ -181,7 +181,7 @@ namespace Morgott.UI.ItemBrowser
                 ins[0] = new Stack(item, 1, 1);
                 Array.Copy(r.Inputs, 0, ins, 1, r.Inputs.Length);
             }
-            var right = r.Station ?? (IsRecipe(r.Kind) || r.Source == self ? null : r.Source);
+            var right = r.Station ?? (IsRecipe(r.Kind) || r.Source == self || r.Source == item ? null : r.Source); // a cost sink is its own title
             return new PageRow { R = r, Icon = item, Quality = up ? r.Quality : 0, Inputs = ins, BaseQuality = up ? r.Quality - 1 : 0, Right = right, Recipe = true };
         }
 

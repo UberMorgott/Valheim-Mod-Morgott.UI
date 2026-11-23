@@ -16,8 +16,9 @@ namespace Morgott.UI.ItemBrowser
         /// <summary>Source prefabs the prefab places (pickables, chests, rocks, traders...); null = scanned before this
         /// column existed (its objects stay unknown; the prefab is not loaded for them).</summary>
         public List<string> Objects;
-        /// <summary>Boss altars: boss prefab + the item offered.</summary>
-        public readonly List<(string Boss, string Item)> Summons = new List<(string, string)>();
+        /// <summary>Boss altars: boss prefab + the item offered + how many (OfferingBowl.m_bossItems, item stands: their count;
+        /// 0 = unknown, a table dumped before the count existed).</summary>
+        public readonly List<(string Boss, string Item, int Count)> Summons = new List<(string, string, int)>();
 
         public void AddObject(string prefab)
         {
@@ -34,7 +35,7 @@ namespace Morgott.UI.ItemBrowser
     /// <summary>
     /// Text form of a <see cref="Scanned"/> set: the embedded vanilla table (FoundInTable.txt, dumped by the autotest
     /// check item-browser-found-in from a forced full scan) and the lazy-scan cache under BepInEx\cache. Line 1
-    /// "# game &lt;version&gt;\t&lt;count&gt;", then "&lt;key&gt;\t&lt;themes&gt;\t&lt;interior 0|1&gt;\t&lt;creature&gt;:&lt;w|n|b&gt;,...\t&lt;object&gt;|&lt;boss&gt;&lt;&lt;item&gt;,...".
+    /// "# game &lt;version&gt;\t&lt;count&gt;", then "&lt;key&gt;\t&lt;themes&gt;\t&lt;interior 0|1&gt;\t&lt;creature&gt;:&lt;w|n|b&gt;,...\t&lt;object&gt;|&lt;boss&gt;&lt;&lt;item&gt;[*&lt;count&gt;],...".
     /// Keys: "L:&lt;location prefab&gt;", "R:&lt;room prefab&gt;" (cache keys add "@&lt;owner&gt;"). No Unity calls: unit-tested.
     /// </summary>
     public static class FoundInTable
@@ -60,7 +61,7 @@ namespace Morgott.UI.ItemBrowser
                 if (s.Objects != null)
                 {
                     sb.Append('\t').Append(string.Join(",", s.Objects));
-                    foreach (var (boss, item) in s.Summons) sb.Append(sb[sb.Length - 1] == '\t' ? "" : ",").Append(boss).Append('<').Append(item);
+                    foreach (var (boss, item, n) in s.Summons) sb.Append(sb[sb.Length - 1] == '\t' ? "" : ",").Append(boss).Append('<').Append(item).Append(n > 0 ? "*" + n : "");
                 }
                 sb.Append('\n');
             }
@@ -99,13 +100,20 @@ namespace Morgott.UI.ItemBrowser
                     foreach (var o in f[4].Split(','))
                     {
                         var lt = o.IndexOf('<');
-                        if (lt > 0) s.Summons.Add((o.Substring(0, lt), o.Substring(lt + 1)));
+                        if (lt > 0) s.Summons.Add(Summon(o.Substring(0, lt), o.Substring(lt + 1)));
                         else s.AddObject(o);
                     }
                 }
                 map[f[0]] = s;
             }
             return map;
+        }
+
+        // "item*3" -> (item, 3); "item" (older dump) -> count 0 = unknown.
+        private static (string, string, int) Summon(string boss, string item)
+        {
+            var star = item.LastIndexOf('*');
+            return star > 0 && int.TryParse(item.Substring(star + 1), out var n) ? (boss, item.Substring(0, star), n) : (boss, item, 0);
         }
     }
 }
