@@ -82,7 +82,17 @@ namespace Morgott.UI.WorldHud
             t == HitData.HitType.Burning || t == HitData.HitType.Poisoned || t == HitData.HitType.Smoke;
 
         // Vanilla ApplyDamage's number (Character.cs:2451-2454). Returns false when the DoT split replaced it.
-        internal static bool OnShowModifier(HitData.DamageModifier mod, Vector3 pos, float dmg, bool player)
+        // Typed numbers rise from the top of the target's collider (as vanilla heals do, Character.cs:2169) instead of the hit point
+        // inside the body (ApplyDamage passes hit.m_point, Character.cs:2453), where they sank into fire / spark VFX.
+        // Player / tame targets keep the hit point: their owner (the sender) draws them as its own plain red damage (mySelf).
+        internal static Vector3 SpawnPoint(Character target, Vector3 hitPoint, bool player)
+        {
+            if (player) return hitPoint;
+            var top = target.GetTopPoint();
+            return hitPoint.y < top.y ? top : hitPoint;
+        }
+
+        internal static bool OnShowModifier(HitData.DamageModifier mod, ref Vector3 pos, float dmg, bool player)
         {
             var a = Apply;
             // A foreign number inside ApplyDamage (e.g. Morgott.Summons NecroSet body transfer, at the body's top point) stays plain.
@@ -92,6 +102,7 @@ namespace Morgott.UI.WorldHud
             var hit = a.Hit;
             if (IsDot(hit.m_hitType))
             {
+                pos = SpawnPoint(a.Target, pos, player);
                 var n = DamageTypeMath.Split(hit.m_damage, dmg, Kinds, Amounts);
                 if (n == 0) return true;
                 // Burning/poison were resisted when the hit landed (Character.cs:2386 before AddFireDamage); smoke never is (SE_Smoke.cs:33).
@@ -116,6 +127,7 @@ namespace Morgott.UI.WorldHud
                 var kind = DamageTypeMath.Dominant(hit.m_damage);
                 Outgoing = new DamageDescriptor(kind, DamageTypeMath.GradeOf(r.Mods, kind), false, NextSlot(a.Target));
                 HasOutgoing = true;
+                pos = SpawnPoint(a.Target, pos, player);
             }
             return true;
         }
@@ -127,9 +139,10 @@ namespace Morgott.UI.WorldHud
             var r = Rpc;
             if (!r.Resisted || r.ImmuneMask == 0 || !ReferenceEquals(r.Hit, hit) || !TypedDamageConfig.On || !DamageText.instance) return;
             var player = target.IsPlayer() || target.IsTamed();
+            var pos = SpawnPoint(target, hit.m_point, player);
             for (var k = DamageKind.Blunt; k <= DamageKind.Spirit; k++)
                 if ((r.ImmuneMask & 1 << (int)k) != 0)
-                    Send(new DamageDescriptor(k, DamageGrade.Immune, false, NextSlot(target)), DamageText.TextType.Immune, hit.m_point, "0", player);
+                    Send(new DamageDescriptor(k, DamageGrade.Immune, false, NextSlot(target)), DamageText.TextType.Immune, pos, "0", player);
         }
 
         internal static void OnResisted(HitData hit, HitData.DamageTypes pre, HitData.DamageModifiers mods)
@@ -233,9 +246,9 @@ namespace Morgott.UI.WorldHud
 
         [HarmonyPatch(typeof(DamageText), nameof(DamageText.ShowText), typeof(HitData.DamageModifier), typeof(Vector3), typeof(float), typeof(bool))]
         [HarmonyPrefix]
-        private static bool ShowModifier_Prefix(HitData.DamageModifier type, Vector3 pos, float dmg, bool player)
+        private static bool ShowModifier_Prefix(HitData.DamageModifier type, ref Vector3 pos, float dmg, bool player)
         {
-            try { return TypedDamageText.OnShowModifier(type, pos, dmg, player); }
+            try { return TypedDamageText.OnShowModifier(type, ref pos, dmg, player); }
             catch (Exception e)
             {
                 TypedDamageText.HasOutgoing = false;

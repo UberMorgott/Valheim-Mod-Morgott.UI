@@ -17,6 +17,77 @@ namespace Morgott.UI.WorldHud
         }
     }
 
+    // Receiver-side lanes of typed numbers (mockup "·6 ·9 ·4"). Each candidate lane (DamagePopupMath.Side order: centre, right,
+    // left ...) is tested against where the recent numbers are NOW: vanilla lifts every number 1 m/s (DamageText.UpdateWorldTexts:
+    // m_worldPos.y += dt). The first lane whose spot overlaps none of them wins; all busy -> the lane whose blocker rises clear
+    // first. Positions are checked, not targets, so a moving target or two close targets never stack. Fixed ring, no allocation.
+    public sealed class DamageLanes
+    {
+        public const int Lanes = 5;
+        public const float RiseSpeed = 1f;
+        private const float SameSpot = 0.98f;
+        private const int Ring = DamagePopupMath.MaxAlive;
+        private readonly float[] _x = new float[Ring];
+        private readonly float[] _y = new float[Ring];
+        private readonly float[] _z = new float[Ring];
+        private readonly float[] _t = new float[Ring];
+        private readonly float[] _h = new float[Ring];
+        private readonly float[] _end = new float[Ring]; // gone after (vanilla m_duration); 0 = empty slot
+        private int _next;
+
+        // Lane for a number spawned at (x, y, z) at `now`; (rx, rz) = camera right on the ground plane (unit), step = lane width,
+        // height = the number's height, both world units at its distance; life = its vanilla m_duration. Records it where laid out.
+        public int Assign(float x, float y, float z, float rx, float rz, float now, float step, float height, float life)
+        {
+            var lane = 0;
+            var bestFree = float.PositiveInfinity;
+            for (var l = 0; l < Lanes; l++)
+            {
+                var side = DamagePopupMath.Side(l) * step;
+                var free = FreeAt(x + rx * side, y, z + rz * side, now, step, height);
+                if (free <= now)
+                {
+                    lane = l;
+                    bestFree = now;
+                    break;
+                }
+                if (free < bestFree)
+                {
+                    bestFree = free;
+                    lane = l;
+                }
+            }
+            var s = DamagePopupMath.Side(lane) * step;
+            _x[_next] = x + rx * s;
+            _y[_next] = y;
+            _z[_next] = z + rz * s;
+            _t[_next] = now;
+            _h[_next] = height;
+            _end[_next] = now + life;
+            _next = (_next + 1) % Ring;
+            return lane;
+        }
+
+        // When the spot (x, y, z) stops overlapping every recorded number (<= now: free now).
+        private float FreeAt(float x, float y, float z, float now, float width, float height)
+        {
+            var free = now;
+            for (var i = 0; i < Ring; i++)
+            {
+                if (_end[i] <= now) continue;
+                var h = _h[i];
+                float dx = _x[i] - x, dz = _z[i] - z;
+                // Neighbour lanes sit exactly one width apart: the tolerance keeps float error at large world coordinates out.
+                if (dx * dx + dz * dz >= width * width * SameSpot) continue;
+                var bottom = _y[i] + (now - _t[i]) * RiseSpeed;
+                if (bottom >= y + height || bottom + h <= y) continue;
+                var clear = now + (y + height - bottom) / RiseSpeed;
+                if (clear > free) free = clear;
+            }
+            return free;
+        }
+    }
+
     // Pure rules of the typed damage numbers: style per grade, side offset per slot, and the popup budget.
     public static class DamagePopupMath
     {

@@ -15,18 +15,21 @@ namespace Morgott.UI.WorldHud
         private static readonly Dictionary<(TMP_FontAsset font, string look), KeyValuePair<Material, int>> Cache =
             new Dictionary<(TMP_FontAsset, string), KeyValuePair<Material, int>>();
 
-        public static Material Outlined(TMP_FontAsset font, string look, float width, float dilate)
+        // underlay: token scope of a soft underlay styled with the outline (once per theme revision), null = none.
+        public static Material Outlined(TMP_FontAsset font, string look, float width, float dilate, string underlay = null)
         {
             if (!font || !font.material) return null;
             if (Cache.TryGetValue((font, look), out var entry) && entry.Key)
             {
                 if (entry.Value == ThemeTokens.Revision) return entry.Key;
                 Style(entry.Key, width, dilate);
+                if (underlay != null) Underlay(entry.Key, underlay);
                 Cache[(font, look)] = new KeyValuePair<Material, int>(entry.Key, ThemeTokens.Revision);
                 return entry.Key;
             }
             var m = new Material(font.material) { name = font.material.name + " (RuneSkin " + look + ")" };
             Style(m, width, dilate);
+            if (underlay != null) Underlay(m, underlay);
             m.EnableKeyword(ShaderUtilities.Keyword_Outline);
             Cache[(font, look)] = new KeyValuePair<Material, int>(m, ThemeTokens.Revision);
             return m;
@@ -62,17 +65,17 @@ namespace Morgott.UI.WorldHud
             return true;
         }
         // Soft dark drop shadow (TMP underlay) on a RuneSkin look material: contrast over bright backgrounds where an
-        // outline alone reads thin. Tokens color.text.underlay, size.text.underlay.{offset,dilate,softness}.
-        public static void Underlay(Material m)
+        // outline alone reads thin. Tokens color.<scope>.underlay, size.<scope>.underlay.{offset,dilate,softness}.
+        public static void Underlay(Material m, string scope = "text")
         {
             if (!m || !m.HasProperty(ShaderUtilities.ID_UnderlayColor)) return;
             m.EnableKeyword(ShaderUtilities.Keyword_Underlay);
-            m.SetColor(ShaderUtilities.ID_UnderlayColor, ThemeTokens.GetColor("color.text.underlay", new Color(0f, 0f, 0f, 0.85f)));
-            var o = ThemeTokens.GetFloat("size.text.underlay.offset", 0.6f);
+            m.SetColor(ShaderUtilities.ID_UnderlayColor, ThemeTokens.GetColor("color." + scope + ".underlay", new Color(0f, 0f, 0f, 0.85f)));
+            var o = ThemeTokens.GetFloat("size." + scope + ".underlay.offset", 0.6f);
             m.SetFloat(ShaderUtilities.ID_UnderlayOffsetX, o);
             m.SetFloat(ShaderUtilities.ID_UnderlayOffsetY, -o);
-            m.SetFloat(ShaderUtilities.ID_UnderlayDilate, ThemeTokens.GetFloat("size.text.underlay.dilate", 0.35f));
-            m.SetFloat(ShaderUtilities.ID_UnderlaySoftness, ThemeTokens.GetFloat("size.text.underlay.softness", 0.55f));
+            m.SetFloat(ShaderUtilities.ID_UnderlayDilate, ThemeTokens.GetFloat("size." + scope + ".underlay.dilate", 0.35f));
+            m.SetFloat(ShaderUtilities.ID_UnderlaySoftness, ThemeTokens.GetFloat("size." + scope + ".underlay.softness", 0.55f));
         }
         // Outlined + dilated face with the soft dark underlay on top: small texts over the world that must read on
         // bright sky and foliage (enemy overhead names).

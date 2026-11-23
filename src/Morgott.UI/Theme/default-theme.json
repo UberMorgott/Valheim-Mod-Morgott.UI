@@ -225,7 +225,8 @@
     { "token": "color.damage.type.frost", "value": "#8CD6FFFF" },
     { "token": "color.damage.type.lightning", "value": "#FFE074FF" },
     { "token": "color.damage.type.poison", "value": "#A9D875FF" },
-    { "token": "color.damage.type.spirit", "value": "#CDABFFFF" }
+    { "token": "color.damage.type.spirit", "value": "#CDABFFFF" },
+    { "token": "color.damage.underlay", "value": "#000000D9" }
   ],
   "sprites": [
     { "token": "sprite.hud.strip4.well.row", "asset": "strip5_well_row" },
@@ -890,6 +891,12 @@
     { "token": "size.damage.font.small", "value": 16 },
     { "token": "size.damage.dilate", "value": 0.15 },
     { "token": "size.damage.stagger", "value": 0.08 },
+    { "token": "size.damage.lane.height", "value": 0.035 },
+    { "token": "size.damage.outline", "value": 0.32 },
+    { "token": "size.damage.outline.dilate", "value": 0.16 },
+    { "token": "size.damage.underlay.offset", "value": 0.5 },
+    { "token": "size.damage.underlay.dilate", "value": 0.55 },
+    { "token": "size.damage.underlay.softness", "value": 0.45 },
     { "token": "size.speech.font", "value": 20 },
     { "token": "size.speech.maxw", "value": 360 },
     { "token": "size.speech.maxw.large", "value": 440 },

@@ -23,8 +23,7 @@ namespace Morgott.UI.WorldHud
         private static TMP_FontAsset _plainFont;
         private static Material _plainMaterial;
         private static FontStyles _plainStyle;
-        private static int _jitterFrame = -1;
-        private static Vector3 _jitter;
+        private static readonly DamageLanes Lanes = new DamageLanes();
 
         internal static void Attach(DamageText dt)
         {
@@ -99,7 +98,7 @@ namespace Morgott.UI.WorldHud
         }
 
         // Approved mockup v3: hue = damage type (color.damage.type.*), weak = real PT Sans Bold + bigger, resisted / immune = dimmed
-        // and desaturated, DoT tick = "·" prefix x0.9; numbers of one target in one frame side by side by slot.
+        // and desaturated, DoT tick = "·" prefix x0.9; numbers of one target still rising side by side in lanes.
         private static void Typed(DamageText.WorldTextInstance inst, TMP_Text tf, CanvasGroup cg, DamageDescriptor d,
             DamageText.TextType type, Vector3 pos, float distance)
         {
@@ -113,25 +112,31 @@ namespace Morgott.UI.WorldHud
             if (font)
             {
                 tf.font = font;
-                // One look for both weights: same dark outline, no dilate (regular vs bold must differ).
-                var m = TextLook.Outlined(font, "damage.typed", ThemeTokens.GetFloat("size.text.outline", 0.22f), 0f);
+                // One look for both weights: a heavy dark outline (face dilated back by half of it: a TMP outline eats inward too)
+                // and a soft dark underlay, for fire glow and bright sky. Dim grades fade face + outline together (CanvasGroup).
+                var m = TextLook.Outlined(font, "damage.typed", ThemeTokens.GetFloat("size.damage.outline", 0.32f),
+                    ThemeTokens.GetFloat("size.damage.outline.dilate", 0.16f), "damage");
                 if (m) tf.fontSharedMaterial = m;
             }
             tf.fontStyle = _plainStyle & ~FontStyles.Bold;
             tf.fontSize *= s.Scale;
             if (d.Tick) tf.text = DamagePopupMath.TickPrefix + tf.text;
             if (cg) cg.alpha = s.Alpha;
-            // Vanilla scatters each number by insideUnitSphere * 0.5 (DamageText.cs:104), which piles same-frame numbers of one
-            // target on each other: they share one scatter per frame and step sideways by a screen-constant width per slot.
-            var frame = Time.frameCount;
-            if (frame != _jitterFrame)
-            {
-                _jitterFrame = frame;
-                _jitter = UnityEngine.Random.insideUnitSphere * 0.5f;
-            }
+            // Vanilla scatters each number by insideUnitSphere * 0.5 (DamageText.cs:104), which piles numbers of one target on each
+            // other: typed numbers drop the scatter and take a lane beside the ones still rising there (DamageLanes).
             var cam = Utils.GetMainCamera();
-            var side = cam ? cam.transform.right * (DamagePopupMath.Side(d.Slot) * distance * ThemeTokens.GetFloat("size.damage.stagger", 0.08f)) : Vector3.zero;
-            inst.m_worldPos = pos + _jitter + side;
+            if (!cam)
+            {
+                inst.m_worldPos = pos;
+                return;
+            }
+            var step = distance * ThemeTokens.GetFloat("size.damage.stagger", 0.08f);
+            var right = cam.transform.right;
+            right.y = 0f;
+            right.Normalize();
+            var lane = Lanes.Assign(pos.x, pos.y, pos.z, right.x, right.z, Time.time, step,
+                distance * ThemeTokens.GetFloat("size.damage.lane.height", 0.035f) * s.Scale, inst.m_duration);
+            inst.m_worldPos = pos + right * (DamagePopupMath.Side(lane) * step);
         }
 
         public static void Record()
