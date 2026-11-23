@@ -59,6 +59,7 @@
     <Compile Include="..\..\src\Morgott.UI\WorldHud\PlayHudMath.cs" Link="Linked\PlayHudMath.cs" />
     <Compile Include="..\..\src\Morgott.UI\WorldHud\HoldPromptMath.cs" Link="Linked\HoldPromptMath.cs" />
     <Compile Include="..\..\src\Morgott.UI\WorldHud\SpeechMath.cs" Link="Linked\SpeechMath.cs" />
+    <Compile Include="..\..\src\Morgott.UI\WorldHud\DamageTypeMath.cs" Link="Linked\DamageTypeMath.cs" />
     <Compile Include="..\..\src\Morgott.UI\GameScreens\GameScreenMath.cs" Link="Linked\GameScreenMath.cs" />
     <Compile Include="..\..\src\Morgott.UI\GameScreens\RuneRevealMath.cs" Link="Linked\RuneRevealMath.cs" />
     <Compile Include="..\..\src\Morgott.UI\ModScreens\ForeignMath.cs" Link="Linked\ForeignMath.cs" />
