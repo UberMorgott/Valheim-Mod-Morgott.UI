@@ -313,15 +313,30 @@ namespace Morgott.UI.ItemBrowser
             var no = new HashSet<string>(StringComparer.Ordinal);
             foreach (var i in st.m_supportedItems) if (i) yes.Add(i.m_itemData.m_shared.m_name);
             if (st.m_unsupportedItems != null) foreach (var i in st.m_unsupportedItems) if (i) no.Add(i.m_itemData.m_shared.m_name);
-            foreach (var go in ObjectDB.instance.m_items)
-            {
-                if (!go || !go.TryGetComponent<ItemDrop>(out var d)) continue;
-                var s = d.m_itemData.m_shared;
-                if (!no.Contains(s.m_name) && (yes.Contains(s.m_name) || st.m_supportedTypes != null && st.m_supportedTypes.Contains(s.m_itemType)) && ItemStand.GetAttachPrefab(go) && !list.Contains(go.name))
+            foreach (var (go, s) in Items())
+                if (go && !no.Contains(s.m_name) && (yes.Contains(s.m_name) || st.m_supportedTypes != null && st.m_supportedTypes.Contains(s.m_itemType)) && ItemStand.GetAttachPrefab(go) && !list.Contains(go.name))
                     list.Add(go.name);
-            }
             list.Sort(StringComparer.Ordinal);
             return list;
+        }
+
+        // ObjectDB items with their shared data, read once per ObjectDB / item count: a stand then costs a managed loop, not
+        // a native TryGetComponent per item (run 20261123-171936: FaderLocation altar slice 6.4 ms > 5). VanillaScan's
+        // guardian stones fill it during the index build, so the found-in scan's altars find it warm.
+        private static List<(GameObject Go, ItemDrop.ItemData.SharedData Shared)> _items;
+        private static ObjectDB _itemsDb;
+        private static int _itemsCount = -1;
+
+        private static List<(GameObject Go, ItemDrop.ItemData.SharedData Shared)> Items()
+        {
+            var db = ObjectDB.instance;
+            if (_items != null && _itemsDb == db && _itemsCount == db.m_items.Count) return _items;
+            _items = new List<(GameObject, ItemDrop.ItemData.SharedData)>(db.m_items.Count);
+            foreach (var go in db.m_items)
+                if (go && go.TryGetComponent<ItemDrop>(out var d)) _items.Add((go, d.m_itemData.m_shared));
+            _itemsDb = db;
+            _itemsCount = db.m_items.Count;
+            return _items;
         }
 
         /// <summary>Bumped when a lazy scan found altars the index could not know (no table / cache line yet): Browser's
