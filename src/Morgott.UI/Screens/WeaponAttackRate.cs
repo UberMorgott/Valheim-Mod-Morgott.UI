@@ -132,6 +132,15 @@ namespace Morgott.UI.Screens
         public static string InsertRow(string tooltip, float perSecond, bool comma)
         {
             if (perSecond <= 0f || string.IsNullOrEmpty(tooltip) || tooltip.Contains(Token)) return tooltip;
+            var value = perSecond.ToString("0.00", CultureInfo.InvariantCulture);
+            if (comma) value = value.Replace('.', ',');
+            return InsertLine(tooltip, Token + ": <color=orange>" + value + "</color>");
+        }
+
+        // Tooltip text with line after its last damage row; unchanged without one.
+        public static string InsertLine(string tooltip, string line)
+        {
+            if (string.IsNullOrEmpty(tooltip)) return tooltip;
             var insertAt = -1;
             for (var start = 0; start < tooltip.Length;)
             {
@@ -141,10 +150,7 @@ namespace Morgott.UI.Screens
                 if (token != null && DamageTokens.Contains(token)) insertAt = end;
                 start = end + 1;
             }
-            if (insertAt < 0) return tooltip;
-            var value = perSecond.ToString("0.00", CultureInfo.InvariantCulture);
-            if (comma) value = value.Replace('.', ',');
-            return tooltip.Insert(insertAt, "\n" + Token + ": <color=orange>" + value + "</color>");
+            return insertAt < 0 ? tooltip : tooltip.Insert(insertAt, "\n" + line);
         }
 
         private static readonly HashSet<string> DamageTokens = new HashSet<string>(StringComparer.Ordinal)

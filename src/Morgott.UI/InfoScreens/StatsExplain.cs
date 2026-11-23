@@ -716,11 +716,14 @@ namespace Morgott.UI.InfoScreens
             var sh = w.m_shared;
             var game = w.GetDamage();
             var total = game.GetTotalDamage();
+            var sources = DamageConvert.Sources(p);
+            var shown = DamageConvert.Apply(game, sources); // the types the hit lands with (Power conversion gems)
+            var shownTotal = shown.GetTotalDamage();
             for (var i = 0; i < DamageWords.Length; i++)
             {
-                var v = TypeValue(game, i);
+                var v = TypeValue(shown, i);
                 if (v < 0.5f) continue;
-                bd.Share(Loc(DamageWords[i]), v, total > 0f ? v / total : 0f, DamageColor[i]);
+                bd.Share(Loc(DamageWords[i]), v, shownTotal > 0f ? v / shownTotal : 0f, DamageColor[i]);
             }
             bd.Base(Loc("$ui_bd_weapon_base"), sh.m_damages.GetTotalDamage());
             var levels = sh.m_damagesPerLevel.GetTotalDamage() * Mathf.Max(0, w.m_quality - 1);
@@ -747,10 +750,31 @@ namespace Morgott.UI.InfoScreens
             p.GetSEMan().ModifyAttack(sh.m_skillType, ref _hit);
             var after = _hit.m_damage.GetTotalDamage();
             Residual(bd, after, vanilla + cur - total, true);
+            after = Conversions(bd, _hit.m_damage, sources, after);
             StatsMath.SkillRange(p.GetSkillFactor(sh.m_skillType), out var min, out var max);
             bd.Range(SkillName(sh.m_skillType), null, after * (min - 1f), after * (max - 1f), true);
             bd.ResultRange(Loc("$ui_bd_per_hit"), after * min, after * max);
             bd.Note(Loc("$ui_bd_damage_note"));
+        }
+
+        private readonly List<Morgott.Core.DamageConversion.Source> _convPrefix = new List<Morgott.Core.DamageConversion.Source>(4);
+
+        // One row per conversion source ("Аватар огня: колющий → огонь 100% +20%"), its value = what it adds to the hit; the
+        // prefix sums of Core DamageConversion.Apply (sources read the same hit, so the rows add up). Returns the converted total.
+        private float Conversions(StatBreakdown bd, HitData.DamageTypes hit, List<Morgott.Core.DamageConversion.Source> sources, float total)
+        {
+            if (sources.Count == 0) return total;
+            var parts = DamageConvert.Parts(hit);
+            _convPrefix.Clear();
+            foreach (var s in sources)
+            {
+                var text = DamageConvert.Describe(parts, s, Loc, _comma);
+                _convPrefix.Add(s);
+                var now = DamageConvert.Apply(hit, _convPrefix).GetTotalDamage();
+                if (text != null) bd.Add(Loc(s.Name) + ": " + text, null, now - total, true);
+                total = now;
+            }
+            return total;
         }
 
         // Damage factor one status effect applies to this weapon's hit.
@@ -769,7 +793,7 @@ namespace Morgott.UI.InfoScreens
             var d = w.GetDamage();
             _hit.m_damage = d;
             p.GetSEMan().ModifyAttack(w.m_shared.m_skillType, ref _hit);
-            return _hit.m_damage.GetTotalDamage() * Mathf.Lerp(0.4f, 1f, p.GetSkillFactor(w.m_shared.m_skillType)) * multiplier;
+            return DamageConvert.Apply(_hit.m_damage, DamageConvert.Sources(p)).GetTotalDamage() * Mathf.Lerp(0.4f, 1f, p.GetSkillFactor(w.m_shared.m_skillType)) * multiplier;
         }
 
         private void Dps(StatBreakdown bd)

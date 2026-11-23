@@ -647,6 +647,7 @@
   "ui_vp_disabled": "выключено",
   "ui_tip_quality": "Кач.",
   "ui_tip_attack_rate": "Базовые атаки/с",
+  "ui_tip_conversion": "Преобразование урона",
   "ui_tip_magic": "Магические свойства",
   "ui_tip_set": "Комплект:",
   "ui_tip_sockets": "Гнёзда",

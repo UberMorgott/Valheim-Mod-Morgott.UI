@@ -101,6 +101,10 @@ namespace Morgott.UI.Screens
                 if (!appending) __result = AdrenalineTooltip.Append(item, __result);
                 if (!appending && item.IsWeapon() && item.m_shared.m_attack != null && global::Version.CurrentVersion == AttackTimingsVersion)
                     __result = WeaponAttackRate.InsertRow(__result, WeaponAttackRate.PerSecond(BaseAttack(item.m_shared.m_attack)), comma);
+                // The weapon in use: what its hits convert into (Power gems, Core IDamageConversion), as they land.
+                var local = Player.m_localPlayer;
+                if (!appending && local && item == local.GetCurrentWeapon())
+                    __result = InfoScreens.DamageConvert.TooltipRows(__result, item.GetDamage(), InfoScreens.DamageConvert.Sources(local), comma);
             }
             if (_inRecipe && crafting && !appending) __result = DamageIconText.Decorate(__result, _tags);
             // Item tooltip sheet (Variant A): every outermost non-crafting item tooltip (inventory, containers, HUD strip,

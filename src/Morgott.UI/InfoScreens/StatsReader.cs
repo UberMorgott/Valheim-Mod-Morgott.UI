@@ -580,7 +580,7 @@ namespace Morgott.UI.InfoScreens
             var dmg = Explained(Row(c, Kind.Wide, "flame", "$ui_stats_damage"), Explain.Damage);
             if (weapon != null)
             {
-                var d = weapon.GetDamage();
+                var d = DamageConvert.Apply(weapon.GetDamage(), DamageConvert.Sources(p)); // as the hit lands (Power gems)
                 var n = 0;
                 n = Damage(dmg.V, n, d.m_blunt, "$inventory_blunt");
                 n = Damage(dmg.V, n, d.m_slash, "$inventory_slash");

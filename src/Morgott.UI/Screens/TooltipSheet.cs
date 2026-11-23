@@ -83,6 +83,7 @@ namespace Morgott.UI.Screens
             "item_food_duration", "item_food_regen", "item_crafter",
             "adventurebackpacks_contents_weight", // AdventureBackpacks fork ItemDataGetTooltipPatch
             "ui_tip_attack_rate", // WeaponAttackRate
+            "ui_tip_conversion", // DamageConvert
         };
 
         // SE_Stats.GetTooltipString lines (SE_Stats.cs:490-698) without a RowTokens entry: rows inside an effect section only.
