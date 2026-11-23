@@ -183,6 +183,22 @@ namespace Morgott.UI.WorldHud
             }
             HudGraphics.Clear();
             if (top == float.MinValue) return pos;
+            // The hit alerts the target; EnemyHudSkin.AlertSlot stacks "!"/"?" above the name only once the HUD is active and
+            // fading in, so a hidden HUD still holds the prefab slot. Reserve the final slot: name top + alert gap + icon height
+            // (rect bounds, so never below the real glyph).
+            if (best.m_name && (best.m_alerted || best.m_aware))
+            {
+                best.m_name.rectTransform.GetWorldCorners(Corners);
+                var slot = Corners[1].y + ThemeTokens.GetFloat("size.enemy.alert.gap", 3f) * best.m_name.rectTransform.parent.lossyScale.y;
+                var icon = best.m_alerted ? best.m_alerted : best.m_aware;
+                var g = icon.GetComponentInChildren<Graphic>(true);
+                if (g)
+                {
+                    g.rectTransform.GetWorldCorners(Corners);
+                    slot += Corners[1].y - Corners[0].y;
+                }
+                top = Mathf.Max(top, slot);
+            }
             var anchor = cam.WorldToScreenPointScaled(best.m_character.GetTopPoint());
             if (anchor.z <= 0f) return pos;
             top += anchor.y - root;
