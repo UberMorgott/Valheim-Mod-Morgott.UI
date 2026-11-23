@@ -183,6 +183,7 @@ namespace Morgott.UI.WorldHud
             }
             HudGraphics.Clear();
             if (top == float.MinValue) return pos;
+            var measured = top;
             // The hit alerts the target; EnemyHudSkin.AlertSlot stacks "!"/"?" above the name only once the HUD is active and
             // fading in, so a hidden HUD still holds the prefab slot. Reserve the final slot: name top + alert gap + icon height
             // (rect bounds, so never below the real glyph).
@@ -201,10 +202,14 @@ namespace Morgott.UI.WorldHud
             }
             var anchor = cam.WorldToScreenPointScaled(best.m_character.GetTopPoint());
             if (anchor.z <= 0f) return pos;
-            top += anchor.y - root;
+            var shift = anchor.y - root;
+            top += shift;
             var p0 = cam.WorldToScreenPointScaled(pos);
             if (p0.z <= 0f) return pos;
-            var target = top + ThemeTokens.GetFloat("size.damage.hud.margin", 6f);
+            var margin = ThemeTokens.GetFloat("size.damage.hud.margin", 6f);
+            // The reserved alert slot does not fit under the screen top: clear the measured band instead.
+            if (top + margin >= Screen.height) top = measured + shift;
+            var target = top + margin;
             // No room above the band: keep the visible spawn (vanilla culls a number off the top, DamageText.cs:83).
             if (target >= Screen.height) return pos;
             // Gap from the popup's own projection (not the HUD anchor: the target may have moved since the hit was sent);
