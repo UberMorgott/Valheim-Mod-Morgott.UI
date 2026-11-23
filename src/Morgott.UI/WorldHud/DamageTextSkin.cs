@@ -146,8 +146,8 @@ namespace Morgott.UI.WorldHud
         private static readonly Vector3[] Corners = new Vector3[4];
 
         // Typed numbers spawn at the target's GetTopPoint, the same anchor EnemyHud puts its bar / name / alert mark on
-        // (EnemyHud.cs:255-260), so they rose behind that band. Lift a number above the shown HUD of the target it spawned on
-        // (receiver side: the band is this client's own HUD). Band top = last laid-out frame of that HUD (overlay canvas: screen px).
+        // (EnemyHud.cs:255-260), so they rose behind that band. Lift a number above the HUD of the target it spawned on
+        // (receiver side: the band is this client's own HUD). Band top = that HUD's layout (overlay canvas: screen px).
         private static Vector3 ClearOfEnemyHud(Vector3 pos, Camera cam)
         {
             var hud = EnemyHud.instance;
@@ -167,12 +167,14 @@ namespace Morgott.UI.WorldHud
                 }
             }
             // Boss bars are screen-fixed, not on the top point (EnemyHud.cs:246).
-            if (best == null || best.m_character.IsBoss() || !best.m_gui || !best.m_gui.activeInHierarchy) return pos;
-            // Smart bars fade unpicked HUDs out through a CanvasGroup on the template (EnemyHudSkin), not SetActive.
-            var group = best.m_gui.GetComponent<CanvasGroup>();
-            if (group && group.alpha <= 0.01f) return pos;
+            if (best == null || best.m_character.IsBoss() || !best.m_gui) return pos;
+            // The hit itself brings a hidden HUD in (Smart: engaged fade-in via CanvasGroup; vanilla: hover), one frame after
+            // this number spawns (r3 shots: first-hit skeleton '30' / surtling '0' under the bar that appeared). So the band is
+            // taken from the HUD's layout even while it is hidden or faded, relative to its root, and placed on the target's
+            // current anchor (EnemyHud.cs:255-260: root = screen point of GetTopPoint), not the stale root position.
+            var root = best.m_gui.transform.position.y;
             var top = float.MinValue;
-            best.m_gui.GetComponentsInChildren(false, HudGraphics);
+            best.m_gui.GetComponentsInChildren(!best.m_gui.activeInHierarchy, HudGraphics);
             foreach (var g in HudGraphics)
             {
                 if (!g.enabled || g.color.a <= 0f) continue;
@@ -180,6 +182,10 @@ namespace Morgott.UI.WorldHud
                 if (Corners[1].y > top) top = Corners[1].y;
             }
             HudGraphics.Clear();
+            if (top == float.MinValue) return pos;
+            var anchor = cam.WorldToScreenPointScaled(best.m_character.GetTopPoint());
+            if (anchor.z <= 0f) return pos;
+            top += anchor.y - root;
             var p0 = cam.WorldToScreenPointScaled(pos);
             if (p0.z <= 0f) return pos;
             var target = top + ThemeTokens.GetFloat("size.damage.hud.margin", 6f);
