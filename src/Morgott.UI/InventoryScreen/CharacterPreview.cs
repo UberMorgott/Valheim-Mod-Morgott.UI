@@ -182,13 +182,20 @@ namespace Morgott.UI.InventoryScreen
         private void Awake() => Instance = this;
 
         // Diagnostics only (prod 2026-11-24: doll backdrop without the figure after a trader; not reproduced by the
-        // harness). Armed by every InventoryGui.Show (InventoryAdapter), checked by InventorySkin only while the inventory
+        // harness: preview-after-trade / preview-trade-open-inv PASS live in run 20261124-012359). Armed by every InventoryGui.Show (InventoryAdapter), checked by InventorySkin only while the inventory
         // is visible: one warning per open when the image is still not shown ~0.5 s later (deferred while a full window
         // covers the doll on purpose). Reads state, changes nothing.
+        // Due = 0.5 s AND a few frames after the Show: one hitch frame (GC / UnloadUnusedAssets) passed the 0.5 s before the
+        // preview's first LateUpdate (run 20261124-012359, 11th warning). A disabled component (harness control batch) is
+        // off on purpose, no warning (the other 10).
         private static float _checkAt = -1f;
+        private static int _checkFrame;
+        private const int CheckFrames = 3;
         public static void ArmShownCheck()
         {
-            if (!IsOpen()) _checkAt = Time.unscaledTime + 0.5f; // a Show while open is the same open
+            if (IsOpen()) return; // a Show while open is the same open
+            _checkAt = Time.unscaledTime + 0.5f;
+            _checkFrame = Time.frameCount + CheckFrames;
         }
 
         public void CheckShown()
@@ -197,9 +204,15 @@ namespace Morgott.UI.InventoryScreen
             if (FullWindow.Any)
             {
                 _checkAt = Time.unscaledTime + 0.5f; // covered on purpose: check 0.5 s after it closes
+                _checkFrame = Time.frameCount + CheckFrames;
                 return;
             }
-            if (Time.unscaledTime < _checkAt) return;
+            if (Time.unscaledTime < _checkAt || Time.frameCount < _checkFrame) return;
+            if (!enabled)
+            {
+                _checkAt = -1f;
+                return;
+            }
             _checkAt = -1f;
             var concealed = Morgott.UI.Restyle.RenderGate.IsConcealed(transform);
             // Shown = the LateUpdate path reached its end (image on, camera on, texture created).
