@@ -196,16 +196,18 @@ namespace Morgott.UI.PlayerHud
         // glyph: "cur/max" for a pool with a max (the energy shield that carries the player, shown even at 0), else the
         // amount; "" = no shield label. Values rounded up as the bar shows them.
         // 2026-11-16 (user, segmented bar mockup): the shield segments' current values follow as "cur/max  +gear  +ext"
-        // (a part only while it is > 0).
-        public static string HpText(float cur, float max, bool tagged, float gear = 0f, float ext = 0f)
+        // (a part only while it is > 0), each in its segment's colour when given (RGBA hex: gear cyan, staff bubble pink, user 2026-11-23).
+        public static string HpText(float cur, float max, bool tagged, float gear = 0f, float ext = 0f, string gearHex = null, string extHex = null)
         {
             var c = (int)Math.Ceiling(Math.Max(0f, cur));
             var m = (int)Math.Ceiling(Math.Max(0f, max));
             var s = tagged ? $"HP {c}/{m}" : $"{c}/{m}";
-            if (gear > 0f && !float.IsInfinity(gear)) s += $"  +{(int)Math.Ceiling(gear)}";
-            if (ext > 0f && !float.IsInfinity(ext)) s += $"  +{(int)Math.Ceiling(ext)}";
+            if (gear > 0f && !float.IsInfinity(gear)) s += "  " + Tint($"+{(int)Math.Ceiling(gear)}", gearHex);
+            if (ext > 0f && !float.IsInfinity(ext)) s += "  " + Tint($"+{(int)Math.Ceiling(ext)}", extHex);
             return s;
         }
+
+        private static string Tint(string s, string hex) => hex == null ? s : $"<color=#{hex}>{s}</color>";
 
         public static string ShieldText(float shield, float poolMax)
         {

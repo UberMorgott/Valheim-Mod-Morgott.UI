@@ -453,6 +453,14 @@ namespace Morgott.UI.Tests
         public void HpTextWithShields(float cur, float max, bool tagged, float gear, float ext, string want) =>
             Assert.Equal(want, HudMath.HpText(cur, max, tagged, gear, ext));
 
+        // 2026-11-23: each +part in its segment's colour (gear cyan, staff bubble pink); absent parts stay absent.
+        [Fact]
+        public void HpTextTintsShieldParts()
+        {
+            Assert.Equal("69/69  <color=#00E0FFFF>+12</color>  <color=#F04CCCFF>+101</color>", HudMath.HpText(69f, 69f, false, 12f, 101f, "00E0FFFF", "F04CCCFF"));
+            Assert.Equal("69/69  <color=#F04CCCFF>+101</color>", HudMath.HpText(69f, 69f, false, 0f, 101f, "00E0FFFF", "F04CCCFF"));
+        }
+
         [Theory]
         [InlineData(45f, 0f, "45")]
         [InlineData(44.1f, 0f, "45")]

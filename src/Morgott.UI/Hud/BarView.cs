@@ -44,7 +44,7 @@ namespace Morgott.UI.PlayerHud
         private static int EdgeMode => EdgeModeOverride >= 0 ? EdgeModeOverride : (int)ThemeTokens.GetFloat("mode.hud.bar.edge", 2f);
         private float _frontCore, _frontClock;
         // Segmented health bar (user 2026-11-16, docs\mockups\shield-segments): main pool | gear energy shield (blue) |
-        // external shields (vanilla SE_Shield, same blue as the gear shield, user 2026-11-22), each segment its max's share of the window (HudMath.Segments),
+        // external shields (vanilla SE_Shield, its own pink, user 2026-11-23), each segment its max's share of the window (HudMath.Segments),
         // filled current / max over the dark track, thin dividers between them, honeycomb shader on the shield fills.
         private Image _gearSeg, _extSeg, _gearDiv, _extDiv;
         private float _gear, _gearMax, _ext, _extMax, _mainW;
@@ -132,7 +132,7 @@ namespace Morgott.UI.PlayerHud
             if (mainValue)
             {
                 _gearSeg = SegmentImage(art, _window, "ShieldGear", "color.hud.shield");
-                _extSeg = SegmentImage(art, _window, "ShieldExt", "color.hud.shield");
+                _extSeg = SegmentImage(art, _window, "ShieldExt", "color.hud.shield.ext");
                 _gearDiv = SegmentImage(art, _window, "ShieldGearDivider", "color.hud.segment.divider", false);
                 _extDiv = SegmentImage(art, _window, "ShieldExtDivider", "color.hud.segment.divider", false);
             }
@@ -545,7 +545,7 @@ namespace Morgott.UI.PlayerHud
             if (Mathf.CeilToInt(lc) != Mathf.CeilToInt(_shownCur) || Mathf.CeilToInt(extra) != Mathf.CeilToInt(_shownExtra) || _shownCur < 0f || tagShown != _shownShield || maxShown != _shownMaxLabel || gearShown != _shownGear || extShown != _shownExt)
             {
                 // Health: "cur/max  +gear  +ext" centred ("HP cur/max" while the fill is the energy shield).
-                if (_main) _number.text = HudMath.HpText(lc, lm, tagShown > 0f, gearShown, extShown);
+                if (_main) _number.text = HudMath.HpText(lc, lm, tagShown > 0f, gearShown, extShown, ColorUtility.ToHtmlStringRGBA(_gearSeg.color), ColorUtility.ToHtmlStringRGBA(_extSeg.color)); // each +part in its segment's colour
                 else if (showAvail) _number.SetText("{0}/{1}", Mathf.Ceil(lc), Mathf.Ceil(avail));
                 else _number.SetText("{0}", Mathf.Ceil(lc));
                 FitValue();

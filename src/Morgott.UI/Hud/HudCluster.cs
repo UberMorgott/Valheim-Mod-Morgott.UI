@@ -457,7 +457,7 @@ namespace Morgott.UI.PlayerHud
             else _pending.Clear();
             _health.SetOuterWidth(_hpOuter);
             _health.Tick(dt);
-            // Segmented bar (user 2026-11-16): main pool | Morgott.Power energy shield (blue) | vanilla SE_Shield (same blue).
+            // Segmented bar (user 2026-11-16): main pool | Morgott.Power energy shield (blue) | vanilla SE_Shield (its own pink, user 2026-11-23).
             var ext = VanillaShield(p, out var extMax);
             if (esMain)
             {
