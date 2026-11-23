@@ -12,7 +12,7 @@
 // Deep North trails bottom out on its 0.1 m thin snow (m.g -> 0 brings the base term back, terrain-tess-foot-ik.md "Formula"),
 // instead of clipping the pass and exposing the (tessellated, angular) vanilla terrain. Where dy is ~0 (no deep snow, or
 // under a piece) the pass is clipped, so vanilla terrain shows. Trampled colour + trench-wall shading are per pixel from the
-// bilinear mask, so they stay smooth where the 1 m mesh steps; the wall slope is the mask's world gradient from the pixel
+// bilinear mask; the mesh is tessellated like vanilla's (x4 within 10 m), so the trench walls follow it; the wall slope is the mask's world gradient from the pixel
 // derivatives of that one sample (no extra fetches; faded where the pixel footprint is near-degenerate). ZWrite on + shadow
 // caster: the snow hides what it buries, casts and receives shadows, fogged. The consumer draws it one queue before the
 // terrain, so the terrain it covers is depth-rejected (queue Geometry+1 here is only the default). Shadow caster: no
@@ -43,6 +43,7 @@ Shader "Morgott/Snow"
         _FadeFar ("Fade far (m)", Float) = 60
         _WaterLevel ("Water level", Float) = 30
         _SlopeMin ("Slope min (normal.y)", Range(0, 1)) = 0.55
+        _Tess ("Tessellation (vanilla Heightmap _Tess)", Float) = 4
     }
     SubShader
     {
@@ -50,21 +51,21 @@ Shader "Morgott/Snow"
         Offset -1, -1
 
         CGPROGRAM
-        #pragma surface surf Lambert vertex:vert addshadow fullforwardshadows noambient nolightmap nodynlightmap nodirlightmap nometa noinstancing
-        #pragma target 3.0
+        #pragma surface surf Lambert vertex:vert tessellate:tess addshadow fullforwardshadows noambient nolightmap nodynlightmap nodirlightmap nometa noinstancing
+        #pragma target 4.6
+        #include "Tessellation.cginc"
 
         sampler2D _TrailTex, _ClearedMaskTex, _DepthTex, _SnowNormal;
         float4 _TrailRect, _Center;
         fixed4 _Color, _TrailColor;
-        half _Drift, _NormalTile, _DepthScale, _DepthGrid, _FadeNear, _FadeFar, _WaterLevel, _SlopeMin;
+        half _Drift, _NormalTile, _DepthScale, _DepthGrid, _FadeNear, _FadeFar, _WaterLevel, _SlopeMin, _Tess;
 
         struct Input
         {
             float3 worldPos;
             float3 worldNormal;
-            float dy;
-            float2 tl;   // metres from the trail mask origin: small numbers, exact pixel derivatives (world xz is ~1 mm grainy far out)
-            half3 shL2;
+            float4 color : COLOR; // x dy, yzw SH L2 (vert repacks the vertex colour: tessellated surface shaders take no custom Input)
+            float2 uv2_TrailTex;  // tl: metres from the trail mask origin, small numbers, exact pixel derivatives (world xz is ~1 mm grainy far out)
             INTERNAL_DATA
         };
 
@@ -75,9 +76,16 @@ Shader "Morgott/Snow"
             return tex2Dlod(_TrailTex, float4(uv, 0, 0)).r * saturate(min(edge.x, edge.y) * 50); // no hard border at the mask edge (last 1.3 m, past _FadeFar)
         }
 
-        void vert(inout appdata_full v, out Input o)
+        // Vanilla Heightmap hull factor (terrain-tess-foot-ik.md: _Tess * clamp(1 - (dist - 10) * 0.025, 0.01, 1)): x4 within 10 m,
+        // ~1 by 50 m. Without it the trench was displaced only at the 1 m chunk vertices: angular ledges along its walls and a
+        // straight seam where the per-pixel trail colour / wall shade left the coarse geometry (run 20261124-014538).
+        float4 tess(appdata_full v0, appdata_full v1, appdata_full v2)
         {
-            UNITY_INITIALIZE_OUTPUT(Input, o);
+            return UnityDistanceBasedTess(v0.vertex, v1.vertex, v2.vertex, 10, 50, _Tess);
+        }
+
+        void vert(inout appdata_full v)
+        {
             float3 wp = mul(unity_ObjectToWorld, v.vertex).xyz;
             float4 c = v.color;
             float wSnow = max(0, 1 - max(max(abs(c.r), abs(c.g - 1)), max(abs(c.b), abs(c.a))));
@@ -93,8 +101,8 @@ Shader "Morgott/Snow"
             float dy = max(deep * (1 - t), min(deep, 0.06) * (1 - smoothstep(0.92, 0.98, t))); // trail floor; pieces (1) cut it all
             // Heightmap chunks are translation only: object y = world y.
             v.vertex.y += 0.1 * wSnow * bare + dy;
-            o.dy = dy;
-            o.tl = tl;
+            v.color = float4(dy, 0, 0, 0);
+            v.texcoord1 = float4(tl, 0, 0); // read back as uv2_TrailTex (_TrailTex_ST stays identity)
 #if !defined(UNITY_PASS_SHADOWCASTER) // the caster only needs the height (and the clip)
             // Tilt the normal by the trail's slope (0.5 m central difference) so trail walls catch the light.
             float2 grad = float2(Trail(tl + float2(0.5, 0)) - Trail(tl - float2(0.5, 0)),
@@ -102,7 +110,7 @@ Shader "Morgott/Snow"
             float ny = max(wn.y, 0.05);
             float3 nw = normalize(float3(wn.x + grad.x * ny, ny, wn.z + grad.y * ny));
             v.normal = mul((float3x3)unity_WorldToObject, nw);
-            o.shL2 = SHEvalLinearL2(half4(nw, 1));
+            v.color.yzw = SHEvalLinearL2(half4(nw, 1));
 #endif
         }
 
@@ -122,11 +130,12 @@ Shader "Morgott/Snow"
 
         void surf(Input IN, inout SurfaceOutput o)
         {
-            clip(IN.dy - 0.02); // no deep snow here: vanilla terrain (and its thin snow) shows through
+            clip(IN.color.x - 0.02); // no deep snow here: vanilla terrain (and its thin snow) shows through
             float2 xz = IN.worldPos.xz;
-            float t = Trail(IN.tl);
+            float2 tl = IN.uv2_TrailTex;
+            float t = Trail(tl);
             // |world gradient of t| from screen derivatives: [ddx(tl); ddy(tl)] g = (ddx t, ddy t), solved by Cramer
-            float2 px = ddx(IN.tl), py = ddy(IN.tl), dt = float2(ddx(t), ddy(t));
+            float2 px = ddx(tl), py = ddy(tl), dt = float2(ddx(t), ddy(t));
             float det = px.x * py.y - px.y * py.x;
             float2 num = float2(dt.x * py.y - px.y * dt.y, px.x * dt.y - py.x * dt.x);
             half grazing = saturate(10 * abs(det) / max(length(px) * length(py), 1e-12)); // |sin| of the footprint angle
@@ -135,7 +144,7 @@ Shader "Morgott/Snow"
             o.Albedo = saturate(lerp(_Color.rgb * drift, _TrailColor.rgb, saturate(t / 0.9))) * (1 - 0.18 * wall); // trench walls in shade
             o.Normal = UnpackNormal(tex2D(_SnowNormal, xz * _NormalTile));
             half4 n = half4(normalize(WorldNormalVector(IN, o.Normal)), 1); // L2 assumes a unit normal
-            o.Emission = o.Albedo * max(0, SHEvalLinearL0L1(n) + IN.shL2); // linear ambient whatever the build's colour space
+            o.Emission = o.Albedo * max(0, SHEvalLinearL0L1(n) + IN.color.yzw); // linear ambient whatever the build's colour space
             o.Alpha = 1;
         }
         ENDCG
