@@ -7,8 +7,12 @@
 // with G = Deep North depth noise baked per chunk by the consumer (_DepthTex over uv0, _DepthGrid texels per side, texel centres on the chunk grid),
 // _DepthScale = 2.1 x config scale, m = the chunk's _ClearedMaskTex (dug / cultivated / paved stay bare). Also cut by
 // slope (_SlopeMin), distance (_FadeNear.._FadeFar from _Center) and the R8 trail mask _TrailTex over _TrailRect (xy world
-// origin, z = 1 / size m; 1 = trampled or under a piece): dy = deep * (1 - trail). Where dy is ~0 the pass is clipped,
-// so vanilla terrain shows. ZWrite on + shadow caster: the snow hides what it buries, casts and receives shadows, fogged.
+// origin, z = 1 / size m; prints write up to 0.9, pieces 1): dy = max(deep * (1 - trail), min(deep, 0.06) * (1 - piece)),
+// piece = smoothstep(0.92, 0.98, trail). Trails keep a 0.06 m floor of compressed snow on top of the 0.1 m base, as vanilla
+// Deep North trails bottom out on its 0.1 m thin snow (m.g -> 0 brings the base term back, terrain-tess-foot-ik.md "Formula"),
+// instead of clipping the pass and exposing the (tessellated, angular) vanilla terrain. Where dy is ~0 (no deep snow, or
+// under a piece) the pass is clipped, so vanilla terrain shows. Trampled colour + trench-wall shading are per pixel from the
+// bilinear mask, so they stay smooth where the 1 m mesh steps. ZWrite on + shadow caster: the snow hides what it buries, casts and receives shadows, fogged.
 // Lambert, albedo ~0.8. Ambient is added by hand from the linear SH (noambient): the unity/ project is Gamma
 // (ProjectSettings m_ActiveColorSpace 0) and Valheim Linear, so Unity's own SH ambient compiled here re-encodes the ambient
 // to gamma (ShadeSHPerPixel LinearToGammaSpace, ~2.5x at Valheim's 0.46/0.57/0.71 ambient) and filled the deferred emission
@@ -19,7 +23,7 @@ Shader "Morgott/Snow"
     Properties
     {
         _Color ("Fresh snow", Color) = (0.8, 0.83, 0.88, 1)
-        _TrailColor ("Compressed snow", Color) = (0.66, 0.71, 0.8, 1)
+        _TrailColor ("Compressed snow", Color) = (0.6, 0.66, 0.78, 1)
         _Drift ("Drift shading", Range(0, 1)) = 0.35
         _SnowNormal ("Snow normal (vanilla Heightmap material)", 2D) = "bump" {}
         _NormalTile ("Snow normal tiles per m", Float) = 0.5
@@ -77,7 +81,8 @@ Shader "Morgott/Snow"
             float3 wn = UnityObjectToWorldNormal(v.normal + float3(0, 1e-4, 0)); // never normalize a zero normal (NaN)
             float deep = _DepthScale * wSnow * g * bare * smoothstep(_WaterLevel, _WaterLevel + 2.2, wp.y);
             deep *= smoothstep(_SlopeMin, _SlopeMin + 0.15, wn.y) * (1 - smoothstep(_FadeNear, _FadeFar, distance(wp.xz, _Center.xz)));
-            float dy = deep * (1 - Trail(wp.xz));
+            half t = Trail(wp.xz);
+            float dy = max(deep * (1 - t), min(deep, 0.06) * (1 - smoothstep(0.92, 0.98, t))); // trail floor; pieces (1) cut it all
             // Heightmap chunks are translation only: object y = world y.
             v.vertex.y += 0.1 * wSnow * bare + dy;
             // Tilt the normal by the trail's slope (0.5 m central difference) so trail walls catch the light.
@@ -107,8 +112,9 @@ Shader "Morgott/Snow"
             clip(IN.dy - 0.02); // no deep snow here: vanilla terrain (and its thin snow) shows through
             float2 xz = IN.worldPos.xz;
             half t = Trail(xz);
+            half wall = saturate(length(float2(Trail(xz + float2(0.25, 0)), Trail(xz + float2(0, 0.25))) - t) * 4); // mask slope per 0.25 m
             half drift = lerp(1, 0.9 + 0.2 * (Noise(xz * 0.35) * 0.65 + Noise(xz * 1.7) * 0.35), _Drift);
-            o.Albedo = saturate(lerp(_Color.rgb * drift, _TrailColor.rgb, t));
+            o.Albedo = saturate(lerp(_Color.rgb * drift, _TrailColor.rgb, saturate(t / 0.9))) * (1 - 0.18 * wall); // trench walls in shade
             o.Normal = UnpackNormal(tex2D(_SnowNormal, xz * _NormalTile));
             half4 n = half4(normalize(WorldNormalVector(IN, o.Normal)), 1); // L2 assumes a unit normal
             o.Emission = o.Albedo * max(0, SHEvalLinearL0L1(n) + SHEvalLinearL2(n)); // linear ambient whatever the build's colour space
