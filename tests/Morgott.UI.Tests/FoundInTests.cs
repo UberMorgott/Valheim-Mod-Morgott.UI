@@ -76,9 +76,10 @@ namespace Morgott.UI.Tests
             var s = new Scanned { Objects = new System.Collections.Generic.List<string> { "Rock" } };
             s.Summons.Add(("Eikthyr", "TrophyDeer", 2));
             s.Summons.Add(("Dragon", "DragonEgg", 3));
+            s.Summons.Add(("Fader", "Bell|BellFragment", 3)); // a stand group with alternatives
             var text = FoundInTable.Write("v", new[] { new System.Collections.Generic.KeyValuePair<string, Scanned>("L:Eikthyrnir", s) });
-            Assert.Contains("Rock,Eikthyr<TrophyDeer*2,Dragon<DragonEgg*3", text);
-            Assert.Equal(new[] { ("Eikthyr", "TrophyDeer", 2), ("Dragon", "DragonEgg", 3) }, FoundInTable.Parse(text, out _, out _)["L:Eikthyrnir"].Summons);
+            Assert.Contains("Rock,Eikthyr<TrophyDeer*2,Dragon<DragonEgg*3,Fader<Bell|BellFragment*3", text);
+            Assert.Equal(new[] { ("Eikthyr", "TrophyDeer", 2), ("Dragon", "DragonEgg", 3), ("Fader", "Bell|BellFragment", 3) }, FoundInTable.Parse(text, out _, out _)["L:Eikthyrnir"].Summons);
             var old = FoundInTable.Parse("L:GDKing\t0\t0\tgd_king:b\tgd_king<AncientSeed\n", out _, out _)["L:GDKing"];
             Assert.Equal(("gd_king", "AncientSeed", 0), Assert.Single(old.Summons));
         }

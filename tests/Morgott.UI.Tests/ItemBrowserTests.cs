@@ -365,13 +365,16 @@ namespace Morgott.UI.Tests
             ix.Use("use:target:piece_turret:TrophyGreydwarf", "$enemy_greydwarf", "Greydwarf", "piece_turret", new[] { new Stack("TrophyGreydwarf") }, "$ib_use_target");
             ix.Use("use:fuel:fire_pit", "$ib_use_fuel", "fire_pit", "fire_pit", new[] { new Stack("Wood") }, null, true);
             ix.Use("use:fuel:empty", "$ib_use_fuel", "empty", "empty", new Stack[0], null);
-            ix.Offering("Eikthyr", "TrophyDeer", 2);
-            ix.Offering("Dragon", "", 0); // an older table line without the item: nothing
+            ix.Offering("Eikthyr", new[] { ("TrophyDeer", 2) });
+            ix.Offering("Dragon", new[] { ("", 0) }); // an older table line without the item: nothing
             var power = Assert.Single(PageModel.UsedIn(ix, "TrophyEikthyr"));
             Assert.Equal("use:power:BossStone_Eikthyr", power.Icon);
-            Assert.Null(power.Right); // a sink is its own title, no chip repeating it
+            Assert.Equal("BossStone_Eikthyr", power.Right); // its host, never "By hand" (Codex review)
             Assert.Equal("piece_turret", Assert.Single(PageModel.UsedIn(ix, "TrophyGreydwarf")).Right);
             Assert.Contains(PageModel.UsedIn(ix, "Wood"), r => r.Icon == "use:fuel:fire_pit" && r.Right == "fire_pit");
+            ix.Use("use:weapon:Bow", "$ib_use_ammo", "Bow", null, new[] { new Stack("ArrowWood"), new Stack("ArrowFire") }, null, true);
+            Assert.Equal("Bow", Assert.Single(PageModel.UsedIn(ix, "ArrowFire")).Right); // host on the right
+            Assert.Empty(PageModel.UsedIn(ix, "Bow")); // the weapon page does not list its own ammo
             var altar = Assert.Single(PageModel.UsedIn(ix, "TrophyDeer"));
             Assert.Equal("Eikthyr", altar.Icon);
             Assert.Equal("use:altar:Eikthyr", altar.Right);
@@ -381,6 +384,35 @@ namespace Morgott.UI.Tests
             Assert.False(ix.Entries.ContainsKey("use:fuel:empty"));
             Assert.False(ix.Entries.ContainsKey("use:altar:Dragon"));
             Assert.All(new[] { "use:power:BossStone_Eikthyr", "use:altar:Eikthyr", "use:fuel:fire_pit" }, id => Assert.Equal("use", ix.Entries[id].Hidden));
+        }
+
+        // Player report: a trophy's crafting recipe sat below the incinerator's ~50-trophy rows and turret targets, off the first
+        // screen of "Used in". Recipes lead, then conversions, then the rest.
+        [Fact]
+        public void UsedInListsRecipesFirst()
+        {
+            var ix = new BrowserIndex();
+            ix.Use("use:target:piece_turret:TrophyGreydwarf", "$enemy_greydwarf", "Greydwarf", "piece_turret", new[] { new Stack("TrophyGreydwarf") }, "$ib_use_target");
+            ix.Add(new Relation { Kind = RelationKind.Conversion, Source = "incinerator", Station = "incinerator", Inputs = new[] { new Stack("TrophyGreydwarf"), new Stack("TrophyBoar") }, Outputs = new[] { new Stack("Coal") }, AnyInput = true });
+            ix.Add(new Relation { Kind = RelationKind.Craft, Source = "Recipe_FistBronze_TW", Inputs = new[] { new Stack("Bronze", 10, 10), new Stack("TrophyGreydwarf", 2, 2) }, Outputs = new[] { new Stack("FistBronze_TW") } });
+            Assert.Equal(new[] { "FistBronze_TW", "Coal", "use:target:piece_turret:TrophyGreydwarf" }, PageModel.UsedIn(ix, "TrophyGreydwarf").Select(r => r.Icon));
+        }
+
+        // Item-stand altars: stands taking the same items are one group; alternatives on the only group = one "any one" row,
+        // two groups = a row per combination; the counts stay per group.
+        [Fact]
+        public void AltarGroupsAndAlternatives()
+        {
+            var ix = new BrowserIndex();
+            ix.Offering("Fader", new[] { ("Bell|BellFragment", 3) });
+            var any = Assert.Single(ix.UsedIn("Bell"));
+            Assert.True(any.AnyInput);
+            Assert.Equal(new[] { ("Bell", 3), ("BellFragment", 3) }, any.Inputs.Select(s => (s.Prefab, s.Min)));
+            ix.Offering("Mixed", new[] { ("A|B", 2), ("C", 1) });
+            var rows = ix.ObtainedFrom("Mixed");
+            Assert.Equal(2, rows.Count);
+            Assert.All(rows, r => Assert.False(r.AnyInput));
+            Assert.Equal(new[] { "A:2,C:1", "B:2,C:1" }, rows.Select(r => string.Join(",", r.Inputs.Select(s => s.Prefab + ":" + s.Min))));
         }
 
         [Fact]

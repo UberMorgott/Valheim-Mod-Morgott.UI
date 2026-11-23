@@ -40,8 +40,9 @@ namespace Morgott.UI.ItemBrowser
                         foreach (var p in t.m_pieces)
                             if (p && p.TryGetComponent<Piece>(out var piece))
                                 Add(RelationKind.Build, go.name, Req(piece.m_resources, 1), new[] { new Stack(p.name) }, Station(piece.m_craftingStation), 0, 0);
-                // Boss altars inside locations (soft references, never loaded here): the found-in table / cache.
-                foreach (var (boss, item, n) in FoundInScan.Offerings()) ix.Offering(boss, item, n);
+                WeaponAmmo();
+                // Boss altars inside this session's locations (soft references, never loaded here): the found-in table / cache.
+                foreach (var (boss, groups) in FoundInScan.Offerings()) ix.Offering(boss, groups);
             }
             finally { _ix = null; _mod = null; }
         }
@@ -188,14 +189,9 @@ namespace Morgott.UI.ItemBrowser
                         // Items the trader takes (Hildir's chests, Trader.UseItem)
                         if (tr.m_useItems != null)
                             foreach (var u in tr.m_useItems)
-                                if (u?.m_prefab) _ix.Use("use:quest:" + id, tr.m_name, id, null, new[] { new Stack(u.m_prefab.name) }, "$ib_use_quest");
+                                if (u?.m_prefab) _ix.Use("use:quest:" + id, "$ib_use_quest", id, null, new[] { new Stack(u.m_prefab.name) }, null);
                         break;
-                    case Smelter sm:
-                        foreach (var cv in sm.m_conversion)
-                            if (cv?.m_from && cv.m_to)
-                                Add(RelationKind.Conversion, id, sm.m_fuelItem ? new[] { new Stack(cv.m_from.name), new Stack(sm.m_fuelItem.name, sm.m_fuelPerProduct, sm.m_fuelPerProduct) } : new[] { new Stack(cv.m_from.name) },
-                                    new[] { new Stack(cv.m_to.name) }, id, 0, 0);
-                        break;
+                    case Smelter sm: Smelt(id, sm); break;
                     case Fermenter fe:
                         foreach (var cv in fe.m_conversion)
                             if (cv?.m_from && cv.m_to) Add(RelationKind.Conversion, id, new[] { new Stack(cv.m_from.name) }, new[] { new Stack(cv.m_to.name, cv.m_producedItems, cv.m_producedItems) }, id, 0, 0);
@@ -225,7 +221,11 @@ namespace Morgott.UI.ItemBrowser
                         break;
                     case BossStone bs when bs.m_itemStand: Power(id, bs.m_itemStand); break;
                     case ItemStand st: Power(id, st); break;
-                    case OfferingBowl ob when ob.m_bossPrefab: var (boss, item, n) = FoundInScan.Offering(ob); _ix.Offering(boss, item, n); break;
+                    case OfferingBowl ob: Altar(ob); break;
+                    case Door door when door.m_keyItem: _ix.Use("use:key:" + id, "$ib_use_key", id, null, new[] { new Stack(door.m_keyItem.name) }, null); break; // Door.Interact
+                    case Tameable tm when tm.m_saddleItem: _ix.Use("use:saddle:" + id, "$ib_use_saddle", id, null, new[] { new Stack(tm.m_saddleItem.name) }, null); break; // Tameable.UseItem
+                    case MonsterAI ai when ai.m_consumeItems != null: _ix.Use("use:feed:" + id, "$ib_use_feed", id, null, Items(ai.m_consumeItems), null, true); break; // MonsterAI.UpdateConsumeItem
+                    case Fish fish when fish.m_baits != null: _ix.Use("use:bait:" + id, "$ib_use_bait", id, null, Items(fish.m_baits.ConvertAll(b => b?.m_bait)), null, true); break; // Fish bait (Fish.cs:613)
                     case Incinerator inc when inc.m_conversions != null:
                         foreach (var cv in inc.m_conversions)
                         {
@@ -237,6 +237,17 @@ namespace Morgott.UI.ItemBrowser
                         }
                         break;
                 }
+            // Consumers vanilla wires from a child object (ZNetView from the parent: Smelter / ShieldGenerator Awake
+            // GetComponentInParent, OfferingBowl Awake, ItemStand m_netViewOverride); every other one needs its own on the root.
+            foreach (var c in go.GetComponentsInChildren<MonoBehaviour>(true))
+                if (c && c.gameObject != go)
+                    switch (c)
+                    {
+                        case Smelter sm: Smelt(id, sm); break;
+                        case ShieldGenerator sg: Fuel(id, sg.m_fuelItems?.ToArray()); break;
+                        case OfferingBowl ob: Altar(ob); break;
+                        case ItemStand st when st.m_netViewOverride: Power(id, st); break;
+                    }
             // A boss phase: its death effects spawn the next phase (Character.OnDeath -> m_deathEffects.Create). Outside the
             // switch: Humanoid takes the Character case there.
             if (go.TryGetComponent<Character>(out var ch) && ch.m_deathEffects?.m_effectPrefabs != null)
@@ -249,13 +260,51 @@ namespace Morgott.UI.ItemBrowser
             if (!named && go.TryGetComponent<HoverText>(out var hover)) Name(hover.m_text);
         }
 
+        private static void Smelt(string id, Smelter sm)
+        {
+            foreach (var cv in sm.m_conversion)
+                if (cv?.m_from && cv.m_to)
+                    Add(RelationKind.Conversion, id, sm.m_fuelItem ? new[] { new Stack(cv.m_from.name), new Stack(sm.m_fuelItem.name, sm.m_fuelPerProduct, sm.m_fuelPerProduct) } : new[] { new Stack(cv.m_from.name) },
+                        new[] { new Stack(cv.m_to.name) }, id, 0, 0);
+        }
+
+        private static void Altar(OfferingBowl ob)
+        {
+            if (!ob.m_bossPrefab) return;
+            var groups = FoundInScan.Offering(ob);
+            _ix.Offering(groups[0].Boss, groups.ConvertAll(g => (g.Item, g.Count)));
+        }
+
+        // A weapon with an ammo type fires the ammo items of that type (Attack.HaveAmmo / Inventory.GetAmmoItem: Ammo,
+        // AmmoNonEquipable or Consumable with the same m_ammoType).
+        private static void WeaponAmmo()
+        {
+            var ammo = new Dictionary<string, List<ItemDrop>>(StringComparer.Ordinal);
+            var weapons = new List<ItemDrop>();
+            foreach (var go in ObjectDB.instance.m_items)
+            {
+                if (!go || !go.TryGetComponent<ItemDrop>(out var d) || d.m_itemData?.m_shared == null || string.IsNullOrEmpty(d.m_itemData.m_shared.m_ammoType)) continue;
+                var s = d.m_itemData.m_shared;
+                var t = s.m_itemType;
+                if (t == ItemDrop.ItemData.ItemType.Ammo || t == ItemDrop.ItemData.ItemType.AmmoNonEquipable || t == ItemDrop.ItemData.ItemType.Consumable)
+                {
+                    if (!ammo.TryGetValue(s.m_ammoType, out var l)) ammo[s.m_ammoType] = l = new List<ItemDrop>();
+                    l.Add(d);
+                }
+                else if (t != ItemDrop.ItemData.ItemType.Material) weapons.Add(d); // a Material with an ammo type is an Epic Loot shard, no weapon
+            }
+            foreach (var w in weapons)
+                if (ammo.TryGetValue(w.m_itemData.m_shared.m_ammoType, out var l))
+                    _ix.Use("use:weapon:" + w.name, "$ib_use_ammo", w.name, null, Items(l), null, true);
+        }
+
         // Consumed over time, no product (Fireplace / CookingStation / ShieldGenerator fuel): any one of the items.
         private static void Fuel(string host, params ItemDrop[] items) => _ix.Use("use:fuel:" + host, "$ib_use_fuel", host, host, Items(items), null, true);
 
         // A guardian stone (BossStone -> its ItemStand with m_guardianPower): the trophy it takes.
         private static void Power(string host, ItemStand st)
         {
-            if (st.m_guardianPower) _ix.Use("use:power:" + host, st.m_guardianPower.m_name, host, null, Items(st.m_supportedItems?.ToArray()), "$ib_use_power", true);
+            if (st.m_guardianPower) _ix.Use("use:power:" + host, st.m_guardianPower.m_name, host, null, FoundInScan.Attachable(st).ConvertAll(n => new Stack(n)).ToArray(), "$ib_use_power", true);
         }
 
         private static Stack[] Items(IEnumerable<ItemDrop> items)

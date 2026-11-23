@@ -123,7 +123,7 @@ namespace Morgott.UI.ItemBrowser
                 if (perRecipe != null) perRecipe[r.name] = perRecipe.TryGetValue(r.name, out var dup) ? BrowserIndex.Mix(dup, rh) : rh;
             }
             return new Parts(ZNet.instance ? ZNet.instance.GetWorldUID().GetHashCode() : 0, ZNetScene.instance.m_namedPrefabs.Count,
-                ObjectDB.instance.m_items.Count, BrowserIndex.Mix(ItemSources.Revision, ItemFacts.Revision), h);
+                ObjectDB.instance.m_items.Count, BrowserIndex.Mix(BrowserIndex.Mix(ItemSources.Revision, ItemFacts.Revision), FoundInScan.OfferingRevision), h);
         }
 
         // The recipe fields VanillaScan.Recipe reads: result + max quality, flags, amount, station (repair only without a

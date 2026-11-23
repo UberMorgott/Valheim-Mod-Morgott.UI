@@ -159,14 +159,26 @@ namespace Morgott.UI.ItemBrowser
             foreach (var r in rows) if (!r.Recipe && names[NameKey(r)] > 1) r.Tag = SourceNames.Readable(r.R.Source);
         }
 
-        /// <summary>"Used in": a row for every relation the entry takes part in, its own upgrades first (all qualities).</summary>
+        /// <summary>"Used in": a row for every relation the entry takes part in, its own upgrades first (all qualities), then
+        /// recipes, conversions, builds, the rest (index order inside each rank): crafting uses lead the section, not the
+        /// incinerator's ~50-trophy row or turret targets (player report: trophies "not used in crafting").</summary>
         public static List<PageRow> UsedIn(BrowserIndex ix, string id)
         {
             var rows = new List<PageRow>();
             foreach (var r in ix.ObtainedFrom(id)) if (r.Kind == RelationKind.Upgrade) rows.Add(Recipe(r, id));
+            var rest = new List<PageRow>();
             // One row per result: a loot table / conversion with several outputs lists each (Codex review).
             // A cost sink is its own output (Morgott.EpicLoot `EL:enchant:Rare`): its page lists it under its source, not again here.
-            foreach (var r in ix.UsedIn(id)) foreach (var o in r.Outputs) if (o.Prefab != id) rows.Add(Recipe(r, o.Prefab, id));
+            foreach (var r in ix.UsedIn(id))
+                foreach (var o in r.Outputs)
+                    if (o.Prefab != id)
+                    {
+                        var row = Recipe(r, o.Prefab, id);
+                        // A use sink with no station (guardian stone, trader, creature, weapon) names its host on the right, not "By hand".
+                        if (row.Right == null && ix.Entries.TryGetValue(r.Source, out var e) && e.Hidden == "use" && e.Icon != null && e.Icon != r.Source) row.Right = e.Icon;
+                        rest.Add(row);
+                    }
+            for (var rank = 0; rank <= 3; rank++) foreach (var row in rest) if (Rank(row.R.Kind) == rank) rows.Add(row);
             return rows;
         }
 
