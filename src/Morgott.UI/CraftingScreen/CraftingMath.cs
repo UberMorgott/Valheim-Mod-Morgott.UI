@@ -502,6 +502,14 @@ namespace Morgott.UI.CraftingScreen
         // Share of a requirement cell's height its count band takes (CraftingSkin.StyleSocket res_amount 0.02-0.27).
         public const float AmountBand = 0.25f;
 
+        // Height of the whole text lines that fit `room` (first line `first` tall incl. margins, each further one `pitch`): a
+        // clipped text view of this height never shows a half-cut last line. Room for less than one line: room as is.
+        public static float WholeLines(float room, float first, float pitch)
+        {
+            if (first <= 0f || pitch <= 0f || room <= first) return room;
+            return first + (float)Math.Floor((room - first) / pitch + 1e-3f) * pitch;
+        }
+
         public static string CountLabel(int count, int cap) => "\u00D7" + Math.Max(0, count) + (count >= cap ? "+" : "");
 
         // Active filters on the funnel badge: availability other than All, plus "new only".

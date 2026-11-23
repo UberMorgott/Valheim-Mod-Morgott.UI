@@ -289,6 +289,16 @@ namespace Morgott.UI.Tests
         [InlineData(99, 99, "\u00D799+")]
         public void CountLabelMarksTheCap(int count, int cap, string want) => Assert.Equal(want, CraftingMath.CountLabel(count, cap));
 
+        // The description view ends on a line boundary (food recipe: 48-unit box, 20.8-unit lines cut the 3rd line in half).
+        [Theory]
+        [InlineData(48f, 20.8f, 20.8f, 41.6f)]
+        [InlineData(62.4f, 20.8f, 20.8f, 62.4f)]
+        [InlineData(100f, 24f, 20.8f, 86.4f)]
+        [InlineData(15f, 20.8f, 20.8f, 15f)]
+        [InlineData(48f, 0f, 20.8f, 48f)]
+        public void DescriptionViewHoldsWholeLines(float room, float first, float pitch, float want) =>
+            Assert.Equal(want, CraftingMath.WholeLines(room, first, pitch), 3);
+
         [Theory]
         [InlineData(0, false, 0)]
         [InlineData(1, false, 1)]

@@ -1394,7 +1394,8 @@ namespace Morgott.UI.CraftingScreen
         private RectTransform _descView;
         private ScrollRect _descScroll;
         private string _descText;
-        private float _descWidth = -1f, _descSize = -1f;
+        private float _descWidth = -1f, _descSize = -1f, _lineSize = -1f, _lineFirst, _linePitch;
+        private TMP_FontAsset _lineFont;
 
         // Long descriptions (Epic Loot, mod items) scroll inside their box instead of shrinking to micro text or being
         // cut: the description text (m_recipeDecription, same object and name) moves into an own clipped view with a
@@ -1432,10 +1433,20 @@ namespace Morgott.UI.CraftingScreen
             }
             if (!_descView) { Geo.Place(_canvas, d.rectTransform, b); return; }
             if (b.H < 1f) b = new Box(b.X, b.Y, b.W, 1f);
-            Geo.Place(_canvas, _descView, b);
             var size = ThemeTokens.GetFloat("size.craft.font.body", 16f) * k;
             if (d.enableAutoSizing) d.enableAutoSizing = false;
             if (Mathf.Abs(d.fontSize - size) > 0.1f) d.fontSize = size;
+            // The view ends on a line boundary: the leftover room cut the next line in half over the stat table (food recipes:
+            // the box is what the stat table leaves, no multiple of the line pitch; prod report 2026-11-23).
+            if (Mathf.Abs(size - _lineSize) > 0.1f || d.font != _lineFont)
+            {
+                _lineSize = size;
+                _lineFont = d.font;
+                _lineFirst = d.GetPreferredValues("A", 10000f, 0f).y;
+                _linePitch = d.GetPreferredValues("A\nA", 10000f, 0f).y - _lineFirst;
+            }
+            b = new Box(b.X, b.Y, b.W, CraftingMath.WholeLines(b.H, _lineFirst, _linePitch));
+            Geo.Place(_canvas, _descView, b);
             if (d.alignment != TextAlignmentOptions.TopLeft) d.alignment = TextAlignmentOptions.TopLeft;
             if (d.textWrappingMode != TextWrappingModes.Normal) d.textWrappingMode = TextWrappingModes.Normal;
             if (d.overflowMode != TextOverflowModes.Overflow) d.overflowMode = TextOverflowModes.Overflow;
