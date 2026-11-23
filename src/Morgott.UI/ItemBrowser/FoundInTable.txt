@@ -21,7 +21,7 @@ L:BOM_TinMine02	0	1	Greydwarf_Shaman:w,Greydwarf:w,Skeleton:w	MineRock_TinOre
 L:BearCave	0	1	Bjorn_sleeping:w	BlueberryBush,Beehive,FirTree,Pickable_ForestCryptRemains03,Pickable_ForestCryptRemains02,Pickable_ForestCryptRemains01,Pickable_Mushroom_yellow
 L:BigRockClearing	0	0		Pickable_Thistle,BigRock,Pickable_StoneRock,Crow
 L:BogWitch_Camp	0	0	BogWitchKvastur:n,BogWitchKvastur:w	Spawner_Kvastur,shrub_2,BogWitch
-L:Bonemass	0	0	Bonemass:b	Bonemass<WitheredBone
+L:Bonemass	0	0	Bonemass:b	Bonemass<WitheredBone*10
 L:CharredFortress	0	0	piece_Charred_Balista:w,Charred_Mage:w,Charred_Archer:w,Charred_Melee:n,Charred_Archer:n,Charred_Mage:n	Pickable_MoltenCoreStand,GraveStone_CharredTwitcherNest,GraveStone_Broken_CharredTwitcherNest,CharredBanner1,CharredBanner2,TreasureChest_charredfortress,Charred_altar_bellfragment,Ashlands_Fortress_Wall_Pillar_base,Ashlands_Fortress_Wall_PillarTopStone,Ashlands_Fortress_Wall_PillarTop,Ashlands_Fortress_Wall_Pillar,Ashlands_Fortress_Wall_Spikes,Ashlands_Fortress_Floor,Spawner_CharredCross,Ashland_Stair
 L:CharredRuins1	0	0		Ashlands_Altar,AshCrow,Ashlands_Arch2_Broken1,Ashlands_Arch2_Broken2,Ashlands_Pillar4_tip2_broken2,Ashlands_Pillar4_tip2_broken1,Ashlands_Pillar4_tip3_broken1,Ashlands_Pillar4_tip3_broken3,Ashlands_Pillar4_tip3_broken2,Ashlands_Pillar4,VineAsh,ashland_pot1_green,ashland_pot1_red,ashland_pot2_green,ashland_pot2_red,ashland_pot3_green,ashland_pot3_red,Ashlands_Ruins_Floor_6x6_broken1,Ashlands_Ruins_Floor_3x3_broken2,Ashlands_Ruins_Floor_1point5x1point5,Ashland_Steepstair,Ashlands_Ruins_Floor_3x3_broken3,Ashlands_Ruins_Floor_3x3_broken1
 L:CharredRuins2	0	0		AshCrow,Ashlands_Pillar4,Ashlands_Pillar4_tip3_broken3,Ashlands_Pillar4_tip3_broken2,Ashlands_Pillar4_tip3_broken1,Ashlands_Arch2_Broken1,Ashlands_Arch2_Broken2,Ashlands_Pillar4_tip2_broken2,Ashlands_Pillar4_tip2_broken1,Ashlands_Ruins_Floor_3x3_broken3,ashland_pot1_red,ashland_pot2_red,ashland_pot3_red,Ashlands_Ruins_Floor_3x3_broken1,Ashland_Steepstair,Ashlands_Ruins_Floor_1point5x1point5,VineAsh,Ashlands_Ruins_Wall_4x6,Ashlands_Ruins_Floor_3x3_broken2,ashland_pot1_green,ashland_pot2_green,ashland_pot3_green,Ashlands_Ruins_Floor_6x6_broken1
@@ -36,30 +36,30 @@ L:CombatRuin01	0	0	Skeleton:n	BonePileSpawner,TreasureChest_meadows_combat,Picka
 L:Crypt2	8	1	Skeleton:w	Crow
 L:Crypt3	8	1	Skeleton:w	Crow
 L:Crypt4	8	1	Skeleton:w	Crow
-L:DN_Bossroom	0	1	vfx_LastBossGate_destroyed:b,FrozenKing:w,FrozenKing:b	vfx_LastBossGate_destroyed<HatefulBlood,FrozenKing<HatefulBlood
+L:DN_Bossroom	0	1	vfx_LastBossGate_destroyed:b,FrozenKing:w,FrozenKing:b	vfx_LastBossGate_destroyed<HatefulBlood*3,FrozenKing<HatefulBlood*3
 L:DN_gammeltrollFrac01	0	0		TrollFrost_Frac_legs
 L:DN_gammeltrollFrac02	0	0		TrollFrost_Frac_arm
 L:DN_hut01	0	0		prop_ashwood_bed,TreasureChest_deepnorth_village
 L:Dolmen01	0	0	Skeleton_Meadows_noarcher:w	Rock_7,Pickable_ForestCryptRemains01,RockDolmen_1
 L:Dolmen02	0	0	Skeleton_Meadows_noarcher:w	Rock_7,Pickable_ForestCryptRemains01,RockDolmen_2
 L:Dolmen03	0	0	Skeleton_Meadows_noarcher:w	Rock_7,Pickable_ForestCryptRemains02,Pickable_ForestCryptRemains01,RockDolmen_3
-L:Dragonqueen	0	0	Dragon:b	Dragon<
+L:Dragonqueen	0	0	Dragon:b	Dragon<DragonEgg*3
 L:DrakeLorestone	0	0		
 L:DrakeNest01	0	0	Hatchling:w	Pickable_DragonEgg
-L:Eikthyrnir	0	0	Eikthyr:b	Eikthyr<TrophyDeer
-L:FaderLocation	0	0	Fader:b	GraveStone_CharredFaderLocation,Ashlands_Ruins_twist_ArchBig,Ashlands_Ruins_twist_PillarBaseSmall,Ashlands_Ruins_twist_PillarBase,Ashlands_Pillar4,Ashlands_WallBlock,Ashlands_Ruins_Ramp_Upsidedown,Ashlands_Pillar4_tip3_broken3,Ashlands_Pillar4_tip3_broken2,Ashlands_Pillar4_tip3_broken1,Ashlands_PillarBase3_double,Fader<Bell
+L:Eikthyrnir	0	0	Eikthyr:b	Eikthyr<TrophyDeer*2
+L:FaderLocation	0	0	Fader:b	GraveStone_CharredFaderLocation,Ashlands_Ruins_twist_ArchBig,Ashlands_Ruins_twist_PillarBaseSmall,Ashlands_Ruins_twist_PillarBase,Ashlands_Pillar4,Ashlands_WallBlock,Ashlands_Ruins_Ramp_Upsidedown,Ashlands_Pillar4_tip3_broken3,Ashlands_Pillar4_tip3_broken2,Ashlands_Pillar4_tip3_broken1,Ashlands_PillarBase3_double,Fader<Bell*3
 L:FireHole	0	0	Surtling:w	
 L:FortressRuins	8192	0		
 L:FrozenShip01_DN	0	0		frozenship
 L:FrozenShip02_DN	0	0		frozenship,frozenship02
 L:FrozenShip03_DN	0	0		frozenship03,frozenship02
-L:GDKing	0	0	gd_king:b	gd_king<AncientSeed
+L:GDKing	0	0	gd_king:b	gd_king<AncientSeed*3
 L:GoblinCamp2	16	0		
 L:GoblinCamp2_1	16	0		
 L:GoblinHut01	0	0	Goblin:w	goblin_woodwall_2m,goblin_pole,goblin_pole_small,goblin_woodwall_1m,goblin_woodwall_2m_ribs,goblin_roof_45d_corner
 L:GoblinHut02	0	0	GoblinShaman:w,Goblin:w,GoblinBrute:w	TreasureChest_heath,goblin_pole_small,goblin_woodwall_1m,goblin_woodwall_2m_ribs,goblin_woodwall_2m,goblin_roof_cap,goblin_roof_45d_corner,goblin_roof_45d
 L:GoblinHut03	0	0	Goblin:w,GoblinShaman:w,GoblinBrute:w,GoblinArcher:w	goblin_pole_small,goblin_woodwall_1m,goblin_roof_45d,goblin_woodwall_2m,goblin_roof_45d_corner,goblin_pole,goblin_woodwall_2m_ribs,Pickable_Dandelion,BlackMetalScrap,goblin_banner,TreasureChest_heath
-L:GoblinKing	0	0	GoblinKing:b	RockFingerBroken,RockThumb,RockFinger,GoblinKing<GoblinTotem
+L:GoblinKing	0	0	GoblinKing:b	RockFingerBroken,RockThumb,RockFinger,GoblinKing<GoblinTotem*5
 L:Grave1	0	0	Draugr:n,Draugr_Elite:n,Draugr_Ranged:n,Draugr:w,Skeleton_Swamps:n	Spawner_DraugrPile,TreasureChest_swamp,BonePileSpawner_swamp
 L:Greydwarf_camp1	0	0	Greydwarf:n,Greydwarf_Elite:n,Greydwarf_Shaman:n	Greydwarf_Root,Spawner_GreydwarfNest
 L:Hildir_camp	0	0		Hildir
@@ -103,7 +103,7 @@ L:MorkBorg	131072	1	BlobMork:n	Morkhalla_Rug_stair,Morkhalla_Rug_corner,morkhall
 L:MountainCave02	4	1		rock2_mountain,rock1_mountain,caverock_ice_stalagmite,caverock_ice_stalagtite,rock3_mountain
 L:MountainGrave01	0	0		MountainGraveStone01,Pickable_MountainRemains01_buried
 L:MountainWell1	0	0		TreasureChest_mountains
-L:NorthMemorialPlace	0	0	memorialsite_offering:b	TreasureChest_memorial_buried,Pickable_ForestCryptRemains01,Pickable_ForestCryptRemains02,MemorialStone_Medium,MemorialStone_Small,Pickable_ForestCryptRemains03,MemorialStone_Large,memorialsite_offering<MemorialCoal
+L:NorthMemorialPlace	0	0	memorialsite_offering:b	TreasureChest_memorial_buried,Pickable_ForestCryptRemains01,Pickable_ForestCryptRemains02,MemorialStone_Medium,MemorialStone_Small,Pickable_ForestCryptRemains03,MemorialStone_Large,memorialsite_offering<MemorialCoal*3
 L:NorthVillage	65536	0		
 L:PlaceofMystery1	0	0	Charred_Twitcher:n,Charred_Melee:n,Charred_Archer:n,Charred_Mage:n	Pickable_MoltenCoreStand,GraveStone_Elite_CharredTwitcherNest,GraveStone_Elite_Broken_CharredTwitcherNest,Spawner_CharredStone_Elite,Ashlands_PillarBase3_double,Pickable_Swordpiece3,Ashlands_floor_large,Ashlands_Floor,Ashlands_Pillar4_tip_broken2,Ashlands_Pillar4_tip_broken1,Ashlands_ArchRoofDamaged_half2,Ashlands_ArchRoofDamaged_half1,Ashlands_Pillar4
 L:PlaceofMystery2	0	0	Charred_Twitcher:n,Charred_Melee:n,Charred_Archer:n,Charred_Mage:n	Pickable_MoltenCoreStand,Ashlands_Pillar4,Ashlands_Ruins_twist_PillarBase,Ashlands_Ruins_twist_PillarBaseSmall,Ashlands_Ruins_twist_ArchBig,Ashlands_WallBlock,Ashlands_PillarBase3_double,GraveStone_Elite_CharredTwitcherNest,GraveStone_Elite_Broken_CharredTwitcherNest,Spawner_CharredStone_Elite,Pickable_Swordpiece2
@@ -328,7 +328,7 @@ R:dvergr_divider02	0	0
 R:dvergr_divider03	0	0		dvergrtown_wood_support
 R:dvergr_entrance01	0	0		Pickable_RoyalJelly,SeekerEgg,dvergrprops_lantern,CreepProp_hanging01
 R:dvergr_entrance02	0	0		dvergrprops_lantern,CreepProp_hanging01,Pickable_RoyalJelly,SeekerEgg
-R:dvergr_new_bossroom_ENTRANCE02	0	0	SeekerQueen:w,SeekerQueen:b	dvergrtown_arch,SeekerEgg,dvergrprops_lantern,SeekerQueen<TrophySeekerBrute
+R:dvergr_new_bossroom_ENTRANCE02	0	0	SeekerQueen:w,SeekerQueen:b	dvergrtown_arch,SeekerEgg,dvergrprops_lantern,SeekerQueen<TrophySeekerBrute*3
 R:dvergr_new_bossroom_bottom_endcap_stair01	0	0		
 R:dvergr_new_bossroom_bottom_endcap_stair02	0	0		
 R:dvergr_new_bossroom_bottom_endcap_stair03	0	0		
