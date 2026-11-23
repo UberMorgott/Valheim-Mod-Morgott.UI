@@ -91,7 +91,7 @@ namespace Morgott.UI.Tests
             Assert.Equal(new[] { ("TrophyDeer", 2) }, FoundInTable.Groups("TrophyDeer", 2));
             var d = new FoundIn();
             d.Place(back, Heightmap.Biome.Plains, "L:M");
-            Assert.Equal(new[] { ("Mixed", "A+C", Heightmap.Biome.Plains), ("Mixed", "B+C", Heightmap.Biome.Plains) }, d.World.Summons); // one way per alternative, every group needed
+            Assert.Equal(("Mixed", "A|B+C", Heightmap.Biome.Plains), Assert.Single(d.World.Summons)); // one path: every group, any alternative
             var old = FoundInTable.Parse("L:GDKing\t0\t0\tgd_king:b\tgd_king<AncientSeed\n", out _, out _)["L:GDKing"];
             Assert.Equal(("gd_king", "AncientSeed", 0), Assert.Single(old.Summons));
         }

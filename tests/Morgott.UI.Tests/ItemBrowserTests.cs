@@ -414,6 +414,10 @@ namespace Morgott.UI.Tests
             Assert.Equal("A:1-2,B:1-2,C:1-1", string.Join(",", row.Inputs.Select(s => $"{s.Prefab}:{s.Min}-{s.Max}")));
             ix.Offering("Eikthyr", new[] { ("TrophyDeer", 2) });
             Assert.Null(Assert.Single(ix.ObtainedFrom("Eikthyr")).Conditions);
+            ix.Offering("Open", new[] { ("Coins", 1), (FoundInTable.AnyItem, 2) }); // a stand that takes anything: counted, not listed
+            var open = Assert.Single(ix.ObtainedFrom("Open"));
+            Assert.Equal("$ib_cond_stands 3", open.Conditions);
+            Assert.Equal("Coins", Assert.Single(open.Inputs).Prefab);
         }
         [Fact]
         public void VariantFeedsTheMaterialsTake()

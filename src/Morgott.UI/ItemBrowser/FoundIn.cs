@@ -36,17 +36,13 @@ namespace Morgott.UI.ItemBrowser
             }
             foreach (var (c, k) in s.Creatures) if (k != Origin.Boss) World.Anchor(c, biome, false);
             foreach (var o in s.Objects) World.Anchor(o, biome, false);
-            // One summon path per way to fill the altar: one alternative of every stand group, '+'-joined (StageGraph needs each).
+            // One summon path per altar: its stand groups '+'-joined, each group's alternatives '|'-joined (StageGraph: every
+            // group needed, any one alternative of it); a stand that takes any item ("*") needs nothing listable.
             foreach (var (boss, item, n) in s.Summons)
             {
-                var ways = new List<string> { "" };
-                foreach (var (alts, _) in FoundInTable.Groups(item, n))
-                {
-                    var next = new List<string>();
-                    foreach (var w in ways) foreach (var a in alts.Split('|')) if (next.Count < 16) next.Add(w.Length == 0 ? a : w + "+" + a); // shortcut: 16 ways (vanilla: 1)
-                    ways = next;
-                }
-                foreach (var w in ways) World.Summons.Add((boss, w, biome));
+                var groups = new List<string>();
+                foreach (var (alts, _) in FoundInTable.Groups(item, n)) if (alts.Length > 0 && alts != FoundInTable.AnyItem) groups.Add(alts);
+                World.Summons.Add((boss, string.Join("+", groups), biome));
             }
         }
 

@@ -116,6 +116,9 @@ namespace Morgott.UI.ItemBrowser
             return item.IndexOf('+') < 0 && star > 0 && int.TryParse(item.Substring(star + 1), out var n) ? (boss, item.Substring(0, star), n) : (boss, item, 0);
         }
 
+        /// <summary>Stand group of a stand that takes any attachable item (ItemStand with no m_supportedItems): needed, nothing listed.</summary>
+        public const string AnyItem = "*";
+
         /// <summary>One altar's stand groups (items '|'-joined alternatives, count = stands) as a summon item + count: one group =
         /// (items, count); several = ("a|b*2+c*1", 0); none = ("", 0).</summary>
         public static (string Item, int Count) Spec(List<(string Item, int Count)> groups)

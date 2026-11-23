@@ -292,7 +292,7 @@ namespace Morgott.UI.ItemBrowser
             {
                 if (Vector3.Distance(at, st.transform.position) > bowl.m_itemstandMaxRange || !st.gameObject.name.StartsWith(bowl.m_itemStandPrefix, StringComparison.Ordinal)) continue;
                 var alts = string.Join("|", Attachable(st));
-                if (alts.Length == 0) continue; // shortcut: a stand that takes any item lists nothing (none in vanilla)
+                if (alts.Length == 0) alts = FoundInTable.AnyItem; // takes any item: still a stand to fill
                 var i = list.FindIndex(g => g.Item == alts);
                 if (i < 0) list.Add((alts, 1));
                 else list[i] = (alts, list[i].Count + 1);
@@ -303,6 +303,8 @@ namespace Morgott.UI.ItemBrowser
 
         /// <summary>Items ItemStand.CanAttach takes, over every ObjectDB item: an "attach" child, not in m_unsupportedItems, in
         /// m_supportedItems (by shared name, as vanilla) or of a m_supportedTypes type. Empty m_supportedItems = any item (empty list).</summary>
+        // shortcut: resolved against this session's ObjectDB and cached per location owner / build; an item mod added later that
+        // matches a stand by shared name or type joins after the next game build or "#aN" bump, upgrade if a modded altar needs it.
         internal static List<string> Attachable(ItemStand st)
         {
             var list = new List<string>();

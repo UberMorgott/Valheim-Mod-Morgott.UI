@@ -102,6 +102,8 @@ namespace Morgott.UI.ItemBrowser
         /// <summary>One altar's offering (OfferingBowl): every stand group (items '|'-joined alternatives, count = stands; 0 =
         /// unknown, shown "x?") is needed, one row. A group with alternatives fills each stand with any of them: each
         /// alternative 1..count, the row notes "one per stand" + the stand total.</summary>
+        // shortcut: several groups with alternatives flatten into one input list (A|B + C|D reads like A|C + B|D); none in vanilla
+        // or the installed mods, upgrade to a row per stand group if one appears.
         public void Offering(string boss, IList<(string Item, int Count)> groups)
         {
             if (string.IsNullOrEmpty(boss)) return;
@@ -111,9 +113,10 @@ namespace Morgott.UI.ItemBrowser
             foreach (var (item, n) in groups)
             {
                 if (string.IsNullOrEmpty(item)) continue;
+                stands += n;
+                if (item == FoundInTable.AnyItem) { mixed = true; continue; } // any item: counted, nothing to list
                 var alts = item.Split('|');
                 mixed |= alts.Length > 1;
-                stands += n;
                 foreach (var a in alts) ins.Add(alts.Length > 1 ? new Stack(a, Math.Min(1, n), n) : new Stack(a, n, n));
             }
             if (ins.Count == 0) return;
