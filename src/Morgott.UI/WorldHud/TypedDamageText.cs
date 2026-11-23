@@ -263,8 +263,138 @@ namespace Morgott.UI.WorldHud
         [HarmonyPriority(Priority.First)]
         private static void AddInworldText_Prefix(ref DamageText.TextType type) => TypedDamageText.Decode(ref type);
 
-        [HarmonyPatch(typeof(DamageText), nameof(DamageText.AddInworldText))]
-        [HarmonyFinalizer]
-        private static void AddInworldText_Finalizer() => TypedDamageText.EndDecode();
+        // No finalizer on AddInworldText: Morgott.Performance FxPool keeps its text pool vanilla on any foreign finalizer there
+        // (FxPoolModule.AnyForeign); Decode resets HasCurrent at the start of every number instead.
+
+        [HarmonyPatch(typeof(DamageText), nameof(DamageText.RPC_DamageText))]
+        [HarmonyPrefix]
+        [HarmonyPriority(Priority.First)]
+        private static bool RpcDamageText_Prefix(DamageText __instance, long sender, ZPackage pkg)
+        {
+            try { return DamagePopupCap.Admit(__instance, sender, pkg); }
+            catch (Exception e)
+            {
+                Plugin.Log.LogError($"[Morgott.UI] damage number cap failed (number shown): {e}");
+                return true;
+            }
+        }
+
+        [HarmonyPatch(typeof(DamageText), nameof(DamageText.LateUpdate))]
+        [HarmonyPrefix]
+        private static void LateUpdate_Prefix(DamageText __instance)
+        {
+            try { DamagePopupCap.Flush(__instance); }
+            catch (Exception e)
+            {
+                DamagePopupCap.Clear();
+                Plugin.Log.LogError($"[Morgott.UI] damage number flush failed: {e}");
+            }
+        }
+    }
+
+    // Popup budget with TypedDamageNumbers on (DamagePopupMath: 8 new per frame, 24 alive, room reserved for own damage / heals /
+    // block texts). Others' numbers wait in a fixed buffer until DamageText.LateUpdate of the frame, then the best of them up to the
+    // budget are added (hits before ticks, larger before smaller); the rest are dropped. No allocation per number.
+    public static class DamagePopupCap
+    {
+        private const int Capacity = 32;
+        private static readonly int[] Types = new int[Capacity];
+        private static readonly Vector3[] Positions = new Vector3[Capacity];
+        private static readonly float[] Distances = new float[Capacity];
+        private static readonly string[] Texts = new string[Capacity];
+        private static readonly bool[] Ticks = new bool[Capacity];
+        private static readonly float[] Amounts = new float[Capacity];
+        private static readonly bool[] Keep = new bool[Capacity];
+        private static int _count;
+        private static int _frame = -1;
+        private static int _priority;
+        private static int _others;
+
+        private static void Tick()
+        {
+            var f = Time.frameCount;
+            if (f == _frame) return;
+            _frame = f;
+            _priority = 0;
+            _others = 0;
+        }
+
+        // RPC_DamageText prefix (DamageText.cs:206-222): false = this number is buffered or dropped.
+        internal static bool Admit(DamageText dt, long sender, ZPackage pkg)
+        {
+            if (!TypedDamageConfig.On) return true;
+            var cam = Utils.GetMainCamera();
+            if (!cam || Hud.IsUserHidden()) return true;
+            var at = pkg.GetPos();
+            int raw;
+            Vector3 pos;
+            string text;
+            bool player;
+            try
+            {
+                raw = pkg.ReadInt();
+                pos = pkg.ReadVector3();
+                text = pkg.ReadString();
+                player = pkg.ReadBool();
+            }
+            finally { pkg.SetPos(at); }
+            var distance = Vector3.Distance(cam.transform.position, pos);
+            if (distance > dt.m_maxTextDistance) return true; // vanilla drops it
+            var typed = DamageTypeMath.TryUnpack(raw, out var plain, out var d);
+            if (!typed && TypedDamageText.HasOutgoing)
+            {
+                // NPS local path: the descriptor is in the outgoing static only now, so it goes into the buffered value.
+                d = TypedDamageText.Outgoing;
+                raw = DamageTypeMath.Pack(plain, d);
+                typed = true;
+            }
+            Tick();
+            var alive = dt.m_worldTexts.Count;
+            if (DamagePopupMath.IsPriority((DamageText.TextType)plain, player && sender == ZNet.GetUID()))
+            {
+                if (!DamagePopupMath.AdmitPriority(_priority + _others, alive)) return false;
+                _priority++;
+                return true;
+            }
+            var tick = typed && d.Tick;
+            float.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var amount);
+            var i = _count;
+            if (i == Capacity)
+            {
+                i = DamagePopupMath.WorstIndex(Ticks, Amounts, Capacity);
+                if (!DamagePopupMath.Worse(Ticks[i], Amounts[i], tick, amount)) return false;
+            }
+            else _count++;
+            Types[i] = raw;
+            Positions[i] = pos;
+            Distances[i] = distance;
+            Texts[i] = text;
+            Ticks[i] = tick;
+            Amounts[i] = amount;
+            return false;
+        }
+
+        internal static void Flush(DamageText dt)
+        {
+            if (_count == 0) return;
+            Tick();
+            var n = _count;
+            _count = 0; // before adding: a nested number (another mod's AddInworldText hook) starts a fresh buffer
+            DamagePopupMath.SelectBest(Ticks, Amounts, n, DamagePopupMath.OthersBudget(_priority, _others, dt.m_worldTexts.Count), Keep);
+            for (var i = 0; i < n; i++)
+            {
+                var text = Texts[i];
+                Texts[i] = null;
+                if (!Keep[i]) continue;
+                _others++;
+                dt.AddInworldText((DamageText.TextType)Types[i], Positions[i], Distances[i], text, false);
+            }
+        }
+
+        internal static void Clear()
+        {
+            for (var i = 0; i < _count; i++) Texts[i] = null;
+            _count = 0;
+        }
     }
 }

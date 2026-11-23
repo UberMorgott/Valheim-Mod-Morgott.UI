@@ -215,7 +215,17 @@
     { "token": "color.damage.heal", "value": "#9FD66BFF" },
     { "token": "color.damage.toohard", "value": "#C9B6B0FF" },
     { "token": "color.damage.blocked", "value": "#8AC8F0FF" },
-    { "token": "color.damage.self", "value": "#E0413AFF" }
+    { "token": "color.damage.self", "value": "#E0413AFF" },
+    { "token": "color.damage.type.slash", "value": "#E6E0D5FF" },
+    { "token": "color.damage.type.pierce", "value": "#C5D8E8FF" },
+    { "token": "color.damage.type.blunt", "value": "#B8C3CDFF" },
+    { "token": "color.damage.type.chop", "value": "#DEC3A0FF" },
+    { "token": "color.damage.type.pickaxe", "value": "#A9B7BCFF" },
+    { "token": "color.damage.type.fire", "value": "#FF965CFF" },
+    { "token": "color.damage.type.frost", "value": "#8CD6FFFF" },
+    { "token": "color.damage.type.lightning", "value": "#FFE074FF" },
+    { "token": "color.damage.type.poison", "value": "#A9D875FF" },
+    { "token": "color.damage.type.spirit", "value": "#CDABFFFF" }
   ],
   "sprites": [
     { "token": "sprite.hud.strip4.well.row", "asset": "strip5_well_row" },
@@ -879,6 +889,7 @@
     { "token": "size.damage.font", "value": 24 },
     { "token": "size.damage.font.small", "value": 16 },
     { "token": "size.damage.dilate", "value": 0.15 },
+    { "token": "size.damage.stagger", "value": 0.08 },
     { "token": "size.speech.font", "value": 20 },
     { "token": "size.speech.maxw", "value": 360 },
     { "token": "size.speech.maxw.large", "value": 440 },
