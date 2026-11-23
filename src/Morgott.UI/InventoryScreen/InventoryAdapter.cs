@@ -83,7 +83,11 @@ namespace Morgott.UI.InventoryScreen
         [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.Show))]
         [HarmonyPrefix]
         [HarmonyPriority(Priority.First)]
-        private static void Show_Prefix() => InventorySkin.Instance?.Unpark();
+        private static void Show_Prefix()
+        {
+            InventorySkin.Instance?.Unpark();
+            CharacterPreview.ArmShownCheck();
+        }
 
         // Hidden first open (InventorySkin.GhostOpen): while it is shown (and the one frame IsVisible lags behind Hide),
         // the mouse stays captured as if the inventory were closed - the vanilla capture branch of

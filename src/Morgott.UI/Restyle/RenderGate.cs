@@ -82,6 +82,17 @@ namespace Morgott.UI.Restyle
             return false;
         }
 
+        // Diagnostics: the gates at or above t with their owners ("name[owner,..] < name[..]"), "" when none.
+        public static string ConcealedBy(Transform t)
+        {
+            var sb = new StringBuilder();
+            for (; t; t = t.parent)
+                if (Entries.ContainsKey(t.gameObject))
+                    sb.Append(sb.Length > 0 ? " < " : "").Append(t.name).Append('[')
+                      .Append(string.Join(",", Ledger.Owners(t.gameObject))).Append(']');
+            return sb.ToString();
+        }
+
         public static void Suspend(bool on)
         {
             if (Suspended == on) return;

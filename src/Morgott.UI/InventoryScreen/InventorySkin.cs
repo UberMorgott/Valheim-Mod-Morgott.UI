@@ -417,6 +417,7 @@ namespace Morgott.UI.InventoryScreen
             }
             if (_gui.m_playerGrid && _grids.TryGetValue(_gui.m_playerGrid, out var ps)) PlaceEaqsCells(_gui.m_playerGrid, ps.Scale);
             if (_ghost && _preview) _preview.RenderNow(); // hidden first open: the doll's first render in the frame it is placed
+            if (_preview && !_ghost) _preview.CheckShown(); // open only: one warning per open if the doll stays empty (diagnostics)
             if (_logPlacement > 0 && --_logPlacement == 0) StartCoroutine(LogAtEndOfFrame());
         }
 

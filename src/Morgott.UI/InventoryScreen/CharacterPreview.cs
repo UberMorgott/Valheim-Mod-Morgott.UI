@@ -166,7 +166,11 @@ namespace Morgott.UI.InventoryScreen
         }
 
         // Hides the image and parks the clone (inventory closed).
-        public void Close() => Close("inventory hidden");
+        public void Close()
+        {
+            _checkAt = -1f; // a hidden open (ghost) never reaches the shown check
+            Close("inventory hidden");
+        }
 
         private void Close(string why)
         {
@@ -176,6 +180,40 @@ namespace Morgott.UI.InventoryScreen
         }
 
         private void Awake() => Instance = this;
+
+        // Diagnostics only (prod 2026-11-24: doll backdrop without the figure after a trader; not reproduced by the
+        // harness). Armed by every InventoryGui.Show (InventoryAdapter), checked by InventorySkin only while the inventory
+        // is visible: one warning per open when the image is still not shown ~0.5 s later (deferred while a full window
+        // covers the doll on purpose). Reads state, changes nothing.
+        private static float _checkAt = -1f;
+        public static void ArmShownCheck()
+        {
+            if (!IsOpen()) _checkAt = Time.unscaledTime + 0.5f; // a Show while open is the same open
+        }
+
+        public void CheckShown()
+        {
+            if (_checkAt < 0f) return;
+            if (FullWindow.Any)
+            {
+                _checkAt = Time.unscaledTime + 0.5f; // covered on purpose: check 0.5 s after it closes
+                return;
+            }
+            if (Time.unscaledTime < _checkAt) return;
+            _checkAt = -1f;
+            var concealed = Morgott.UI.Restyle.RenderGate.IsConcealed(transform);
+            // Shown = the LateUpdate path reached its end (image on, camera on, texture created).
+            if (gameObject.activeInHierarchy && _image && _image.enabled && _camera && _camera.enabled && _rt && _rt.IsCreated()
+                && !concealed && !_hidden && !_failed) return;
+            var history = Events.ToArray();
+            Plugin.Log.LogWarning("[Morgott.UI] character preview not shown 0.5 s after open: "
+                + $"active={gameObject.activeSelf}/{gameObject.activeInHierarchy} image={(_image && _image.enabled)} "
+                + $"placed={_placed} hidden={_hidden} failed={_failed} concealed={concealed} "
+                + $"gates='{Morgott.UI.Restyle.RenderGate.ConcealedBy(transform)}' suspended={Morgott.UI.Restyle.RenderGate.Suspended} "
+                + $"camera={(_camera && _camera.enabled)} rig={(_rig && _rig.activeSelf)} clone={(bool)_clone} "
+                + $"rt={(_rt ? $"{_rt.width}x{_rt.height} created={_rt.IsCreated()}" : "none")} "
+                + $"history: {string.Join(" | ", history, Math.Max(0, history.Length - 8), Math.Min(8, history.Length))}");
+        }
 
         // Closed (or no longer placed): park now. Still open: a transient disable, the rig stays live (header) but stops
         // rendering (the texture keeps its last frame, as without LateUpdate before the camera loop render).
