@@ -1442,10 +1442,12 @@ namespace Morgott.UI.CraftingScreen
             {
                 _lineSize = size;
                 _lineFont = d.font;
-                _lineFirst = d.GetPreferredValues("A", 10000f, 0f).y;
-                _linePitch = d.GetPreferredValues("A\nA", 10000f, 0f).y - _lineFirst;
+                _lineFirst = d.GetPreferredValues("A", 10000f, 0f).y - d.margin.w; // top margin + one line (no bottom margin)
+                _linePitch = d.GetPreferredValues("A\nA", 10000f, 0f).y - d.margin.w - _lineFirst;
             }
-            b = new Box(b.X, b.Y, b.W, CraftingMath.WholeLines(b.H, _lineFirst, _linePitch));
+            // TMP-local -> canvas units (the box is in canvas units).
+            var toCanvas = d.rectTransform.lossyScale.y / Mathf.Max(Geo.WorldPerUnit(_canvas), 1e-6f);
+            b = new Box(b.X, b.Y, b.W, CraftingMath.WholeLines(b.H, _lineFirst * toCanvas, _linePitch * toCanvas));
             Geo.Place(_canvas, _descView, b);
             if (d.alignment != TextAlignmentOptions.TopLeft) d.alignment = TextAlignmentOptions.TopLeft;
             if (d.textWrappingMode != TextWrappingModes.Normal) d.textWrappingMode = TextWrappingModes.Normal;
