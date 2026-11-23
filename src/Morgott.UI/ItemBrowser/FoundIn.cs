@@ -36,8 +36,18 @@ namespace Morgott.UI.ItemBrowser
             }
             foreach (var (c, k) in s.Creatures) if (k != Origin.Boss) World.Anchor(c, biome, false);
             foreach (var o in s.Objects) World.Anchor(o, biome, false);
-            // shortcut: each stand group / alternative is its own summon path (OR); an altar mixing groups needs all (none in vanilla).
-            foreach (var (boss, item, _) in s.Summons) foreach (var alt in item.Split('|')) World.Summons.Add((boss, alt, biome));
+            // One summon path per way to fill the altar: one alternative of every stand group, '+'-joined (StageGraph needs each).
+            foreach (var (boss, item, n) in s.Summons)
+            {
+                var ways = new List<string> { "" };
+                foreach (var (alts, _) in FoundInTable.Groups(item, n))
+                {
+                    var next = new List<string>();
+                    foreach (var w in ways) foreach (var a in alts.Split('|')) if (next.Count < 16) next.Add(w.Length == 0 ? a : w + "+" + a); // shortcut: 16 ways (vanilla: 1)
+                    ways = next;
+                }
+                foreach (var w in ways) World.Summons.Add((boss, w, biome));
+            }
         }
 
         /// <summary>Map legend order (MapFilterMath.Biomes), Ocean last.</summary>

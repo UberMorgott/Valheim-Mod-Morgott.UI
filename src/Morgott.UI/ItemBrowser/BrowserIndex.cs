@@ -99,38 +99,27 @@ namespace Morgott.UI.ItemBrowser
             Add(new Relation { Kind = RelationKind.Other, Source = id, Station = station, Inputs = inputs, Outputs = new[] { new Stack(id) }, Conditions = cond, AnyInput = any });
         }
 
-        private const int MaxOffers = 16;
-
-        /// <summary>An altar offering (OfferingBowl) of one altar: every stand group (items '|'-joined alternatives, count = how
-        /// many; 0 = unknown, shown "x?") is needed. One altar group with alternatives = one "any one" row; several groups =
-        /// a row per combination (at most <see cref="MaxOffers"/>).</summary>
+        /// <summary>One altar's offering (OfferingBowl): every stand group (items '|'-joined alternatives, count = stands; 0 =
+        /// unknown, shown "x?") is needed, one row. A group with alternatives fills each stand with any of them: each
+        /// alternative 1..count, the row notes "one per stand" + the stand total.</summary>
         public void Offering(string boss, IList<(string Item, int Count)> groups)
         {
             if (string.IsNullOrEmpty(boss)) return;
-            var offers = new List<List<Stack>> { new List<Stack>() };
-            var real = new List<(string[] Alts, int Count)>();
-            foreach (var (item, n) in groups) if (!string.IsNullOrEmpty(item)) real.Add((item.Split('|'), n));
-            if (real.Count == 1 && real[0].Alts.Length > 1)
+            var ins = new List<Stack>();
+            var stands = 0;
+            var mixed = false;
+            foreach (var (item, n) in groups)
             {
-                Altar(boss, Array.ConvertAll(real[0].Alts, a => new Stack(a, real[0].Count, real[0].Count)), true);
-                return;
+                if (string.IsNullOrEmpty(item)) continue;
+                var alts = item.Split('|');
+                mixed |= alts.Length > 1;
+                stands += n;
+                foreach (var a in alts) ins.Add(alts.Length > 1 ? new Stack(a, Math.Min(1, n), n) : new Stack(a, n, n));
             }
-            foreach (var (alts, n) in real)
-            {
-                var next = new List<List<Stack>>();
-                foreach (var o in offers)
-                    foreach (var a in alts)
-                        if (next.Count < MaxOffers) next.Add(new List<Stack>(o) { new Stack(a, n, n) });
-                offers = next;
-            }
-            foreach (var o in offers) if (o.Count > 0) Altar(boss, o.ToArray(), false);
-        }
-
-        private void Altar(string boss, Stack[] inputs, bool any)
-        {
+            if (ins.Count == 0) return;
             var id = "use:altar:" + boss;
-            Add(new Entry { Id = id, Name = "$piece_offerbowl", Icon = inputs[0].Prefab, Type = EntryType.Other, Hidden = "use" });
-            Add(new Relation { Kind = RelationKind.Other, Source = id, Inputs = inputs, Outputs = new[] { new Stack(boss) }, AnyInput = any, Conditions = any ? "$ib_cond_anyone" : null });
+            Add(new Entry { Id = id, Name = "$piece_offerbowl", Icon = ins[0].Prefab, Type = EntryType.Other, Hidden = "use" });
+            Add(new Relation { Kind = RelationKind.Other, Source = id, Inputs = ins.ToArray(), Outputs = new[] { new Stack(boss) }, Conditions = mixed ? "$ib_cond_stands " + stands : null });
         }
 
         private static void To(Dictionary<string, List<Relation>> map, string id, Relation r)

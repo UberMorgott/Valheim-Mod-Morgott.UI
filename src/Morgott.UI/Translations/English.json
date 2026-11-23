@@ -292,6 +292,7 @@
   "ib_cond_draws": "draws",
   "ib_cond_oneofeach": "one of each",
   "ib_cond_anyone": "any one ingredient",
+  "ib_cond_stands": "one per stand, stands:",
   "ib_entry_item": "Item",
   "ib_entry_piece": "Piece",
   "ib_entry_creature": "Creature",

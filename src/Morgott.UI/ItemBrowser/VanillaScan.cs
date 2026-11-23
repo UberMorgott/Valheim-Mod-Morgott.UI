@@ -271,8 +271,8 @@ namespace Morgott.UI.ItemBrowser
         private static void Altar(OfferingBowl ob)
         {
             if (!ob.m_bossPrefab) return;
-            var groups = FoundInScan.Offering(ob);
-            _ix.Offering(groups[0].Boss, groups.ConvertAll(g => (g.Item, g.Count)));
+            var (boss, item, n) = FoundInScan.Offering(ob);
+            _ix.Offering(boss, FoundInTable.Groups(item, n));
         }
 
         // A weapon with an ammo type fires the ammo items of that type (Attack.HaveAmmo / Inventory.GetAmmoItem: Ammo,

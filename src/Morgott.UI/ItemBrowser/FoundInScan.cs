@@ -116,7 +116,6 @@ namespace Morgott.UI.ItemBrowser
             var cache = ForceLazy ? new Dictionary<string, Scanned>(StringComparer.Ordinal) : Cache();
             var cacheDirty = false;
             var newAltars = false;
-            var version = GameVersion();
             if (ForceLazy) _vanilla.Clear();
             _staleTable.Clear();
             _failed.Clear();
@@ -126,7 +125,7 @@ namespace Morgott.UI.ItemBrowser
             {
                 Scanned s = null;
                 if (owner == null) table?.TryGetValue(key, out s);
-                var ckey = key + "@" + (owner ?? version);
+                var ckey = CacheKey(key, owner);
                 if (s == null && table != null && owner == null) _staleTable.Add(key); // a vanilla prefab the table lacks: rebuild it
                 if (s == null && cache.TryGetValue(ckey, out var c) && c.Objects != null) s = c; // a line without objects (old cache) is reread once
                 if (s == null)
@@ -270,7 +269,8 @@ namespace Morgott.UI.ItemBrowser
             if (go.TryGetComponent<OfferingBowl>(out var bowl) && bowl.m_bossPrefab)
             {
                 s.Add(bowl.m_bossPrefab.name, Origin.Boss);
-                foreach (var o in Offering(bowl)) if (!s.Summons.Contains(o)) s.Summons.Add(o);
+                var o = Offering(bowl);
+                if (!s.Summons.Contains(o)) s.Summons.Add(o);
             }
             if (go.TryGetComponent<DungeonGenerator>(out var g)) s.Themes |= (int)g.m_themes;
             if (go.GetComponent<Pickable>() || go.GetComponent<Container>() || go.GetComponent<MineRock>() || go.GetComponent<MineRock5>() || go.GetComponent<TreeBase>() ||
@@ -278,19 +278,15 @@ namespace Morgott.UI.ItemBrowser
                 s.AddObject(Utils.GetPrefabName(go));
         }
 
-        /// <summary>What an altar takes (OfferingBowl.UseItem / Interact): m_bossItems x m_bossItem, or with m_useItemStands one
+        /// <summary>What one altar takes (OfferingBowl.UseItem / Interact): m_bossItems x m_bossItem, or with m_useItemStands one
         /// item on every stand FindItemStands finds (name starts with m_itemStandPrefix, within m_itemstandMaxRange; in the
         /// prefab: the location's stands). Stands taking the same items are one group (count = stands), alternatives
-        /// '|'-joined; no listable stand = (boss, "", 0).</summary>
-        internal static List<(string Boss, string Item, int Count)> Offering(OfferingBowl bowl)
+        /// '|'-joined; several groups = one spec (FoundInTable.Spec); no listable stand = (boss, "", 0).</summary>
+        internal static (string Boss, string Item, int Count) Offering(OfferingBowl bowl)
         {
             var boss = bowl.m_bossPrefab.name;
-            var list = new List<(string Boss, string Item, int Count)>();
-            if (!bowl.m_useItemStands)
-            {
-                list.Add(bowl.m_bossItem ? (boss, bowl.m_bossItem.gameObject.name, bowl.m_bossItems) : (boss, "", 0));
-                return list;
-            }
+            if (!bowl.m_useItemStands) return bowl.m_bossItem ? (boss, bowl.m_bossItem.gameObject.name, bowl.m_bossItems) : (boss, "", 0);
+            var list = new List<(string Item, int Count)>();
             var at = bowl.transform.position;
             foreach (var st in bowl.transform.root.GetComponentsInChildren<ItemStand>(true))
             {
@@ -298,11 +294,11 @@ namespace Morgott.UI.ItemBrowser
                 var alts = string.Join("|", Attachable(st));
                 if (alts.Length == 0) continue; // shortcut: a stand that takes any item lists nothing (none in vanilla)
                 var i = list.FindIndex(g => g.Item == alts);
-                if (i < 0) list.Add((boss, alts, 1));
-                else list[i] = (boss, alts, list[i].Count + 1);
+                if (i < 0) list.Add((alts, 1));
+                else list[i] = (alts, list[i].Count + 1);
             }
-            if (list.Count == 0) list.Add((boss, "", 0));
-            return list;
+            var (item, count) = FoundInTable.Spec(list);
+            return (boss, item, count);
         }
 
         /// <summary>Items ItemStand.CanAttach takes, over every ObjectDB item: an "attach" child, not in m_unsupportedItems, in
@@ -339,18 +335,15 @@ namespace Morgott.UI.ItemBrowser
             if (!zs) return list;
             var table = Table();
             var cache = Cache();
-            var version = GameVersion();
             var seen = new HashSet<string>(StringComparer.Ordinal);
             void Of(string key, string owner)
             {
                 if (!seen.Add(key)) return;
                 Scanned s = null;
                 if (owner == null) table?.TryGetValue(key, out s);
-                if (s == null) cache.TryGetValue(key + "@" + (owner ?? version), out s);
+                if (s == null) cache.TryGetValue(CacheKey(key, owner), out s);
                 if (s == null) return;
-                var bosses = new List<string>();
-                foreach (var o in s.Summons) if (!bosses.Contains(o.Boss)) bosses.Add(o.Boss);
-                foreach (var b in bosses) list.Add((b, s.Summons.FindAll(o => o.Boss == b).ConvertAll(o => (o.Item, o.Count))));
+                foreach (var o in s.Summons) list.Add((o.Boss, FoundInTable.Groups(o.Item, o.Count)));
             }
             foreach (var loc in zs.m_locations)
             {
@@ -473,6 +466,11 @@ namespace Morgott.UI.ItemBrowser
             return _table;
         }
 
+        // Cache line key: prefab key @ owner mod (or game build) + the scan format ("#a2": altar stand groups via CanAttach; older
+        // lines held the first stand's item only and are rescanned once).
+        private const string ScanFormat = "#a2";
+        private static string CacheKey(string key, string owner) => key + "@" + (owner ?? GameVersion()) + ScanFormat;
+
         private static string CachePath => Path.Combine(BepInEx.Paths.CachePath, "Morgott.UI", "found-in.txt");
 
         private static Dictionary<string, Scanned> _cache;
@@ -481,7 +479,11 @@ namespace Morgott.UI.ItemBrowser
         private static Dictionary<string, Scanned> Cache()
         {
             if (_cache != null) return _cache;
-            try { _cache = File.Exists(CachePath) ? FoundInTable.Parse(File.ReadAllText(CachePath), out _, out _) : new Dictionary<string, Scanned>(StringComparer.Ordinal); }
+            try
+            {
+                _cache = File.Exists(CachePath) ? FoundInTable.Parse(File.ReadAllText(CachePath), out _, out _) : new Dictionary<string, Scanned>(StringComparer.Ordinal);
+                foreach (var k in new List<string>(_cache.Keys)) if (!k.EndsWith(ScanFormat, StringComparison.Ordinal)) _cache.Remove(k); // older format: rescanned
+            }
             catch (Exception e)
             {
                 Plugin.Log.LogWarning($"[Morgott.UI] item browser found-in: cache unreadable, rescanning: {e.Message}");

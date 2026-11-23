@@ -160,7 +160,7 @@ namespace Morgott.UI.ItemBrowser
             {
                 var p = new StagePath { Kind = "summon" };
                 if (!Place(p, altar)) continue;
-                if (!string.IsNullOrEmpty(item)) p.Need(item);
+                if (!string.IsNullOrEmpty(item)) foreach (var need in item.Split('+')) p.Need(need); // every stand group of the altar
                 s.Add(boss, p);
             }
             foreach (var (item, creature) in w.ItemSpawns) s.Add(creature, new StagePath { Kind = "summon" }.Need(item));

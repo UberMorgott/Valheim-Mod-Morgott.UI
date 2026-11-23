@@ -398,23 +398,23 @@ namespace Morgott.UI.Tests
             Assert.Equal(new[] { "FistBronze_TW", "Coal", "use:target:piece_turret:TrophyGreydwarf" }, PageModel.UsedIn(ix, "TrophyGreydwarf").Select(r => r.Icon));
         }
 
-        // Item-stand altars: stands taking the same items are one group; alternatives on the only group = one "any one" row,
-        // two groups = a row per combination; the counts stay per group.
+        // Item-stand altars: one row per altar; a group with alternatives takes any of them on each stand (1..stands each,
+        // "one per stand" + total), a plain group its exact count; no alternative is ever dropped.
         [Fact]
         public void AltarGroupsAndAlternatives()
         {
             var ix = new BrowserIndex();
             ix.Offering("Fader", new[] { ("Bell|BellFragment", 3) });
             var any = Assert.Single(ix.UsedIn("Bell"));
-            Assert.True(any.AnyInput);
-            Assert.Equal(new[] { ("Bell", 3), ("BellFragment", 3) }, any.Inputs.Select(s => (s.Prefab, s.Min)));
+            Assert.False(any.AnyInput);
+            Assert.Equal("$ib_cond_stands 3", any.Conditions);
+            Assert.Equal(new[] { ("Bell", 1, 3), ("BellFragment", 1, 3) }, any.Inputs.Select(s => (s.Prefab, s.Min, s.Max)));
             ix.Offering("Mixed", new[] { ("A|B", 2), ("C", 1) });
-            var rows = ix.ObtainedFrom("Mixed");
-            Assert.Equal(2, rows.Count);
-            Assert.All(rows, r => Assert.False(r.AnyInput));
-            Assert.Equal(new[] { "A:2,C:1", "B:2,C:1" }, rows.Select(r => string.Join(",", r.Inputs.Select(s => s.Prefab + ":" + s.Min))));
+            var row = Assert.Single(ix.ObtainedFrom("Mixed"));
+            Assert.Equal("A:1-2,B:1-2,C:1-1", string.Join(",", row.Inputs.Select(s => $"{s.Prefab}:{s.Min}-{s.Max}")));
+            ix.Offering("Eikthyr", new[] { ("TrophyDeer", 2) });
+            Assert.Null(Assert.Single(ix.ObtainedFrom("Eikthyr")).Conditions);
         }
-
         [Fact]
         public void VariantFeedsTheMaterialsTake()
         {

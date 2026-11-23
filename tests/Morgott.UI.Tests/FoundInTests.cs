@@ -80,6 +80,18 @@ namespace Morgott.UI.Tests
             var text = FoundInTable.Write("v", new[] { new System.Collections.Generic.KeyValuePair<string, Scanned>("L:Eikthyrnir", s) });
             Assert.Contains("Rock,Eikthyr<TrophyDeer*2,Dragon<DragonEgg*3,Fader<Bell|BellFragment*3", text);
             Assert.Equal(new[] { ("Eikthyr", "TrophyDeer", 2), ("Dragon", "DragonEgg", 3), ("Fader", "Bell|BellFragment", 3) }, FoundInTable.Parse(text, out _, out _)["L:Eikthyrnir"].Summons);
+            // Several stand groups of one altar: one spec, parsed back whole, groups recovered.
+            var spec = FoundInTable.Spec(new System.Collections.Generic.List<(string, int)> { ("A|B", 2), ("C", 1) });
+            Assert.Equal(("A|B*2+C*1", 0), spec);
+            var multi = new Scanned { Objects = new System.Collections.Generic.List<string>() };
+            multi.Summons.Add(("Mixed", spec.Item, spec.Count));
+            var back = FoundInTable.Parse(FoundInTable.Write("v", new[] { new System.Collections.Generic.KeyValuePair<string, Scanned>("L:M", multi) }), out _, out _)["L:M"];
+            Assert.Equal(("Mixed", "A|B*2+C*1", 0), Assert.Single(back.Summons));
+            Assert.Equal(new[] { ("A|B", 2), ("C", 1) }, FoundInTable.Groups("A|B*2+C*1", 0));
+            Assert.Equal(new[] { ("TrophyDeer", 2) }, FoundInTable.Groups("TrophyDeer", 2));
+            var d = new FoundIn();
+            d.Place(back, Heightmap.Biome.Plains, "L:M");
+            Assert.Equal(new[] { ("Mixed", "A+C", Heightmap.Biome.Plains), ("Mixed", "B+C", Heightmap.Biome.Plains) }, d.World.Summons); // one way per alternative, every group needed
             var old = FoundInTable.Parse("L:GDKing\t0\t0\tgd_king:b\tgd_king<AncientSeed\n", out _, out _)["L:GDKing"];
             Assert.Equal(("gd_king", "AncientSeed", 0), Assert.Single(old.Summons));
         }

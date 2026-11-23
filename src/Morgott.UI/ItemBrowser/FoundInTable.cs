@@ -109,11 +109,33 @@ namespace Morgott.UI.ItemBrowser
             return map;
         }
 
-        // "item*3" -> (item, 3); "item" (older dump) -> count 0 = unknown.
+        // "item*3" -> (item, 3); "item" (older dump) -> count 0 = unknown; a multi-group spec "a|b*2+c*1" stays whole (count 0).
         private static (string, string, int) Summon(string boss, string item)
         {
             var star = item.LastIndexOf('*');
-            return star > 0 && int.TryParse(item.Substring(star + 1), out var n) ? (boss, item.Substring(0, star), n) : (boss, item, 0);
+            return item.IndexOf('+') < 0 && star > 0 && int.TryParse(item.Substring(star + 1), out var n) ? (boss, item.Substring(0, star), n) : (boss, item, 0);
+        }
+
+        /// <summary>One altar's stand groups (items '|'-joined alternatives, count = stands) as a summon item + count: one group =
+        /// (items, count); several = ("a|b*2+c*1", 0); none = ("", 0).</summary>
+        public static (string Item, int Count) Spec(List<(string Item, int Count)> groups)
+        {
+            if (groups.Count == 0) return ("", 0);
+            if (groups.Count == 1) return groups[0];
+            return (string.Join("+", groups.ConvertAll(g => g.Item + "*" + g.Count)), 0);
+        }
+
+        /// <summary>Inverse of <see cref="Spec"/>.</summary>
+        public static List<(string Item, int Count)> Groups(string item, int count)
+        {
+            var list = new List<(string, int)>();
+            if (item.IndexOf('+') < 0) { list.Add((item, count)); return list; }
+            foreach (var part in item.Split('+'))
+            {
+                var star = part.LastIndexOf('*');
+                list.Add(star > 0 && int.TryParse(part.Substring(star + 1), out var n) ? (part.Substring(0, star), n) : (part, 0));
+            }
+            return list;
         }
     }
 }
