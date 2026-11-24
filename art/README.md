@@ -118,6 +118,7 @@ Style targets and palette: `STYLE.md`.
 
 Picks (Codex, user asleep; mockups in `D:\tmp\cx-augaskin`): minimap `m4-hud-a`, boss bar A (shortened, unique tier), enemy bars B,
 damage text A, notifications A, centre message B, biome banner B, large map `m4-map-a` (legend toggles = M5 checkbox).
+
 - Minimap (220 ref = 440 sprite px, clamp <= 18% safe height, top-right): `minimap_ring` (Simple 440, hole = map) over the map image
   masked by `minimap_mask` (Unity Mask, white disc, same box; Jotunn MinimapManager overlays as children of the masked map);
   `minimap_rune_stone` x4 centred on the ring band at N/E/S/W (letter = localisable serif text tint rune_glow, ~25 ref px);
@@ -143,6 +144,7 @@ damage text A, notifications A, centre message B, biome banner B, large map `m4-
 Picks (Codex): all variant A (`m5-menu-a`, `m5-char-a`, `m5-world-a`, `m5-load-a`, `m5-settings-a`); toggle = checkbox (B);
 delete confirm centred modal (from B). Menu entries / characters / worlds / servers / settings tabs / keybinds are lists of any
 count (scroll).
+
 - Menu: vertical `button_*` column (hover = `button_hover`), news = panel + `header_plaque` + `scroll_*` + `button_normal`;
   link buttons `button_icon_*` + glyphs; version text text_disabled.
 - Character: list rows = `frame_inset` wells (selected + `row_recipe_selected`), portrait `slot_cell_recess`; delete
@@ -168,6 +170,7 @@ Picks (Codex, user asleep; mockups in `D:\tmp\cx-augaskin`): build HUD
 `m6-load-b` (respawn without a progress bar), ship HUD `m6-ship-b`, compendium / split / barber `m6-dialogs-a`. Codex final: 15 of 16
 groups 8/10, ship ladder 7 (reefed sail, round cap). New: `glyph_stealth_eye`, `glyph_crosshair`, `glyph_ship_oar`,
 `glyph_ship_sail_half|full`, `glyph_rudder`, `glyph_teleport_swirl`, `glyph_stop`, `band_runes`, `bar_frame_action`.
+
 - Panel titles (trader, text viewer, compendium, respawn banner): serif caps on the top rail with `knot` left + mirrored right
   (no `header_plaque` when the title is long).
 - Build HUD (`Hud.m_pieceSelectionWindow`): standard panel; category row `tab_*` on `tab_strip` (any count, mod tabs, scroll);
@@ -204,6 +207,7 @@ Picks (Codex): Epic Loot enchanting `m7-ench-a`, adventure board `m7-board-a`, m
 from B. Codex final: 10 of 10 groups 8/10 (tab_* redraw kept out of scope: shared set). New: `glyph_ench_convert`,
 `glyph_ench_disenchant`, `glyph_board_stash|gamble|treasure|bounty`, `frame_target`, `plate_marker`, `plate_currency`,
 `arrow_marker`, `gem_rarity`, `gem_setting`.
+
 - Epic Loot enchanting table (`EnchantingUI` prefab, re-skinned in place): panel + title on the rail with `knot` + `badge_level_star`
   (table level); tab column `tab_*` + glyph left of the label (`glyph_ench_sacrifice|convert|enchant|augment|disenchant`,
   table upgrade `glyph_act_upgrade`), tabs/labels from Epic Loot config; item list `frame_inset` + `row_recipe_*`, icon
@@ -220,6 +224,7 @@ from B. Codex final: 10 of 10 groups 8/10 (tab_* redraw kept out of scope: share
 - Morgott.Survival bleed-out: popup + ember serif title + `bar_frame_action` + `bar_fill` tint #8f989f (worn silver) + timer; surrender
   `button_normal` "[E] ..." only when Morgott.Survival offers it. Ally markers: `plate_marker` (name, distance / timer, slim
   `bar_skill_trough`/`bar_skill_fill`), off-screen = `arrow_marker` (points left; flip/rotate) on the edge side; downed = `glyph_death`.
+
 ## Integrated action header (2026-10-27, variant A plinth)
 
 - Kit `hdr_plinth.png` (+ prompt): `plinth_cap_left` (plain strip rails, short knot, carved triquetra terminal, plinth wall),

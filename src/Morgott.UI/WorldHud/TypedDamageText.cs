@@ -370,7 +370,13 @@ namespace Morgott.UI.WorldHud
                 return true;
             }
             var tick = typed && d.Tick;
-            float.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var amount);
+            // Vanilla writes "0.#" invariant (DamageText.cs:193); non-numeric text has no rank: shown unbuffered within the others budget.
+            if (!float.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var amount))
+            {
+                if (DamagePopupMath.OthersBudget(_priority, _others, alive) <= 0) return false;
+                _others++;
+                return true;
+            }
             var i = _count;
             if (i == Capacity)
             {

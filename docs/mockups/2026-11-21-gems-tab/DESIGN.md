@@ -6,6 +6,7 @@ Facts / plan: side-session notes `gem-browser-tab-facts.md` (sections 4, 8, 9).
 ## What it shows
 
 Three copies of the ITEMS panel side by side as a demo; in game they are states of ONE panel (item page replaces the list).
+
 1. List, search `bonemass`: new category button (gem glyph, after fish, before `...`) selected; strip only `Бол 33`;
    chip `Источник: Bonemass`; caption `Камни · 33`; header `БОЛОТО · ПОСЛЕ БОССА · 33`; rows `<Gem> T3 / Камень босса · Bonemass`,
    marker `Болото`; selected row `Гнилое сердце T3`.

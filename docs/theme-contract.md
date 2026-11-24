@@ -14,6 +14,7 @@ Morgott.UI loads one AssetBundle named `runeskin` (name kept from RuneSkin), pla
 - Dev override (layered last, lists only changed entries): `BepInEx\config\Morgott.UI\theme.json`, console `ui_reload`.
 - A missing bundle or asset never crashes: the token resolves to nothing, the affected role keeps the vanilla
   look, the problem is logged (`[Morgott.UI] theme: ...`) and listed in `ui_diag` dumps.
+
 ## Names the M0 theme expects
 
 Art side: `art\sprites\sprites.json` (sprite names, borders, art tokens), `unity\Build\runeskin.contents.txt`.
