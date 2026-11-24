@@ -17,7 +17,7 @@ namespace Morgott.UI.GameScreens
     // IUniqueBosses whose unlock key is unset). Well + knot plate header, tabs Доступные / Активные n / Выполненные, the
     // row list left, the detail card right with Взять заказ / Получить награду / Отказаться. Skin primitives of the
     // Haldor page: rows / tabs = craft.row + craft.row.selected (its store rows), buttons = button roles. Laid out in
-    // 1080p px (the root's local unit = one page unit); data rebuilt at most once a second + after every action.
+    // 1080p px (the root's local unit = one page unit); provider reads gated to once a second (HildirRefreshGate) + one forced read per action result.
     // Driver-facing names (harness): MorgottHildirBoard, HildirTab0..2, HildirRow:<prefab>, HildirAccept / HildirClaim /
     // HildirAbandon (interactable = enabled).
     internal sealed class HildirBoard
@@ -67,8 +67,8 @@ namespace Morgott.UI.GameScreens
         private Sprite _coinIcon, _tokenIcon;
         private IHildirContracts _c;
         private int _tab;
-        private float _next;
-        private bool _dirty = true, _view = true;
+        private readonly HildirRefreshGate _gate = new HildirRefreshGate(Refresh);
+        private bool _busy, _view = true; // _busy: an accept awaits its callback (no second one meanwhile)
         private Vector2 _size;
 
         public HildirBoard(RectTransform parent) => _parent = parent;
@@ -83,7 +83,7 @@ namespace Morgott.UI.GameScreens
         public void Hide()
         {
             if (_root && _root.gameObject.activeSelf) _root.gameObject.SetActive(false);
-            _dirty = true; // fresh data on the next open
+            _busy = false; // a callback lost with the page must not lock Accept
         }
 
         // Each frame while the page shows Hildir: the root on `right` (canvas box) at the page unit u; data / view rebuilt
@@ -103,7 +103,7 @@ namespace Morgott.UI.GameScreens
                 _size = size;
                 _view = true;
             }
-            if (_dirty || Time.unscaledTime >= _next)
+            if (_gate.Take(Time.unscaledTime))
             {
                 Load();
                 _view = true;
@@ -115,8 +115,6 @@ namespace Morgott.UI.GameScreens
 
         private void Load()
         {
-            _dirty = false;
-            _next = Time.unscaledTime + Refresh;
             var bosses = Services.TryGet<IUniqueBosses>(out var ub) ? ub?.Bosses : null;
             HildirBoardMath.Partition(_c?.Available(), _c?.Active(), bosses, KeySet, _data);
         }
@@ -189,7 +187,7 @@ namespace Morgott.UI.GameScreens
             var rv = new RowView { Rt = back.rectTransform, Group = back.gameObject.AddComponent<CanvasGroup>() };
             var b = back.gameObject.AddComponent<Button>();
             b.targetGraphic = back;
-            b.navigation = new Navigation { mode = Navigation.Mode.None };
+            b.navigation = new Navigation { mode = Navigation.Mode.Automatic }; // gamepad walks rows / tabs / actions spatially (InfoTabs, vanilla store prefab default)
             b.onClick.AddListener(() =>
             {
                 if (rv.Data == null) return;
@@ -372,7 +370,7 @@ namespace Morgott.UI.GameScreens
             var bw = (w - 24f - 2f * 10f) / 3f;
             var by = h - 16f - 60f;
             HildirBoardMath.Buttons(r, out var accept, out var claim, out var abandon);
-            Place(_accept, new Box(12f, by, bw, 60f), accept);
+            Place(_accept, new Box(12f, by, bw, 60f), accept && !_busy);
             Place(_claim, new Box(12f + bw + 10f, by, bw, 60f), claim);
             Place(_abandon, new Box(12f + 2f * (bw + 10f), by, bw, 60f), abandon);
         }
@@ -415,13 +413,16 @@ namespace Morgott.UI.GameScreens
         private void Accept()
         {
             var r = Selected();
-            if (_c == null || r?.Id == null || r.Chip != HildirChip.Open) return;
+            if (_busy || _c == null || r?.Id == null || r.Chip != HildirChip.Open) return;
+            _busy = true;
+            _view = true;
             _c.Accept(r.Id, ok =>
             {
                 if (!ok && MessageHud.instance) MessageHud.instance.ShowMessage(MessageHud.MessageType.Center, L("$ui_hildir_accept_failed"));
-                _dirty = true;
+                _busy = false;
+                _view = true;
+                _gate.Force(); // the one immediate read this action owes
             });
-            _dirty = true;
         }
 
         private void Claim()
@@ -429,7 +430,7 @@ namespace Morgott.UI.GameScreens
             var r = Selected();
             if (_c == null || r?.Id == null || r.Chip != HildirChip.Done) return;
             _c.Claim(r.Id);
-            _dirty = true;
+            _gate.Force();
         }
 
         private void Abandon()
@@ -442,7 +443,7 @@ namespace Morgott.UI.GameScreens
             {
                 UnifiedPopup.Pop();
                 c.Abandon(id);
-                _dirty = true;
+                _gate.Force();
             }, UnifiedPopup.Pop));
         }
 
@@ -531,7 +532,7 @@ namespace Morgott.UI.GameScreens
             image.raycastTarget = true;
             var b = image.gameObject.AddComponent<Button>();
             b.targetGraphic = image;
-            b.navigation = new Navigation { mode = Navigation.Mode.None };
+            b.navigation = new Navigation { mode = Navigation.Mode.Automatic };
             b.onClick.AddListener(() => click());
             // Styled after the Button exists: the role's sprite states go on its targetGraphic (BrowserPanel.Btn).
             Restyle(image, role);

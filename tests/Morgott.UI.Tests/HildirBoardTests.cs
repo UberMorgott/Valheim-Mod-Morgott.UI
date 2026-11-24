@@ -118,5 +118,20 @@ namespace Morgott.UI.Tests
             Assert.True(HildirBoardMath.Missing("[ui_hildir_sub_troll]"));
             Assert.False(HildirBoardMath.Missing("Пылающий скелет"));
         }
+
+        [Fact]
+        public void RefreshGateReadsOncePerPeriodPlusOneForcedReadPerAction()
+        {
+            var g = new HildirRefreshGate(1f);
+            Assert.True(g.Take(0f));
+            Assert.False(g.Take(0.1f));
+            Assert.False(g.Take(0.9f));
+            g.Force();
+            g.Force(); // coalesced
+            Assert.True(g.Take(0.95f));
+            Assert.False(g.Take(0.96f));
+            Assert.False(g.Take(1.9f));
+            Assert.True(g.Take(1.95f));
+        }
     }
 }

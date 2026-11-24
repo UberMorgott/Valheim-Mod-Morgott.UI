@@ -15,6 +15,28 @@ namespace Morgott.UI.GameScreens
         public HildirChip Chip;
     }
 
+    // HildirBoard's provider-read gate: one Available()/Active() read per period, plus one immediate read owed by an action
+    // result (Force; several before the next Take coalesce into one).
+    public sealed class HildirRefreshGate
+    {
+        private readonly float _period;
+        private float _next = float.NegativeInfinity;
+        private bool _forced;
+
+        public HildirRefreshGate(float period) => _period = period;
+
+        public void Force() => _forced = true;
+
+        // True = read now (re-arms the period).
+        public bool Take(float now)
+        {
+            if (!_forced && now < _next) return false;
+            _forced = false;
+            _next = now + _period;
+            return true;
+        }
+    }
+
     // Game-free logic of HildirBoard (unit-tested): tab partition, locked rows, chips, button states, text keys.
     public static class HildirBoardMath
     {
