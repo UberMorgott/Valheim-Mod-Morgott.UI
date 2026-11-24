@@ -184,10 +184,12 @@ namespace Morgott.UI.WorldHud
         public static DamageStyle Style(DamageGrade g, bool tick)
         {
             var t = tick ? TickScale : 1f;
+            // A weak tick keeps the bold face but only half the size bump: a full bump outweighs its row (Codex r4).
+            var bump = tick ? 0.5f : 1f;
             switch (g)
             {
-                case DamageGrade.VeryWeak: return new DamageStyle(true, 1.20f * t, 1f, 0f);
-                case DamageGrade.Weak: return new DamageStyle(true, 1.12f * t, 1f, 0f);
+                case DamageGrade.VeryWeak: return new DamageStyle(true, (1f + 0.20f * bump) * t, 1f, 0f);
+                case DamageGrade.Weak: return new DamageStyle(true, (1f + 0.12f * bump) * t, 1f, 0f);
                 case DamageGrade.Resistant:
                 case DamageGrade.Immune: return new DamageStyle(false, t, 0.55f, 0.20f);
                 case DamageGrade.VeryResistant: return new DamageStyle(false, t, 0.45f, 0.30f);
@@ -215,6 +217,16 @@ namespace Morgott.UI.WorldHud
             if (alpha >= 1f) return alpha;
             var a = luma > 0.001f ? alpha * refLuma / luma : maxAlpha;
             return a < alpha ? alpha : a > maxAlpha ? maxAlpha : a;
+        }
+
+        // Dim DoT ticks are smaller than hits: their alpha is floored higher to stay readable over foliage. VeryResistant (grade
+        // alpha below Resistant's 0.55) gets a 0.10 lower floor so the grades stay ordered; both floors capped at maxAlpha.
+        public static float TickDimAlpha(float alpha, float gradeAlpha, float floor, float maxAlpha)
+        {
+            if (gradeAlpha >= 1f) return alpha;
+            var f = gradeAlpha < 0.55f ? floor - 0.10f : floor;
+            if (f > maxAlpha) f = maxAlpha;
+            return alpha < f ? f : alpha;
         }
 
         // Side step of a slot in number widths: 0 centre, 1 right, 2 left, 3 two right, 4 two left ... (mockup "·6 ·9 ·4").

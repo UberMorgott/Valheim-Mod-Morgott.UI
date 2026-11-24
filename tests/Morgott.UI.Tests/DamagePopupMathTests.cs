@@ -43,7 +43,8 @@ namespace Morgott.UI.Tests
         {
             var t = DamagePopupMath.Style(DamageGrade.Weak, true);
             Assert.True(t.Bold);
-            Assert.Equal(1.12f * 0.9f, t.Scale, 3);
+            Assert.Equal(1.06f * 0.9f, t.Scale, 3); // half the weak bump
+            Assert.Equal(1.10f * 0.9f, DamagePopupMath.Style(DamageGrade.VeryWeak, true).Scale, 3);
             Assert.Equal(0.9f, DamagePopupMath.Style(DamageGrade.Normal, true).Scale, 3);
         }
 
@@ -134,6 +135,19 @@ namespace Morgott.UI.Tests
             Assert.Equal(0.8f, DamagePopupMath.DimAlpha(0.45f, 0f, grey, 0.8f), 3);
             Assert.Equal(1f, DamagePopupMath.DimAlpha(1f, 0.1f, grey, 0.8f), 3); // full grades untouched
             Assert.True(DamagePopupMath.DimAlpha(0.45f, poison, grey, 0.8f) < a); // grades stay ordered
+        }
+
+        [Fact]
+        public void Tick_dim_alpha_is_floored_and_keeps_grades_ordered()
+        {
+            var grey = DamagePopupMath.Luma(0.89f, 0.902f, 0.91f);
+            var poison = DamagePopupMath.Luma(0.663f, 0.847f, 0.459f);
+            var r = DamagePopupMath.TickDimAlpha(DamagePopupMath.DimAlpha(0.55f, poison, grey, 0.8f), 0.55f, 0.69f, 0.8f);
+            var vr = DamagePopupMath.TickDimAlpha(DamagePopupMath.DimAlpha(0.45f, poison, grey, 0.8f), 0.45f, 0.69f, 0.8f);
+            Assert.Equal(0.69f, r, 3);
+            Assert.True(vr < r && vr >= 0.59f - 0.001f, $"very resistant tick {vr} vs resistant {r}");
+            Assert.Equal(0.8f, DamagePopupMath.TickDimAlpha(0.5f, 0.55f, 0.95f, 0.8f), 3); // floor capped
+            Assert.Equal(0.4f, DamagePopupMath.TickDimAlpha(0.4f, 1f, 0.69f, 0.8f), 3); // full grades untouched
         }
     }
 }

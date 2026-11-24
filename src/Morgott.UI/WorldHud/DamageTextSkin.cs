@@ -119,8 +119,8 @@ namespace Morgott.UI.WorldHud
                 // DoT ticks: the mockup's thin outline and a lighter underlay (size.damage.tick.*, color.damage.tick.underlay).
                 var scope = d.Tick ? "damage.tick" : "damage";
                 var m = TextLook.Outlined(font, d.Tick ? "damage.typed.tick" : "damage.typed",
-                    ThemeTokens.GetFloat("size." + scope + ".outline", d.Tick ? 0.2f : 0.32f),
-                    ThemeTokens.GetFloat("size." + scope + ".outline.dilate", d.Tick ? 0.1f : 0.16f), scope);
+                    ThemeTokens.GetFloat("size." + scope + ".outline", d.Tick ? 0.2f : 0.25f),
+                    ThemeTokens.GetFloat("size." + scope + ".outline.dilate", d.Tick ? 0.1f : 0.125f), scope);
                 if (m) tf.fontSharedMaterial = m;
             }
             tf.fontStyle = _plainStyle & ~FontStyles.Bold;
@@ -129,8 +129,10 @@ namespace Morgott.UI.WorldHud
             if (cg)
             {
                 var n = ThemeTokens.GetColor("color.damage.normal", Color.white);
-                cg.alpha = DamagePopupMath.DimAlpha(s.Alpha, DamagePopupMath.Luma(c.r, c.g, c.b), DamagePopupMath.Luma(n.r, n.g, n.b),
-                    ThemeTokens.GetFloat("size.damage.dim.alpha.max", 0.8f));
+                var max = ThemeTokens.GetFloat("size.damage.dim.alpha.max", 0.8f);
+                cg.alpha = DamagePopupMath.DimAlpha(s.Alpha, DamagePopupMath.Luma(c.r, c.g, c.b), DamagePopupMath.Luma(n.r, n.g, n.b), max);
+                if (d.Tick)
+                    cg.alpha = DamagePopupMath.TickDimAlpha(cg.alpha, s.Alpha, ThemeTokens.GetFloat("size.damage.tick.dim.alpha.min", 0.69f), max);
             }
             // Vanilla scatters each number by insideUnitSphere * 0.5 (DamageText.cs:104), which piles numbers of one target on each
             // other: typed numbers drop the scatter and take a lane beside the ones still rising there (DamageLanes).
