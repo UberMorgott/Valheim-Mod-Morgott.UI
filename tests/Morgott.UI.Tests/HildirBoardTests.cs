@@ -103,6 +103,13 @@ namespace Morgott.UI.Tests
         public void TextKeyDropsTheNoChestSuffix(string prefab, string key) => Assert.Equal(key, HildirBoardMath.TextKey(prefab));
 
         [Fact]
+        public void TrophyLineKeepsOneLabel()
+        {
+            Assert.Equal("Трофей: Бренна", HildirBoardMath.LabelLine("Трофей", "Трофей: Бренна"));
+            Assert.Equal("Trophy: Brenna's skull", HildirBoardMath.LabelLine("Trophy", "Brenna's skull"));
+        }
+
+        [Fact]
         public void BiomeTokensMatchVanillaFlags()
         {
             Assert.Equal("$biome_blackforest", HildirBoardMath.BiomeToken((int)Heightmap.Biome.BlackForest));

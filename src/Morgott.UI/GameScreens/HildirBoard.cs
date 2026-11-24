@@ -349,7 +349,7 @@ namespace Morgott.UI.GameScreens
                 var lockGlyph = ThemeTokens.Role(locked ? "glyph.ench.lock" : "toggle.check");
                 if (lockGlyph != null && lockGlyph.Sprite && _info[1].Glyph.sprite != lockGlyph.Sprite) _info[1].Glyph.sprite = lockGlyph.Sprite;
                 var trophy = Trophy(r.Prefab);
-                Set(_info[3].Text, L("$ui_hildir_trophy") + ": " + (trophy.Name ?? Name(r)));
+                Set(_info[3].Text, HildirBoardMath.LabelLine(L("$ui_hildir_trophy"), trophy.Name ?? Name(r)));
             }
             // Info rows (the reward row hidden for a locked boss).
             var y = 214f;
@@ -405,6 +405,8 @@ namespace Morgott.UI.GameScreens
                 Rect(l, new Box(6f, 0f, box.W - 12f, box.H));
                 var c = ThemeTokens.GetColor(enabled ? "color.text.body" : "color.text.muted", enabled ? Color.white : Color.gray);
                 if (t.color != c) t.color = c;
+                // The plate label fit (Restyler) wraps long labels before shrinking; mockup buttons are one line.
+                if (l.TryGetComponent<PlateLabelFit>(out var fit)) fit.Lead(null, 0f, -1f, true);
             }
         }
 

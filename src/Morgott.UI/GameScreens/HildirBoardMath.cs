@@ -119,6 +119,10 @@ namespace Morgott.UI.GameScreens
             return k.EndsWith(suffix, StringComparison.Ordinal) ? k.Substring(0, k.Length - suffix.Length) : k;
         }
 
+        // "Трофей: <item>"; vanilla Russian trophy names already start with the label ("Трофей: Бренна"): no second label.
+        public static string LabelLine(string label, string value) =>
+            value.StartsWith(label, StringComparison.OrdinalIgnoreCase) ? value : label + ": " + value;
+
         // Vanilla biome name token of one Heightmap.Biome flag ("$biome_" + name lower-cased, as vanilla builds it); "" unknown.
         public static string BiomeToken(int biome)
         {
