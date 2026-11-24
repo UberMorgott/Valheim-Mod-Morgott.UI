@@ -37,7 +37,7 @@ namespace Morgott.UI.Tests
         }
 
         [Fact]
-        public void SlotClampsToFourBits() => Assert.Equal(DamageTypeMath.MaxSlot, new DamageDescriptor(DamageKind.Blunt, 0, false, 40).Slot);
+        public void SlotClampsToFourBits() => Assert.Equal(DamageTypeMath.MaxSlot, new DamageDescriptor(DamageKind.Blunt, DamageGrade.Normal, false, 40).Slot);
 
         [Theory]
         [InlineData(HitData.DamageModifier.Normal, DamageGrade.Normal)]
