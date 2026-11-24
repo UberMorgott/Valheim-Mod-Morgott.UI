@@ -529,10 +529,12 @@ namespace Morgott.UI.MapScreen
                 _ppRing.preserveAspect = true;
             }
             var rt = _ppRing.rectTransform;
-            if (rt.parent != marker)
+            if (rt.parent != marker) rt.SetParent(marker, false);
+            // _art.Image creates rects at (0,0) anchors/pivot, so center even on initial creation or reparent.
+            var mid = new Vector2(0.5f, 0.5f);
+            if (rt.anchorMin != mid || rt.anchorMax != mid || rt.pivot != mid || rt.anchoredPosition != Vector2.zero)
             {
-                rt.SetParent(marker, false);
-                rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0.5f, 0.5f);
+                rt.anchorMin = rt.anchorMax = rt.pivot = mid;
                 rt.anchoredPosition = Vector2.zero;
             }
             var size = marker.sizeDelta * ThemeTokens.GetFloat("ratio.map.portal.ring", 2.2f);
