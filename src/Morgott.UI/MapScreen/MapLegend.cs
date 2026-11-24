@@ -266,8 +266,6 @@ namespace Morgott.UI.MapScreen
                 changed |= ApplyModFilters(visible);
                 _appliedTypesLen = visible.Length;
                 _appliedIconsCount = _map.m_selectedIcons.Count;
-                var nextSelected = MapFilterMath.SelectedAfterFilter(visible, _map.m_selectedType);
-                if (nextSelected != _map.m_selectedType) _map.SelectIcon(nextSelected);
                 if (changed) _map.m_pinUpdateRequired = true;
                 foreach (var pair in _map.m_selectedIcons)
                     if (pair.Value && pair.Value.transform.parent && pair.Value.transform.parent.TryGetComponent<Image>(out var img))
@@ -887,6 +885,14 @@ namespace Morgott.UI.MapScreen
         [HarmonyLib.HarmonyPatch(typeof(Minimap), nameof(Minimap.AddPin))]
         [HarmonyLib.HarmonyFinalizer]
         private static void AddPin_Finalizer() => MapFilterMath.ExitAddPin();
+
+        [HarmonyLib.HarmonyPatch(typeof(Minimap), nameof(Minimap.ShowPinNameInput))]
+        [HarmonyLib.HarmonyPrefix]
+        private static void ShowPinNameInput_Prefix() => MapFilterMath.SetPlacingPin(true);
+
+        [HarmonyLib.HarmonyPatch(typeof(Minimap), nameof(Minimap.ShowPinNameInput))]
+        [HarmonyLib.HarmonyFinalizer]
+        private static void ShowPinNameInput_Finalizer() => MapFilterMath.SetPlacingPin(false);
 
         [HarmonyLib.HarmonyPatch(typeof(Minimap), nameof(Minimap.SetMapData))]
         [HarmonyLib.HarmonyFinalizer]

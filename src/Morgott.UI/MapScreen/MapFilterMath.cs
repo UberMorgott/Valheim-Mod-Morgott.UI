@@ -78,21 +78,6 @@ namespace Morgott.UI.MapScreen
             return changed;
         }
 
-        private static readonly Minimap.PinType[] Placeable =
-        {
-            Minimap.PinType.Icon0, Minimap.PinType.Icon1, Minimap.PinType.Icon2, Minimap.PinType.Icon3, Minimap.PinType.Icon4,
-        };
-
-        // Keeps a visible brush when the current Icon0..4 brush was hidden (Minimap.Start always selects Icon0).
-        public static Minimap.PinType SelectedAfterFilter(bool[] visible, Minimap.PinType selected)
-        {
-            if ((int)selected >= 0 && (int)selected < visible.Length && visible[(int)selected]) return selected;
-            if (Array.IndexOf(Placeable, selected) < 0) return selected;
-            foreach (var t in Placeable)
-                if ((int)t < visible.Length && visible[(int)t]) return t;
-            return selected;
-        }
-
         // Valid BepInEx config key for a mod filter button outside Epic Loot's Bounties / TreasureMaps.
         public static string ModFilterKey(string name)
         {
@@ -107,11 +92,14 @@ namespace Morgott.UI.MapScreen
         }
 
         // Depth counter around Minimap.AddPin: ToggleIconFilter is suppressed while AddPin runs so background / synced pins never unhide filters.
+        // A pin the player places (Minimap.ShowPinNameInput) still re-shows its hidden type like vanilla, else it lands invisible.
         private static int _addingPin;
+        private static bool _placingPin;
 
         public static void EnterAddPin() => _addingPin++;
         public static void ExitAddPin() { if (_addingPin > 0) _addingPin--; }
-        public static bool AllowToggleFilter => _addingPin == 0;
+        public static void SetPlacingPin(bool on) => _placingPin = on;
+        public static bool AllowToggleFilter => _addingPin == 0 || _placingPin;
 
         // ---------------------------------------------------------------- biome overlay
 

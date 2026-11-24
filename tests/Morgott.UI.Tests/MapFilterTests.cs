@@ -111,7 +111,7 @@ namespace Morgott.UI.Tests
         }
 
         [Fact]
-        public void AddPinGateSuppressesToggleFilterAndRecoversSelectedBrush()
+        public void AddPinGateSuppressesToggleFilterExceptPlayerPlacedPins()
         {
             Assert.True(MapFilterMath.AllowToggleFilter);
             MapFilterMath.EnterAddPin();
@@ -122,15 +122,15 @@ namespace Morgott.UI.Tests
             MapFilterMath.ExitAddPin();
             Assert.True(MapFilterMath.AllowToggleFilter);
 
-            var v = Vanilla();
-            v[(int)Minimap.PinType.Icon0] = false;
-            v[(int)Minimap.PinType.Icon1] = false;
-            v[(int)Minimap.PinType.Icon2] = false;
-            v[(int)Minimap.PinType.Icon4] = false;
-            Assert.Equal(Minimap.PinType.Icon3, MapFilterMath.SelectedAfterFilter(v, Minimap.PinType.Icon0));
-            Assert.Equal(Minimap.PinType.Ping, MapFilterMath.SelectedAfterFilter(v, Minimap.PinType.Ping));
-            v[(int)Minimap.PinType.Icon3] = false;
-            Assert.Equal(Minimap.PinType.Icon0, MapFilterMath.SelectedAfterFilter(v, Minimap.PinType.Icon0));
+            // the player's own placed pin (ShowPinNameInput -> AddPin) re-shows its hidden type like vanilla
+            MapFilterMath.SetPlacingPin(true);
+            MapFilterMath.EnterAddPin();
+            Assert.True(MapFilterMath.AllowToggleFilter);
+            MapFilterMath.ExitAddPin();
+            MapFilterMath.SetPlacingPin(false);
+            MapFilterMath.EnterAddPin();
+            Assert.False(MapFilterMath.AllowToggleFilter);
+            MapFilterMath.ExitAddPin();
 
             Assert.Equal("AdventurePinFilter", MapFilterMath.ModFilterKey(" AdventurePinFilter(Clone)[\"=] "));
             Assert.Null(MapFilterMath.ModFilterKey(" [\"=] "));
