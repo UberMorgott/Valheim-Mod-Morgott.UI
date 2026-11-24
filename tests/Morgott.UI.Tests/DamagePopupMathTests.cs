@@ -119,5 +119,21 @@ namespace Morgott.UI.Tests
             Assert.Equal(2, DamagePopupMath.WorstIndex(tick, amount, 5));
             Assert.Equal(0, DamagePopupMath.WorstIndex(tick, amount, 2)); // a tick of 50 is worse than a hit of 3
         }
+
+        [Fact]
+        public void Dim_alpha_evens_out_hue_brightness_within_bounds()
+        {
+            var grey = DamagePopupMath.Luma(0.89f, 0.902f, 0.91f); // color.damage.normal
+            var poison = DamagePopupMath.Luma(0.663f, 0.847f, 0.459f);
+            var a = DamagePopupMath.DimAlpha(0.55f, poison, grey, 0.8f);
+            Assert.True(a > 0.6f && a < 0.8f, $"poison dim alpha {a}");
+            Assert.Equal(0.55f * grey, a * poison, 3); // same effective brightness as dimmed grey
+            Assert.Equal(0.55f, DamagePopupMath.DimAlpha(0.55f, grey, grey, 0.8f), 3);
+            Assert.Equal(0.55f, DamagePopupMath.DimAlpha(0.55f, 1f, grey, 0.8f), 3); // never below the grade
+            Assert.Equal(0.8f, DamagePopupMath.DimAlpha(0.55f, 0.1f, grey, 0.8f), 3); // capped: still clearly dim
+            Assert.Equal(0.8f, DamagePopupMath.DimAlpha(0.45f, 0f, grey, 0.8f), 3);
+            Assert.Equal(1f, DamagePopupMath.DimAlpha(1f, 0.1f, grey, 0.8f), 3); // full grades untouched
+            Assert.True(DamagePopupMath.DimAlpha(0.45f, poison, grey, 0.8f) < a); // grades stay ordered
+        }
     }
 }

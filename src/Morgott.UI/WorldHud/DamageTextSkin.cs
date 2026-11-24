@@ -116,14 +116,22 @@ namespace Morgott.UI.WorldHud
                 tf.font = font;
                 // One look for both weights: a heavy dark outline (face dilated back by half of it: a TMP outline eats inward too)
                 // and a soft dark underlay, for fire glow and bright sky. Dim grades fade face + outline together (CanvasGroup).
-                var m = TextLook.Outlined(font, "damage.typed", ThemeTokens.GetFloat("size.damage.outline", 0.32f),
-                    ThemeTokens.GetFloat("size.damage.outline.dilate", 0.16f), "damage");
+                // DoT ticks: the mockup's thin outline and a lighter underlay (size.damage.tick.*, color.damage.tick.underlay).
+                var scope = d.Tick ? "damage.tick" : "damage";
+                var m = TextLook.Outlined(font, d.Tick ? "damage.typed.tick" : "damage.typed",
+                    ThemeTokens.GetFloat("size." + scope + ".outline", d.Tick ? 0.2f : 0.32f),
+                    ThemeTokens.GetFloat("size." + scope + ".outline.dilate", d.Tick ? 0.1f : 0.16f), scope);
                 if (m) tf.fontSharedMaterial = m;
             }
             tf.fontStyle = _plainStyle & ~FontStyles.Bold;
             tf.fontSize *= s.Scale;
             if (d.Tick) tf.text = DamagePopupMath.TickPrefix + tf.text;
-            if (cg) cg.alpha = s.Alpha;
+            if (cg)
+            {
+                var n = ThemeTokens.GetColor("color.damage.normal", Color.white);
+                cg.alpha = DamagePopupMath.DimAlpha(s.Alpha, DamagePopupMath.Luma(c.r, c.g, c.b), DamagePopupMath.Luma(n.r, n.g, n.b),
+                    ThemeTokens.GetFloat("size.damage.dim.alpha.max", 0.8f));
+            }
             // Vanilla scatters each number by insideUnitSphere * 0.5 (DamageText.cs:104), which piles numbers of one target on each
             // other: typed numbers drop the scatter and take a lane beside the ones still rising there (DamageLanes).
             var cam = Utils.GetMainCamera();
@@ -132,14 +140,16 @@ namespace Morgott.UI.WorldHud
                 inst.m_worldPos = pos;
                 return;
             }
-            pos = ClearOfEnemyHud(pos, cam);
+            var target = HudOf(pos, out var unique);
+            pos = ClearOfEnemyHud(pos, cam, target);
             var step = distance * ThemeTokens.GetFloat("size.damage.stagger", 0.05f);
             var right = cam.transform.right;
             right.y = 0f;
             right.Normalize();
             var lane = Lanes.Assign(pos.x, pos.y, pos.z, right.x, right.z, Time.time, step,
-                distance * ThemeTokens.GetFloat("size.damage.lane.height", 0.035f) * s.Scale, inst.m_duration);
-            inst.m_worldPos = pos + right * (DamagePopupMath.Side(lane) * step);
+                distance * ThemeTokens.GetFloat("size.damage.lane.height", 0.035f) * s.Scale, inst.m_duration, d.Tick,
+                d.Tick && unique ? target.m_character.GetInstanceID() : 0, out var cx, out var cy, out var cz);
+            inst.m_worldPos = new Vector3(cx, cy, cz) + right * (DamagePopupMath.Side(lane) * step);
         }
 
         private static readonly List<Graphic> HudGraphics = new List<Graphic>();
@@ -148,24 +158,36 @@ namespace Morgott.UI.WorldHud
         // Typed numbers spawn at the target's GetTopPoint, the same anchor EnemyHud puts its bar / name / alert mark on
         // (EnemyHud.cs:255-260), so they rose behind that band. Lift a number above the HUD of the target it spawned on
         // (receiver side: the band is this client's own HUD). Band top = that HUD's layout (overlay canvas: screen px).
-        private static Vector3 ClearOfEnemyHud(Vector3 pos, Camera cam)
+        // The HUD of the character a number spawned on: the nearest HUD'd character whose top point is within 1 m (network lag
+        // between the sender's top point and this client's character); unique = no other one that close (tick rows join by it).
+        private static EnemyHud.HudData HudOf(Vector3 pos, out bool unique)
         {
+            unique = false;
             var hud = EnemyHud.instance;
-            if (!hud || hud.m_huds == null) return pos;
-            // The target first (nearest HUD'd character), then its HUD's visibility: a hidden HUD never borrows a neighbour's band.
+            if (!hud || hud.m_huds == null) return null;
             EnemyHud.HudData best = null;
-            var bestD = 1f; // m², network lag between the sender's top point and this client's character
+            var bestD = 1f;
+            var near = 0;
             foreach (var pair in hud.m_huds)
             {
                 var data = pair.Value;
                 if (data == null || !data.m_character) continue;
                 var d = (data.m_character.GetTopPoint() - pos).sqrMagnitude;
+                if (d >= 1f) continue;
+                near++;
                 if (d < bestD)
                 {
                     bestD = d;
                     best = data;
                 }
             }
+            unique = near == 1;
+            return best;
+        }
+
+        private static Vector3 ClearOfEnemyHud(Vector3 pos, Camera cam, EnemyHud.HudData best)
+        {
+            // The target first, then its HUD's visibility: a hidden HUD never borrows a neighbour's band.
             // Boss bars are screen-fixed, not on the top point (EnemyHud.cs:246).
             if (best == null || best.m_character.IsBoss() || !best.m_gui) return pos;
             // The hit itself brings a hidden HUD in (Smart: engaged fade-in via CanvasGroup; vanilla: hover), one frame after

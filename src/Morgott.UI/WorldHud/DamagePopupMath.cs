@@ -25,19 +25,89 @@ namespace Morgott.UI.WorldHud
     {
         public const int Lanes = 5;
         public const float RiseSpeed = 1f;
+        // A DoT tick joins the newest tick row of its target while that row started at most this long ago (s): the ticks of one DoT
+        // wave (fire / spirit / poison land a few frames to ~0.5 s apart) read as one row "·6 ·9 ·4" (mockup v3), not a staircase.
+        // Counted from the row's first tick, so a steady DoT starts a new row each window instead of chaining one row upward.
+        public const float TickRowJoin = 0.6f;
         private const float SameSpot = 0.98f;
         private const int Ring = DamagePopupMath.MaxAlive;
         private readonly float[] _x = new float[Ring];
         private readonly float[] _y = new float[Ring];
         private readonly float[] _z = new float[Ring];
+        private readonly float[] _cx = new float[Ring]; // lane centre (spawn before the side offset)
+        private readonly float[] _cz = new float[Ring];
         private readonly float[] _t = new float[Ring];
         private readonly float[] _h = new float[Ring];
         private readonly float[] _end = new float[Ring]; // gone after (vanilla m_duration); 0 = empty slot
+        private readonly float[] _row0 = new float[Ring]; // first tick time of its row
+        private readonly int[] _owner = new int[Ring]; // target of a tick, 0 = unknown / not a tick
         private int _next;
+
+        public int Assign(float x, float y, float z, float rx, float rz, float now, float step, float height, float life) =>
+            Assign(x, y, z, rx, rz, now, step, height, life, false, 0, out _, out _, out _);
 
         // Lane for a number spawned at (x, y, z) at `now`; (rx, rz) = camera right on the ground plane (unit), step = lane width,
         // height = the number's height, both world units at its distance; life = its vanilla m_duration. Records it where laid out.
-        public int Assign(float x, float y, float z, float rx, float rz, float now, float step, float height, float life)
+        // A tick of a known target (owner != 0, e.g. its instance id) first tries the free slots of that target's newest tick row (TickRowJoin): then (cx, cy, cz) = that row's lane
+        // centre at its current height, else the spawn. Final spot = (cx, cy, cz) + right * Side(lane) * step.
+        public int Assign(float x, float y, float z, float rx, float rz, float now, float step, float height, float life, bool tick,
+            int owner, out float cx, out float cy, out float cz)
+        {
+            cx = x;
+            cy = y;
+            cz = z;
+            var row0 = now;
+            var lane = tick && owner != 0 ? JoinRow(owner, y, now, step, height, rx, rz, ref cx, ref cy, ref cz, ref row0) : -1;
+            if (lane < 0) lane = Pick(x, y, z, rx, rz, now, step, height);
+            else
+            {
+                x = cx;
+                y = cy;
+                z = cz;
+            }
+            var s = DamagePopupMath.Side(lane) * step;
+            _x[_next] = x + rx * s;
+            _y[_next] = y;
+            _z[_next] = z + rz * s;
+            _cx[_next] = x;
+            _cz[_next] = z;
+            _t[_next] = now;
+            _h[_next] = height;
+            _end[_next] = now + life;
+            _row0[_next] = row0;
+            _owner[_next] = tick ? owner : 0;
+            _next = (_next + 1) % Ring;
+            return lane;
+        }
+
+        // Free lane in the newest tick row of this target, -1 = none / full / too old / below the spawn.
+        private int JoinRow(int owner, float y0, float now, float step, float height, float rx, float rz,
+            ref float cx, ref float cy, ref float cz, ref float row0)
+        {
+            var row = -1;
+            for (var i = 0; i < Ring; i++)
+            {
+                if (_owner[i] != owner || _end[i] <= now || now - _row0[i] > TickRowJoin) continue;
+                if (row < 0 || _t[i] > _t[row]) row = i;
+            }
+            if (row < 0) return -1;
+            var y = _y[row] + (now - _t[row]) * RiseSpeed;
+            // The spawn is already lifted clear of the enemy HUD: never drop a tick below it.
+            if (y < y0) return -1;
+            for (var l = 0; l < Lanes; l++)
+            {
+                var side = DamagePopupMath.Side(l) * step;
+                if (FreeAt(_cx[row] + rx * side, y, _cz[row] + rz * side, now, step, height) > now) continue;
+                cx = _cx[row];
+                cy = y;
+                cz = _cz[row];
+                row0 = _row0[row];
+                return l;
+            }
+            return -1;
+        }
+
+        private int Pick(float x, float y, float z, float rx, float rz, float now, float step, float height)
         {
             var lane = 0;
             var bestFree = float.PositiveInfinity;
@@ -57,14 +127,6 @@ namespace Morgott.UI.WorldHud
                     lane = l;
                 }
             }
-            var s = DamagePopupMath.Side(lane) * step;
-            _x[_next] = x + rx * s;
-            _y[_next] = y;
-            _z[_next] = z + rz * s;
-            _t[_next] = now;
-            _h[_next] = height;
-            _end[_next] = now + life;
-            _next = (_next + 1) % Ring;
             return lane;
         }
 
@@ -137,10 +199,22 @@ namespace Morgott.UI.WorldHud
         public static void Desaturate(ref float r, ref float g, ref float b, float amount)
         {
             if (amount <= 0f) return;
-            var y = 0.2126f * r + 0.7152f * g + 0.0722f * b;
+            var y = Luma(r, g, b);
             r += (y - r) * amount;
             g += (y - g) * amount;
             b += (y - b) * amount;
+        }
+
+        public static float Luma(float r, float g, float b) => 0.2126f * r + 0.7152f * g + 0.0722f * b;
+
+        // A dim grade's alpha scaled so every hue fades to the same brightness as the reference hue (color.damage.normal) at that
+        // grade: a darker / greener face (poison over foliage) is not dimmer than grey. Never below the grade alpha, never above
+        // maxAlpha (clearly dimmer than a full number). Full-alpha grades pass through.
+        public static float DimAlpha(float alpha, float luma, float refLuma, float maxAlpha)
+        {
+            if (alpha >= 1f) return alpha;
+            var a = luma > 0.001f ? alpha * refLuma / luma : maxAlpha;
+            return a < alpha ? alpha : a > maxAlpha ? maxAlpha : a;
         }
 
         // Side step of a slot in number widths: 0 centre, 1 right, 2 left, 3 two right, 4 two left ... (mockup "·6 ·9 ·4").
