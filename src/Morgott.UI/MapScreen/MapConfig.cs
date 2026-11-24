@@ -10,6 +10,7 @@ namespace Morgott.UI.MapScreen
     public static class MapConfig
     {
         public const string MapSection = "Map", FilterSection = "Map Filters";
+        public const string BountiesKey = "Bounties", TreasureMapsKey = "TreasureMaps";
 
         public static ConfigEntry<bool> BiomeOverlay { get; private set; }
         public static ConfigEntry<float> FillAlpha { get; private set; }
@@ -18,10 +19,13 @@ namespace Morgott.UI.MapScreen
         public static ConfigEntry<bool> OthersLayer { get; private set; }
         public static ConfigEntry<bool> PortalPicker { get; private set; }
         public static ConfigEntry<bool> PortalArchIcons { get; private set; }
-        public static readonly Dictionary<string, ConfigEntry<bool>> Filters = new Dictionary<string, ConfigEntry<bool>>();
+        public static readonly Dictionary<string, ConfigEntry<bool>> Filters = new Dictionary<string, ConfigEntry<bool>>(System.StringComparer.Ordinal);
+        public static readonly Dictionary<string, ConfigEntry<bool>> ModFilters = new Dictionary<string, ConfigEntry<bool>>(System.StringComparer.Ordinal);
+        private static ConfigFile _config;
 
         public static void Bind(ConfigFile config)
         {
+            _config = config;
             BiomeOverlay = config.Bind(MapSection, "BiomeOverlay", true,
                 "Large map: tint explored land by biome with a biome border line (layer \"Biome highlight\" in the map's filter list).");
             FillAlpha = config.Bind(MapSection, "BiomeOverlayFillAlpha", 0.25f, new ConfigDescription(
@@ -37,9 +41,27 @@ namespace Morgott.UI.MapScreen
             PortalArchIcons = config.Bind(MapSection, "PortalArchIcons", true,
                 "Show each portal's chosen icon inside its arch (both sides; Morgott.Patcher portal style). Read once at startup (restart to change).");
             Filters.Clear();
+            ModFilters.Clear();
             foreach (var row in MapFilterMath.Rows)
                 Filters[row.Key] = config.Bind(FilterSection, row.Key, true,
                     $"Large map: show {row.Key} pins (the checkbox of that row in the map's filter list).");
+        }
+
+        public static void BindEpicLoot()
+        {
+            ModFilter(BountiesKey);
+            ModFilter(TreasureMapsKey);
+        }
+
+        public static ConfigEntry<bool> ModFilter(string key)
+        {
+            if (string.IsNullOrEmpty(key) || _config == null) return null;
+            if (Filters.ContainsKey(key)) key = "Mod_" + key;
+            if (ModFilters.TryGetValue(key, out var existing)) return existing;
+            var entry = _config.Bind(FilterSection, key, true,
+                $"Large map: show {key} pins (the checkbox of that mod row in the map's filter list).");
+            ModFilters[key] = entry;
+            return entry;
         }
 
         public static bool Shown(FilterRow row) => !Filters.TryGetValue(row.Key, out var e) || e.Value;

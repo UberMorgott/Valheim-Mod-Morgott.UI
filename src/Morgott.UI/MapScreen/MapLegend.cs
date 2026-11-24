@@ -77,6 +77,10 @@ namespace Morgott.UI.MapScreen
         private bool _zoomWrite;
         private int _loggedButtons = -1;
         private Dictionary<GameObject, Minimap.PinType> _types;
+        private Dictionary<Minimap.PinType, Image> _typesSource;
+        private int _typesCount = -1;
+        private int _appliedTypesLen = -1, _appliedIconsCount = -1;
+        private bool _applyingFilters;
 
         // Harness: МЕТКИ rows in list order (FilterRow key or the mod button name), first shown row, rows in the window.
         public IReadOnlyList<string> FilterKeys
@@ -211,11 +215,16 @@ namespace Morgott.UI.MapScreen
         }
 
         // Button GameObject -> pin type: the Selected frame images of Minimap.m_selectedIcons sit under their icon button
-        // (ToggleIconFilter tints selectedIcon.transform.parent, Minimap.cs:2632); the ping frame likewise.
+        // (ToggleIconFilter tints selectedIcon.transform.parent, Minimap.cs:2632); the ping frame likewise. Rebuilt when a mod
+        // replaces or grows m_selectedIcons after Start (Epic Loot's MinimapController.RebuildSelectedIcons).
         private Dictionary<GameObject, Minimap.PinType> Types()
         {
-            if (_types != null) return _types;
-            _types = new Dictionary<GameObject, Minimap.PinType>();
+            if (_types != null && ReferenceEquals(_typesSource, _map.m_selectedIcons) && _typesCount == _map.m_selectedIcons.Count)
+                return _types;
+            _typesSource = _map.m_selectedIcons;
+            _typesCount = _map.m_selectedIcons.Count;
+            if (_types == null) _types = new Dictionary<GameObject, Minimap.PinType>();
+            else _types.Clear();
             foreach (var pair in _map.m_selectedIcons)
                 if (pair.Value && pair.Value.transform.parent) _types[pair.Value.transform.parent.gameObject] = pair.Key;
             if (_map.m_selectedIconPing && _map.m_selectedIconPing.transform.parent) _types[_map.m_selectedIconPing.transform.parent.gameObject] = Minimap.PinType.Ping;
@@ -224,43 +233,103 @@ namespace Morgott.UI.MapScreen
 
         // ---------------------------------------------------------------- filters <-> config
 
-        // Config -> m_visibleIconTypes (map start, SettingChanged): vanilla's own write + tint (ToggleIconFilter,
-        // Minimap.cs:2625-2634, without its gamepad rumble).
+        private static readonly HashSet<BepInEx.Configuration.ConfigEntryBase> HookedFilters = new HashSet<BepInEx.Configuration.ConfigEntryBase>();
+        private static readonly List<Button> ModButtonScratch = new List<Button>(16);
+
+        private static void HookFilter(BepInEx.Configuration.ConfigEntryBase entry)
+        {
+            if (entry is BepInEx.Configuration.ConfigEntry<bool> b && HookedFilters.Add(entry))
+                b.SettingChanged += (_, __) => Instance?.ApplyFilters();
+        }
+
+        // Mods that register pin types / filter buttons in their own MonoBehaviour.Start (Epic Loot's MinimapController) run
+        // after Minimap.Start: apply their saved filter entries as soon as m_visibleIconTypes or m_selectedIcons grows.
+        private void SyncLateFilters()
+        {
+            if (_map.m_visibleIconTypes != null && (_map.m_visibleIconTypes.Length != _appliedTypesLen || _map.m_selectedIcons.Count != _appliedIconsCount))
+                ApplyFilters();
+        }
+
+        // Config -> m_visibleIconTypes (map start, late mod registration, SetMapMode(Large), SettingChanged): vanilla's own
+        // write + tint (ToggleIconFilter, Minimap.cs:2625-2634, without its gamepad rumble).
         internal void ApplyFilters()
         {
-            if (!_map || _map.m_visibleIconTypes == null) return;
-            HookFilters();
-            var changed = false;
-            foreach (var row in MapFilterMath.Rows)
-                changed |= MapFilterMath.Apply(_map.m_visibleIconTypes, row, MapConfig.Shown(row));
-            if (!changed) return;
-            _map.m_pinUpdateRequired = true;
-            foreach (var pair in _map.m_selectedIcons)
-                if (pair.Value && pair.Value.transform.parent && pair.Value.transform.parent.TryGetComponent<Image>(out var img))
-                    img.color = (int)pair.Key < _map.m_visibleIconTypes.Length && _map.m_visibleIconTypes[(int)pair.Key] ? Color.white : Color.gray;
+            if (!_map || _map.m_visibleIconTypes == null || _applyingFilters) return;
+            _applyingFilters = true;
+            try
+            {
+                foreach (var e in MapConfig.Filters.Values) HookFilter(e);
+                var visible = _map.m_visibleIconTypes;
+                var changed = false;
+                foreach (var row in MapFilterMath.Rows)
+                    changed |= MapFilterMath.Apply(visible, row, MapConfig.Shown(row));
+                changed |= ApplyModFilters(visible);
+                _appliedTypesLen = visible.Length;
+                _appliedIconsCount = _map.m_selectedIcons.Count;
+                var nextSelected = MapFilterMath.SelectedAfterFilter(visible, _map.m_selectedType);
+                if (nextSelected != _map.m_selectedType) _map.SelectIcon(nextSelected);
+                if (changed) _map.m_pinUpdateRequired = true;
+                foreach (var pair in _map.m_selectedIcons)
+                    if (pair.Value && pair.Value.transform.parent && pair.Value.transform.parent.TryGetComponent<Image>(out var img))
+                    {
+                        var want = (int)pair.Key < visible.Length && visible[(int)pair.Key] ? Color.white : Color.gray;
+                        if (img.color != want) img.color = want;
+                    }
+            }
+            finally { _applyingFilters = false; }
         }
 
-        private static bool _filtersHooked;
-
-        private static void HookFilters()
+        private bool ApplyModFilters(bool[] visible)
         {
-            if (_filtersHooked) return;
-            _filtersHooked = true;
-            foreach (var e in MapConfig.Filters.Values) e.SettingChanged += (_, __) => Instance?.ApplyFilters();
+            if (!_legend) return false;
+            var types = Types();
+            var changed = false;
+            foreach (var panel in LegendPanels)
+            {
+                var t = _legend.Find(panel);
+                if (!t || !t.gameObject.activeSelf) continue;
+                t.GetComponentsInChildren(false, ModButtonScratch);
+                foreach (var b in ModButtonScratch)
+                {
+                    if (!types.TryGetValue(b.gameObject, out var ty) || Covered(ty) || (int)ty < 0 || (int)ty >= visible.Length) continue;
+                    var entry = ModFilterEntry(b);
+                    if (entry == null || visible[(int)ty] == entry.Value) continue;
+                    _map.ToggleIconFilter(ty);
+                    changed = true;
+                }
+                ModButtonScratch.Clear();
+            }
+            return changed;
         }
 
-        // Vanilla toggled one type (AddPin of a new pin re-shows a hidden type, Minimap.cs:2346): its row's entry follows.
-        // Not while saved pins load (SetMapData -> AddPin, Minimap.cs:2158): the saved filters win there and are applied
-        // again after the load (MapFilterInput).
+        private static BepInEx.Configuration.ConfigEntry<bool> ModFilterEntry(Button b)
+        {
+            if (!b) return null;
+            var key = EpicLootFilter(b, out _) ?? MapFilterMath.ModFilterKey(b.name);
+            var entry = MapConfig.ModFilter(key);
+            HookFilter(entry);
+            return entry;
+        }
+
+        // User toggled a type via a legend icon button or gamepad: its [Map Filters] entry follows.
         internal void OnVanillaToggle(Minimap.PinType type)
         {
-            if (!_map || MapFilterInput.LoadingPins) return;
+            if (!_map || _applyingFilters) return;
             var visible = _map.m_visibleIconTypes;
             foreach (var row in MapFilterMath.Rows)
             {
                 if (System.Array.IndexOf(row.Types, type) < 0 || !MapConfig.Filters.TryGetValue(row.Key, out var entry)) continue;
                 var shown = MapFilterMath.Shown(visible, row);
                 if (entry.Value != shown) entry.Value = shown; // SettingChanged -> ApplyFilters: the whole group follows
+                return;
+            }
+            if ((int)type < 0 || (int)type >= visible.Length) return;
+            foreach (var pair in Types())
+            {
+                if (pair.Value != type || !pair.Key || !pair.Key.TryGetComponent<Button>(out var b)) continue;
+                var mod = ModFilterEntry(b);
+                if (mod != null && mod.Value != visible[(int)type]) mod.Value = visible[(int)type];
+                return;
             }
         }
 
@@ -304,14 +373,15 @@ namespace Morgott.UI.MapScreen
 
         // Epic Loot's adventure pin filters (static fields _bountyPinFilter / _treasurePinFilter, its own pin names
         // $mod_epicloot_merchant_bounties / $mod_epicloot_merchant_treasuremaps): untitled buttons, named here
-        // with Epic Loot's own localized section names (its pin-name keys are "$1" formats) (Codex M4 r3: generic "mod pins" labels).
-        private static System.Collections.Generic.List<(System.Reflection.FieldInfo Field, string Key)> _elFilters;
+        // with Epic Loot's own localized section names and persisted under stable [Map Filters] keys.
+        private static System.Collections.Generic.List<(System.Reflection.FieldInfo Field, string Token, string ConfigKey)> _elFilters;
 
-        private static string EpicLootFilterName(Button b)
+        private static string EpicLootFilter(Button b, out string labelToken)
         {
+            labelToken = null;
             if (_elFilters == null)
             {
-                _elFilters = new System.Collections.Generic.List<(System.Reflection.FieldInfo, string)>();
+                _elFilters = new System.Collections.Generic.List<(System.Reflection.FieldInfo, string, string)>();
                 foreach (var asm in System.AppDomain.CurrentDomain.GetAssemblies())
                 {
                     if (asm.GetName().Name != ModCompat.EpicLootAssembly) continue;
@@ -324,13 +394,13 @@ namespace Morgott.UI.MapScreen
                         const System.Reflection.BindingFlags F = System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic;
                         var bounty = t.GetField("_bountyPinFilter", F);
                         var treasure = t.GetField("_treasurePinFilter", F);
-                        if (bounty != null) _elFilters.Add((bounty, "$mod_epicloot_merchant_bounties"));
-                        if (treasure != null) _elFilters.Add((treasure, "$mod_epicloot_merchant_treasuremaps"));
+                        if (bounty != null) _elFilters.Add((bounty, "$mod_epicloot_merchant_bounties", MapConfig.BountiesKey));
+                        if (treasure != null) _elFilters.Add((treasure, "$mod_epicloot_merchant_treasuremaps", MapConfig.TreasureMapsKey));
                     }
                 }
                 Plugin.Log.LogInfo($"[Morgott.UI] map legend: Epic Loot pin filter fields {_elFilters.Count} [{string.Join(",", _elFilters.ConvertAll(f => f.Field.DeclaringType?.Name + "." + f.Field.Name + (f.Field.IsStatic ? " static" : "")))}]");
             }
-            foreach (var (field, key) in _elFilters)
+            foreach (var (field, token, configKey) in _elFilters)
             {
                 object v = null;
                 try
@@ -355,10 +425,17 @@ namespace Morgott.UI.MapScreen
                         if (ig && ig == b.gameObject) { hit = true; go = ig; break; } // exact: both filters share parent refs (run 20261022-072233 named both rows "bounties")
                     }
                 if (!hit) continue;
-                var label = Localization.instance != null ? Localization.instance.Localize(key) : key;
-                return string.IsNullOrEmpty(label) || label.StartsWith("[", System.StringComparison.Ordinal) ? null : label;
+                labelToken = token;
+                return configKey;
             }
             return null;
+        }
+
+        private static string EpicLootFilterName(Button b)
+        {
+            if (EpicLootFilter(b, out var key) == null) return null;
+            var label = Localization.instance != null ? Localization.instance.Localize(key) : key;
+            return string.IsNullOrEmpty(label) || label.StartsWith("[", System.StringComparison.Ordinal) ? null : label;
         }
 
         // ---------------------------------------------------------------- rows
@@ -411,8 +488,14 @@ namespace Morgott.UI.MapScreen
                 return;
             }
             if (!r.Icon) return;
-            // A typed mod filter (in m_selectedIcons) toggles like a vanilla one, else its own button handler does.
-            if (Types().TryGetValue(r.Icon.gameObject, out var type) && (int)type < _map.m_visibleIconTypes.Length) _map.ToggleIconFilter(type);
+            // A typed mod filter (in m_selectedIcons) persists in [Map Filters] and toggles like a vanilla one; else its own handler runs.
+            if (Types().TryGetValue(r.Icon.gameObject, out var type) && (int)type < _map.m_visibleIconTypes.Length)
+            {
+                var on = !_map.m_visibleIconTypes[(int)type];
+                var modEntry = ModFilterEntry(r.Icon);
+                if (modEntry != null) modEntry.Value = on; // SettingChanged -> ApplyFilters -> ToggleIconFilter
+                if (_map.m_visibleIconTypes[(int)type] != on) _map.ToggleIconFilter(type);
+            }
             else r.Icon.onClick.Invoke();
         }
 
@@ -788,29 +871,38 @@ namespace Morgott.UI.MapScreen
         }
     }
 
-    // [Map Filters] vs vanilla's own filter writes (Minimap.ToggleIconFilter :2626, saved pins loading in SetMapData :2158).
+    // [Map Filters] vs vanilla's own filter writes: Minimap.AddPin (:2346) calls ToggleIconFilter whenever a pin of a
+    // hidden type is added (SetMapData, AddSharedMapData, UpdateProfilePins bed, UpdateEventPin, UpdatePingPins /
+    // UpdateShoutPins, ValheimPlus syncPins, Epic Loot EventArea / adventure pins, BossPin), which used to flip hidden
+    // filters back on and overwrite [Map Filters]. Suppress ToggleIconFilter inside AddPin so only explicit filter actions change visibility.
     [HarmonyLib.HarmonyPatch]
     public static class MapFilterInput
     {
-        internal static bool LoadingPins;
-
         private static bool Prepare() => Ownership.OwnershipRegistry.IsOwned(Ownership.OwnershipRegistry.Minimap);
 
-        [HarmonyLib.HarmonyPatch(typeof(Minimap), nameof(Minimap.SetMapData))]
+        [HarmonyLib.HarmonyPatch(typeof(Minimap), nameof(Minimap.AddPin))]
         [HarmonyLib.HarmonyPrefix]
-        private static void SetMapData_Prefix() => LoadingPins = true;
+        private static void AddPin_Prefix() => MapFilterMath.EnterAddPin();
+
+        [HarmonyLib.HarmonyPatch(typeof(Minimap), nameof(Minimap.AddPin))]
+        [HarmonyLib.HarmonyFinalizer]
+        private static void AddPin_Finalizer() => MapFilterMath.ExitAddPin();
 
         [HarmonyLib.HarmonyPatch(typeof(Minimap), nameof(Minimap.SetMapData))]
         [HarmonyLib.HarmonyFinalizer]
-        private static void SetMapData_Finalizer()
-        {
-            LoadingPins = false;
-            MinimapSkin.Instance?.ApplyFilters();
-        }
+        private static void SetMapData_Finalizer() => MinimapSkin.Instance?.ApplyFilters();
+
+        [HarmonyLib.HarmonyPatch(typeof(Minimap), nameof(Minimap.ToggleIconFilter))]
+        [HarmonyLib.HarmonyPrefix]
+        [HarmonyLib.HarmonyPriority(HarmonyLib.Priority.First)]
+        private static bool ToggleIconFilter_Prefix() => MapFilterMath.AllowToggleFilter;
 
         [HarmonyLib.HarmonyPatch(typeof(Minimap), nameof(Minimap.ToggleIconFilter))]
         [HarmonyLib.HarmonyPostfix]
-        private static void ToggleIconFilter_Postfix(Minimap.PinType type) => MinimapSkin.Instance?.OnVanillaToggle(type);
+        private static void ToggleIconFilter_Postfix(Minimap.PinType type, bool __runOriginal)
+        {
+            if (__runOriginal) MinimapSkin.Instance?.OnVanillaToggle(type);
+        }
     }
 
     // Mouse wheel over the map's side column scrolls its pin rows, not the map zoom: Minimap.UpdateMap reads

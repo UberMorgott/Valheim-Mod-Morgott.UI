@@ -84,20 +84,56 @@ namespace Morgott.UI.Tests
                 Assert.All(MapFilterMath.Rows, r => Assert.True(MapConfig.Shown(r)));
                 MapConfig.Filters["Hammer"].Value = false;
                 MapConfig.Filters["Portal"].Value = false;
+                MapConfig.BindEpicLoot();
+                MapConfig.ModFilter(MapConfig.BountiesKey).Value = false;
+                MapConfig.ModFilter("CustomModFilter").Value = false;
                 MapConfig.BiomeOverlay.Value = false;
                 cfg.Save();
 
                 var again = new ConfigFile(path, true);
                 MapConfig.Bind(again);
+                again.Save(); // startup save before late mod buttons appear must keep orphaned mod filter entries
                 Assert.False(MapConfig.Shown(MapFilterMath.Rows.Single(r => r.Key == "Hammer")));
                 Assert.False(MapConfig.Shown(MapFilterMath.Rows.Single(r => r.Key == "Portal")));
                 Assert.True(MapConfig.Shown(MapFilterMath.Rows.Single(r => r.Key == "Fire")));
+                MapConfig.BindEpicLoot();
+                Assert.False(MapConfig.ModFilter(MapConfig.BountiesKey).Value);
+                Assert.True(MapConfig.ModFilter(MapConfig.TreasureMapsKey).Value);
+                Assert.False(MapConfig.ModFilter("CustomModFilter").Value);
+                Assert.Equal("Mod_Fire", MapConfig.ModFilter("Fire").Definition.Key);
                 Assert.False(MapConfig.BiomeOverlay.Value);
                 var text = File.ReadAllText(path);
                 Assert.Contains("[Map Filters]", text);
                 Assert.Contains("Hammer = false", text);
+                Assert.Contains("Bounties = false", text);
             }
             finally { File.Delete(path); }
+        }
+
+        [Fact]
+        public void AddPinGateSuppressesToggleFilterAndRecoversSelectedBrush()
+        {
+            Assert.True(MapFilterMath.AllowToggleFilter);
+            MapFilterMath.EnterAddPin();
+            Assert.False(MapFilterMath.AllowToggleFilter);
+            MapFilterMath.EnterAddPin();
+            MapFilterMath.ExitAddPin();
+            Assert.False(MapFilterMath.AllowToggleFilter);
+            MapFilterMath.ExitAddPin();
+            Assert.True(MapFilterMath.AllowToggleFilter);
+
+            var v = Vanilla();
+            v[(int)Minimap.PinType.Icon0] = false;
+            v[(int)Minimap.PinType.Icon1] = false;
+            v[(int)Minimap.PinType.Icon2] = false;
+            v[(int)Minimap.PinType.Icon4] = false;
+            Assert.Equal(Minimap.PinType.Icon3, MapFilterMath.SelectedAfterFilter(v, Minimap.PinType.Icon0));
+            Assert.Equal(Minimap.PinType.Ping, MapFilterMath.SelectedAfterFilter(v, Minimap.PinType.Ping));
+            v[(int)Minimap.PinType.Icon3] = false;
+            Assert.Equal(Minimap.PinType.Icon0, MapFilterMath.SelectedAfterFilter(v, Minimap.PinType.Icon0));
+
+            Assert.Equal("AdventurePinFilter", MapFilterMath.ModFilterKey(" AdventurePinFilter(Clone)[\"=] "));
+            Assert.Null(MapFilterMath.ModFilterKey(" [\"=] "));
         }
 
         [Fact]

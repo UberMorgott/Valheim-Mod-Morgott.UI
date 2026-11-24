@@ -160,6 +160,7 @@ namespace Morgott.UI.MapScreen
         private void LateUpdate()
         {
             if (!_map) return;
+            SyncLateFilters();
             BiomeOverlay.Instance?.EnsureGrid();
             if (_small && _small.gameObject.activeInHierarchy)
             {
@@ -436,7 +437,9 @@ namespace Morgott.UI.MapScreen
         [HarmonyPostfix]
         private static void SetMapMode_Postfix(Minimap.MapMode mode)
         {
-            if (mode == Minimap.MapMode.Large) MinimapSkin.Instance?.MarkLargeDirty();
+            if (mode != Minimap.MapMode.Large) return;
+            MinimapSkin.Instance?.ApplyFilters();
+            MinimapSkin.Instance?.MarkLargeDirty();
         }
     }
 }

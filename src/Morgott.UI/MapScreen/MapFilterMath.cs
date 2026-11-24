@@ -78,6 +78,41 @@ namespace Morgott.UI.MapScreen
             return changed;
         }
 
+        private static readonly Minimap.PinType[] Placeable =
+        {
+            Minimap.PinType.Icon0, Minimap.PinType.Icon1, Minimap.PinType.Icon2, Minimap.PinType.Icon3, Minimap.PinType.Icon4,
+        };
+
+        // Keeps a visible brush when the current Icon0..4 brush was hidden (Minimap.Start always selects Icon0).
+        public static Minimap.PinType SelectedAfterFilter(bool[] visible, Minimap.PinType selected)
+        {
+            if ((int)selected >= 0 && (int)selected < visible.Length && visible[(int)selected]) return selected;
+            if (Array.IndexOf(Placeable, selected) < 0) return selected;
+            foreach (var t in Placeable)
+                if ((int)t < visible.Length && visible[(int)t]) return t;
+            return selected;
+        }
+
+        // Valid BepInEx config key for a mod filter button outside Epic Loot's Bounties / TreasureMaps.
+        public static string ModFilterKey(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name)) return null;
+            var s = name.Replace("(Clone)", "").Trim();
+            var sb = new System.Text.StringBuilder(s.Length);
+            foreach (var ch in s)
+                if (ch != '=' && ch != '\n' && ch != '\r' && ch != '\t' && ch != '\\' && ch != '"' && ch != '\'' && ch != '[' && ch != ']')
+                    sb.Append(ch);
+            var key = sb.ToString().Trim();
+            return key.Length > 0 ? key : null;
+        }
+
+        // Depth counter around Minimap.AddPin: ToggleIconFilter is suppressed while AddPin runs so background / synced pins never unhide filters.
+        private static int _addingPin;
+
+        public static void EnterAddPin() => _addingPin++;
+        public static void ExitAddPin() { if (_addingPin > 0) _addingPin--; }
+        public static bool AllowToggleFilter => _addingPin == 0;
+
         // ---------------------------------------------------------------- biome overlay
 
         // Legend / colour order. Ocean has no entry (transparent).
