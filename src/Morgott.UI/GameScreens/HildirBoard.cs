@@ -25,7 +25,7 @@ namespace Morgott.UI.GameScreens
         public const string RootName = "MorgottHildirBoard";
         private const string HildirName = "$npc_hildir";
         private const float Refresh = 1f;
-        private const float Pad = 16f, HeadH = 52f, TabH = 48f, RowH = 92f, RowGap = 8f, ButtonH = 86f, ButtonText = 24f;
+        private const float Pad = 16f, HeadH = 52f, TabH = 48f, RowH = 92f, RowGap = 8f, ButtonH = 86f, ButtonText = 24f, ButtonCap = 34f;
         private static readonly string[] TabTokens = { "$ui_hildir_tab_open", "$ui_hildir_tab_active", "$ui_hildir_tab_done" };
         private static readonly Func<string, bool> KeySet = k => ZoneSystem.instance && ZoneSystem.instance.GetGlobalKey(k);
 
@@ -432,8 +432,9 @@ namespace Morgott.UI.GameScreens
             if (b.interactable != enabled) b.interactable = enabled;
             if (b.transform.Find("Label") is RectTransform l && l.TryGetComponent<TMP_Text>(out var t))
             {
-                // The plate caps' inset as the plate label fit computes it (button.label fitInset, share of the width).
-                var inset = LabelFit.Inset(ThemeTokens.Role("button.label")?.FitInset ?? 40f, box.W, ThemeTokens.GetFloat("share.text.fit.inset", 0.12f));
+                // Clear of the plate's knotwork side caps (run 20261124-123003: the generic 12 % share left ~21 px and the
+                // labels ran into the caps on the ~177 px card plates); scales down on narrow plates.
+                var inset = LabelFit.Inset(ButtonCap, box.W, 0.25f);
                 Rect(l, new Box(inset, 0f, Mathf.Max(0f, box.W - 2f * inset), box.H));
                 var c = ThemeTokens.GetColor(enabled ? "color.text.body" : "color.text.muted", enabled ? Color.white : Color.gray);
                 if (t.color != c) t.color = c;
