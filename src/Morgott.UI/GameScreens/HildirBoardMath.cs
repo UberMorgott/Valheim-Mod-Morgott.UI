@@ -164,7 +164,7 @@ namespace Morgott.UI.GameScreens
             if (w <= area) return text;
             var cut = Restyle.LabelFit.BestSplit(text, width, out var widest);
             size = Math.Min(full, Restyle.LabelFit.OneLineSize(area, cut < 0 ? w : widest, full));
-            return cut < 0 ? text : text.Substring(0, cut) + "\n" + text.Substring(cut + 1);
+            return cut < 0 ? text : text.Remove(cut, 1).Insert(cut, "\n");
         }
     }
 }
