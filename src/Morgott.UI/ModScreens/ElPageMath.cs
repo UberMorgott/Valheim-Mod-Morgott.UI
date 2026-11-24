@@ -46,6 +46,9 @@ namespace Morgott.UI.ModScreens
             return k;
         }
 
+        // Vertical top Y of a child (prefab height ch, scale k) centred in a single-row area.
+        public static float CenterY(Box area, float ch, float k) => area.Y + (area.H - ch * k) / 2f;
+
         // A mod panel placed by its visible content (content0 = union of its widgets, whole0 = the panel's own box, both in
         // the prefab layout): the content fits area (Fit, top-aligned, centred), the panel goes where that puts it. Hildir's
         // temper panel box runs ~95 px above its first widget (run 20261107-154027).

@@ -153,6 +153,7 @@ namespace Morgott.UI.GameScreens
             // 20261107-193053: Bog Witch's coin icon + count barely visible). Epic Loot's currencies are later siblings anyway.
             if (_barCap != null && _barCap.Frame && _coins != null && _barCap.Frame.transform.GetSiblingIndex() > _coins.Rt.GetSiblingIndex())
                 _barCap.First(_coins.Rt.GetSiblingIndex());
+            var barIn = new Box(bar.X + 8f * u, bar.Y + 6f * u, bar.W - 16f * u, bar.H - 12f * u);
             StoreColumn(col, u, hildir);
             if (_coins != null)
             {
@@ -160,7 +161,7 @@ namespace Morgott.UI.GameScreens
                 // Like the Epic Loot currency rows at Haldor / Hildir: its coin icon + count fitted into the bar (the bar cap is
                 // the frame), its own plate off (scaled, its art sat on the screen top / read blank: runs 20261107-153302 / -154027).
                 if (_coins.Rt.TryGetComponent<Image>(out var plate) && plate.enabled) plate.enabled = false;
-                if (_coinKids.Count > 0) PagePart.Fit(_canvas, _coinKids, new Box(bar.X + 8f * u, bar.Y + 6f * u, bar.W - 16f * u, bar.H - 12f * u), left: true);
+                if (_coinKids.Count > 0) PagePart.Fit(_canvas, _coinKids, barIn, left: true, centerY: true);
             }
             for (var i = board ? _wells.Length : mod || hildir ? 1 : 0; i < _wells.Length; i++) _wells[i]?.Place(_canvas, default, false);
             for (var i = 0; !board && i < Sections.Length; i++)
@@ -207,7 +208,7 @@ namespace Morgott.UI.GameScreens
             // The currency icons / counts themselves (the container is far larger than its content: run 20261107-144822
             // drew them ~200 px wide) fitted into the bar.
             if (m.CurrencyParts.Count > 0)
-                PagePart.Fit(_canvas, m.CurrencyParts, new Box(bar.X, bar.Y, bar.W - (m.Sundial != null ? bar.H + 8f * u : 0f), bar.H));
+                PagePart.Fit(_canvas, m.CurrencyParts, new Box(barIn.X, barIn.Y, barIn.W - (m.Sundial != null ? bar.H : 0f), barIn.H), centerY: true);
             m.Sundial?.Put(_canvas, bar.H / m.Sundial.Box0.H, bar.Right - bar.H, bar.Y);
         }
 

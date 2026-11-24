@@ -113,5 +113,29 @@ namespace Morgott.UI.Tests
             Assert.Equal(150f, ElPageMath.Centre(act, 100f).X, 2);
             Assert.Equal(act.W, ElPageMath.Centre(act, 900f).W, 2);
         }
+
+        // Single-row top-bar currencies: mixed-height UpperLeft children (65.15 Coins + 50 icons/counts, or 50 + 60 TemperPanel)
+        // share the bar's vertical centre while ElPageMath.Fit alone stays top-aligned.
+        [Fact]
+        public void SingleRowCentersMixedHeightChildren()
+        {
+            var bar = new Box(1271f, 30f, 470f, 56f);
+            var barCenterY = bar.Y + bar.H / 2f;
+            var area = new Box(bar.X + 8f, bar.Y + 6f, bar.W - 16f - bar.H, bar.H - 12f);
+            var k = ElPageMath.Fit(460f, 65.15f, area, out _, out var y0);
+            Assert.Equal(area.Y, y0, 2);
+            foreach (var h in new[] { 65.15f, 50f })
+            {
+                var py = ElPageMath.CenterY(area, h, k);
+                Assert.Equal(barCenterY, py + h * k / 2f, 2);
+            }
+            var temperArea = new Box(bar.X + 8f, bar.Y + 6f, bar.W - 16f, bar.H - 12f);
+            var kw = ElPageMath.Fit(600f, 60f, temperArea, out _, out _);
+            foreach (var h in new[] { 60f, 50f })
+            {
+                var py = ElPageMath.CenterY(temperArea, h, kw);
+                Assert.Equal(barCenterY, py + h * kw / 2f, 2);
+            }
+        }
     }
 }

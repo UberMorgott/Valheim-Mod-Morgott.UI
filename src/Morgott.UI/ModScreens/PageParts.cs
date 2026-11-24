@@ -101,7 +101,8 @@ namespace Morgott.UI.ModScreens
 
         // stretchRight: the group's right-edge parts (wide info / list panes) run on to the area's right edge (mockup 02 pane
         // filled to its frame; run 20261107-154027 left ~570 px empty on the right).
-        public static void Fit(RectTransform canvas, List<PagePart> parts, Box area, bool left = false, bool stretchRight = false)
+        // centerY: single-row groups (top-bar currencies) centre each part vertically in area instead of top-aligning.
+        public static void Fit(RectTransform canvas, List<PagePart> parts, Box area, bool left = false, bool stretchRight = false, bool centerY = false)
         {
             if (parts == null || parts.Count == 0 || area.IsEmpty) return;
             float x0 = float.MaxValue, y0 = float.MaxValue, x1 = float.MinValue, y1 = float.MinValue;
@@ -116,7 +117,7 @@ namespace Morgott.UI.ModScreens
             foreach (var p in parts)
             {
                 var px = ax + (p.Box0.X - x0) * k;
-                var py = ay + (p.Box0.Y - y0) * k;
+                var py = centerY ? ElPageMath.CenterY(area, p.Box0.H, k) : ay + (p.Box0.Y - y0) * k;
                 if (stretchRight && p.Rt.gameObject.activeSelf && p.Box0.Right >= x1 - 2f && p.Box0.W >= 0.2f * (x1 - x0) && area.Right > px + p.Box0.W * k)
                     p.Put(canvas, k, new Box(px, py, area.Right - px, p.Box0.H * k));
                 else p.Put(canvas, k, px, py);
