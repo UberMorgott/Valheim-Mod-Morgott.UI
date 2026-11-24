@@ -153,7 +153,7 @@ namespace Morgott.UI.GameScreens
             // 20261107-193053: Bog Witch's coin icon + count barely visible). Epic Loot's currencies are later siblings anyway.
             if (_barCap != null && _barCap.Frame && _coins != null && _barCap.Frame.transform.GetSiblingIndex() > _coins.Rt.GetSiblingIndex())
                 _barCap.First(_coins.Rt.GetSiblingIndex());
-            StoreColumn(col, u);
+            StoreColumn(col, u, hildir);
             if (_coins != null)
             {
                 Hide(_coins.Rt.gameObject, currencies);
@@ -489,7 +489,8 @@ namespace Morgott.UI.GameScreens
                     else Span(rt, 0f, 1f, 32f, 0f, 0f, 0f);
                     if (label.enableAutoSizing) label.enableAutoSizing = false;
                     label.fontSize = size;
-                    label.textWrappingMode = TextWrappingModes.NoWrap;
+                    // A long name takes a second line (Hildir mockup 2026-11-24: "Простая фиолетовая / шапка"), the price one.
+                    label.textWrappingMode = n == "name" ? TextWrappingModes.Normal : TextWrappingModes.NoWrap;
                     label.overflowMode = TextOverflowModes.Ellipsis;
                     label.alignment = TextAlignmentOptions.MidlineLeft; // the number right after its coin (mockup v2)
                 }
@@ -506,7 +507,7 @@ namespace Morgott.UI.GameScreens
             rt.offsetMax = new Vector2(-right, -top);
         }
 
-        private void StoreColumn(Box col, float u)
+        private void StoreColumn(Box col, float u, bool hildir)
         {
             var row = 56f * u;
             var gap = 12f * u;
@@ -534,7 +535,9 @@ namespace Morgott.UI.GameScreens
             StoreRows();
             var y = listBox.Bottom + gap;
             // Mockup v2: a 375 px Buy plate from x 80, the rest of the row (Sell socket) right of it.
-            var buy = new Box(col.X + 32f * u, y, Mathf.Min(375f * u, col.W * 0.66f), row);
+            // Hildir mockup 2026-11-24: a ~400 px plate centred in the column, room for the Sell socket kept on its right.
+            var bw = hildir ? Mathf.Min(400f * u, col.W - 2f * (row + gap)) : Mathf.Min(375f * u, col.W * 0.66f);
+            var buy = new Box(hildir ? col.X + (col.W - bw) / 2f : col.X + 32f * u, y, bw, row);
             if (_buy != null) _buy.Put(_canvas, row / _buy.Box0.H, buy);
             var rest = new Box(buy.Right + gap, y, Mathf.Max(1f, col.Right - buy.Right - gap), row);
             if (_sell != null)

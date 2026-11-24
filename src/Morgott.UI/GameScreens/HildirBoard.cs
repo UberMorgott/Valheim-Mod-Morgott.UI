@@ -25,7 +25,7 @@ namespace Morgott.UI.GameScreens
         public const string RootName = "MorgottHildirBoard";
         private const string HildirName = "$npc_hildir";
         private const float Refresh = 1f;
-        private const float Pad = 16f, HeadH = 52f, TabH = 48f, RowH = 92f, RowGap = 8f;
+        private const float Pad = 16f, HeadH = 52f, TabH = 48f, RowH = 92f, RowGap = 8f, ButtonH = 86f, ButtonText = 24f;
         private static readonly string[] TabTokens = { "$ui_hildir_tab_open", "$ui_hildir_tab_active", "$ui_hildir_tab_done" };
         private static readonly Func<string, bool> KeySet = k => ZoneSystem.instance && ZoneSystem.instance.GetGlobalKey(k);
 
@@ -58,7 +58,7 @@ namespace Morgott.UI.GameScreens
 
         private readonly RectTransform _parent;
         private RectTransform _root, _card;
-        private Image _plate, _dSocket, _dIcon, _rCoin, _rToken;
+        private Image _plate, _rule, _dSocket, _dIcon, _rCoin, _rToken;
         private TMP_Text _title, _empty, _dName, _dSub, _dDesc, _rGold, _rSep;
         private readonly Tab[] _tabs = new Tab[HildirBoardMath.TabCount];
         private readonly List<RowView> _rows = new List<RowView>(4);
@@ -152,12 +152,15 @@ namespace Morgott.UI.GameScreens
                 t.Edge = Edge(b.transform);
                 _tabs[i] = t;
             }
+            _rule = Img(_root, "TabRule", "ib.rule"); // mockup: a divider between the tabs and the list
+            _rule.preserveAspect = false;
             _empty = Txt(_root, "Empty", "text.muted", TextAlignmentOptions.Center, 22f);
             _empty.textWrappingMode = TextWrappingModes.Normal;
             _card = Img(_root, "Card", "well").rectTransform;
             _dSocket = Img(_card, "Socket", "socket.round");
             _dIcon = Icon(_dSocket.transform, "Icon");
             _dName = Txt(_card, "Name", "text.ember", TextAlignmentOptions.MidlineLeft, 42f);
+            _dName.fontStyle = FontStyles.Bold;
             _dSub = Txt(_card, "Subtitle", "text.muted", TextAlignmentOptions.MidlineLeft, 24f);
             _dDesc = Txt(_card, "Description", "text.body", TextAlignmentOptions.TopLeft, 20f);
             _dDesc.textWrappingMode = TextWrappingModes.Normal;
@@ -205,16 +208,18 @@ namespace Morgott.UI.GameScreens
             Rect(rv.Socket.rectTransform, 8f, 8f, 76f, 76f);
             rv.Icon = Icon(rv.Socket.transform, "Icon");
             Rect(rv.Icon.rectTransform, 10f, 10f, 56f, 56f);
-            rv.Name = Txt(back.transform, "Name", "text.ember", TextAlignmentOptions.MidlineLeft, 28f);
+            // Mockup row hierarchy (Codex review): bold target names, larger amounts / chips.
+            rv.Name = Txt(back.transform, "Name", "text.ember", TextAlignmentOptions.MidlineLeft, 30f);
+            rv.Name.fontStyle = FontStyles.Bold;
             rv.Biome = Txt(back.transform, "Biome", "text.muted", TextAlignmentOptions.MidlineLeft, 20f);
             rv.Coin = Icon(back.transform, "Coin");
-            rv.Coins = Txt(back.transform, "Coins", "text.body", TextAlignmentOptions.MidlineRight, 24f);
+            rv.Coins = Txt(back.transform, "Coins", "text.body", TextAlignmentOptions.MidlineRight, 26f);
             rv.Token = Icon(back.transform, "Token");
-            rv.Gold = Txt(back.transform, "Gold", "text.body", TextAlignmentOptions.MidlineRight, 24f);
+            rv.Gold = Txt(back.transform, "Gold", "text.body", TextAlignmentOptions.MidlineRight, 26f);
             rv.Lock = Img(back.transform, "Lock", "glyph.ench.lock");
             var chip = Img(back.transform, "Chip", "craft.row");
             rv.ChipPlate = chip.rectTransform;
-            rv.Chip = Txt(chip.transform, "Label", "text.body", TextAlignmentOptions.Center, 18f);
+            rv.Chip = Txt(chip.transform, "Label", "text.body", TextAlignmentOptions.Center, 20f);
             rv.Chip.fontStyle = FontStyles.UpperCase;
             rv.ChipEdge = Edge(chip.transform);
             _rows.Add(rv);
@@ -247,9 +252,12 @@ namespace Morgott.UI.GameScreens
                 On(t.Sel, i == _tab);
                 Edge(t.Edge, tw, TabH, i != _tab); // the selected tab keeps its glow instead
             }
-            // Body: row list left (mockup share 680 / 1290), detail card right.
-            var by = ty + TabH + 16f;
+            // Mockup: a rule ~20 px under the tabs, the body ~20 px under it.
             var bw = w - 2f * Pad;
+            Rect(_rule.rectTransform, new Box(Pad, ty + TabH + 18f, bw, EdgeW));
+            Tint(_rule, EdgeColor);
+            // Body: row list left (mockup share 680 / 1290), detail card right.
+            var by = ty + TabH + 38f;
             var lw = Mathf.Round(bw * 0.527f);
             var list = new Box(Pad, by, lw, Mathf.Max(0f, h - Pad - by));
             var card = new Box(list.Right + 12f, by, Mathf.Max(0f, w - Pad - list.Right - 12f), list.H);
@@ -315,9 +323,14 @@ namespace Morgott.UI.GameScreens
             var nw = Mathf.Max(0f, x - 8f - nx);
             Set(rv.Name, Name(r));
             Set(rv.Biome, L(HildirBoardMath.BiomeToken(r.Biome)));
-            Rect(rv.Name.rectTransform, new Box(nx, 10f, nw, 40f));
-            Rect(rv.Biome.rectTransform, new Box(nx, 50f, nw, 30f));
+            var nh = LineH(rv.Name, 40f);
+            Rect(rv.Name.rectTransform, new Box(nx, 6f, nw, nh));
+            Rect(rv.Biome.rectTransform, new Box(nx, 6f + nh, nw, Mathf.Max(24f, box.H - 12f - nh)));
         }
+
+        // One line's box at the text's own size: a box shorter than the line drops it under Ellipsis (the 42 px card name
+        // in a 50 px box vanished, Codex review 8/10).
+        private static float LineH(TMP_Text t, float min) => Mathf.Max(min, Mathf.Ceil(t.GetPreferredValues(t.text).y));
 
         // An icon + right-aligned amount ending at `right`, the column as wide as `widest` (icons line up across rows: "1200"
         // vs "270"); the new right edge (its left).
@@ -325,7 +338,8 @@ namespace Morgott.UI.GameScreens
         {
             Set(text, value);
             var tw = Mathf.Ceil(Mathf.Max(text.GetPreferredValues(widest).x, text.GetPreferredValues(value).x)) + 2f;
-            Rect(text.rectTransform, new Box(right - tw, (rowH - 36f) / 2f, tw, 36f));
+            var th = LineH(text, 36f);
+            Rect(text.rectTransform, new Box(right - tw, (rowH - th) / 2f, tw, th));
             var ix = right - tw - 4f - 30f;
             Rect(icon.rectTransform, new Box(ix, (rowH - 30f) / 2f, 30f, 30f));
             SetSprite(icon, sprite);
@@ -340,11 +354,6 @@ namespace Morgott.UI.GameScreens
             Rect(_dIcon.rectTransform, new Box(18f, 18f, 104f, 104f));
             Tint(_dSocket, BossRim);
             Tint(_dSub, Secondary);
-            var tx = 172f;
-            var tw = Mathf.Max(0f, w - tx - 16f);
-            Rect(_dName.rectTransform, new Box(tx, 16f, tw, 50f));
-            Rect(_dSub.rectTransform, new Box(tx, 66f, tw, 32f));
-            Rect(_dDesc.rectTransform, new Box(tx, 102f, tw, 100f));
             var locked = has && r.Chip == HildirChip.Locked;
             if (has)
             {
@@ -353,6 +362,15 @@ namespace Morgott.UI.GameScreens
                 var key = HildirBoardMath.TextKey(r.Prefab);
                 Set(_dSub, Text("$ui_hildir_sub_" + key, "$ui_hildir_sub_generic"));
                 Set(_dDesc, Text("$ui_hildir_desc_" + key, "$ui_hildir_desc_generic"));
+                // Mockup: large name, subtitle, description stacked right of the portrait.
+                var tx = 172f;
+                var tw = Mathf.Max(0f, w - tx - 16f);
+                var nh = LineH(_dName, 50f);
+                var sh = LineH(_dSub, 32f);
+                Rect(_dName.rectTransform, new Box(tx, 10f, tw, nh));
+                Rect(_dSub.rectTransform, new Box(tx, 10f + nh, tw, sh));
+                var dy = 14f + nh + sh;
+                Rect(_dDesc.rectTransform, new Box(tx, dy, tw, Mathf.Max(0f, 230f - dy)));
                 var biome = L(HildirBoardMath.BiomeToken(r.Biome));
                 Set(_info[0].Text, L("$ui_hildir_where") + ": " + (biome.Length > 0 ? biome + ", " : "") + L("$ui_hildir_where_pin"));
                 Set(_info[1].Text, L("$ui_hildir_cond") + ": " + L("$ui_hildir_cond_chest"));
@@ -378,13 +396,13 @@ namespace Morgott.UI.GameScreens
                 else Rect(ir.Text.rectTransform, new Box(58f, 0f, rw - 70f, 48f));
                 y += 56f;
             }
-            // Buttons along the card bottom (single-line labels).
+            // Buttons along the card bottom (mockup: 86 px plates, two-line labels where one line does not fit).
             var bw = (w - 24f - 2f * 10f) / 3f;
-            var by = h - 16f - 60f - 36f;
+            var by = h - 28f - ButtonH;
             HildirBoardMath.Buttons(r, out var accept, out var claim, out var abandon);
-            Place(_accept, new Box(12f, by, bw, 60f), accept && !_busy);
-            Place(_claim, new Box(12f + bw + 10f, by, bw, 60f), claim);
-            Place(_abandon, new Box(12f + 2f * (bw + 10f), by, bw, 60f), abandon);
+            Place(_accept, new Box(12f, by, bw, ButtonH), accept && !_busy, "$ui_hildir_accept");
+            Place(_claim, new Box(12f + bw + 10f, by, bw, ButtonH), claim, "$ui_hildir_claim");
+            Place(_abandon, new Box(12f + 2f * (bw + 10f), by, bw, ButtonH), abandon, "$ui_hildir_abandon");
         }
 
         // "Награда: <coins>  |  <token> <gold>" with the item icons (coin icon = the row glyph).
@@ -408,7 +426,7 @@ namespace Morgott.UI.GameScreens
             Rect(_rGold.rectTransform, new Box(x, 0f, Mathf.Max(0f, rw - x - 8f), 48f));
         }
 
-        private void Place(Button b, Box box, bool enabled)
+        private static void Place(Button b, Box box, bool enabled, string token)
         {
             Rect((RectTransform)b.transform, box);
             if (b.interactable != enabled) b.interactable = enabled;
@@ -417,8 +435,18 @@ namespace Morgott.UI.GameScreens
                 Rect(l, new Box(6f, 0f, box.W - 12f, box.H));
                 var c = ThemeTokens.GetColor(enabled ? "color.text.body" : "color.text.muted", enabled ? Color.white : Color.gray);
                 if (t.color != c) t.color = c;
-                // The plate label fit (Restyler) wraps long labels before shrinking; mockup buttons are one line.
-                if (l.TryGetComponent<PlateLabelFit>(out var fit)) fit.Lead(null, 0f, -1f, true);
+                // The plate label fit (Restyler) keeps the cap insets only (NoWrap, no auto-size): the line break and size are
+                // ours (HildirBoardMath.ButtonLabel), so a two-word label takes two lines at the full size as in the mockup.
+                var fit = l.GetComponent<PlateLabelFit>();
+                if (fit) fit.Lead(null, 0f, -1f, true);
+                var inset = fit ? LabelFit.Inset(fit.Inset, box.W, ThemeTokens.GetFloat("share.text.fit.inset", 0.12f)) : 6f;
+                if (t.enableAutoSizing) t.enableAutoSizing = false;
+                t.fontSize = ButtonText;
+                var s = L(token);
+                var shown = HildirBoardMath.ButtonLabel(s, (i, j) => t.GetPreferredValues(s.Substring(i, j - i), float.PositiveInfinity, float.PositiveInfinity).x,
+                    box.W - 2f * inset, ButtonText, out var size);
+                Set(t, shown);
+                if (!Mathf.Approximately(t.fontSize, size)) t.fontSize = size;
             }
         }
 
@@ -552,7 +580,7 @@ namespace Morgott.UI.GameScreens
             Restyle(image, role);
             if (label != null)
             {
-                var t = Txt(image.transform, "Label", "button.label", TextAlignmentOptions.Center, 22f);
+                var t = Txt(image.transform, "Label", "button.label", TextAlignmentOptions.Center, ButtonText);
                 t.fontStyle = FontStyles.UpperCase;
                 t.text = L(label);
             }

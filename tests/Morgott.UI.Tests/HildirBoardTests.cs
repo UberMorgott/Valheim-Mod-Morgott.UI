@@ -140,5 +140,17 @@ namespace Morgott.UI.Tests
             Assert.False(g.Take(1.9f));
             Assert.True(g.Take(1.95f));
         }
+
+        [Fact]
+        public void ButtonLabelKeepsOneLineSplitsTwoWordsShrinksOneWord()
+        {
+            static float W(int i, int j) => (j - i) * 10f; // 10 px per char at the full size
+            Assert.Equal("ВЗЯТЬ ЗАКАЗ", HildirBoardMath.ButtonLabel("ВЗЯТЬ ЗАКАЗ", W, 120f, 24f, out var s1));
+            Assert.Equal(24f, s1);
+            Assert.Equal("ПОЛУЧИТЬ\nНАГРАДУ", HildirBoardMath.ButtonLabel("ПОЛУЧИТЬ НАГРАДУ", W, 100f, 24f, out var s2));
+            Assert.Equal(24f, s2); // widest line 80 <= 100
+            Assert.Equal("ОТКАЗАТЬСЯ", HildirBoardMath.ButtonLabel("ОТКАЗАТЬСЯ", W, 80f, 24f, out var s3));
+            Assert.Equal(19.2f, s3, 3);
+        }
     }
 }

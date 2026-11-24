@@ -152,5 +152,19 @@ namespace Morgott.UI.GameScreens
 
         // A vanilla Localize result for a missing token ("[token]", Localization.Translate).
         public static bool Missing(string localized) => string.IsNullOrEmpty(localized) || localized[0] == '[';
+
+        // Card button label (mockup: "ВЗЯТЬ / ЗАКАЗ" on two lines in a tall plate): one line when it fits `area` at the
+        // full size, else split at the most balanced space; the size drops only as far as the widest line needs (a single
+        // word shrinks). width(i, j) = width of text[i, j) at the full size.
+        public static string ButtonLabel(string text, Func<int, int, float> width, float area, float full, out float size)
+        {
+            size = full;
+            if (string.IsNullOrEmpty(text) || width == null) return text ?? "";
+            var w = width(0, text.Length);
+            if (w <= area) return text;
+            var cut = Restyle.LabelFit.BestSplit(text, width, out var widest);
+            size = Math.Min(full, Restyle.LabelFit.OneLineSize(area, cut < 0 ? w : widest, full));
+            return cut < 0 ? text : text.Substring(0, cut) + "\n" + text.Substring(cut + 1);
+        }
     }
 }
