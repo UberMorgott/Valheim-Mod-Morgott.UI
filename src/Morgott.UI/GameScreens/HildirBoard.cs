@@ -432,21 +432,19 @@ namespace Morgott.UI.GameScreens
             if (b.interactable != enabled) b.interactable = enabled;
             if (b.transform.Find("Label") is RectTransform l && l.TryGetComponent<TMP_Text>(out var t))
             {
-                Rect(l, new Box(6f, 0f, box.W - 12f, box.H));
+                // The plate caps' inset as the plate label fit computes it (button.label fitInset, share of the width).
+                var inset = LabelFit.Inset(ThemeTokens.Role("button.label")?.FitInset ?? 40f, box.W, ThemeTokens.GetFloat("share.text.fit.inset", 0.12f));
+                Rect(l, new Box(inset, 0f, Mathf.Max(0f, box.W - 2f * inset), box.H));
                 var c = ThemeTokens.GetColor(enabled ? "color.text.body" : "color.text.muted", enabled ? Color.white : Color.gray);
                 if (t.color != c) t.color = c;
-                // The plate label fit (Restyler) keeps the cap insets only (NoWrap, no auto-size): the line break and size are
-                // ours (HildirBoardMath.ButtonLabel), so a two-word label takes two lines at the full size as in the mockup.
-                var fit = l.GetComponent<PlateLabelFit>();
-                if (fit) fit.Lead(null, 0f, -1f, true);
-                var inset = fit ? LabelFit.Inset(fit.Inset, box.W, ThemeTokens.GetFloat("share.text.fit.inset", 0.12f)) : 6f;
-                if (t.enableAutoSizing) t.enableAutoSizing = false;
-                t.fontSize = ButtonText;
+                // Mockup: a two-word label on two lines at the full size (HildirBoardMath.ButtonLabel). Measured at the current
+                // size and scaled (widths are linear in the size): no size flip, no mesh rebuild while nothing changed.
                 var s = L(token);
-                var shown = HildirBoardMath.ButtonLabel(s, (i, j) => t.GetPreferredValues(s.Substring(i, j - i), float.PositiveInfinity, float.PositiveInfinity).x,
-                    box.W - 2f * inset, ButtonText, out var size);
+                var k = ButtonText / Mathf.Max(1f, t.fontSize);
+                var shown = HildirBoardMath.ButtonLabel(s, (i, j) => k * t.GetPreferredValues(s.Substring(i, j - i), float.PositiveInfinity, float.PositiveInfinity).x,
+                    Mathf.Max(0f, box.W - 2f * inset), ButtonText, out var size);
                 Set(t, shown);
-                if (!Mathf.Approximately(t.fontSize, size)) t.fontSize = size;
+                if (Mathf.Abs(t.fontSize - size) > 0.05f) t.fontSize = size;
             }
         }
 
@@ -580,7 +578,9 @@ namespace Morgott.UI.GameScreens
             Restyle(image, role);
             if (label != null)
             {
-                var t = Txt(image.transform, "Label", "button.label", TextAlignmentOptions.Center, ButtonText);
+                // text.body = button.label's face + colour without its plate fit (PlateLabelFit / TextSizeGroup would turn
+                // auto-size back on): Place owns the cap inset, line break and size.
+                var t = Txt(image.transform, "Label", "text.body", TextAlignmentOptions.Center, ButtonText);
                 t.fontStyle = FontStyles.UpperCase;
                 t.text = L(label);
             }

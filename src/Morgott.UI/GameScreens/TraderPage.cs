@@ -536,7 +536,8 @@ namespace Morgott.UI.GameScreens
             var y = listBox.Bottom + gap;
             // Mockup v2: a 375 px Buy plate from x 80, the rest of the row (Sell socket) right of it.
             // Hildir mockup 2026-11-24: a ~400 px plate centred in the column, room for the Sell socket kept on its right.
-            var bw = hildir ? Mathf.Min(400f * u, col.W - 2f * (row + gap)) : Mathf.Min(375f * u, col.W * 0.66f);
+            var sellW = _sell != null ? _sell.Box0.W * row / _sell.Box0.H : 0f; // the socket at the row height
+            var bw = hildir ? Mathf.Min(400f * u, col.W - 2f * (sellW + gap)) : Mathf.Min(375f * u, col.W * 0.66f);
             var buy = new Box(hildir ? col.X + (col.W - bw) / 2f : col.X + 32f * u, y, bw, row);
             if (_buy != null) _buy.Put(_canvas, row / _buy.Box0.H, buy);
             var rest = new Box(buy.Right + gap, y, Mathf.Max(1f, col.Right - buy.Right - gap), row);
