@@ -60,11 +60,12 @@ namespace Morgott.UI.ModScreens
         // Trader body (mockup 2026-11-16 trader-ui-mockup-v2, 1920x1080): store column x 48..620 of the 48..1872 body,
         // the mod board from 636 (16 gap); without a board the store column is centred. Board: Тайник across the top
         // (y 210..610 of 210..1040), Лотерея | Карты сокровищ | Задания in three equal cells below.
-        public const float StoreShare = 572f / 1824f, BoardGap = 16f / 1824f, StashShare = 400f / 830f;
+        // Hildir's contract board (mockup 2026-11-24): store 48..560, board from 576.
+        public const float StoreShare = 572f / 1824f, HildirStoreShare = 512f / 1824f, BoardGap = 16f / 1824f, StashShare = 400f / 830f;
 
-        public static void Trader(Box body, bool board, out Box store, out Box right)
+        public static void Trader(Box body, bool board, out Box store, out Box right, float share = StoreShare)
         {
-            var w = body.W * StoreShare;
+            var w = body.W * share;
             if (!board)
             {
                 store = new Box(body.X + (body.W - w) / 2f, body.Y, w, body.H);

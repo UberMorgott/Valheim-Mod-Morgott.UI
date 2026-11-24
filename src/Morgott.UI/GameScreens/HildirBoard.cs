@@ -33,6 +33,7 @@ namespace Morgott.UI.GameScreens
         {
             public Button Button;
             public Image Sel;
+            public Image[] Edge;
             public TMP_Text Label;
         }
 
@@ -40,7 +41,8 @@ namespace Morgott.UI.GameScreens
         {
             public RectTransform Rt;
             public CanvasGroup Group;
-            public Image Sel, Icon, Coin, Token, Lock;
+            public Image Sel, Socket, Icon, Coin, Token, Lock;
+            public Image[] ChipEdge;
             public TMP_Text Name, Biome, Coins, Gold, Chip;
             public RectTransform ChipPlate;
             public HildirRow Data;
@@ -50,12 +52,13 @@ namespace Morgott.UI.GameScreens
         {
             public RectTransform Rt;
             public Image Glyph;
+            public Image[] Edge;
             public TMP_Text Text;
         }
 
         private readonly RectTransform _parent;
         private RectTransform _root, _card;
-        private Image _plate, _dIcon, _rCoin, _rToken;
+        private Image _plate, _dSocket, _dIcon, _rCoin, _rToken;
         private TMP_Text _title, _empty, _dName, _dSub, _dDesc, _rGold, _rSep;
         private readonly Tab[] _tabs = new Tab[HildirBoardMath.TabCount];
         private readonly List<RowView> _rows = new List<RowView>(4);
@@ -146,14 +149,15 @@ namespace Morgott.UI.GameScreens
                 var t = new Tab { Button = b, Sel = Img(b.transform, "Sel", "craft.row.selected") };
                 t.Label = Txt(b.transform, "Label", "text.body", TextAlignmentOptions.Center, 24f);
                 t.Label.fontStyle = FontStyles.UpperCase;
+                t.Edge = Edge(b.transform);
                 _tabs[i] = t;
             }
             _empty = Txt(_root, "Empty", "text.muted", TextAlignmentOptions.Center, 22f);
             _empty.textWrappingMode = TextWrappingModes.Normal;
             _card = Img(_root, "Card", "well").rectTransform;
-            var socket = Img(_card, "Socket", "socket.round");
-            _dIcon = Icon(socket.transform, "Icon");
-            _dName = Txt(_card, "Name", "text.ember", TextAlignmentOptions.MidlineLeft, 38f);
+            _dSocket = Img(_card, "Socket", "socket.round");
+            _dIcon = Icon(_dSocket.transform, "Icon");
+            _dName = Txt(_card, "Name", "text.ember", TextAlignmentOptions.MidlineLeft, 42f);
             _dSub = Txt(_card, "Subtitle", "text.muted", TextAlignmentOptions.MidlineLeft, 24f);
             _dDesc = Txt(_card, "Description", "text.body", TextAlignmentOptions.TopLeft, 20f);
             _dDesc.textWrappingMode = TextWrappingModes.Normal;
@@ -167,6 +171,7 @@ namespace Morgott.UI.GameScreens
                 r.Text.enableAutoSizing = true;
                 r.Text.fontSizeMin = 14f;
                 r.Text.fontSizeMax = 20f;
+                r.Edge = Edge(plate.transform);
                 _info[i] = r;
             }
             var reward = _info[2].Rt;
@@ -196,21 +201,22 @@ namespace Morgott.UI.GameScreens
             });
             Restyle(back, "craft.row");
             rv.Sel = Img(back.transform, "Sel", "craft.row.selected");
-            var socket = Img(back.transform, "Socket", "socket.round");
-            Rect(socket.rectTransform, 8f, 8f, 76f, 76f);
-            rv.Icon = Icon(socket.transform, "Icon");
+            rv.Socket = Img(back.transform, "Socket", "socket.round");
+            Rect(rv.Socket.rectTransform, 8f, 8f, 76f, 76f);
+            rv.Icon = Icon(rv.Socket.transform, "Icon");
             Rect(rv.Icon.rectTransform, 10f, 10f, 56f, 56f);
-            rv.Name = Txt(back.transform, "Name", "text.ember", TextAlignmentOptions.MidlineLeft, 26f);
+            rv.Name = Txt(back.transform, "Name", "text.ember", TextAlignmentOptions.MidlineLeft, 28f);
             rv.Biome = Txt(back.transform, "Biome", "text.muted", TextAlignmentOptions.MidlineLeft, 20f);
             rv.Coin = Icon(back.transform, "Coin");
-            rv.Coins = Txt(back.transform, "Coins", "text.body", TextAlignmentOptions.MidlineLeft, 24f);
+            rv.Coins = Txt(back.transform, "Coins", "text.body", TextAlignmentOptions.MidlineRight, 24f);
             rv.Token = Icon(back.transform, "Token");
-            rv.Gold = Txt(back.transform, "Gold", "text.body", TextAlignmentOptions.MidlineLeft, 24f);
+            rv.Gold = Txt(back.transform, "Gold", "text.body", TextAlignmentOptions.MidlineRight, 24f);
             rv.Lock = Img(back.transform, "Lock", "glyph.ench.lock");
             var chip = Img(back.transform, "Chip", "craft.row");
             rv.ChipPlate = chip.rectTransform;
             rv.Chip = Txt(chip.transform, "Label", "text.body", TextAlignmentOptions.Center, 18f);
             rv.Chip.fontStyle = FontStyles.UpperCase;
+            rv.ChipEdge = Edge(chip.transform);
             _rows.Add(rv);
             return rv;
         }
@@ -239,6 +245,7 @@ namespace Morgott.UI.GameScreens
                 if (i == 1 && _data[1].Count > 0) label += "  " + _data[1].Count;
                 Set(t.Label, label);
                 On(t.Sel, i == _tab);
+                Edge(t.Edge, tw, TabH, i != _tab); // the selected tab keeps its glow instead
             }
             // Body: row list left (mockup share 680 / 1290), detail card right.
             var by = ty + TabH + 16f;
@@ -280,11 +287,14 @@ namespace Morgott.UI.GameScreens
             var alpha = locked ? 0.55f : 1f;
             if (!Mathf.Approximately(rv.Group.alpha, alpha)) rv.Group.alpha = alpha;
             Portrait(rv.Icon, r.Prefab);
+            Tint(rv.Socket, BossRim);
+            Tint(rv.Biome, Secondary);
             // Right to left: chip, (lock), token amount, coin amount.
             var chipW = 130f;
             var x = box.W - 10f - chipW;
             Rect(rv.ChipPlate, new Box(x, (box.H - 36f) / 2f, chipW, 36f));
             Rect(rv.Chip.rectTransform, new Box(4f, 0f, chipW - 8f, 36f));
+            Edge(rv.ChipEdge, chipW, 36f, true);
             Set(rv.Chip, L(HildirBoardMath.ChipToken(r.Chip)));
             var accent = r.Chip == HildirChip.Taken || r.Chip == HildirChip.Done;
             var chipColor = accent ? ThemeTokens.GetColor("color.text.accent", Color.cyan) : ThemeTokens.GetColor("color.text.body", Color.white);
@@ -298,8 +308,8 @@ namespace Morgott.UI.GameScreens
             foreach (var g in new Component[] { rv.Coin, rv.Coins, rv.Token, rv.Gold }) On(g, !locked);
             if (!locked)
             {
-                x = Amount(rv.Token, rv.Gold, Token(), r.Gold.ToString(), x - 14f, box.H);
-                x = Amount(rv.Coin, rv.Coins, Coin(), r.Coins.ToString(), x - 14f, box.H);
+                x = Amount(rv.Token, rv.Gold, Token(), r.Gold.ToString(), "00", x - 14f, box.H);
+                x = Amount(rv.Coin, rv.Coins, Coin(), r.Coins.ToString(), "0000", x - 14f, box.H);
             }
             var nx = 96f;
             var nw = Mathf.Max(0f, x - 8f - nx);
@@ -309,11 +319,12 @@ namespace Morgott.UI.GameScreens
             Rect(rv.Biome.rectTransform, new Box(nx, 50f, nw, 30f));
         }
 
-        // An icon + amount ending at `right`; the new right edge (its left).
-        private static float Amount(Image icon, TMP_Text text, Sprite sprite, string value, float right, float rowH)
+        // An icon + right-aligned amount ending at `right`, the column as wide as `widest` (icons line up across rows: "1200"
+        // vs "270"); the new right edge (its left).
+        private static float Amount(Image icon, TMP_Text text, Sprite sprite, string value, string widest, float right, float rowH)
         {
             Set(text, value);
-            var tw = Mathf.Ceil(text.GetPreferredValues(value).x) + 2f;
+            var tw = Mathf.Ceil(Mathf.Max(text.GetPreferredValues(widest).x, text.GetPreferredValues(value).x)) + 2f;
             Rect(text.rectTransform, new Box(right - tw, (rowH - 36f) / 2f, tw, 36f));
             var ix = right - tw - 4f - 30f;
             Rect(icon.rectTransform, new Box(ix, (rowH - 30f) / 2f, 30f, 30f));
@@ -325,11 +336,10 @@ namespace Morgott.UI.GameScreens
         {
             var has = r != null;
             foreach (Transform c in _card) On(c, has || c == _accept.transform || c == _claim.transform || c == _abandon.transform);
-            if (_card.Find("Socket") is RectTransform socket)
-            {
-                Rect(socket, new Box(16f, 16f, 140f, 140f));
-                Rect(_dIcon.rectTransform, new Box(18f, 18f, 104f, 104f));
-            }
+            Rect(_dSocket.rectTransform, new Box(16f, 16f, 140f, 140f));
+            Rect(_dIcon.rectTransform, new Box(18f, 18f, 104f, 104f));
+            Tint(_dSocket, BossRim);
+            Tint(_dSub, Secondary);
             var tx = 172f;
             var tw = Mathf.Max(0f, w - tx - 16f);
             Rect(_dName.rectTransform, new Box(tx, 16f, tw, 50f));
@@ -352,7 +362,8 @@ namespace Morgott.UI.GameScreens
                 Set(_info[3].Text, HildirBoardMath.LabelLine(L("$ui_hildir_trophy"), trophy.Name ?? Name(r)));
             }
             // Info rows (the reward row hidden for a locked boss).
-            var y = 214f;
+            // Mockup rhythm: the info block lower, the buttons raised toward it (run 20261124-113939: ~150 px gap vs ~54).
+            var y = 242f;
             for (var i = 0; i < _info.Length; i++)
             {
                 var ir = _info[i];
@@ -361,6 +372,7 @@ namespace Morgott.UI.GameScreens
                 if (!on) continue;
                 var rw = w - 24f;
                 Rect(ir.Rt, new Box(12f, y, rw, 48f));
+                Edge(ir.Edge, rw, 48f, true);
                 Rect(ir.Glyph.rectTransform, new Box(14f, 9f, 30f, 30f));
                 if (i == 2) Reward(r, rw);
                 else Rect(ir.Text.rectTransform, new Box(58f, 0f, rw - 70f, 48f));
@@ -368,7 +380,7 @@ namespace Morgott.UI.GameScreens
             }
             // Buttons along the card bottom (single-line labels).
             var bw = (w - 24f - 2f * 10f) / 3f;
-            var by = h - 16f - 60f;
+            var by = h - 16f - 60f - 36f;
             HildirBoardMath.Buttons(r, out var accept, out var claim, out var abandon);
             Place(_accept, new Box(12f, by, bw, 60f), accept && !_busy);
             Place(_claim, new Box(12f + bw + 10f, by, bw, 60f), claim);
@@ -550,6 +562,44 @@ namespace Morgott.UI.GameScreens
         private static void Restyle(Image image, string role)
         {
             if (image.GetComponent<SkinMark>() is SkinMark m) m.Outcome = Restyler.Apply(image, m, ThemeTokens.Role(role)) ? Outcome.Styled : Outcome.Degraded;
+        }
+
+        // Colour tokens on top of the roles (mockup 2026-11-24, Codex review 7.5/10): amber rim on the boss portrait rings,
+        // brighter secondary text than text.muted, teal-grey plate edges.
+        private const string BossRim = "color.text.active", Secondary = "color.stats.sub", EdgeColor = "color.ib.rule";
+        private const float EdgeW = 2f;
+
+        private static void Tint(Graphic g, string token)
+        {
+            var c = ThemeTokens.GetColor(token, g.color);
+            if (g.color != c) g.color = c;
+        }
+
+        // A thin outline around a plate (four ib.rule strips): unselected tabs, state chips and info rows stay readable on
+        // the dark well.
+        private static Image[] Edge(Transform plate)
+        {
+            var e = new Image[4];
+            for (var i = 0; i < e.Length; i++)
+            {
+                e[i] = Img(plate, "Edge" + i, "ib.rule");
+                e[i].preserveAspect = false;
+            }
+            return e;
+        }
+
+        private static void Edge(Image[] e, float w, float h, bool on)
+        {
+            foreach (var i in e)
+            {
+                On(i, on);
+                if (on) Tint(i, EdgeColor);
+            }
+            if (!on) return;
+            Rect(e[0].rectTransform, 0f, 0f, w, EdgeW);
+            Rect(e[1].rectTransform, 0f, h - EdgeW, w, EdgeW);
+            Rect(e[2].rectTransform, 0f, 0f, EdgeW, h);
+            Rect(e[3].rectTransform, w - EdgeW, 0f, EdgeW, h);
         }
 
         private static void Rect(RectTransform rt, Box b) => InfoArt.Rect(rt, b.X, b.Y, b.W, b.H, 0f);

@@ -82,6 +82,9 @@ namespace Morgott.UI.Tests
             ElPageMath.Trader(body, true, out var store, out var right);
             Assert.Equal(620f, store.Right, 1);
             Assert.Equal(636f, right.X, 1);
+            ElPageMath.Trader(body, true, out var hStore, out var hRight, ElPageMath.HildirStoreShare);
+            Assert.Equal(560f, hStore.Right, 1);
+            Assert.Equal(576f, hRight.X, 1);
             var stash = ElPageMath.BoardCell(right, 0, 16f);
             Assert.Equal(610f, stash.Bottom, 1);
             Assert.Equal(1872f, stash.Right, 1);

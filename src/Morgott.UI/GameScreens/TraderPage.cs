@@ -142,7 +142,7 @@ namespace Morgott.UI.GameScreens
             // Mockup v2 body: x 48..1872, y 210 (under the title plaque) .. 1022.
             var full = InfoPage.Full(_canvas);
             body = new Box(48f * u, 210f * u, Mathf.Max(0f, full.W - 96f * u), Mathf.Max(0f, full.H - 268f * u));
-            ElPageMath.Trader(body, mod || hildir, out var col, out var right);
+            ElPageMath.Trader(body, mod || hildir, out var col, out var right, hildir ? ElPageMath.HildirStoreShare : ElPageMath.StoreShare);
             // Right after the page backing ("border (1)") and the header face that follows it, under the store widgets.
             if (_storeWell != null && _storeWell.Fill && (Child(RuneWindowHeader.FaceName) ?? Child("border (1)")) is RectTransform pb)
                 _storeWell.First(_storeWell.Fill.transform.GetSiblingIndex() > pb.GetSiblingIndex() ? pb.GetSiblingIndex() + 1 : pb.GetSiblingIndex());
