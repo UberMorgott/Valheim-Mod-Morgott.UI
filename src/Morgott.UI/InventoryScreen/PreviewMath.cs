@@ -72,8 +72,14 @@ namespace Morgott.UI.InventoryScreen
         }
 
 
-        // Shortest height span FitHeight frames (no renderer bounds yet / a degenerate box).
-        public const float MinSpan = 0.5f;
+        // Shortest height span FitHeight frames (no renderer bounds yet / a degenerate box), and the largest plausible
+        // character + held-weapon span before CheckShown flags a world-origin bone blowup (~12 km when a bone is null).
+        public const float MinSpan = 0.5f, MaxFramedSpan = 10f;
+
+        // A pending settle re-measure (waiting SettleFrames of active cloth simulation) restarts when a parked rig wakes, so
+        // it never fires on the 0-simulation Unpark frame after GhostOpen or a brief open.
+        public static int UnparkSettleAt(int settleAt, int frame, int settleFrames) =>
+            settleAt > 0 ? frame + settleFrames : 0;
 
         // Frame-rate independent ease of a framed value towards its measured target (equip changes, idle sway): changes
         // under `deadband` metres are ignored (no breathing jitter), NaN current = first measure (snap).

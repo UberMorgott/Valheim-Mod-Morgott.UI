@@ -150,5 +150,14 @@ namespace Morgott.UI.Tests
             Assert.Equal(-1, PreviewMath.PickLayer(null));
             Assert.Equal(31, PreviewMath.PickLayer(i => i == 31 ? "" : "x"));
         }
+
+        [Fact]
+        public void UnparkRestartsPendingSettleWindowAndSpanCatchesOriginBlowup()
+        {
+            Assert.Equal(0, PreviewMath.UnparkSettleAt(0, 1500, 30));
+            Assert.Equal(1530, PreviewMath.UnparkSettleAt(647, 1500, 30)); // GhostOpen armed 647 and parked at 620
+            var (d, _) = PreviewMath.FitHeight(-12000f, 1.8f, 0.66f, 30f, 0.05f, 0.025f, 0.8f);
+            Assert.True(d > 20000f && 1.8f - (-12000f) > PreviewMath.MaxFramedSpan);
+        }
     }
 }

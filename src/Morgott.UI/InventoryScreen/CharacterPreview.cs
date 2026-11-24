@@ -95,7 +95,7 @@ namespace Morgott.UI.InventoryScreen
         private readonly List<Renderer> _renderers = new List<Renderer>();
         private readonly List<Vector3> _verts = new List<Vector3>();
         // Posed height span (MeasureHeight), the equipment revision it was measured for and the bake scratch mesh.
-        private int _measuredFor = int.MinValue, _settleAt;
+        private int _measuredFor = int.MinValue, _warnedSpanFor = int.MinValue, _settleAt;
         private const int SettleFrames = 30;
         private bool _clothSettled;
         private float _posedLo, _posedHi, _posedNearLo, _posedNearHi;
@@ -215,13 +215,15 @@ namespace Morgott.UI.InventoryScreen
             }
             _checkAt = -1f;
             var concealed = Morgott.UI.Restyle.RenderGate.IsConcealed(transform);
-            // Shown = the LateUpdate path reached its end (image on, camera on, texture created).
+            var span = FramedBodyHeight;
+            // Shown = the LateUpdate path reached its end and framed a human-scale figure (a null bone skins to world (0,0,0),
+            // giving a ~12 km span at Origin y=12000 and backing the camera out to ~24 km = 0 px with camera + RT still live).
             if (gameObject.activeInHierarchy && _image && _image.enabled && _camera && _camera.enabled && _rt && _rt.IsCreated()
-                && !concealed && !_hidden && !_failed) return;
+                && !concealed && !_hidden && !_failed && span <= PreviewMath.MaxFramedSpan) return;
             var history = Events.ToArray();
             Plugin.Log.LogWarning("[Morgott.UI] character preview not shown 0.5 s after open: "
                 + $"active={gameObject.activeSelf}/{gameObject.activeInHierarchy} image={(_image && _image.enabled)} "
-                + $"placed={_placed} hidden={_hidden} failed={_failed} concealed={concealed} "
+                + $"placed={_placed} hidden={_hidden} failed={_failed} concealed={concealed} span={span:0.00}m "
                 + $"gates='{Morgott.UI.Restyle.RenderGate.ConcealedBy(transform)}' suspended={Morgott.UI.Restyle.RenderGate.Suspended} "
                 + $"camera={(_camera && _camera.enabled)} rig={(_rig && _rig.activeSelf)} clone={(bool)_clone} "
                 + $"rt={(_rt ? $"{_rt.width}x{_rt.height} created={_rt.IsCreated()}" : "none")} "
@@ -271,6 +273,7 @@ namespace Morgott.UI.InventoryScreen
         {
             if (!_rig || _rig.activeSelf) return;
             _rig.SetActive(true);
+            _settleAt = PreviewMath.UnparkSettleAt(_settleAt, Time.frameCount, SettleFrames);
             _worldLights.Clear();
             foreach (var l in FindObjectsByType<Light>(FindObjectsSortMode.None))
                 if (l && l.type == LightType.Directional && !l.transform.IsChildOf(_rig.transform)) _worldLights.Add(l);
@@ -512,6 +515,7 @@ namespace Morgott.UI.InventoryScreen
             _applied = -1;
             _yMin = _yMax = _nearLo = _nearHi = float.NaN; // next build snaps its framing
             _measuredFor = int.MinValue;
+            _warnedSpanFor = int.MinValue;
             _settleAt = 0;
             if (_bake)
             {
@@ -720,6 +724,11 @@ namespace Morgott.UI.InventoryScreen
             _posedHi = hi;
             _posedNearLo = nearLo;
             _posedNearHi = nearHi;
+            if (hi - lo > PreviewMath.MaxFramedSpan && _warnedSpanFor != _applied)
+            {
+                _warnedSpanFor = _applied;
+                Plugin.Log.LogWarning($"[Morgott.UI] character preview framing outlier: {lo:0.00}..{hi:0.00} m (settle={settle}, low '{(low ? low.name : "-")}', high '{(high ? high.name : "-")}')");
+            }
         }
 
         // The drawn mesh points of one renderer (rig-relative) into _points.
