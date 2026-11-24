@@ -1,0 +1,18 @@
+Two reference images are in the current folder:
+- ref-haldor.png = the STRICT style reference (approved mockup): 1920x1080 full-screen page chrome, opaque dark teal-black background #01161B, thin teal rails along the screen edge, copper corner caps with cyan runes, top bar with key caps, knotwork name banner, "Esc" key cap top right, thin rule under the bar, centred knotwork title plaque, sections in thin-bordered dark wells with ORANGE headings, rows as dark plates with thin teal borders, selected row glowing cyan, bold sans-serif Cyrillic text, cyan-bordered dark buttons with white caps text.
+- ref-hildir-current.png = the current in-game Hildir trader page (layout source for the top bar and the left goods list; its right panel is an empty dead "temper" panel that must be REPLACED).
+Generate a NEW 1920x1080 UI mockup rendered exactly in the ref-haldor.png style: the full-screen TRADER page of Hildir in Valheim, Russian text, fully opaque (no game world).
+Top bar (same content as ref-hildir-current.png): centred knotwork name banner "KPECTIKUS"; at the right a currency strip of 4 small caps each showing "0" (gold coins, green forest token, grey iron bounty token, gold bounty token), a small sun/moon icon, then the "Esc" key cap.
+Title plaque under the bar: "ХИЛЬДИР".
+LEFT ZONE (~32% width), unchanged vanilla goods: section "ТОВАРЫ" with 8 rows (square icon socket, name, price right with a gold coin): "Простое платье 250" (selected, cyan glow), "Простая туника 250", "Простая красная шапка 150", "Простая фиолетовая шапка 150", "Повязка на голову 175", "Волшебный огонёк 150", "Железная чаша 75", "Набор цирюльника 600"; under it a primary "КУПИТЬ" button.
+RIGHT ZONE (~68% width), one large well with orange heading "ЗАКАЗЫ ХИЛЬДИР" (unique-boss bounty board), and under the heading a row of 3 tab key caps: "ДОСТУПНЫЕ" (active, cyan glow), "АКТИВНЫЕ 1", "ВЫПОЛНЕННЫЕ".
+Right zone is split in two columns:
+ - Contract list (left ~55%): 6 rows, each = round boss portrait icon in a socket with an orange (unique) frame, boss name in orange, biome in grey under it, reward on the right (gold coins + one bounty token with count), and a small state tag:
+   1 "Бренна" | Чёрный лес | 300 coins + 2 iron tokens | tag "ДОСТУПЕН" (this row selected, cyan glow)
+   2 "Гейрафа" | Горы | 500 coins + 3 iron tokens | "ДОСТУПЕН"
+   3 "Зил и Тангр" | Равнины | 800 coins + 1 gold token | "ДОСТУПЕН"
+   4 "Ночной тролль" | Чёрный лес | 200 coins + 1 iron token | "ВЗЯТ" (cyan tag)
+   5 "Ночной фенринг" | Горы | 400 coins + 2 iron tokens | locked, greyed, small padlock, tag "ЗАКРЫТ"
+   6 "Ночной фулинг-громила" | Равнины | 600 coins + 1 gold token | locked, greyed, padlock, "ЗАКРЫТ"
+ - Detail pane (right ~45%), a dark well for the selected contract: big orange boss name "Бренна" with a larger skeleton-with-fire portrait in a unique orange frame; sub-heading "Пылающий скелет" in grey; short description text (3 lines, white): "Ограбила мой караван и укрылась в пылающей гробнице. Принеси её голову — заплачу щедро."; info rows with small icons: "Где: Чёрный лес, пылающая гробница", "Условие: убит босс биома (Древний)" with a green check mark, "Награда: 300" with coin + "2" with iron token + "Трофей: Бренна"; at the bottom of the detail pane three buttons in one row: "ВЗЯТЬ ЗАКАЗ" (primary, cyan glow), "ПОЛУЧИТЬ НАГРАДУ" (disabled, greyed), "ОТКАЗАТЬСЯ" (secondary, with small X icon).
+Same frame, knotwork, copper corners, typography, colours and button style as ref-haldor.png. Flat clean UI art, crisp readable Cyrillic text, no characters outside icons, no 3D scene.

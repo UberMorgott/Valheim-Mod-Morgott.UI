@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Morgott.Core;
 using Morgott.UI.InfoScreens;
 using Morgott.UI.InventoryScreen;
 using Morgott.UI.ModScreens;
@@ -20,7 +21,8 @@ namespace Morgott.UI.GameScreens
     // - right: Haldor's Epic Loot MerchantPanel sections in wells (frame_inset) with knot plate headers (mockup
     //   2026-11-16 trader-ui-mockup-v2): SecretStash across the top (2-column rows), Gamble | TreasureMap | Bounties
     //   below; widgets at the page unit, rows / texts sized in px; its Currencies + Sundial in the top bar; Hildir's
-    //   TemperPanel fitted whole;
+    //   TemperPanel fitted whole; Hildir without one + Core IHildirContracts: her contract board (HildirBoard, mockup
+    //   2026-11-24 hildir-bounty-board) in the right zone;
     // - the coin purse (vanilla "coins") in the top bar, hidden where the mod panel shows its own currencies.
     public sealed class TraderPage : MonoBehaviour
     {
@@ -40,6 +42,7 @@ namespace Morgott.UI.GameScreens
         private readonly Image[] _plates = new Image[5]; // section header knot plates (mockup v2), the last = the store's
         private TMP_Text _goods;
         private string _goodsText;
+        private HildirBoard _hildir; // Hildir's contract board in the right zone (her TemperPanel is gone, Morgott.EpicLoot 0.5.19)
 
         public static void Ensure(StoreGui s)
         {
@@ -57,6 +60,7 @@ namespace Morgott.UI.GameScreens
             foreach (var go in _gated)
                 if (go) RenderGate.Set(go, Gate, false);
             _gated.Clear();
+            _hildir?.Hide();
         }
 
         private void Measure()
@@ -124,6 +128,8 @@ namespace Morgott.UI.GameScreens
             if (_header) _header.DrawAfter = Child("border (1)");
             var mod = ModPanel();
             var board = mod && mod.name == "MerchantPanel";
+            IHildirContracts contracts = null;
+            var hildir = !mod && HildirBoard.For(_gui, out contracts);
             var currencies = mod ? mod.Find("Currencies") as RectTransform : null;
             var u = InfoPage.Full(_canvas).H / 1080f;
             // Top bar between the name banner and the Esc cap: coin purse / mod currencies + sundial (mockup 04).
@@ -136,7 +142,7 @@ namespace Morgott.UI.GameScreens
             // Mockup v2 body: x 48..1872, y 210 (under the title plaque) .. 1022.
             var full = InfoPage.Full(_canvas);
             body = new Box(48f * u, 210f * u, Mathf.Max(0f, full.W - 96f * u), Mathf.Max(0f, full.H - 268f * u));
-            ElPageMath.Trader(body, mod, out var col, out var right);
+            ElPageMath.Trader(body, mod || hildir, out var col, out var right);
             // Right after the page backing ("border (1)") and the header face that follows it, under the store widgets.
             if (_storeWell != null && _storeWell.Fill && (Child(RuneWindowHeader.FaceName) ?? Child("border (1)")) is RectTransform pb)
                 _storeWell.First(_storeWell.Fill.transform.GetSiblingIndex() > pb.GetSiblingIndex() ? pb.GetSiblingIndex() + 1 : pb.GetSiblingIndex());
@@ -156,9 +162,16 @@ namespace Morgott.UI.GameScreens
                 if (_coins.Rt.TryGetComponent<Image>(out var plate) && plate.enabled) plate.enabled = false;
                 if (_coinKids.Count > 0) PagePart.Fit(_canvas, _coinKids, new Box(bar.X + 8f * u, bar.Y + 6f * u, bar.W - 16f * u, bar.H - 12f * u), left: true);
             }
-            for (var i = board ? _wells.Length : mod ? 1 : 0; i < _wells.Length; i++) _wells[i]?.Place(_canvas, default, false);
+            for (var i = board ? _wells.Length : mod || hildir ? 1 : 0; i < _wells.Length; i++) _wells[i]?.Place(_canvas, default, false);
             for (var i = 0; !board && i < Sections.Length; i++)
                 if (_plates[i] && _plates[i].enabled) _plates[i].enabled = false;
+            if (hildir)
+            {
+                _wells[0]?.Place(_canvas, right, true);
+                (_hildir ??= new HildirBoard(_store)).Layout(_canvas, right, u, contracts);
+                return;
+            }
+            _hildir?.Hide();
             if (!mod) return;
             // Drawn after the page (EL's TemperPanel moves itself to the first sibling, TemperPanel.cs:190/887/1010: under
             // the opaque store and gated by CoverCull there).
