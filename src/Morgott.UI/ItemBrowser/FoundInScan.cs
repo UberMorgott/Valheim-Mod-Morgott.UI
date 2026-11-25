@@ -153,7 +153,7 @@ namespace Morgott.UI.ItemBrowser
             {
                 if (loc == null || !loc.m_enable || !loc.m_prefab.IsValid) continue;
                 string name;
-                try { name = loc.m_prefab.Name; } catch (Exception) { continue; } // empty asset id has no name
+                try { name = loc.m_prefab.name; } catch (Exception) { continue; } // empty asset id has no name
                 locs[name] = (locs.TryGetValue(name, out var had) ? had.Loc : loc, had.Biome | loc.m_biome);
             }
             var themes = new List<(Room.Theme Themes, Heightmap.Biome Biome, bool Interior)>();
@@ -187,7 +187,7 @@ namespace Morgott.UI.ItemBrowser
                     }
                 if (inside == Heightmap.Biome.None && outside == Heightmap.Biome.None) continue;
                 string name;
-                try { name = room.m_prefab.Name; } catch (Exception) { continue; }
+                try { name = room.m_prefab.name; } catch (Exception) { continue; }
                 // shortcut: rooms are keyed by game build only (no owner lookup); a mod changing its rooms keeps the old cache entry until the game updates.
                 foreach (var _ in Lookup("R:" + name, room.m_prefab, null, s =>
                          {
@@ -366,7 +366,7 @@ namespace Morgott.UI.ItemBrowser
             {
                 if (loc == null || !loc.m_enable || !loc.m_prefab.IsValid) continue;
                 string name;
-                try { name = loc.m_prefab.Name; } catch (Exception) { continue; }
+                try { name = loc.m_prefab.name; } catch (Exception) { continue; }
                 Of("L:" + name, Owner(name));
             }
             if (DungeonDB.instance)
@@ -374,7 +374,7 @@ namespace Morgott.UI.ItemBrowser
                 {
                     if (room == null || !room.m_enabled || !room.m_prefab.IsValid) continue;
                     string name;
-                    try { name = room.m_prefab.Name; } catch (Exception) { continue; }
+                    try { name = room.m_prefab.name; } catch (Exception) { continue; }
                     Of("R:" + name, null);
                 }
             return list;

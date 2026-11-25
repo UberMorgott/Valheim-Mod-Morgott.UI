@@ -17,7 +17,7 @@ namespace Morgott.UI.GameScreens
     // - Barber (PlayerCustomizaton barber instance; the character-creation one belongs to MainMenu): panel stack,
     //   colour sliders keep the vanilla gradient (handle art only), apply primary.
     // - DevPanels: the F5 console window (Console = Terminal: m_chatWindow, m_output, m_input) as a popup with the chat
-    //   rules, and the F2 connect panel (ConnectPanel.m_root, player row template) as a panel.
+    //   rules, and the F2 connect panel (ConnectPanel.m_connectRoot / m_performanceRoot, player row template) as a panel.
     // - Feedback: the feedback dialog (Menu / FejdStartup instance), M5 form rules.
     public static class TradeScreens
     {
@@ -123,7 +123,7 @@ namespace Morgott.UI.GameScreens
 
         public static void Connect(ConnectPanel p)
         {
-            var root = p.m_root ? p.m_root : p.transform;
+            var root = p.m_connectRoot ? p.m_connectRoot : p.transform;
             var row = p.m_playerElement ? p.m_playerElement.transform : null;
             GameScreenKit.Form(root, "DevPanels.Connect", OwnershipRegistry.DevPanels, (ctx, r) =>
             {
@@ -133,6 +133,11 @@ namespace Morgott.UI.GameScreens
             if (row) GameScreenKit.Form(row, "DevPanels.ConnectRow", OwnershipRegistry.DevPanels, (ctx, r) => PopupSkin.Backdrops(ctx, r), panels: false);
             // The vanilla panel sits flush in the top-left corner; the panel stack reaches the pad beyond it.
             OnScreen.Ensure(root as RectTransform);
+            if (p.m_performanceRoot && !p.m_performanceRoot.IsChildOf(root))
+            {
+                GameScreenKit.Form(p.m_performanceRoot, "DevPanels.Performance", OwnershipRegistry.DevPanels, (ctx, r) => PopupSkin.Backdrops(ctx, r));
+                OnScreen.Ensure(p.m_performanceRoot as RectTransform);
+            }
         }
 
         // ---- Feedback ----
