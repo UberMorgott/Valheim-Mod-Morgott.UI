@@ -38,7 +38,9 @@ namespace Morgott.UI.ModScreens
             [ModCompat.EpicLootTemperPanel] = OwnershipRegistry.EpicLootTemper,
             [ModCompat.EpicLootAbilityBar] = OwnershipRegistry.ModHud,
             [ModCompat.EpicLootDebugText] = OwnershipRegistry.ModHud,
-            // Epic Loot's config-update prompt lives under StartGui (the pre-world menu family root).
+            // Epic Loot's modal prompts (MessagePanelBase -> ConfigMessage under StartGui; ConfirmPrompt ->
+            // ShardSlotChiselPrompt / SocketBreakPrompt under InventoryGui).
+            [ModCompat.EpicLootMessagePanel] = OwnershipRegistry.ModUi,
             [ModCompat.EpicLootConfigMessage] = OwnershipRegistry.ModUi,
         };
 
@@ -46,7 +48,7 @@ namespace Morgott.UI.ModScreens
 
         public static bool AnyPreciseOwned() => Array.Exists(PreciseFamilies, OwnershipRegistry.IsOwned);
 
-        public static string HintFor(Type t) => t != null && t.FullName != null && Hints.TryGetValue(t.FullName, out var f) ? f : null;
+        public static string HintFor(Type t) => ForeignMath.HintFor(t, Hints);
 
         // A mod panel docked inside the crafting window (VNEI's browser fills its body on the VNEI tab) is part of that
         // window: no panel frame, header or offset of its own (its frame would climb over the crafting tabs).

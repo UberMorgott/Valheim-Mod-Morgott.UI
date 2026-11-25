@@ -88,6 +88,16 @@ namespace Morgott.UI.ModScreens
             return new Verdict { UnderRoot = underRoot };
         }
 
+        // Component type (or its base class) -> adapter family hint (e.g. EpicLoot.MessagePanelBase covers
+        // ConfigMessage, ConfirmPrompt, ShardSlotChiselPrompt and SocketBreakPrompt).
+        public static string HintFor(Type t, IReadOnlyDictionary<string, string> hints)
+        {
+            if (hints == null) return null;
+            for (var c = t; c != null && c != typeof(object); c = c.BaseType)
+                if (c.FullName != null && hints.TryGetValue(c.FullName, out var f)) return f;
+            return null;
+        }
+
         // A foreign window background (own art the theme does not map) becomes the panel stack only when it is the
         // window itself: the unit root's image or a child image covering most of the unit (rows and cells inside a
         // list stay what they are). Size floor as the vanilla panels (size.preworld.panel.min, height half of it).

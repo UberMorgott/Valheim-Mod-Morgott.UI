@@ -152,7 +152,7 @@ namespace Morgott.UI.StationQueue
 
         // editor
         private Image _eIcon, _eCondIcon;
-        private TMP_Text _eBadge, _eName, _eNet, _eCondName, _eSummary;
+        private TMP_Text _eBadge, _eName, _eNet, _eIngredients, _eCondName, _eSummary;
         private readonly Button[] _eModes = new Button[3];
         private readonly Image[][] _eModeRims = new Image[3][];
         private readonly TMP_Text[] _eModeLabels = new TMP_Text[3];
@@ -244,6 +244,8 @@ namespace Morgott.UI.StationQueue
         private static Color Gold => ThemeTokens.GetColor("color.text.active", Hex("#E8B64A"));
         private static Color Cyan => ThemeTokens.GetColor("color.text.accent", Hex("#4FE0E6"));
         private static Color Muted => ThemeTokens.GetColor("color.state.disabled", Hex("#8A9096"));
+        private static Color Sub => ThemeTokens.GetColor("color.stats.sub", Hex("#A9B3B7"));
+        private static Color Missing => ThemeTokens.GetColor("color.text.missing", Hex("#E0413A"));
         private static Color Dim => new Color(0.24f, 0.51f, 0.56f, 0.55f);
         private static string W(string key) => Words.Get("$ui_sq_" + key);
 
@@ -413,10 +415,26 @@ namespace Morgott.UI.StationQueue
         // Network + what the queued stations still turn out: what keep-in-stock and until conditions judge.
         private int Have(string prefab) => Net(prefab) + (prefab != null && _state.Pending.TryGetValue(prefab, out var n) ? n : 0);
 
-        private string OutputOf(string input)
+        private StationQueueInput FindInputByKey(string key) => StationQueueMath.FindInput(_state.Inputs, key);
+        private ItemDrop DisplayItem(StationQueueInput input, string key) => input != null ? (input.Output ? input.Output : input.Item) : Item(key);
+        private int InputNet(string key) => FindInputByKey(key) is StationQueueInput i ? i.Network : Net(key);
+        private string OutputOf(string key) => FindInputByKey(key) is StationQueueInput i && i.Output ? i.Output.name : null;
+
+        private string LoadedWord()
         {
-            foreach (var i in _state.Inputs) if (i.Item && i.Item.name == input) return i.Output ? i.Output.name : null;
-            return null;
+            var key = StationQueueMath.LoadedKey(_state.Name, _state.Kind);
+            return key.StartsWith("ui_sq_", StringComparison.Ordinal) ? Words.Get("$" + key) : W(key);
+        }
+
+        private static string FormatIngredients(IReadOnlyList<StationQueueIngredient> ingredients, string okHex, string missingHex, string template = null)
+        {
+            var list = new List<(string Name, int Amount, int Network)>(ingredients.Count);
+            for (var i = 0; i < ingredients.Count; i++)
+            {
+                var ing = ingredients[i];
+                list.Add((ing.Item ? Name(ing.Item) : "?", ing.Amount, ing.Network));
+            }
+            return StationQueueMath.IngredientsText(list, okHex, missingHex, template);
         }
 
         // A fuel entry (its item is the station's fuel, Patcher Plan) keeps the fuel inside the station, not an output.
@@ -443,7 +461,7 @@ namespace Morgott.UI.StationQueue
 
         private void RefreshAll()
         {
-            var single = StationQueueMath.IsSingle(_state.Inputs.Count);
+            var single = StationQueueMath.IsSingle(_state.Inputs.Count, _state.MultiOnly);
             if (single) _editing = false; // the single window edits its one entry in place
             SetActive(_multi, !single);
             SetActive(_single, single);
@@ -461,9 +479,9 @@ namespace Morgott.UI.StationQueue
         private void RefreshMulti()
         {
             Header(_multi).Text(Title(_state.Name));
-            var first = _state.Inputs.Count > 0 && _state.Inputs[0].Output ? _state.Inputs[0].Output : null;
+            var first = !_state.MultiOnly && _state.Inputs.Count > 0 && _state.Inputs[0].Output ? _state.Inputs[0].Output : null;
             _mStatus.text = StationQueueMath.Join(
-                StationQueueMath.Loaded(W(StationQueueMath.LoadedKey(_state.Name)), _state.Loaded, _state.Capacity, null),
+                StationQueueMath.Loaded(LoadedWord(), _state.Loaded, _state.Capacity, null),
                 first ? StationQueueMath.Format(W("output_net"), Name(first), StationQueueMath.Group(Net(first.name))) : null,
                 _state.Fuel ? Name(_state.Fuel) + " " + Mathf.FloorToInt(_state.FuelLevel) + "/" + _state.FuelMax : null, // as the single window's line
                 NetworkPart());
@@ -471,8 +489,10 @@ namespace Morgott.UI.StationQueue
 
             // inputs: known only (0 in the network = dimmed), unknown hidden with a footer note
             var known = new List<StationQueueInput>();
-            foreach (var i in _state.Inputs) if (i.Known && i.Item) known.Add(i);
+            foreach (var i in _state.Inputs) if (i.Known && (i.Item || i.Output) && !string.IsNullOrEmpty(i.Key)) known.Add(i);
             _inScroll = Mathf.Clamp(_inScroll, 0, Mathf.Max(0, known.Count - InputRows));
+            var subHex = ColorUtility.ToHtmlStringRGB(Sub);
+            var missingHex = ColorUtility.ToHtmlStringRGB(Missing);
             for (var r = 0; r < InputRows; r++)
             {
                 var row = _rows[r];
@@ -480,11 +500,18 @@ namespace Morgott.UI.StationQueue
                 SetActive(row.Rt, k < known.Count);
                 if (k >= known.Count) continue;
                 var input = known[k];
-                row.Item = input.Item.name;
-                row.Icon.sprite = Icon(input.Item);
+                var display = DisplayItem(input, input.Key);
+                var title = StationQueueMath.DisplayName(Name(display), input.OutputAmount);
+                var hasIng = input.Ingredients != null && input.Ingredients.Count > 0;
+                row.Item = input.Key;
+                row.Icon.sprite = Icon(display);
                 row.Icon.enabled = row.Icon.sprite;
                 row.Badge.text = row.Count.text = StationQueueMath.Group(input.Network);
-                row.Name.text = Name(input.Item);
+                row.Name.richText = hasIng;
+                row.Name.fontSize = hasIng ? 18.5f : 21f;
+                row.Name.text = hasIng
+                    ? title + "\n<size=14>" + FormatIngredients(input.Ingredients, subHex, missingHex) + "</size>"
+                    : title;
                 row.Group.alpha = input.Network > 0 ? 1f : 0.5f;
             }
             SetActive(_mHidden, known.Count < _state.Inputs.Count);
@@ -512,11 +539,15 @@ namespace Morgott.UI.StationQueue
         private void FillCard(Card card, int index, StationQueueEntry e)
         {
             card.Index = index;
-            var item = Item(e.Item);
+            var input = FindInputByKey(e.Item);
+            var item = DisplayItem(input, e.Item);
+            var displayName = StationQueueMath.DisplayName(item ? Name(item) : e.Item, input != null ? input.OutputAmount : 1);
+            var outName = OutputName(e.Item);
+            if (string.IsNullOrEmpty(outName)) outName = displayName;
             card.Num.text = (index + 1).ToString(System.Globalization.CultureInfo.InvariantCulture);
             card.Icon.sprite = Icon(item);
             card.Icon.enabled = card.Icon.sprite;
-            card.Text.text = StationQueueMath.CardText(e, item ? Name(item) : e.Item, Name(e.Condition), W("card_until"), W("card_keep"), OutputName(e.Item));
+            card.Text.text = StationQueueMath.CardText(e, displayName, Name(e.Condition), W("card_until"), W("card_keep"), outName);
             var active = StationQueueMath.IsActive(index, _state.Active, _state.Status);
             SetRim(card.Rim, active ? Cyan : Dim);
             SetActive(card.Trough, active);
@@ -558,7 +589,7 @@ namespace Morgott.UI.StationQueue
             var unit = id != null ? Words.Get("$ui_sq_unit_" + id) : null;
             if (unit != null && unit.StartsWith("[", StringComparison.Ordinal)) unit = null; // no unit word for this input
             _sStatus.text = StationQueueMath.Join(
-                StationQueueMath.Loaded(W(StationQueueMath.LoadedKey(_state.Name)), _state.Loaded, _state.Capacity, unit),
+                StationQueueMath.Loaded(LoadedWord(), _state.Loaded, _state.Capacity, unit),
                 _state.Fuel ? Name(_state.Fuel) + " " + Mathf.FloorToInt(_state.FuelLevel) + "/" + _state.FuelMax : null,
                 _state.InNetwork ? null : W("no_network"),
                 status);
@@ -627,7 +658,7 @@ namespace Morgott.UI.StationQueue
 
         private void EditorOpen(int index, string newItem)
         {
-            if (StationQueueMath.IsSingle(_state.Inputs.Count)) return;
+            if (StationQueueMath.IsSingle(_state.Inputs.Count, _state.MultiOnly)) return;
             if (index >= 0 && index < _state.Entries.Count)
             {
                 _editIndex = index;
@@ -637,7 +668,7 @@ namespace Morgott.UI.StationQueue
             {
                 if (newItem == null)
                     foreach (var i in _state.Inputs)
-                        if (i.Known && i.Item) { newItem = i.Item.name; break; }
+                        if (i.Known && (i.Item || i.Output) && !string.IsNullOrEmpty(i.Key)) { newItem = i.Key; break; }
                 if (newItem == null) return;
                 _editIndex = -1;
                 _draft = StationQueueMath.NewEntry(newItem, StationQueueMode.Count, OutputOf(newItem), Stock);
@@ -683,13 +714,31 @@ namespace Morgott.UI.StationQueue
         private void RefreshEditor()
         {
             if (_draft == null) return;
-            var item = Item(_draft.Item);
+            var input = FindInputByKey(_draft.Item);
+            var item = DisplayItem(input, _draft.Item);
             _eIcon.sprite = Icon(item);
             _eIcon.enabled = _eIcon.sprite;
-            var net = Net(_draft.Item);
+            var net = InputNet(_draft.Item);
             _eBadge.text = StationQueueMath.Group(net);
-            _eName.text = item ? Name(item) : _draft.Item;
+            _eName.text = StationQueueMath.DisplayName(item ? Name(item) : _draft.Item, input != null ? input.OutputAmount : 1);
             _eNet.text = StationQueueMath.Format(W("net_count"), StationQueueMath.Group(net));
+            var hasIng = input?.Ingredients != null && input.Ingredients.Count > 0;
+            SetActive(_eIngredients, hasIng);
+            if (hasIng)
+            {
+                Put(_eName, 120f, 68f, EditorW - 150f, 30f);
+                _eName.fontSize = 24f;
+                Put(_eNet, 120f, 98f, EditorW - 150f, 22f);
+                _eNet.fontSize = 18f;
+                _eIngredients.text = FormatIngredients(input.Ingredients, null, ColorUtility.ToHtmlStringRGB(Missing), W("ingredients"));
+            }
+            else
+            {
+                Put(_eName, 120f, 74f, EditorW - 150f, 34f);
+                _eName.fontSize = 26f;
+                Put(_eNet, 120f, 110f, EditorW - 150f, 28f);
+                _eNet.fontSize = 20f;
+            }
             var mode = (int)_draft.Mode; // Count, Infinite, Until = mockup order
             for (var i = 0; i < 3; i++)
             {
@@ -709,7 +758,9 @@ namespace Morgott.UI.StationQueue
             SetRim(_eLessRim, _draft.Compare == StationQueueCompare.Less ? Cyan : Dim);
             SetRim(_eAtLeastRim, _draft.Compare == StationQueueCompare.AtLeast ? Cyan : Dim);
             var keepCount = _draft.Keep && _draft.Mode == StationQueueMode.Count;
-            _eSummary.text = StationQueueMath.Summary(_draft, _eName.text, keepCount ? OutputName(_draft.Item) : _eCondName.text, keepCount ? Stocked(_draft.Item) : Have(_draft.Condition),
+            var keepOut = OutputName(_draft.Item);
+            if (string.IsNullOrEmpty(keepOut)) keepOut = _eName.text;
+            _eSummary.text = StationQueueMath.Summary(_draft, _eName.text, keepCount ? keepOut : _eCondName.text, keepCount ? Stocked(_draft.Item) : Have(_draft.Condition),
                 W("sum_count"), W("sum_infinite"), W("sum_until"), W(IsFuel(_draft.Item) ? "sum_keep_fuel" : "sum_keep"), W("keep_tail"));
             SetActive(_eDelete, _editIndex >= 0);
         }
@@ -1276,9 +1327,11 @@ namespace Morgott.UI.StationQueue
             if (s.Field.text != text) s.Field.SetTextWithoutNotify(text);
         }
 
+        private const float EditorW = 620f;
+
         private void BuildEditor()
         {
-            const float W0 = 620f, H0 = 628f;
+            const float W0 = EditorW, H0 = 628f;
             _editorLayer = NewRect("EditorLayer", _root);
             Stretch(_editorLayer, 0f, 0f, 0f, 0f);
             var dim = _editorLayer.gameObject.AddComponent<Image>();
@@ -1298,6 +1351,11 @@ namespace Morgott.UI.StationQueue
             Put(_eName, 120f, 74f, W0 - 150f, 34f);
             _eNet = Txt(_editor, "Net", "text.body", TextAlignmentOptions.Left, 20f);
             Put(_eNet, 120f, 110f, W0 - 150f, 28f);
+            _eIngredients = Txt(_editor, "Ingredients", "text.body", TextAlignmentOptions.TopLeft, 15f);
+            _eIngredients.richText = true;
+            _eIngredients.color = Sub;
+            _eIngredients.textWrappingMode = TextWrappingModes.Normal;
+            Put(_eIngredients, 120f, 122f, W0 - 150f, 34f);
             Put(Rule(_editor, "Rule0", Dim), 28f, 158f, W0 - 56f, 1f);
             Section(_editor, "ModeLabel", W("mode"), 28f, 162f);
             var modes = new[] { StationQueueMode.Count, StationQueueMode.Infinite, StationQueueMode.Until };
@@ -1313,7 +1371,7 @@ namespace Morgott.UI.StationQueue
             Put(countRt, 28f, 252f, W0 - 56f, 44f);
             _eCountGroup = countRt.gameObject.AddComponent<CanvasGroup>();
             _eCount = NewStepper(countRt, 0f, 0f, () => StationQueueMath.ShownTarget(_draft.Target), v => { _draft.Target = v; RefreshEditor(); });
-            Chips(countRt, 270f, 0f, v => { _draft.Target = v; RefreshEditor(); }, () => Net(_draft.Item));
+            Chips(countRt, 270f, 0f, v => { _draft.Target = v; RefreshEditor(); }, () => InputNet(_draft.Item));
 
             var until = NewRect("Until", _editor);
             Put(until, 28f, 308f, W0 - 56f, 108f);
@@ -1427,6 +1485,9 @@ namespace Morgott.UI.StationQueue
             {
                 if (i.Item) set.Add(i.Item.name);
                 if (i.Output) set.Add(i.Output.name);
+                if (i.Ingredients != null)
+                    foreach (var ing in i.Ingredients)
+                        if (ing.Item) set.Add(ing.Item.name);
             }
             if (_state.Fuel) set.Add(_state.Fuel.name);
             _pAll.Clear();

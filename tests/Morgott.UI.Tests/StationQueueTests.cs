@@ -21,9 +21,12 @@ namespace Morgott.UI.Tests
         }
 
         [Fact]
-        public void SingleOnlyForOneInput()
+        public void SingleOnlyForOneInputUnlessMultiOnly()
         {
             Assert.True(StationQueueMath.IsSingle(1));
+            Assert.True(StationQueueMath.IsSingle(1, multiOnly: false));
+            Assert.False(StationQueueMath.IsSingle(1, multiOnly: true));
+            Assert.False(StationQueueMath.IsSingle(0, multiOnly: true));
             Assert.False(StationQueueMath.IsSingle(5));
             Assert.False(StationQueueMath.IsSingle(0));
         }
@@ -207,17 +210,50 @@ namespace Morgott.UI.Tests
         }
 
         [Theory]
-        [InlineData("$piece_charcoalkiln", "loaded_furnace")]
-        [InlineData("$piece_smelter", "loaded_furnace")]
-        [InlineData("$piece_blastfurnace", "loaded_furnace")]
-        [InlineData("$piece_oven", "loaded_furnace")]
-        [InlineData("$piece_eitrrefinery", "loaded_machine")]
-        [InlineData("$piece_windmill", "loaded_machine")]
-        [InlineData("$piece_spinningwheel", "loaded_machine")]
-        [InlineData("$piece_fermenter", "loaded_barrel")]
-        [InlineData("$piece_cookingstation", "loaded_fire")]
-        [InlineData("$piece_bathtub", "loaded")]
-        public void LoadedWordPerStation(string token, string key) => Assert.Equal(key, StationQueueMath.LoadedKey(token));
+        [InlineData("$piece_charcoalkiln", "", "loaded_furnace")]
+        [InlineData("$piece_smelter", "", "loaded_furnace")]
+        [InlineData("$piece_blastfurnace", "", "loaded_furnace")]
+        [InlineData("$piece_oven", "", "loaded_furnace")]
+        [InlineData("$piece_eitrrefinery", "", "loaded_machine")]
+        [InlineData("$piece_windmill", "", "loaded_machine")]
+        [InlineData("$piece_spinningwheel", "", "loaded_machine")]
+        [InlineData("$piece_fermenter", "", "loaded_barrel")]
+        [InlineData("$piece_cookingstation", "", "loaded_fire")]
+        [InlineData("$piece_bathtub", "", "loaded")]
+        [InlineData("$piece_cauldron", "craft", "ui_sq_crafting")]
+        [InlineData("$piece_MeadCauldron", "craft", "ui_sq_crafting")]
+        public void LoadedWordPerStation(string token, string kind, string key) =>
+            Assert.Equal(key, StationQueueMath.LoadedKey(token, kind));
+
+        [Fact]
+        public void MultiIngredientRecipeBindingAndFormatting()
+        {
+            var recipe = new StationQueueInput(null, null, true, 3, "Recipe_Sausages", 4,
+                new[] { new StationQueueIngredient(null, 1, 5) });
+            var timed = new StationQueueInput(null, null, true, 12, "Wood", 1, null);
+            var inputs = new[] { recipe, timed };
+
+            Assert.Same(recipe, StationQueueMath.FindInput(inputs, "Recipe_Sausages"));
+            Assert.Same(timed, StationQueueMath.FindInput(inputs, "Wood"));
+            Assert.Null(StationQueueMath.FindInput(inputs, "Recipe_Missing"));
+            Assert.Null(StationQueueMath.FindInput(inputs, ""));
+
+            Assert.Equal("Колбаски ×4", StationQueueMath.DisplayName("Колбаски", 4));
+            Assert.Equal("Оленье рагу", StationQueueMath.DisplayName("Оленье рагу", 1));
+            Assert.Equal("Оленье рагу", StationQueueMath.DisplayName("Оленье рагу", 0));
+
+            var ok = StationQueueMath.IngredientsText(
+                new[] { ("Малина", 4, 12), ("Мёд", 2, 8) },
+                "A9B3B7", "E0413A");
+            Assert.Equal("<color=#A9B3B7>Малина 12/4</color>, <color=#A9B3B7>Мёд 8/2</color>", ok);
+
+            var missing = StationQueueMath.IngredientsText(
+                new[] { ("Малина", 4, 12), ("Мёд", 2, 1) },
+                null, "E0413A", "Ингредиенты: {0}");
+            Assert.Equal("Ингредиенты: Малина 12/4, <color=#E0413A>Мёд 1/2</color>", missing);
+
+            Assert.Equal("", StationQueueMath.IngredientsText(null, "A9B3B7", "E0413A"));
+        }
 
         [Fact]
         public void HeaderLinesMatchMockups()

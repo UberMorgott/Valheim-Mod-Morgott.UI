@@ -12,9 +12,38 @@ namespace Morgott.UI.StationQueue
         public const int DefaultCount = 10, DefaultThreshold = 100, MaxValue = 99999;
         public const string Separator = " · ";
 
-        // One input = the single-input window (windmill, spinning wheel); more = the queue window, also a fuelled station
-        // (eitr refinery: sap + its fuel, Patcher lists the fuel as the last input).
-        public static bool IsSingle(int inputs) => inputs == 1;
+        // One input = the single-input window (windmill, spinning wheel) unless multiOnly forces the recipe queue UI;
+        // more = the queue window, also a fuelled station (eitr refinery: sap + its fuel, Patcher lists fuel last).
+        public static bool IsSingle(int inputs, bool multiOnly = false) => !multiOnly && inputs == 1;
+
+        public static string DisplayName(string name, int outputAmount) =>
+            outputAmount > 1 ? (name ?? "") + " ×" + Group(outputAmount) : name ?? "";
+
+        public static StationQueueInput FindInput(IReadOnlyList<StationQueueInput> inputs, string key)
+        {
+            if (inputs == null || string.IsNullOrEmpty(key)) return null;
+            for (var i = 0; i < inputs.Count; i++)
+                if (inputs[i] != null && string.Equals(inputs[i].Key, key, StringComparison.Ordinal)) return inputs[i];
+            return null;
+        }
+
+        // Compact "Name net/req, ..." list for multi-ingredient recipes; highlights missing ingredients (net < req).
+        public static string IngredientsText(IReadOnlyList<(string Name, int Amount, int Network)> ingredients,
+            string okHex, string missingHex, string template = null)
+        {
+            if (ingredients == null || ingredients.Count == 0) return "";
+            var parts = new List<string>(ingredients.Count);
+            for (var i = 0; i < ingredients.Count; i++)
+            {
+                var (name, amount, network) = ingredients[i];
+                var part = $"{name} {Group(network)}/{Group(amount)}";
+                var hex = network < amount ? missingHex : okHex;
+                if (!string.IsNullOrEmpty(hex)) part = $"<color=#{hex}>{part}</color>";
+                parts.Add(part);
+            }
+            var joined = string.Join(", ", parts);
+            return string.IsNullOrEmpty(template) ? joined : Format(template, joined);
+        }
 
         // Steps back from the hover reach before the window closes.
         public const float ReachMargin = 1.5f;
@@ -182,10 +211,11 @@ namespace Morgott.UI.StationQueue
         // Card slot under a pointer `y` units below the list top (rows `step` apart, first shown = scroll).
         public static int SlotAt(float y, float step, int scroll) => scroll + (int)Math.Floor(Math.Max(0f, y) / step);
 
-        // Header "loaded" word per station kind, from its piece name token (lowercased): furnace "В печи", machine
-        // "В машине", barrel "В бочке", fire "На огне"; anything else the generic "Загружено".
-        public static string LoadedKey(string nameToken)
+        // Header "loaded" word per station kind, from kind tag ("craft" -> ui_sq_crafting) or its piece name token
+        // (lowercased): furnace "В печи", machine "В машине", barrel "В бочке", fire "На огне"; else generic "Загружено".
+        public static string LoadedKey(string nameToken, string kind = "")
         {
+            if (string.Equals(kind, "craft", StringComparison.OrdinalIgnoreCase)) return "ui_sq_crafting";
             var n = (nameToken ?? "").ToLowerInvariant();
             if (Has(n, "kiln", "smelter", "blastfurnace", "furnace", "oven")) return "loaded_furnace";
             if (Has(n, "eitr", "refinery", "windmill", "spinning")) return "loaded_machine";

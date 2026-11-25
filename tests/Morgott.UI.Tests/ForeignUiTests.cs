@@ -252,5 +252,37 @@ namespace Morgott.UI.Tests
             foreach (var token in new[] { "sprite.ench.lock.badge", "sprite.ench.lock.glyph" })
                 Assert.Contains(f.sprites, x => x.token == token);
         }
+
+        private abstract class StubMessagePanelBase { }
+        private sealed class StubConfigMessage : StubMessagePanelBase { }
+        private abstract class StubConfirmPrompt : StubMessagePanelBase { }
+        private sealed class StubShardSlotChiselPrompt : StubConfirmPrompt { }
+        private sealed class StubSocketBreakPrompt : StubConfirmPrompt { }
+        private sealed class StubUnrelated { }
+
+        // Base-type adapter hints match derived Epic Loot prompts (ConfirmPrompt -> ShardSlotChiselPrompt /
+        // SocketBreakPrompt, MessagePanelBase -> ConfigMessage) even when the prefab root carries a Unity Image.
+        [Fact]
+        public void BaseTypeHintMatchesDerivedPromptsUnderBoundary()
+        {
+            var hints = new System.Collections.Generic.Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                [typeof(StubMessagePanelBase).FullName!] = "ModUi",
+            };
+            Assert.Equal("ModUi", HintFor(typeof(StubMessagePanelBase), hints));
+            Assert.Equal("ModUi", HintFor(typeof(StubConfigMessage), hints));
+            Assert.Equal("ModUi", HintFor(typeof(StubConfirmPrompt), hints));
+            Assert.Equal("ModUi", HintFor(typeof(StubShardSlotChiselPrompt), hints));
+            Assert.Equal("ModUi", HintFor(typeof(StubSocketBreakPrompt), hints));
+            Assert.Null(HintFor(typeof(StubUnrelated), hints));
+            Assert.Null(HintFor(null, hints));
+
+            var invGui = Step(Root, new Node { Boundary = true, Game = true }, 0, true);
+            Assert.False(Step(invGui, new Node { Foreign = true, Game = true }, 1, true).HasUnit);
+            var prompt = Step(invGui, new Node { Foreign = true, Game = true, Hint = "ModUi", HintOwned = true }, 1, true);
+            Assert.True(prompt.HasUnit);
+            Assert.Equal("ModUi", prompt.Family);
+            Assert.Equal(1, Step(prompt, new Node { Game = true }, 2, true).UnitDepth);
+        }
     }
 }

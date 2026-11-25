@@ -31,8 +31,9 @@ namespace Morgott.UI.Compat
         public const string EpicLootTemperPanel = "EpicLoot.TemperPanel";
         public const string EpicLootAbilityBar = "EpicLoot.Abilities.AbilityBar";
         public const string EpicLootDebugText = "EpicLoot.DebugText";
-        // Epic Loot's config-update prompt (ConfigUpdatePrompt: ConfigMessagePrefab under StartGui on the main menu, shown
-        // once after Epic Loot's config version changes; 0.15.6 run 20261103-095927).
+        // Epic Loot's modal prompts (MessagePanelBase: ConfigMessage under StartGui on the main menu; ConfirmPrompt
+        // subclasses ShardSlotChiselPrompt / SocketBreakPrompt under InventoryGui; 0.15.6+).
+        public const string EpicLootMessagePanel = "EpicLoot.MessagePanelBase";
         public const string EpicLootConfigMessage = "EpicLoot.ConfigMessage";
         // 0.15 TraderPanelDrag (EpicLoot\TraderPanelDrag.cs) on MerchantPanel / TemperPanel: a clear full-panel hit
         // surface shown while the drag key is held, and a corner move handle whose colour it writes every frame.
