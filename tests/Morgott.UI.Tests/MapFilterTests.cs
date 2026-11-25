@@ -111,7 +111,7 @@ namespace Morgott.UI.Tests
         }
 
         [Fact]
-        public void AddPinGateSuppressesToggleFilterExceptPlayerPlacedPins()
+        public void AddPinGateBlocksShowPinNameInputAndUnhidesOnlyConfirmedNamedPins()
         {
             Assert.True(MapFilterMath.AllowToggleFilter);
             MapFilterMath.EnterAddPin();
@@ -122,15 +122,18 @@ namespace Morgott.UI.Tests
             MapFilterMath.ExitAddPin();
             Assert.True(MapFilterMath.AllowToggleFilter);
 
-            // the player's own placed pin (ShowPinNameInput -> AddPin) re-shows its hidden type like vanilla
-            MapFilterMath.SetPlacingPin(true);
-            MapFilterMath.EnterAddPin();
-            Assert.True(MapFilterMath.AllowToggleFilter);
-            MapFilterMath.ExitAddPin();
-            MapFilterMath.SetPlacingPin(false);
-            MapFilterMath.EnterAddPin();
-            Assert.False(MapFilterMath.AllowToggleFilter);
-            MapFilterMath.ExitAddPin();
+            var v = Vanilla();
+            v[(int)Minimap.PinType.Icon0] = false;
+            // Accidental double-click cancelled (Esc / click-away / empty submit / whitespace) never unhides Fire
+            Assert.False(MapFilterMath.ShouldUnhideConfirmedPin(v, Minimap.PinType.Icon0, ""));
+            Assert.False(MapFilterMath.ShouldUnhideConfirmedPin(v, Minimap.PinType.Icon0, null));
+            Assert.False(MapFilterMath.ShouldUnhideConfirmedPin(v, Minimap.PinType.Icon0, "   "));
+            // Already-visible pin type is never toggled off; out-of-range / null array are ignored
+            Assert.False(MapFilterMath.ShouldUnhideConfirmedPin(v, Minimap.PinType.Icon1, "Home"));
+            Assert.False(MapFilterMath.ShouldUnhideConfirmedPin(v, Minimap.PinType.None, "Camp"));
+            Assert.False(MapFilterMath.ShouldUnhideConfirmedPin(null, Minimap.PinType.Icon0, "Camp"));
+            // Confirming a real named pin unhides its hidden type
+            Assert.True(MapFilterMath.ShouldUnhideConfirmedPin(v, Minimap.PinType.Icon0, "Camp"));
 
             Assert.Equal("AdventurePinFilter", MapFilterMath.ModFilterKey(" AdventurePinFilter(Clone)[\"=] "));
             Assert.Null(MapFilterMath.ModFilterKey(" [\"=] "));

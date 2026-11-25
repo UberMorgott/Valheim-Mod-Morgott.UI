@@ -472,12 +472,15 @@ namespace Morgott.UI.MapScreen
             Stretch(r.Check.rectTransform);
             r.Toggle = r.Box.gameObject.AddComponent<Button>();
             r.Toggle.targetGraphic = r.Box;
+            r.Toggle.navigation = new Navigation { mode = Navigation.Mode.None };
             r.Toggle.onClick.AddListener(() => OnToggle(r));
             return r;
         }
 
         private void OnToggle(PinRow r)
         {
+            var es = EventSystem.current;
+            if (es && r.Toggle && es.currentSelectedGameObject == r.Toggle.gameObject) es.SetSelectedGameObject(null);
             if (r == _biomeRow)
             {
                 if (MapConfig.BiomeOverlay != null) MapConfig.BiomeOverlay.Value = !MapConfig.BiomeOverlay.Value;
@@ -909,13 +912,15 @@ namespace Morgott.UI.MapScreen
         [HarmonyLib.HarmonyFinalizer]
         private static void AddPin_Finalizer() => MapFilterMath.ExitAddPin();
 
-        [HarmonyLib.HarmonyPatch(typeof(Minimap), nameof(Minimap.ShowPinNameInput))]
+        // Re-show a hidden type only once the player confirms a non-empty pin name (never on ShowPinNameInput / Esc / click-away).
+        [HarmonyLib.HarmonyPatch(typeof(Minimap), nameof(Minimap.OnPinTextEntered))]
         [HarmonyLib.HarmonyPrefix]
-        private static void ShowPinNameInput_Prefix() => MapFilterMath.SetPlacingPin(true);
-
-        [HarmonyLib.HarmonyPatch(typeof(Minimap), nameof(Minimap.ShowPinNameInput))]
-        [HarmonyLib.HarmonyFinalizer]
-        private static void ShowPinNameInput_Finalizer() => MapFilterMath.SetPlacingPin(false);
+        private static void OnPinTextEntered_Prefix(Minimap __instance)
+        {
+            var pin = __instance.m_namePin;
+            if (pin != null && __instance.m_nameInput && MapFilterMath.ShouldUnhideConfirmedPin(__instance.m_visibleIconTypes, pin.m_type, __instance.m_nameInput.text))
+                __instance.ToggleIconFilter(pin.m_type);
+        }
 
         [HarmonyLib.HarmonyPatch(typeof(Minimap), nameof(Minimap.SetMapData))]
         [HarmonyLib.HarmonyFinalizer]

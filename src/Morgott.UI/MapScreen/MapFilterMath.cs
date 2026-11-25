@@ -91,15 +91,16 @@ namespace Morgott.UI.MapScreen
             return key.Length > 0 ? key : null;
         }
 
-        // Depth counter around Minimap.AddPin: ToggleIconFilter is suppressed while AddPin runs so background / synced pins never unhide filters.
-        // A pin the player places (Minimap.ShowPinNameInput) still re-shows its hidden type like vanilla, else it lands invisible.
+        // Depth counter around Minimap.AddPin: ToggleIconFilter is suppressed while AddPin runs so background / synced pins
+        // and unconfirmed ShowPinNameInput pins never unhide filters; a confirmed named pin unhides in OnPinTextEntered.
         private static int _addingPin;
-        private static bool _placingPin;
 
         public static void EnterAddPin() => _addingPin++;
         public static void ExitAddPin() { if (_addingPin > 0) _addingPin--; }
-        public static void SetPlacingPin(bool on) => _placingPin = on;
-        public static bool AllowToggleFilter => _addingPin == 0 || _placingPin;
+        public static bool AllowToggleFilter => _addingPin == 0;
+
+        public static bool ShouldUnhideConfirmedPin(bool[] visible, Minimap.PinType type, string text) =>
+            !string.IsNullOrWhiteSpace(text) && visible != null && (int)type >= 0 && (int)type < visible.Length && !visible[(int)type];
 
         // ---------------------------------------------------------------- biome overlay
 
