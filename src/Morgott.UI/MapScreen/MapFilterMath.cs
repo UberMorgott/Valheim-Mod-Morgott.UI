@@ -102,6 +102,16 @@ namespace Morgott.UI.MapScreen
         public static bool ShouldUnhideConfirmedPin(bool[] visible, Minimap.PinType type, string text) =>
             !string.IsNullOrWhiteSpace(text) && visible != null && (int)type >= 0 && (int)type < visible.Length && !visible[(int)type];
 
+        // Grace window after opening the large map so stale click timers or same-frame JoyButtonA release cannot place a pin.
+        public const float OpenPinGraceSeconds = 0.35f;
+        private static float _largeMapOpenedAt = float.NegativeInfinity;
+
+        public static void NoteLargeMapOpened(float now) => _largeMapOpenedAt = now;
+        public static void ResetLargeMapOpened() => _largeMapOpenedAt = float.NegativeInfinity;
+        public static bool AllowAutoPinAfterOpen(float now) => AllowAutoPinAfterOpen(now, _largeMapOpenedAt);
+        public static bool AllowAutoPinAfterOpen(float now, float openedAt, float graceSeconds = OpenPinGraceSeconds) =>
+            float.IsNegativeInfinity(openedAt) || now - openedAt >= graceSeconds;
+
         // ---------------------------------------------------------------- biome overlay
 
         // Legend / colour order. Ocean has no entry (transparent).

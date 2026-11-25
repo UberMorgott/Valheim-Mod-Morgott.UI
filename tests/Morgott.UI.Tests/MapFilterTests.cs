@@ -140,6 +140,37 @@ namespace Morgott.UI.Tests
         }
 
         [Fact]
+        public void AutoPinGuardBlocksWithinGraceAndNeverWhenUnset()
+        {
+            Assert.True(MapFilterMath.AllowAutoPinAfterOpen(0f, float.NegativeInfinity));
+            Assert.True(MapFilterMath.AllowAutoPinAfterOpen(10f, float.NegativeInfinity));
+            Assert.False(MapFilterMath.AllowAutoPinAfterOpen(10f, 10f));
+            Assert.False(MapFilterMath.AllowAutoPinAfterOpen(10.34f, 10f));
+            Assert.True(MapFilterMath.AllowAutoPinAfterOpen(0.35f, 0f));
+            Assert.True(MapFilterMath.AllowAutoPinAfterOpen(10.36f, 10f));
+            Assert.False(MapFilterMath.AllowAutoPinAfterOpen(10.4f, 10f, 0.5f));
+            Assert.True(MapFilterMath.AllowAutoPinAfterOpen(10.6f, 10f, 0.5f));
+
+            MapFilterMath.ResetLargeMapOpened();
+            try
+            {
+                Assert.True(MapFilterMath.AllowAutoPinAfterOpen(0.1f));
+                MapFilterMath.NoteLargeMapOpened(10f);
+                Assert.False(MapFilterMath.AllowAutoPinAfterOpen(10f));
+                Assert.False(MapFilterMath.AllowAutoPinAfterOpen(10.34f));
+                Assert.True(MapFilterMath.AllowAutoPinAfterOpen(10.4f));
+                MapFilterMath.NoteLargeMapOpened(20f);
+                Assert.False(MapFilterMath.AllowAutoPinAfterOpen(20.1f));
+                MapFilterMath.ResetLargeMapOpened();
+                Assert.True(MapFilterMath.AllowAutoPinAfterOpen(20.1f));
+            }
+            finally
+            {
+                MapFilterMath.ResetLargeMapOpened();
+            }
+        }
+
+        [Fact]
         public void BiomeIdsAndKeys()
         {
             Assert.Equal(8, MapFilterMath.Biomes.Length);

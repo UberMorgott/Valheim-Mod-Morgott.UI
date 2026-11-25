@@ -937,6 +937,34 @@ namespace Morgott.UI.MapScreen
         {
             if (__runOriginal) MinimapSkin.Instance?.OnVanillaToggle(type);
         }
+
+        // Vanilla SetMapMode(Large) (Minimap.cs:1233-1248) leaves m_leftDownTime / m_leftClickTime / inputDelay <= 0 untouched,
+        // and Update() calls UpdateMap() on the same frame (:754), so stale timers or JoyButtonA release can trigger ShowPinNameInput.
+        [HarmonyLib.HarmonyPatch(typeof(Minimap), nameof(Minimap.SetMapMode))]
+        [HarmonyLib.HarmonyPrefix]
+        private static void SetMapMode_Prefix(Minimap __instance, out Minimap.MapMode __state) => __state = __instance.m_mode;
+
+        [HarmonyLib.HarmonyPatch(typeof(Minimap), nameof(Minimap.SetMapMode))]
+        [HarmonyLib.HarmonyPostfix]
+        private static void SetMapMode_Postfix(Minimap __instance, Minimap.MapMode mode, Minimap.MapMode __state)
+        {
+            if (__instance.m_mode != Minimap.MapMode.Large)
+            {
+                if (__state == Minimap.MapMode.Large) MapFilterMath.ResetLargeMapOpened();
+                return;
+            }
+            if (mode != Minimap.MapMode.Large || __state == Minimap.MapMode.Large) return;
+            __instance.m_leftDownTime = 0f;
+            __instance.m_leftClickTime = 0f;
+            __instance.inputDelay = Mathf.Max(__instance.inputDelay, MapFilterMath.OpenPinGraceSeconds);
+            if (__instance.m_nameInput && __instance.m_nameInput.gameObject.activeSelf)
+                __instance.HidePinTextInput();
+            MapFilterMath.NoteLargeMapOpened(Time.unscaledTime);
+        }
+
+        [HarmonyLib.HarmonyPatch(typeof(Minimap), nameof(Minimap.ShowPinNameInput))]
+        [HarmonyLib.HarmonyPrefix]
+        private static bool ShowPinNameInput_Prefix() => MapFilterMath.AllowAutoPinAfterOpen(Time.unscaledTime);
     }
 
     // Mouse wheel over the map's side column scrolls its pin rows, not the map zoom: Minimap.UpdateMap reads
