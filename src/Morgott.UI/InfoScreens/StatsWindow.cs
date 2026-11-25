@@ -199,6 +199,21 @@ namespace Morgott.UI.InfoScreens
             c.View = (RectTransform)view.transform;
             c.View.SetParent(_root, false);
             view.AddComponent<RectMask2D>();
+            var hit = view.AddComponent<Image>();
+            hit.color = Color.clear;
+            hit.raycastTarget = true;
+            DollCell.Mark(hit, "content", "stats card scroll area");
+            var drag = view.AddComponent<DragScroll>();
+            drag.CanStart = _ => c.ContentH > c.ViewH + 0.5f;
+            drag.StepSize = () => T("size.stats.scroll.step", 40f) * Mathf.Max(_scale, 0.05f);
+            drag.OnStep = (steps, _) =>
+            {
+                if (c.ContentH <= c.ViewH + 0.5f) return;
+                var next = StatsMath.ClampScroll(c.Scroll + steps * T("size.stats.scroll.step", 40f), c.ContentH, c.ViewH);
+                if (Mathf.Approximately(next, c.Scroll)) return;
+                c.Scroll = next;
+                LayoutCard(c);
+            };
             c.HeaderIcon = Img(_root, "Card" + i + "Icon", "stats.icon", "card category icon (stats_head_*)");
             c.HeaderIcon.sprite = ThemeTokens.GetSprite("sprite.stats.head." + CardIcons[i]);
             c.HeaderIcon.enabled = c.HeaderIcon.sprite;

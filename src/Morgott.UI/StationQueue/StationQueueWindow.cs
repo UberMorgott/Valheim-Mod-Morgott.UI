@@ -115,6 +115,7 @@ namespace Morgott.UI.StationQueue
         private readonly List<InputRow> _rows = new List<InputRow>();
         private readonly List<Card> _cards = new List<Card>();
         private RectTransform _rowsRt, _cardsRt, _addHint, _badge, _sBadge;
+        private DragScroll _rowsDrag, _cardsDrag;
         private TMP_Text _badgeLabel, _sBadgeLabel;
         private bool _stockChoice; // header selector of an empty queue (no entry to carry it yet)
 
@@ -175,21 +176,53 @@ namespace Morgott.UI.StationQueue
             public Action<int> Set;
         }
 
-        // LMB drag (Begin false = not draggable now).
-        private sealed class DragHandle : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler
+        // LMB drag (Begin false = not draggable now); RMB drags forward to the parent list's DragScroll.
+        private sealed class DragHandle : MonoBehaviour, IInitializePotentialDragHandler, IBeginDragHandler, IDragHandler, IEndDragHandler
         {
             public Func<PointerEventData, bool> Begin;
             public Action<PointerEventData> Move, End;
-            private bool _on;
+            public DragScroll RightScroll;
+            private bool _on, _right;
 
-            public void OnBeginDrag(PointerEventData e) => _on = e.button == PointerEventData.InputButton.Left && Begin != null && Begin(e);
-            public void OnDrag(PointerEventData e) { if (_on) Move?.Invoke(e); }
+            public void OnInitializePotentialDrag(PointerEventData e)
+            {
+                if (e.button == PointerEventData.InputButton.Right) RightScroll?.OnInitializePotentialDrag(e);
+            }
+
+            public void OnBeginDrag(PointerEventData e)
+            {
+                if (e.button == PointerEventData.InputButton.Right)
+                {
+                    _right = RightScroll != null;
+                    if (_right) RightScroll.OnBeginDrag(e);
+                    return;
+                }
+                _on = e.button == PointerEventData.InputButton.Left && Begin != null && Begin(e);
+            }
+
+            public void OnDrag(PointerEventData e)
+            {
+                if (_right) { RightScroll?.OnDrag(e); return; }
+                if (_on) Move?.Invoke(e);
+            }
 
             public void OnEndDrag(PointerEventData e)
             {
+                if (_right)
+                {
+                    _right = false;
+                    RightScroll?.OnEndDrag(e);
+                    return;
+                }
                 if (!_on) return;
                 _on = false;
                 End?.Invoke(e);
+            }
+
+            private void OnDisable()
+            {
+                _on = false;
+                _right = false;
             }
         }
 
@@ -856,6 +889,10 @@ namespace Morgott.UI.StationQueue
             _rowsRt = NewRect("Inputs", _multi);
             Put(_rowsRt, 28f, 158f, 400f, InputRows * 84f);
             WheelOn(_rowsRt, d => { _inScroll -= Math.Sign(d); RefreshAll(); });
+            _rowsDrag = _rowsRt.gameObject.AddComponent<DragScroll>();
+            _rowsDrag.AllowLeft = false;
+            _rowsDrag.StepSize = () => 84f;
+            _rowsDrag.OnStep = (steps, _) => { _inScroll += steps; RefreshAll(); };
             for (var i = 0; i < InputRows; i++) _rows.Add(NewInputRow(_rowsRt, i));
             _mHidden = Txt(_multi, "UnknownHidden", "text.muted", TextAlignmentOptions.Center, 18f);
             _mHidden.text = W("unknown_hidden");
@@ -868,6 +905,10 @@ namespace Morgott.UI.StationQueue
             _cardsRt = NewRect("Queue", _multi);
             Put(_cardsRt, 468f, 158f, CardW, 446f);
             WheelOn(_cardsRt, d => { _cardScroll -= Math.Sign(d); RefreshAll(); });
+            _cardsDrag = _cardsRt.gameObject.AddComponent<DragScroll>();
+            _cardsDrag.AllowLeft = false;
+            _cardsDrag.StepSize = () => CardStep;
+            _cardsDrag.OnStep = (steps, _) => { _cardScroll += steps; RefreshAll(); };
             for (var i = 0; i < CardRows; i++) _cards.Add(NewCard(_cardsRt, i));
             _addHint = NewRect("AddHint", _cardsRt);
             Dashes(_addHint, CardW, AddH, new Color(Dim.r, Dim.g, Dim.b, 0.9f));
@@ -915,6 +956,7 @@ namespace Morgott.UI.StationQueue
             hit.raycastTarget = true;
             DollCell.Mark(hit, "content", "station queue input row drag area");
             var drag = row.Rt.gameObject.AddComponent<DragHandle>();
+            drag.RightScroll = _rowsDrag;
             drag.Begin = e =>
             {
                 if (row.Item == null) return false;
@@ -974,6 +1016,7 @@ namespace Morgott.UI.StationQueue
             Put(grip, 4f, 0f, 26f, CardH);
             for (var d = 0; d < 6; d++) Put(Rule(grip.transform, "Dot" + d, Muted), 7f + d % 2 * 8f, CardH / 2f - 11f + d / 2 * 8f, 4f, 4f);
             var gd = grip.gameObject.AddComponent<DragHandle>();
+            gd.RightScroll = _cardsDrag;
             gd.Begin = e =>
             {
                 _dragCard = card.Index;
@@ -1368,6 +1411,9 @@ namespace Morgott.UI.StationQueue
                 _pRows.Add((b, icon, label));
             }
             WheelOn(_picker, d => { _pScroll -= Math.Sign(d); PickerFill(); });
+            var pickerDrag = _picker.gameObject.AddComponent<DragScroll>();
+            pickerDrag.StepSize = () => 34f;
+            pickerDrag.OnStep = (steps, _) => { _pScroll += steps; PickerFill(); };
             _picker.gameObject.SetActive(false);
         }
 

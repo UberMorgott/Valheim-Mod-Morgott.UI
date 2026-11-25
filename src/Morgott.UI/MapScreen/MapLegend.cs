@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Morgott.UI.Restyle;
 using Morgott.UI.Theme;
 using TMPro;
 using UnityEngine;
@@ -71,7 +72,8 @@ namespace Morgott.UI.MapScreen
         private readonly List<(Image Swatch, TMP_Text Name)> _key = new List<(Image, TMP_Text)>();
         private LegendScroll _scroll;
         private int _firstRow, _firstPlayer;
-        private float _playersTop, _playersBottom;
+        private float _pinsTop, _pinsBottom, _pinsRowH = 36f, _playersTop, _playersBottom, _playerRowH = 26f;
+        private bool _pinsScrolling, _playersScrolling, _dragLegendPlayers;
         private Image _playerTrack, _playerThumb;
         private Slider _zoom;
         private bool _zoomWrite;
@@ -104,6 +106,21 @@ namespace Morgott.UI.MapScreen
             _rows.anchorMin = Vector2.zero;
             _rows.anchorMax = Vector2.one;
             _scroll = _legend.gameObject.AddComponent<LegendScroll>();
+            var legendDrag = _legend.gameObject.AddComponent<DragScroll>();
+            legendDrag.CanStart = e =>
+            {
+                if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(_legend, e.pressPosition, e.pressEventCamera, out var lp)) return false;
+                var y = _legend.rect.yMax - lp.y;
+                if (_pinsScrolling && y >= _pinsTop && y < _pinsBottom) { _dragLegendPlayers = false; return true; }
+                if (_playersScrolling && y >= _playersTop && y < _playersBottom) { _dragLegendPlayers = true; return true; }
+                return false;
+            };
+            legendDrag.StepSize = () => _dragLegendPlayers ? _playerRowH : _pinsRowH;
+            legendDrag.OnStep = (steps, _) =>
+            {
+                if (_dragLegendPlayers) _firstPlayer += steps;
+                else _firstRow += steps;
+            };
             var headerSize = ThemeTokens.GetFloat("size.map.legend.header", 21f);
             _pinsHeader = _art.Text("PinsHeader", _rows, "font.display", "color.text.header", headerSize, TextAlignmentOptions.Center);
             _pinsDivider = _art.Image("PinsDivider", _rows, "sprite.divider", "color.frame", Image.Type.Sliced);
@@ -607,6 +624,11 @@ namespace Morgott.UI.MapScreen
             var rowH = MinimapMath.RowHeight(avail, _entries.Count, rowPref, rowMin);
             var window = MapFilterMath.Window(avail, rowH);
             var scrolling = _entries.Count > window;
+            _pinsTop = listTop;
+            _pinsBottom = listTop + window * rowH;
+            _pinsRowH = rowH;
+            _pinsScrolling = scrolling;
+            _playerRowH = playerRow;
             if (_scroll && Mathf.Abs(_scroll.Delta) > 0.01f)
             {
                 // Over the ИГРОКИ block (last frame's place) the wheel scrolls the players, elsewhere the pin rows.
@@ -666,6 +688,7 @@ namespace Morgott.UI.MapScreen
             _playersTop = y;
             _firstPlayer = MapFilterMath.ClampScroll(_firstPlayer, playerCount, playersShown);
             var playerScroll = playerCount > playersShown;
+            _playersScrolling = playerScroll;
             while (_playerRows.Count < playersShown) _playerRows.Add(NewRow("PlayerRow"));
             if (_playerTrack.gameObject.activeSelf != playerScroll) _playerTrack.gameObject.SetActive(playerScroll);
             if (playerScroll)

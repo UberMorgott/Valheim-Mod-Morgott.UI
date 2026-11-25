@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using HarmonyLib;
 using TMPro;
 using UnityEngine;
@@ -12,6 +13,12 @@ namespace Morgott.UI.Restyle
     [HarmonyPatch]
     public static class ScrollSpeed
     {
+        private static readonly float[] GridScratch = new float[ScrollMath.MaxPitchScan];
+        private static readonly float[] RowScratch = new float[ScrollMath.MaxPitchScan];
+        private static readonly float[] LineScratch = new float[ScrollMath.MaxPitchScan];
+        private static readonly List<TMP_Text> TmpScratch = new List<TMP_Text>(16);
+        private static readonly List<Text> TextScratch = new List<Text>(16);
+
         [HarmonyPatch(typeof(ScrollRect), nameof(ScrollRect.OnScroll))]
         [HarmonyPrefix]
         private static void OnScroll_Prefix(ScrollRect __instance)
@@ -33,32 +40,74 @@ namespace Morgott.UI.Restyle
             return ticks > 1e-5f ? 1f / ticks : 1f;
         }
 
-        // Row pitch of a scroll content along the scroll axis: a text's line, a grid's cell + spacing, else the first
-        // row + the layout spacing; a single block taller than half the view (a text panel) falls back to its text's line.
+        // Row pitch of a scroll content along the scroll axis: own text line, own grid cell + spacing, else a bounded scan
+        // of active children (preferring nested GridLayoutGroups and representative item rows over leading section headers);
+        // only tall non-grid blocks (text panels) fall back to their body text's line height.
         internal static float Pitch(RectTransform content, bool vertical, float view)
         {
             var line = Line(content);
             if (line > 0f) return line;
             if (content.TryGetComponent<GridLayoutGroup>(out var grid))
-                return vertical ? grid.cellSize.y + grid.spacing.y : grid.cellSize.x + grid.spacing.x;
-            for (var i = 0; i < content.childCount; i++)
+                return GridPitch(grid, vertical);
+            var group = content.GetComponent<HorizontalOrVerticalLayoutGroup>();
+            var spacing = group && (group is VerticalLayoutGroup) == vertical ? group.spacing : 0f;
+            int scanned = 0, gridCount = 0, rowCount = 0;
+            RectTransform tallBlock = null;
+            for (var i = 0; i < content.childCount && scanned < ScrollMath.MaxPitchScan; i++)
             {
                 if (!(content.GetChild(i) is RectTransform row) || !row.gameObject.activeSelf) continue;
+                scanned++;
+                if (row.TryGetComponent<GridLayoutGroup>(out var childGrid))
+                {
+                    var gp = GridPitch(childGrid, vertical);
+                    if (gp > 0f && gridCount < GridScratch.Length) GridScratch[gridCount++] = gp;
+                    continue;
+                }
                 var size = vertical ? row.rect.height : row.rect.width;
                 if (size <= 0f) continue;
-                if (size > view * 0.5f) return LineIn(row);
-                var group = content.GetComponent<HorizontalOrVerticalLayoutGroup>();
-                return size + (group && (group is VerticalLayoutGroup) == vertical ? group.spacing : 0f);
+                if (view > 0f && size > view * 0.5f)
+                {
+                    var nestedGrid = row.GetComponentInChildren<GridLayoutGroup>(false);
+                    if (nestedGrid)
+                    {
+                        var gp = GridPitch(nestedGrid, vertical);
+                        if (gp > 0f && gridCount < GridScratch.Length) GridScratch[gridCount++] = gp;
+                    }
+                    else if (!tallBlock) tallBlock = row;
+                    continue;
+                }
+                if (rowCount < RowScratch.Length) RowScratch[rowCount++] = size + spacing;
             }
-            return 0f;
+            var selected = ScrollMath.SelectPitch(GridScratch, gridCount, RowScratch, rowCount);
+            if (selected > 0f) return selected;
+            return tallBlock ? LineIn(tallBlock) : 0f;
         }
+
+        private static float GridPitch(GridLayoutGroup grid, bool vertical) =>
+            vertical ? grid.cellSize.y + grid.spacing.y : grid.cellSize.x + grid.spacing.x;
 
         private static float LineIn(RectTransform block)
         {
-            var tmp = block.GetComponentInChildren<TMP_Text>();
-            if (tmp) return Line(tmp.rectTransform);
-            var text = block.GetComponentInChildren<Text>();
-            return text ? Line(text.rectTransform) : 0f;
+            block.GetComponentsInChildren(false, TmpScratch);
+            var n = 0;
+            for (var i = 0; i < TmpScratch.Count && n < LineScratch.Length; i++)
+            {
+                var h = Line(TmpScratch[i].rectTransform);
+                if (h > 0f) LineScratch[n++] = h;
+            }
+            TmpScratch.Clear();
+            var line = ScrollMath.SelectTextLine(LineScratch, n);
+            if (line > 0f) return line;
+
+            block.GetComponentsInChildren(false, TextScratch);
+            n = 0;
+            for (var i = 0; i < TextScratch.Count && n < LineScratch.Length; i++)
+            {
+                var h = Line(TextScratch[i].rectTransform);
+                if (h > 0f) LineScratch[n++] = h;
+            }
+            TextScratch.Clear();
+            return ScrollMath.SelectTextLine(LineScratch, n);
         }
 
         private static float Line(RectTransform t)

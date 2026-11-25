@@ -120,7 +120,7 @@ namespace Morgott.UI.PreWorld
             public Action<float> Wheel;
             public Action<float> Drag;
             public void OnScroll(PointerEventData e) => Wheel?.Invoke(e.scrollDelta.y);
-            public void OnInitializePotentialDrag(PointerEventData e) => e.useDragThreshold = false;
+            public void OnInitializePotentialDrag(PointerEventData e) { if (Drag != null && e.button == PointerEventData.InputButton.Left) e.useDragThreshold = false; }
             public void OnPointerDown(PointerEventData e) { if (e.button == PointerEventData.InputButton.Left) Drag?.Invoke(Share(e)); }
             public void OnDrag(PointerEventData e) { if (e.button == PointerEventData.InputButton.Left) Drag?.Invoke(Share(e)); }
 
@@ -369,6 +369,16 @@ namespace Morgott.UI.PreWorld
             _modList = NewRect("ModList", p);
             Column(_modList, SideX, ModListW, ModListY, Bottom + FootH + 12f);
             HitArea(_modList, "ModListHit").Wheel = d => { _modScroll -= Math.Sign(d); _dirty = true; };
+            var modDrag = _modList.gameObject.AddComponent<DragScroll>();
+            modDrag.CanStart = _ => !_gameTab && ModMax() > 0;
+            modDrag.StepSize = () => ModRowH;
+            modDrag.OnStep = (steps, _) =>
+            {
+                var next = Mathf.Clamp(_modScroll + steps, 0, ModMax());
+                if (next == _modScroll) return;
+                _modScroll = next;
+                _dirty = true;
+            };
             _modBar = NewBar(p, "ModScroll", s => { _modScroll = Mathf.RoundToInt(s * ModMax()); _dirty = true; }, d => { _modScroll -= Math.Sign(d); _dirty = true; });
             Column(_modBar.Grip, SideX + ModListW + 2f, 26f, ModListY, Bottom + FootH + 12f);
             _footer = Txt(p, "Footer", "text.muted", TextAlignmentOptions.Center, 20f);
@@ -386,6 +396,16 @@ namespace Morgott.UI.PreWorld
             _list.gameObject.AddComponent<RectMask2D>();
             Stretch(_list, ListX, ListY, ListRight, Bottom);
             HitArea(_list, "ListHit").Wheel = d => { _scroll -= 3 * Math.Sign(d); _dirty = true; };
+            var listDrag = _list.gameObject.AddComponent<DragScroll>();
+            listDrag.CanStart = _ => !_gameTab && MaxScroll() > 0;
+            listDrag.StepSize = () => LineH;
+            listDrag.OnStep = (steps, _) =>
+            {
+                var next = Mathf.Clamp(_scroll + steps, 0, MaxScroll());
+                if (next == _scroll) return;
+                _scroll = next;
+                _dirty = true;
+            };
             _bar = NewBar(_pack, "ScrollGrip", s => { _scroll = Mathf.RoundToInt(s * MaxScroll()); _dirty = true; }, d => { _scroll -= 3 * Math.Sign(d); _dirty = true; });
             Column(_bar.Grip, -(ListRight - 12f), 30f, ListY, Bottom, 1f);
             _empty = Txt(_pack, "Empty", "text.muted", TextAlignmentOptions.Top, 22f);

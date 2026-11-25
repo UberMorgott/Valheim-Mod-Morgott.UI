@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using HarmonyLib;
 using Morgott.Core;
 using Morgott.UI.PlayerHud;
+using Morgott.UI.Restyle;
 using Morgott.UI.Theme;
 using TMPro;
 using UnityEngine;
@@ -37,7 +38,7 @@ namespace Morgott.UI.MapScreen
         public sealed class PortalHit : MonoBehaviour, IPointerClickHandler
         {
             public System.Action<PointerEventData> Click;
-            public void OnPointerClick(PointerEventData eventData) => Click?.Invoke(eventData);
+            public void OnPointerClick(PointerEventData eventData) { if (!eventData.dragging) Click?.Invoke(eventData); }
         }
 
         private sealed class PortalRowUi
@@ -68,7 +69,7 @@ namespace Morgott.UI.MapScreen
         private readonly List<PortalView> _ppView = new List<PortalView>();
         private readonly PortalClicks _ppClicks = new PortalClicks();
         private int _ppFav;
-        private float _ppScrollPx;
+        private float _ppScrollPx, _ppContentH, _ppViewH;
         private bool _ppShown;
         private ZDOID _ppSel = ZDOID.None;
         private Minimap.PinData _ppRingPin;
@@ -116,6 +117,10 @@ namespace Morgott.UI.MapScreen
             _ppSearchHint = _art.Text("SearchHint", _ppSearchBack.transform, "font.body", "color.state.disabled", ThemeTokens.GetFloat("size.map.legend.font", 17f), TextAlignmentOptions.Left);
             _ppList = HudArtRect("List", _pp);
             _ppList.gameObject.AddComponent<RectMask2D>();
+            var portalDrag = _pp.gameObject.AddComponent<DragScroll>();
+            portalDrag.Space = _ppList;
+            portalDrag.CanStart = e => _ppContentH > _ppViewH + 0.5f && RectTransformUtility.RectangleContainsScreenPoint(_ppList, e.pressPosition, e.pressEventCamera);
+            portalDrag.OnDeltaY = (dy, _) => _ppScrollPx += dy;
             _ppFavHeader = _art.Text("FavoritesHeader", _ppList, "font.display", "color.text.header", headerSize, TextAlignmentOptions.Center);
             _ppFavLine = _art.Image("FavoritesDivider", _ppList, "sprite.divider", "color.frame", Image.Type.Sliced);
             _ppAllHeader = _art.Text("AllHeader", _ppList, "font.display", "color.text.header", headerSize, TextAlignmentOptions.Center);
@@ -402,6 +407,8 @@ namespace Morgott.UI.MapScreen
             Place(_ppList, pad, y, rowW, view);
             var rowH = PortalRowH;
             var content = PortalRowY(_ppRows.Count);
+            _ppContentH = content;
+            _ppViewH = view;
             if (_ppScroll && Mathf.Abs(_ppScroll.Delta) > 0.01f)
             {
                 _ppScrollPx -= _ppScroll.Delta * rowH;

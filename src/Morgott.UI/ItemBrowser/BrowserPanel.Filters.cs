@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Morgott.Core;
 using Morgott.UI.Icons;
 using Morgott.UI.MapScreen;
+using Morgott.UI.Restyle;
 using Morgott.UI.Theme;
 using TMPro;
 using UnityEngine;
@@ -143,6 +144,16 @@ namespace Morgott.UI.ItemBrowser
             fill.a = 1f;
             _popFill.color = fill;
             _popBack = Img(g, "FacetPopup", "dropdown.list", true); // the game's dropdown list plate (crafting sort list)
+            var popDrag = _popBack.gameObject.AddComponent<DragScroll>();
+            popDrag.CanStart = _ => _popMax > 0;
+            popDrag.StepSize = () => PopRowH * _k;
+            popDrag.OnStep = (steps, _) =>
+            {
+                var next = Mathf.Clamp(_popScroll + steps, 0, _popMax);
+                if (next == _popScroll) return;
+                _popScroll = next;
+                _dirty = true;
+            };
             _popFill.gameObject.SetActive(false);
             _popBlock.gameObject.SetActive(false);
             _popBack.gameObject.SetActive(false);
@@ -473,6 +484,8 @@ namespace Morgott.UI.ItemBrowser
             Off(_selRim);
             _heads.Used = _rowRules.Used = 0;
             var view = h - top;
+            _gridTop = top;
+            _gridBottom = h;
             _gridScrollMax = PageModel.MaxFirst(_blockH, view);
             _gridScroll = Mathf.Clamp(_gridScroll, 0, _gridScrollMax);
             var fav = Browser.Favorites();

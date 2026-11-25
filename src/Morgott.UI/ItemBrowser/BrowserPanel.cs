@@ -58,7 +58,7 @@ namespace Morgott.UI.ItemBrowser
         private GameObject _gridView;
         private TMP_InputField _search;
         private Image _searchBack, _searchGlyph, _track, _thumb, _grip, _typeStar;
-        private float _gridViewH, _gridThumbH, _grab; // grid scrollbar geometry (mockup units) for the grip drag
+        private float _gridViewH, _gridThumbH, _grab, _gridTop, _gridBottom, _pageTop; // grid scrollbar geometry (mockup units) + drag-scroll bands
         private TMP_Text _caption, _empty, _hint, _unknownLabel;
         private Button _unknownBox;
         private Image _unknownCheck;
@@ -113,7 +113,7 @@ namespace Morgott.UI.ItemBrowser
             public Action<PointerEventData> Click;
             public Action Enter;
             public Func<string> Id; // entry under the pointer (hover keys)
-            public void OnPointerClick(PointerEventData e) => Click?.Invoke(e);
+            public void OnPointerClick(PointerEventData e) { if (!e.dragging) Click?.Invoke(e); }
             public void OnPointerEnter(PointerEventData e) => Enter?.Invoke();
         }
 
@@ -429,6 +429,17 @@ namespace Morgott.UI.ItemBrowser
         {
             _gridView = Child("Grid").gameObject;
             var g = _gridView.transform;
+            ScrollHit(_gridView);
+            var gridDrag = _gridView.AddComponent<DragScroll>();
+            gridDrag.CanStart = e => _chipOpen < 0 && _gridScrollMax > 0 && InScrollBand((RectTransform)g, e, _gridTop, _gridBottom);
+            gridDrag.StepSize = () => (!_storage && !_plainGrid && _listMode ? ListRowH : CellPitchY) * _k;
+            gridDrag.OnStep = (steps, _) =>
+            {
+                var next = Mathf.Clamp(_gridScroll + steps, 0, _gridScrollMax);
+                if (next == _gridScroll) return;
+                _gridScroll = next;
+                _dirty = true;
+            };
             _searchBack = Img(g, "SearchField", "craft.search", true);
             _searchGlyph = Img(_searchBack.transform, "Glyph", "craft.glyph.search");
             _search = Field(_searchBack);
@@ -484,6 +495,17 @@ namespace Morgott.UI.ItemBrowser
 
             _pageView = Child("Page").gameObject;
             var p = _pageView.transform;
+            ScrollHit(_pageView);
+            var pageDrag = _pageView.AddComponent<DragScroll>();
+            pageDrag.CanStart = e => _pageScrollMax > 0 && InScrollBand((RectTransform)p, e, _pageTop, _a.H / Mathf.Max(_k, 1e-6f));
+            pageDrag.StepSize = () => PageModel.RowH * _k;
+            pageDrag.OnStep = (steps, _) =>
+            {
+                var next = Mathf.Clamp(_pageScroll + steps, 0, _pageScrollMax);
+                if (next == _pageScroll) return;
+                _pageScroll = next;
+                _dirty = true;
+            };
             _backPlate = Img(p, "BackPlate", "ib.square");
             _back = Btn(p, "Back", "craft.arrow.left", out _, () => Nav(_history.Back(), false));
             _crumb = Txt(p, "Crumb", "text.body", TextAlignmentOptions.Left);
@@ -510,6 +532,28 @@ namespace Morgott.UI.ItemBrowser
             _usedNote = Txt(p, "UsedNote", "text.muted", TextAlignmentOptions.Center, FontStyles.Italic);
             _measure = Txt(p, "Measure", "text.accent", TextAlignmentOptions.Left); // never shown: chip widths
             _pageView.SetActive(false);
+        }
+
+        private static void ScrollHit(GameObject host)
+        {
+            var img = new GameObject("ScrollBg", typeof(RectTransform)).AddComponent<Image>();
+            var rt = img.rectTransform;
+            rt.SetParent(host.transform, false);
+            rt.SetAsFirstSibling();
+            rt.anchorMin = Vector2.zero;
+            rt.anchorMax = Vector2.one;
+            rt.offsetMin = rt.offsetMax = Vector2.zero;
+            img.color = Color.clear;
+            img.raycastTarget = true;
+            DollCell.Mark(img, "content", "item browser drag-scroll area");
+        }
+
+        private bool InScrollBand(RectTransform host, PointerEventData e, float top, float bottom)
+        {
+            if (_k <= 1e-6f || bottom <= top) return false;
+            if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(host, e.pressPosition, e.pressEventCamera, out var lp)) return false;
+            var y = (host.rect.yMax - lp.y) / _k;
+            return y >= top && y <= bottom;
         }
 
         private RectTransform Child(string name)
@@ -828,6 +872,8 @@ namespace Morgott.UI.ItemBrowser
                 return;
             }
             var bottom = store ? StoreBar(h) : h;
+            _gridTop = top;
+            _gridBottom = bottom;
             var rows = Math.Max(1, (int)((bottom - top + 4f) / CellPitchY));
             var per = rows * 6;
             var total = (list.Count + 5) / 6;
@@ -1077,6 +1123,7 @@ namespace Morgott.UI.ItemBrowser
                 top = by + 34f;
             }
             top += 18f;
+            _pageTop = top;
 
             // Scrolled body: the two sections as blocks of real heights, scrolled block by block.
             _sockets.Used = _inChips.Used = _titles.Used = _stations.Used = _chances.Used = _rules.Used = _rowQuals.Used = 0;
