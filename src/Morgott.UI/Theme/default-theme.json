@@ -1595,6 +1595,7 @@
     { "role": "glyph.ench.disenchant", "sprite": "sprite.glyph.ench.disenchant", "color": "color.text.body", "imageType": "Simple", "preserveAspect": true },
     { "role": "glyph.ench.upgrade", "sprite": "sprite.glyph.act.upgrade", "color": "color.text.body", "imageType": "Simple", "preserveAspect": true },
     { "role": "glyph.ench.gems", "sprite": "sprite.gem.rarity", "color": "color.text.body", "imageType": "Simple", "preserveAspect": true },
+    { "role": "glyph.ench.vault", "sprite": "sprite.glyph.panel.chest", "color": "color.text.body", "imageType": "Simple", "preserveAspect": true },
     { "role": "badge.ench.lock", "sprite": "sprite.ench.lock.badge", "color": "color.frame", "imageType": "Simple", "preserveAspect": true },
     { "role": "glyph.ench.lock", "sprite": "sprite.ench.lock.glyph", "color": "color.text.missing", "imageType": "Simple", "preserveAspect": true },
     { "role": "glyph.board.stash", "sprite": "sprite.glyph.board.stash", "color": "color.text.body", "imageType": "Simple", "preserveAspect": true },

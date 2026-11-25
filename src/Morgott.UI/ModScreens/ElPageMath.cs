@@ -8,16 +8,35 @@ namespace Morgott.UI.ModScreens
     // - Trader (TraderPage, mockup 2026-11-07/04): vanilla store column left, Epic Loot board / temper panel right.
     public static class ElPageMath
     {
-        // Mockup 02 at 1920x1080 (u = canvas height / 1080): tab caps 85 x 66 from x 109, pitch 104; list column 61..543 of
-        // the 1799-wide content box (its scrollbar at 574), pane from 612.
+        // Mockup 02 at 1920x1080 (u = canvas height / 1080): tab caps 85 x 66 from x 109, pitch 104 (9+ tabs compact to
+        // 78 x 66, gap 10, pitch 88 so 9 tabs + RTrigger fit left of NameX 949); list column 61..543 of the 1799-wide
+        // content box (its scrollbar at 574), pane from 612.
         public const float TabW = 85f, TabH = 66f, TabGap = 19f, TabX = 109f, TabY = 27f;
+        public const float TabW9 = 78f, TabGap9 = 10f;
         public const float ListShare = 513f / 1799f, PaneGap = 38f / 1799f;
 
-        // Tab cap i of the top-bar row.
-        public static Box Tab(int i, float u) => new Box((TabX + i * (TabW + TabGap)) * u, TabY * u, TabW * u, TabH * u);
+        private static void TabMetrics(int n, out float w, out float gap)
+        {
+            if (n >= 9) { w = TabW9; gap = TabGap9; }
+            else { w = TabW; gap = TabGap; }
+        }
+
+        // Tab cap i of the top-bar row (n = shown tab count).
+        public static Box Tab(int i, int n, float u)
+        {
+            TabMetrics(n, out var w, out var gap);
+            return new Box((TabX + i * (w + gap)) * u, TabY * u, w * u, TabH * u);
+        }
+
+        // Tab cap i of the default (<= 8 tab) row.
+        public static Box Tab(int i, float u) => Tab(i, 0, u);
 
         // The row of n caps.
-        public static Box TabRow(int n, float u) => new Box(TabX * u, TabY * u, Math.Max(0, n) * TabW * u + Math.Max(0, n - 1) * TabGap * u, TabH * u);
+        public static Box TabRow(int n, float u)
+        {
+            TabMetrics(n, out var w, out var gap);
+            return new Box(TabX * u, TabY * u, Math.Max(0, n) * w * u + Math.Max(0, n - 1) * gap * u, TabH * u);
+        }
 
         // Body split: list column + pane; without a list the pane takes the whole box.
         public static void Split(Box body, bool list, out Box column, out Box pane)

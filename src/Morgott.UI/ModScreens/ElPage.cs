@@ -131,6 +131,10 @@ namespace Morgott.UI.ModScreens
         }
         private void TabRow(float u)
         {
+            var count = 0;
+            if (_tabHandler)
+                foreach (var tab in _tabHandler.m_tabs)
+                    if (tab != null && tab.m_button && tab.m_button.gameObject.activeSelf) count++;
             var shown = 0;
             if (_tabHandler)
                 foreach (var tab in _tabHandler.m_tabs)
@@ -138,9 +142,9 @@ namespace Morgott.UI.ModScreens
                     {
                         if (tab.m_button.TryGetComponent<ElTabCell>(out var cell)) cell.IconOnly = true;
                         Geo.SetScale(tab.m_button.transform, 1f);
-                        Geo.Place(_canvas, (RectTransform)tab.m_button.transform, ElPageMath.Tab(shown++, u));
+                        Geo.Place(_canvas, (RectTransform)tab.m_button.transform, ElPageMath.Tab(shown++, count, u));
                     }
-            var row = ElPageMath.TabRow(shown, u);
+            var row = ElPageMath.TabRow(count, u);
             Geo.SetScale(_tabs, 1f);
             Geo.Place(_canvas, _tabs, row);
             if (_scrim)

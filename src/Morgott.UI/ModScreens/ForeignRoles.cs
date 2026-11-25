@@ -171,23 +171,25 @@ namespace Morgott.UI.ModScreens
                         if (g is Image && !ctx.AdapterRoles.ContainsKey(g)) ctx.Role(g, "content", "Epic Loot rarity-coloured graphic (SetRarityColor keeps its art + colour)");
         }
 
-        // Morgott.EpicLoot's Gems tab (GemTab.View.cs, page "GemsContent") draws its slots, rows, segments and chips with this
-        // theme's own sprites (Core ITheme.TryGetSprite) and swaps them per state: its Gem* images keep that art.
+        // Morgott.EpicLoot's Gems / GemVault tabs (GemTab / GemVault, pages "GemsContent" / "GemVaultContent") draw slots,
+        // rows, segments and chips with this theme's own sprites (Core ITheme.TryGetSprite) and swap them per state:
+        // their Gem* / GemVault* images keep that art.
         private static void GemTabArt(ScreenContext ctx, Transform root)
         {
             foreach (var img in root.GetComponentsInChildren<Image>(true))
-                if (img.name.StartsWith("Gem", StringComparison.Ordinal) && !ctx.AdapterRoles.ContainsKey(img) && IsUnder(img.transform, "GemsContent"))
-                    ctx.Role(img, "content", "Morgott.EpicLoot gem tab art (theme sprites, per state)");
+                if (IsGemArt(img, ctx)) ctx.Role(img, "content", "Morgott.EpicLoot gem tab art (theme sprites, per state)");
             // its texts (header, slots, list) in the body face at their own sizes, like the mockup (not the rune display face)
             foreach (var t in root.GetComponentsInChildren<TMP_Text>(true))
-                if (t.name.StartsWith("Gem", StringComparison.Ordinal) && !ctx.AdapterRoles.ContainsKey(t) && IsUnder(t.transform, "GemsContent"))
-                    ctx.Role(t, "text.body", "Morgott.EpicLoot gem tab text (body face)");
+                if (IsGemArt(t, ctx)) ctx.Role(t, "text.body", "Morgott.EpicLoot gem tab text (body face)");
         }
 
-        private static bool IsUnder(Transform t, string name)
+        private static bool IsGemArt(Graphic c, ScreenContext ctx) =>
+            ForeignMath.IsGemTabArt(c.name) && !ctx.AdapterRoles.ContainsKey(c) && IsUnderGemPage(c.transform);
+
+        private static bool IsUnderGemPage(Transform t)
         {
             for (; t; t = t.parent)
-                if (t.name == name) return true;
+                if (ForeignMath.IsGemTabPage(t.name)) return true;
             return false;
         }
 

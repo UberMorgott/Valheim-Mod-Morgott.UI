@@ -140,8 +140,19 @@ namespace Morgott.UI.Tests
         [InlineData("Disenchant", "glyph.ench.disenchant")]
         [InlineData("Upgrade", "glyph.ench.upgrade")]
         [InlineData("Gems", "glyph.ench.gems")] // Morgott.EpicLoot GemTab: the old Storage slot
+        [InlineData("GemVault", "glyph.ench.vault")]
+        [InlineData("Vault", "glyph.ench.vault")]
         [InlineData("Close", null)]
         public void EnchantTabsMapToKitGlyphs(string tab, string want) => Assert.Equal(want, EnchantGlyph(tab));
+
+        [Theory]
+        [InlineData("GemsContent", "GemRow", true)]
+        [InlineData("GemVaultContent", "GemVaultSlot0", true)]
+        [InlineData("GemVaultContent", "GemVaultLabel", true)]
+        [InlineData("GemVaultContent", "MainButton", false)]
+        [InlineData("ConvertContent", "GemVaultSlot0", false)]
+        public void GemTabArtRecognizesGemsAndGemVaultContent(string page, string child, bool want) =>
+            Assert.Equal(want, IsGemTabPage(page) && IsGemTabArt(child));
 
         [Theory]
         [InlineData("SecretStashTab", "glyph.board.stash")]
@@ -161,8 +172,9 @@ namespace Morgott.UI.Tests
             Assert.Empty(ThemeSchema.Validate(f));
             foreach (var fam in new[] { "ModUi", "EpicLootEnchanting", "EpicLootBoard", "EpicLootTemper", "ModHud", "InventoryExtras", "Radial" })
                 Assert.Contains(f.families, x => x.family == fam);
-            foreach (var role in new[] { "legacy.title", "legacy.body", "legacy.label", "legacy.muted", "glyph.ench.enchant", "glyph.board.bounty", "plate.currency" })
+            foreach (var role in new[] { "legacy.title", "legacy.body", "legacy.label", "legacy.muted", "glyph.ench.enchant", "glyph.ench.vault", "glyph.board.bounty", "plate.currency" })
                 Assert.Contains(f.roles, x => x.role == role);
+            Assert.Equal("sprite.glyph.panel.chest", Array.Find(f.roles, x => x.role == "glyph.ench.vault").sprite);
             Assert.Equal("font.display", Array.Find(f.roles, x => x.role == "legacy.title").font);
         }
 

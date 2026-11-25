@@ -110,8 +110,15 @@ namespace Morgott.UI.ModScreens
             if (t.Contains("enchant")) return "glyph.ench.enchant";
             if (t.Contains("upgrade")) return "glyph.ench.upgrade";
             if (t == "gems") return "glyph.ench.gems"; // Morgott.EpicLoot GemTab (old Storage slot): the kit's gem glyph
+            if (t.Contains("vault")) return "glyph.ench.vault"; // Morgott.EpicLoot GemVault tab (9th tab): chest glyph
             return null;
         }
+
+        // Morgott.EpicLoot's Gems / GemVault tabs ("GemsContent" / "GemVaultContent"): custom Gem* / GemVault* widgets keep
+        // theme-driven sprites and body text faces instead of being reclassified as generic controls.
+        public static bool IsGemTabPage(string name) => name == "GemsContent" || name == "GemVaultContent";
+
+        public static bool IsGemTabArt(string name) => !string.IsNullOrEmpty(name) && name.StartsWith("Gem", StringComparison.Ordinal);
 
         // Children of an Epic Loot enchanting tab (EnchantingUI prefab, Panel/Tabs/<feature>): "Image" = the tab's icon,
         // "Text" = its caption (FeatureStatus.UnlockedContainer: hidden while the feature is locked), "Image/Locked" =

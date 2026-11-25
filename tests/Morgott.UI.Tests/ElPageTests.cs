@@ -51,6 +51,19 @@ namespace Morgott.UI.Tests
             Assert.True(ElPageMath.TabRow(8, 1f).Right < 949f);
         }
 
+        // 9 tabs compact to 78 x 66 with 10 px gap (x 109..891), keeping RTrigger (row.Right + 4 + 48 = 943) left of NameX (949).
+        [Fact]
+        public void NineTabsAndTriggerFitLeftOfTheBanner()
+        {
+            var row = ElPageMath.TabRow(9, 1f);
+            Assert.Equal(109f, row.X, 2);
+            Assert.Equal(891f, row.Right, 2);
+            var last = ElPageMath.Tab(8, 9, 1f);
+            Assert.Equal(78f, last.W, 2);
+            Assert.Equal(891f, last.Right, 2);
+            Assert.True(row.Right + 4f + 48f < 949f);
+        }
+
         // Mockup 04: store column ~30 % left, board right; Bog Witch (no board): the store centred.
         [Fact]
         public void TraderSplitsOrCentres()
