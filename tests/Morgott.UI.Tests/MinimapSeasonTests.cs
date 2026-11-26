@@ -59,7 +59,7 @@ namespace Morgott.UI.Tests
         }
 
         [Fact]
-        public void AshlandsSuppressesWinterSnowCapAndBlizzardRim()
+        public void AshlandsSuppressesWinterSnowCapAndWeatherRims()
         {
             const int ashlands = MinimapSeasonRules.BiomeAshLands;
             var winterAsh = MinimapSeasonRules.Evaluate(
@@ -69,6 +69,14 @@ namespace Morgott.UI.Tests
             Assert.False(winterAsh.HasPrimary);
             Assert.False(winterAsh.HasSecondary);
             Assert.False(winterAsh.HasBlizzard);
+            Assert.False(winterAsh.HasThaw);
+
+            var thawAsh = MinimapSeasonRules.Evaluate(
+                MakeSnapshot(Season.Winter, 0.5f, ev: SeasonWeatherEvent.Thaw, intensity: 1f),
+                ashlands,
+                showOverlay: true);
+            Assert.False(thawAsh.HasPrimary);
+            Assert.False(thawAsh.HasThaw);
 
             // Late fall in Ashlands fades fall toward 0 without bringing up winter snow.
             MinimapSeasonRules.ComputeCrossFadeWeights(Season.Fall, 0.96f, ashlands: true, out _, out _, out var fall, out var winter);
@@ -83,11 +91,17 @@ namespace Morgott.UI.Tests
         }
 
         [Fact]
-        public void BlizzardRimAlphaTracksEventIntensityAndSuppressesWhenOff()
+        public void WeatherRimAlphasTrackEventIntensityAndRemainMutuallyExclusive()
         {
+            Assert.Equal("Morgott.UI.Seasons.minimap_thaw_rim.png", MinimapSeasonRules.ThawResourceName);
+
             Assert.Equal(0f, MinimapSeasonRules.ComputeBlizzardAlpha(MakeSnapshot(Season.Winter, 0.5f, ev: SeasonWeatherEvent.None, intensity: 1f), 1));
             Assert.Equal(0f, MinimapSeasonRules.ComputeBlizzardAlpha(MakeSnapshot(Season.Winter, 0.5f, ev: SeasonWeatherEvent.Thaw, intensity: 1f), 1));
             Assert.Equal(0f, MinimapSeasonRules.ComputeBlizzardAlpha(MakeSnapshot(Season.Winter, 0.5f, ev: SeasonWeatherEvent.Blizzard, intensity: 0f), 1));
+
+            Assert.Equal(0f, MinimapSeasonRules.ComputeThawAlpha(MakeSnapshot(Season.Winter, 0.5f, ev: SeasonWeatherEvent.None, intensity: 1f), 1));
+            Assert.Equal(0f, MinimapSeasonRules.ComputeThawAlpha(MakeSnapshot(Season.Winter, 0.5f, ev: SeasonWeatherEvent.Blizzard, intensity: 1f), 1));
+            Assert.Equal(0f, MinimapSeasonRules.ComputeThawAlpha(MakeSnapshot(Season.Winter, 0.5f, ev: SeasonWeatherEvent.Thaw, intensity: 0f), 1));
 
             var low = MinimapSeasonRules.ComputeBlizzardAlpha(MakeSnapshot(Season.Winter, 0.5f, ev: SeasonWeatherEvent.Blizzard, intensity: 0.25f), 1);
             var mid = MinimapSeasonRules.ComputeBlizzardAlpha(MakeSnapshot(Season.Winter, 0.5f, ev: SeasonWeatherEvent.Blizzard, intensity: 0.50f), 1);
@@ -97,9 +111,19 @@ namespace Morgott.UI.Tests
             Assert.True(mid < high);
             Assert.Equal(1f, high, 4);
 
-            var hidden = MinimapSeasonRules.Evaluate(MakeSnapshot(Season.Winter, 0.5f, ev: SeasonWeatherEvent.Blizzard, intensity: 1f), 1, showOverlay: false);
+            var thawState = MinimapSeasonRules.Evaluate(MakeSnapshot(Season.Winter, 0.5f, ev: SeasonWeatherEvent.Thaw, intensity: 0.50f), 1, showOverlay: true);
+            Assert.True(thawState.HasThaw);
+            Assert.False(thawState.HasBlizzard);
+            Assert.Equal(mid, thawState.ThawAlpha, 4);
+
+            var blizzardState = MinimapSeasonRules.Evaluate(MakeSnapshot(Season.Winter, 0.5f, ev: SeasonWeatherEvent.Blizzard, intensity: 0.50f), 1, showOverlay: true);
+            Assert.True(blizzardState.HasBlizzard);
+            Assert.False(blizzardState.HasThaw);
+
+            var hidden = MinimapSeasonRules.Evaluate(MakeSnapshot(Season.Winter, 0.5f, ev: SeasonWeatherEvent.Thaw, intensity: 1f), 1, showOverlay: false);
             Assert.False(hidden.HasPrimary);
             Assert.False(hidden.HasBlizzard);
+            Assert.False(hidden.HasThaw);
         }
 
         [Fact]

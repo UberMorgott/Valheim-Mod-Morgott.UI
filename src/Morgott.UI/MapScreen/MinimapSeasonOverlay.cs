@@ -31,14 +31,14 @@ namespace Morgott.UI.MapScreen
     {
         private static readonly Sprite[] SeasonSprites = new Sprite[4];
         private static readonly bool[] SeasonTried = new bool[4];
-        private static Sprite _blizzardSprite;
-        private static bool _blizzardTried;
+        private static Sprite _blizzardSprite, _thawSprite;
+        private static bool _blizzardTried, _thawTried;
 
         private readonly HudArt _art;
-        private readonly Image _primary, _secondary, _blizzard;
+        private readonly Image _primary, _secondary, _blizzard, _thaw;
         private readonly TMP_Text _timer;
         private readonly float[] _weights = new float[4];
-        private float _blizzardAlpha;
+        private float _blizzardAlpha, _thawAlpha;
         private bool _initialized;
 
         private long _lastSeconds = -1L;
@@ -57,6 +57,7 @@ namespace Morgott.UI.MapScreen
             _primary = CreateOverlayImage("RuneSkin_SeasonPrimary", smallRoot, insertAt, "seasonal minimap ring overlay");
             _secondary = CreateOverlayImage("RuneSkin_SeasonSecondary", smallRoot, insertAt + 1, "seasonal minimap cross-fade overlay");
             _blizzard = CreateOverlayImage("RuneSkin_SeasonBlizzard", smallRoot, insertAt + 2, "blizzard frost rim minimap overlay");
+            _thaw = CreateOverlayImage("RuneSkin_SeasonThaw", smallRoot, insertAt + 3, "thaw melt rim minimap overlay");
             _timer = art.Text("RuneSkin_SeasonTimer", smallRoot, "font.body", "color.text.body",
                 ThemeTokens.GetFloat("size.minimap.font", 17f), TextAlignmentOptions.Center);
             TextLook.ApplyNameplate(_timer, "font.body", "season.timer", 0f);
@@ -95,6 +96,7 @@ namespace Morgott.UI.MapScreen
             Center(_primary.rectTransform, Vector2.zero, size);
             Center(_secondary.rectTransform, Vector2.zero, size);
             Center(_blizzard.rectTransform, Vector2.zero, size);
+            Center(_thaw.rectTransform, Vector2.zero, size);
 
             if (_timer)
             {
@@ -121,10 +123,12 @@ namespace Morgott.UI.MapScreen
                     _initialized = false;
                     for (var i = 0; i < 4; i++) _weights[i] = 0f;
                     _blizzardAlpha = 0f;
+                    _thawAlpha = 0f;
                 }
                 if (_primary.enabled) _primary.enabled = false;
                 if (_secondary.enabled) _secondary.enabled = false;
                 if (_blizzard.enabled) _blizzard.enabled = false;
+                if (_thaw.enabled) _thaw.enabled = false;
                 if (_timer.gameObject.activeSelf) _timer.gameObject.SetActive(false);
                 return;
             }
@@ -141,13 +145,14 @@ namespace Morgott.UI.MapScreen
 
         private void UpdateRings(SeasonSnapshot snap, int biome, bool showOverlay, float dt)
         {
-            float t0 = 0f, t1 = 0f, t2 = 0f, t3 = 0f, tBliz = 0f;
+            float t0 = 0f, t1 = 0f, t2 = 0f, t3 = 0f, tBliz = 0f, tThaw = 0f;
             if (showOverlay)
             {
                 MinimapSeasonRules.ComputeCrossFadeWeights(
                     snap.Season, snap.Progress, MinimapSeasonRules.IsAshlands(biome),
                     out t0, out t1, out t2, out t3);
                 tBliz = MinimapSeasonRules.ComputeBlizzardAlpha(snap, biome);
+                tThaw = MinimapSeasonRules.ComputeThawAlpha(snap, biome);
             }
 
             if (!_initialized)
@@ -155,6 +160,7 @@ namespace Morgott.UI.MapScreen
                 _initialized = true;
                 _weights[0] = t0; _weights[1] = t1; _weights[2] = t2; _weights[3] = t3;
                 _blizzardAlpha = tBliz;
+                _thawAlpha = tThaw;
             }
             else
             {
@@ -162,7 +168,10 @@ namespace Morgott.UI.MapScreen
                 _weights[1] = MinimapSeasonRules.StepFade(_weights[1], t1, dt);
                 _weights[2] = MinimapSeasonRules.StepFade(_weights[2], t2, dt);
                 _weights[3] = MinimapSeasonRules.StepFade(_weights[3], t3, dt);
+                if (tBliz > 0f) _thawAlpha = 0f;
+                if (tThaw > 0f) _blizzardAlpha = 0f;
                 _blizzardAlpha = MinimapSeasonRules.StepFade(_blizzardAlpha, tBliz, dt);
+                _thawAlpha = MinimapSeasonRules.StepFade(_thawAlpha, tThaw, dt);
             }
 
             MinimapSeasonRules.PickTopTwo(_weights[0], _weights[1], _weights[2], _weights[3],
@@ -171,18 +180,20 @@ namespace Morgott.UI.MapScreen
             ApplyRing(_primary, primarySeason, primaryAlpha);
             ApplyRing(_secondary, secondarySeason, secondaryAlpha);
 
-            if (_blizzardAlpha > 0.002f)
+            ApplyRim(_blizzard, _blizzardAlpha > 0.002f ? BlizzardSprite() : null, new Color(0.90f, 0.97f, 1f, _blizzardAlpha), _blizzardAlpha);
+            ApplyRim(_thaw, _thawAlpha > 0.002f ? ThawSprite() : null, new Color(1f, 1f, 1f, _thawAlpha), _thawAlpha);
+        }
+
+        private static void ApplyRim(Image img, Sprite sprite, Color tint, float alpha)
+        {
+            if (alpha <= 0.002f || !sprite)
             {
-                var sp = BlizzardSprite();
-                if (sp)
-                {
-                    if (_blizzard.sprite != sp) _blizzard.sprite = sp;
-                    _blizzard.color = new Color(0.90f, 0.97f, 1f, _blizzardAlpha);
-                    if (!_blizzard.enabled) _blizzard.enabled = true;
-                }
-                else if (_blizzard.enabled) _blizzard.enabled = false;
+                if (img.enabled) img.enabled = false;
+                return;
             }
-            else if (_blizzard.enabled) _blizzard.enabled = false;
+            if (img.sprite != sprite) img.sprite = sprite;
+            img.color = tint;
+            if (!img.enabled) img.enabled = true;
         }
 
         private static void ApplyRing(Image img, Season season, float alpha)
@@ -255,11 +266,17 @@ namespace Morgott.UI.MapScreen
             return SeasonSprites[idx] = LoadSprite(MinimapSeasonRules.ResourceName((Season)idx), "UI_MinimapSeason_" + (Season)idx);
         }
 
-        private static Sprite BlizzardSprite()
+        private static Sprite BlizzardSprite() =>
+            GetCachedRim(ref _blizzardSprite, ref _blizzardTried, MinimapSeasonRules.BlizzardResourceName, "UI_MinimapSeason_BlizzardRim");
+
+        private static Sprite ThawSprite() =>
+            GetCachedRim(ref _thawSprite, ref _thawTried, MinimapSeasonRules.ThawResourceName, "UI_MinimapSeason_ThawRim");
+
+        private static Sprite GetCachedRim(ref Sprite cache, ref bool tried, string resource, string name)
         {
-            if (_blizzardTried) return _blizzardSprite;
-            _blizzardTried = true;
-            return _blizzardSprite = LoadSprite(MinimapSeasonRules.BlizzardResourceName, "UI_MinimapSeason_BlizzardRim");
+            if (tried) return cache;
+            tried = true;
+            return cache = LoadSprite(resource, name);
         }
 
         private static Sprite LoadSprite(string resource, string name)

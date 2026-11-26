@@ -11,23 +11,27 @@ namespace Morgott.UI.MapScreen
         public Season SecondarySeason { get; }
         public float SecondaryAlpha { get; }
         public float BlizzardAlpha { get; }
+        public float ThawAlpha { get; }
 
         public bool HasPrimary => PrimaryAlpha > 0.001f;
         public bool HasSecondary => SecondaryAlpha > 0.001f;
         public bool HasBlizzard => BlizzardAlpha > 0.001f;
+        public bool HasThaw => ThawAlpha > 0.001f;
 
         public SeasonOverlayState(
             Season primarySeason,
             float primaryAlpha,
             Season secondarySeason,
             float secondaryAlpha,
-            float blizzardAlpha)
+            float blizzardAlpha,
+            float thawAlpha = 0f)
         {
             PrimarySeason = primarySeason;
             PrimaryAlpha = primaryAlpha;
             SecondarySeason = secondarySeason;
             SecondaryAlpha = secondaryAlpha;
             BlizzardAlpha = blizzardAlpha;
+            ThawAlpha = thawAlpha;
         }
     }
 
@@ -37,6 +41,7 @@ namespace Morgott.UI.MapScreen
         public const float TransitionWindow = 0.08f;
         public const int BiomeAshLands = 32; // Heightmap.Biome.AshLands (Heightmap.cs:24)
         public const string BlizzardResourceName = "Morgott.UI.Seasons.minimap_blizzard_rim.png";
+        public const string ThawResourceName = "Morgott.UI.Seasons.minimap_thaw_rim.png";
 
         public static bool IsAshlands(int biome) => (biome & BiomeAshLands) != 0;
 
@@ -116,12 +121,18 @@ namespace Morgott.UI.MapScreen
             winter = w3;
         }
 
-        public static float ComputeBlizzardAlpha(SeasonSnapshot snapshot, int biome)
+        public static float ComputeBlizzardAlpha(SeasonSnapshot snapshot, int biome) =>
+            ComputeEventAlpha(snapshot, biome, SeasonWeatherEvent.Blizzard);
+
+        public static float ComputeThawAlpha(SeasonSnapshot snapshot, int biome) =>
+            ComputeEventAlpha(snapshot, biome, SeasonWeatherEvent.Thaw);
+
+        private static float ComputeEventAlpha(SeasonSnapshot snapshot, int biome, SeasonWeatherEvent targetEvent)
         {
-            if (IsAshlands(biome) || snapshot.ActiveEvent != SeasonWeatherEvent.Blizzard) return 0f;
+            if (IsAshlands(biome) || snapshot.ActiveEvent != targetEvent) return 0f;
             var intensity = Clamp01(snapshot.EventIntensity);
             if (intensity <= 0f) return 0f;
-            // Subtle boost at mid-low intensity so translucent frost branches stay crisp over winter snow.
+            // Subtle boost at mid-low intensity so translucent frost/thaw accents stay crisp over winter snow.
             return Clamp01(intensity * 0.85f + (float)Math.Sqrt(intensity) * 0.15f);
         }
 
@@ -133,7 +144,8 @@ namespace Morgott.UI.MapScreen
                 out var w0, out var w1, out var w2, out var w3);
             PickTopTwo(w0, w1, w2, w3, out var primary, out var primaryAlpha, out var secondary, out var secondaryAlpha);
             var blizzard = ComputeBlizzardAlpha(snapshot, biome);
-            return new SeasonOverlayState(primary, primaryAlpha, secondary, secondaryAlpha, blizzard);
+            var thaw = ComputeThawAlpha(snapshot, biome);
+            return new SeasonOverlayState(primary, primaryAlpha, secondary, secondaryAlpha, blizzard, thaw);
         }
 
         public static void PickTopTwo(

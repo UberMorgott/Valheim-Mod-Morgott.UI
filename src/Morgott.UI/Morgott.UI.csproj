@@ -42,12 +42,13 @@
     <EmbeddedResource Include="Assets\PortalIcons.png" LogicalName="Morgott.UI.PortalIcons.png" />
     <!-- Custom colored 25-icon map pin sheet (5x5 of 128x128 white-on-alpha), loaded by MapScreen\CustomPinIcons. -->
     <EmbeddedResource Include="Assets\MapPinIcons.png" LogicalName="Morgott.UI.MapPinIcons.png" />
-    <!-- Seasonal minimap ring overlays (spring/summer/fall/winter wreaths + blizzard frost rim). -->
+    <!-- Seasonal minimap ring overlays (spring/summer/fall/winter wreaths + blizzard/thaw rims). -->
     <EmbeddedResource Include="Assets\Seasons\minimap_spring.png" LogicalName="Morgott.UI.Seasons.minimap_spring.png" />
     <EmbeddedResource Include="Assets\Seasons\minimap_summer.png" LogicalName="Morgott.UI.Seasons.minimap_summer.png" />
     <EmbeddedResource Include="Assets\Seasons\minimap_fall.png" LogicalName="Morgott.UI.Seasons.minimap_fall.png" />
     <EmbeddedResource Include="Assets\Seasons\minimap_winter.png" LogicalName="Morgott.UI.Seasons.minimap_winter.png" />
     <EmbeddedResource Include="Assets\Seasons\minimap_blizzard_rim.png" LogicalName="Morgott.UI.Seasons.minimap_blizzard_rim.png" />
+    <EmbeddedResource Include="Assets\Seasons\minimap_thaw_rim.png" LogicalName="Morgott.UI.Seasons.minimap_thaw_rim.png" />
   </ItemGroup>
 
   <ItemGroup>
