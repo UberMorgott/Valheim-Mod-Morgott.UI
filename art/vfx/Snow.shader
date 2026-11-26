@@ -2,7 +2,7 @@
 // extra opaque pass over a vanilla Heightmap chunk's own render mesh (Graphics.DrawMesh). Mirrors the Custom/Heightmap
 // Deep North vertex displacement (+Y only; Morgott.Patcher docs\terrain-tess-foot-ik.md "Formula"):
 //   wMountain = max(0, 1 - max(|c.r|, |c.g-1|, |c.b|, |c.a|)) (Mountain / DeepNorth colour)
-//   wSnow     = max(wMountain, step(0.01, _MorgottSeasonSnow) * (1 - wAsh)) (seasonal winter covers non-Ashlands biomes)
+//   wSnow     = max(wMountain, step(0.08, _MorgottSeasonSnow) * (1 - wAsh) * drift) (seasonal winter covers non-Ashlands biomes in patchy drifts)
 //   base      = 0.1 * wMountain * bareMask                     (vanilla thin snow on Mountain only, so our surface starts on top of it)
 //   deep      = _DepthScale * wSnow * G * bare * smoothstep(_WaterLevel, _WaterLevel + 2.2, y)
 // with G = Deep North depth noise baked per chunk by the consumer (_DepthTex over uv0, _DepthGrid texels per side, texel centres on the chunk grid),
@@ -53,7 +53,7 @@ Shader "Morgott/Snow"
     SubShader
     {
         Tags { "Queue" = "Geometry+1" "RenderType" = "Opaque" "IgnoreProjector" = "True" }
-        Offset -1, -1
+        Offset -2, -2
 
         CGPROGRAM
         #pragma surface surf Lambert vertex:vert tessellate:tess addshadow fullforwardshadows noambient nolightmap nodynlightmap nodirlightmap nometa noinstancing
@@ -90,14 +90,40 @@ Shader "Morgott/Snow"
             return UnityDistanceBasedTess(v0.vertex, v1.vertex, v2.vertex, 10, 50, _Tess);
         }
 
+        float Hash(float2 p)
+        {
+            p = frac(p * float2(123.34, 456.21));
+            p += dot(p, p + 45.32);
+            return frac(p.x * p.y);
+        }
+
+        float Noise(float2 p)
+        {
+            float2 i = floor(p), f = frac(p);
+            f = f * f * (3 - 2 * f);
+            return lerp(lerp(Hash(i), Hash(i + float2(1, 0)), f.x), lerp(Hash(i + float2(0, 1)), Hash(i + 1), f.x), f.y);
+        }
+
+        float Fbm(float2 xz)
+        {
+            return Noise(xz * 0.35) * 0.65 + Noise(xz * 1.7) * 0.35;
+        }
+
         void vert(inout appdata_full v)
         {
             float3 wp = mul(unity_ObjectToWorld, v.vertex).xyz;
             float4 c = v.color;
             float wMountain = max(0, 1 - max(max(abs(c.r), abs(c.g - 1)), max(abs(c.b), abs(c.a))));
             float wAsh = max(0, 1 - max(max(abs(c.r - 1), abs(c.g)), max(abs(c.b), abs(c.a - 1))));
-            float seasonOn = step(0.01, _MorgottSeasonSnow);
-            float wSnow = max(wMountain, seasonOn * (1 - wAsh));
+            float seasonOn = step(0.08, _MorgottSeasonSnow);
+            float drift = 1;
+            if (seasonOn > 0.5)
+            {
+                // Remap Fbm's 5..95% range [0.22, 0.72] -> [0, 1] so 0.15..0.5 forms crisp drifts while >=0.85 stays a full 1.0 blanket.
+                float f = saturate((Fbm(wp.xz) - 0.22) / 0.50);
+                drift = saturate((_MorgottSeasonSnow - (1.0 - f) * 0.72) / 0.13);
+            }
+            float wSnow = max(wMountain, seasonOn * (1 - wAsh) * drift);
             half4 m = tex2Dlod(_ClearedMaskTex, float4(v.texcoord.xy, 0, 0));
             float bareMask = 1 - saturate(m.r + m.g + 10 * m.b);
             float bare = max(bareMask, seasonOn * (1 - wMountain));
@@ -129,25 +155,11 @@ Shader "Morgott/Snow"
 #endif
         }
 
-        float Hash(float2 p)
-        {
-            p = frac(p * float2(123.34, 456.21));
-            p += dot(p, p + 45.32);
-            return frac(p.x * p.y);
-        }
-
-        float Noise(float2 p)
-        {
-            float2 i = floor(p), f = frac(p);
-            f = f * f * (3 - 2 * f);
-            return lerp(lerp(Hash(i), Hash(i + float2(1, 0)), f.x), lerp(Hash(i + float2(0, 1)), Hash(i + 1), f.x), f.y);
-        }
-
         void surf(Input IN, inout SurfaceOutput o)
         {
             float2 xz = IN.worldPos.xz;
             if (_LodHideDistance > 0) clip(distance(xz, _Center.xz) - _LodHideDistance * 0.7);
-            clip(IN.color.x - max(0.001, min(0.02, _DepthScale * 0.25))); // no deep snow here: vanilla terrain (and its thin snow) shows through
+            clip(IN.color.x - max(0.001, min(0.035, _DepthScale * 0.25))); // no deep snow here: vanilla terrain (and its thin snow) shows through
             float2 tl = IN.uv2_TrailTex;
             float t = Trail(tl);
             // |world gradient of t| from screen derivatives: [ddx(tl); ddy(tl)] g = (ddx t, ddy t), solved by Cramer
@@ -156,7 +168,7 @@ Shader "Morgott/Snow"
             float2 num = float2(dt.x * py.y - px.y * dt.y, px.x * dt.y - py.x * dt.x);
             half grazing = saturate(10 * abs(det) / max(length(px) * length(py), 1e-12)); // |sin| of the footprint angle
             half wall = saturate(length(num) / max(abs(det), 1e-12)) * grazing; // mask slope per m (was the 0.25 m difference x 4)
-            half drift = lerp(1, 0.9 + 0.2 * (Noise(xz * 0.35) * 0.65 + Noise(xz * 1.7) * 0.35), _Drift);
+            half drift = lerp(1, 0.9 + 0.2 * Fbm(xz), _Drift);
             o.Albedo = saturate(lerp(_Color.rgb * drift, _TrailColor.rgb, saturate(t / 0.9))) * (1 - 0.18 * wall); // trench walls in shade
             o.Normal = UnpackNormal(tex2D(_SnowNormal, xz * _NormalTile));
             half4 n = half4(normalize(WorldNormalVector(IN, o.Normal)), 1); // L2 assumes a unit normal
