@@ -109,5 +109,32 @@ namespace Morgott.UI.Tests
             Assert.True(map["L:Crypt2"].Interior);
             Assert.Contains(("Skeleton", Origin.World), map["L:Crypt2"].Creatures);
         }
+
+        [Theory]
+        [InlineData("1.0.30\nd7f768daaa38+", "1.0.30 d7f768daaa38+")]
+        [InlineData("  1.0.30\r\n\t d7f768daaa38+  b12345 \n", "1.0.30 d7f768daaa38+ b12345")]
+        [InlineData(null, "")]
+        [InlineData(" \r\n\t ", "")]
+        public void Sanitize_game_version_collapses_control_whitespace(string raw, string want) =>
+            Assert.Equal(want, FoundInTable.SanitizeGameVersion(raw));
+
+        [Fact]
+        public void Table_write_sanitizes_multiline_version_and_keys()
+        {
+            var s = new Scanned();
+            s.Add("Boar", Origin.World);
+            var text = FoundInTable.Write("1.0.30\nd7f768daaa38+", new[]
+            {
+                new System.Collections.Generic.KeyValuePair<string, Scanned>("L:Loc@1.0.30\nd7f768daaa38+#a2", s),
+                new System.Collections.Generic.KeyValuePair<string, Scanned>("L:Tab\tKey", s),
+            });
+            Assert.Equal(3, text.TrimEnd('\n').Split('\n').Length);
+            var map = FoundInTable.Parse(text, out var version, out var count);
+            Assert.Equal("1.0.30 d7f768daaa38+", version);
+            Assert.Equal(2, count);
+            Assert.Equal(2, map.Count);
+            Assert.True(map.ContainsKey("L:Loc@1.0.30 d7f768daaa38+#a2"));
+            Assert.True(map.ContainsKey("L:Tab Key"));
+        }
     }
 }

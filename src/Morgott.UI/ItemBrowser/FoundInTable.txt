@@ -1,4 +1,4 @@
-# game 1.0.21 b26249040	546
+# game 1.0.30 d7f768daaa38+ b26870846	546
 L:AbandonedLogCabin02	0	0	StoneGolem:w	TreasureChest_mountains
 L:AbandonedLogCabin03	0	0	StoneGolem:w,Skeleton_Mountains:w	TreasureChest_mountains
 L:AbandonedLogCabin04	0	0	StoneGolem:w,Skeleton_Mountains:w	TreasureChest_mountains

@@ -68,13 +68,6 @@ namespace Morgott.UI.ItemBrowser
             public int Item;
         }
 
-        private struct PopItem
-        {
-            public string Facet, Key, Label;
-            public int Count;
-            public bool Header;
-        }
-
         // Extra parts of a list row, built with the grid cell they belong to.
         private sealed class RowParts
         {
@@ -289,11 +282,7 @@ namespace Morgott.UI.ItemBrowser
             return capY;
         }
 
-        private string ValueLabel(string facet, string key)
-        {
-            if (key == Facet.NoneKey) return L("$ib_f_none");
-            return StageScan.Facets.Facets.TryGetValue(facet, out var f) && f.Labels.TryGetValue(key, out var label) ? L(label) : key;
-        }
+        private string ValueLabel(string facet, string key) => StageScan.Facets.ValueLabel(facet, key, L);
 
         private string FirstPicked(FacetChip chip, out int more)
         {
@@ -367,28 +356,7 @@ namespace Morgott.UI.ItemBrowser
 
         // ---------------------------------------------------------------- dropdown
 
-        private void FillPopup(FacetChip chip)
-        {
-            _popItems.Clear();
-            foreach (var id in chip.Facets)
-            {
-                if (!StageScan.Facets.Facets.TryGetValue(id, out var f)) continue;
-                var counts = new Dictionary<string, int>(StringComparer.Ordinal);
-                foreach (var e in _scoped)
-                {
-                    if (!f.ByEntry.TryGetValue(e.Id, out var keys)) { counts.TryGetValue(Facet.NoneKey, out var c0); counts[Facet.NoneKey] = c0 + 1; continue; }
-                    foreach (var k in keys) { counts.TryGetValue(k, out var c); counts[k] = c + 1; }
-                }
-                var rows = new List<PopItem>(counts.Count);
-                foreach (var kv in counts)
-                    if (kv.Key != Facet.NoneKey) rows.Add(new PopItem { Facet = id, Key = kv.Key, Label = ValueLabel(id, kv.Key), Count = kv.Value });
-                rows.Sort((a, b) => id == "duration" || id == "tier" || id == "level" ? string.CompareOrdinal(a.Key, b.Key) : StringComparer.CurrentCultureIgnoreCase.Compare(a.Label, b.Label));
-                if (rows.Count == 0) continue;
-                if (id != chip.Facets[0]) _popItems.Add(new PopItem { Header = true, Label = L("$ib_f_" + id) }); // the chip names its own first facet
-                _popItems.AddRange(rows);
-                if (counts.TryGetValue(Facet.NoneKey, out var none)) _popItems.Add(new PopItem { Facet = id, Key = Facet.NoneKey, Label = L("$ib_f_none"), Count = none });
-            }
-        }
+        private void FillPopup(FacetChip chip) => StageScan.Facets.FillPopup(chip, _scoped, StageScan.Done, L, _popItems);
 
         private PopRow NewPopRow(int i)
         {

@@ -388,6 +388,8 @@
   "ib_min": "мин",
   "ib_armor": "броня",
   "ib_f_none": "Не указано",
+  "ib_f_loading": "Загрузка...",
+  "ib_f_empty": "Нет вариантов",
   "ib_f_mod": "Мод",
   "ib_f_class": "Класс",
   "ib_f_damage": "Урон",

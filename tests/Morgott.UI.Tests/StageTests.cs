@@ -691,5 +691,31 @@ namespace Morgott.UI.Tests
             Assert.Equal(("Bonemass", "WitheredBone", 10), back["L:Loc"].Summons[0]);
             Assert.Null(back["L:Old"].Objects);
         }
+
+        [Fact]
+        public void Popup_falls_back_to_status_row_when_empty_and_tokens_exist()
+        {
+            var t = new FacetTable();
+            var chip = new FacetChip("$ib_f_class", "class", "grip");
+            var items = new List<PopItem>();
+
+            t.FillPopup(chip, new List<Entry>(), false, s => s, items);
+            var loading = Assert.Single(items);
+            Assert.True(loading.Header);
+            Assert.Equal("$ib_f_loading", loading.Label);
+
+            t.FillPopup(chip, new List<Entry>(), true, s => s, items);
+            var empty = Assert.Single(items);
+            Assert.True(empty.Header);
+            Assert.Equal("$ib_f_empty", empty.Label);
+
+            foreach (var lang in new[] { "English", "Russian" })
+            {
+                using var stream = typeof(StageSolverTests).Assembly.GetManifestResourceStream($"Morgott.UI.Translations.{lang}.json");
+                var dict = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(stream);
+                Assert.False(string.IsNullOrWhiteSpace(dict["ib_f_loading"]));
+                Assert.False(string.IsNullOrWhiteSpace(dict["ib_f_empty"]));
+            }
+        }
     }
 }

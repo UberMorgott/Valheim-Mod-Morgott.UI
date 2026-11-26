@@ -22,6 +22,8 @@ namespace Morgott.UI.ItemBrowser
         public static FoundIn Data { get; private set; }
         /// <summary>Bumped whenever <see cref="Data"/> grows; the page relayouts.</summary>
         public static int Revision { get; private set; }
+        /// <summary>Location and room data of the current generation is published (ready for <see cref="StageScan"/>).</summary>
+        public static bool DataReady { get; private set; }
         /// <summary>The current generation's scan finished (autotest waits on it).</summary>
         public static bool Done { get; private set; }
         /// <summary>Index generation of <see cref="Data"/>.</summary>
@@ -49,6 +51,7 @@ namespace Morgott.UI.ItemBrowser
             _gen = generation;
             _host = host;
             Done = false;
+            DataReady = false;
             host.StartCoroutine(Run(Browser.Index, generation));
         }
 
@@ -110,6 +113,7 @@ namespace Morgott.UI.ItemBrowser
             }
 
             foreach (var _ in Quick(ix, d, zs)) { Tick(); yield return null; _slice.Restart(); }
+            if (generation != _gen) yield break;
             Publish(d);
 
             var table = ForceLazy ? null : Table();
@@ -201,16 +205,22 @@ namespace Morgott.UI.ItemBrowser
                 { Tick(); yield return null; _slice.Restart(); }
                 if (Over) { Tick(); yield return null; _slice.Restart(); }
             }
+            if (generation != _gen) yield break;
             Publish(d);
             if (cacheDirty) SaveCache(cache); // a forced scan rewrites the cache whole
             if (newAltars) OfferingRevision++;
+            DataReady = true;
 
             var none = new List<string>();
             foreach (var e in ix.Entries.Values)
                 if (e.Type == EntryType.Creature && e.Hidden == null && !d.ByPrefab.ContainsKey(e.Id)) none.Add(e.Id);
             none.Sort(StringComparer.Ordinal);
             if (loads > 50) _unloadPending = true; // a fallback scan (stale table): free the orphaned prefab objects once, at a safe moment
-            for (var t0 = Time.realtimeSinceStartup; Time.realtimeSinceStartup - t0 < 2f;) yield return null; // async unloads settle
+            for (var t0 = Time.realtimeSinceStartup; Time.realtimeSinceStartup - t0 < 2f;)
+            {
+                if (generation != _gen) yield break;
+                yield return null; // async unloads settle
+            }
             StillLoaded = 0;
             foreach (var lr in _loadedRefs) if (lr.IsLoaded) StillLoaded++;
             _loadedRefs.Clear();
@@ -462,7 +472,7 @@ namespace Morgott.UI.ItemBrowser
             if (_gameVersion != null) return _gameVersion;
             uint build = 0;
             try { build = (uint)Steamworks.SteamApps.GetAppBuildId(); } catch (Exception) { }
-            return _gameVersion = global::Version.GetVersionString(true) + (build > 0 ? " b" + build : "");
+            return _gameVersion = FoundInTable.SanitizeGameVersion(global::Version.GetVersionString(true) + (build > 0 ? " b" + build : ""));
         }
 
         private static bool _tableRead;

@@ -39,7 +39,7 @@ namespace Morgott.UI.ItemBrowser
 
         public static void Ensure(MonoBehaviour host, int generation)
         {
-            if (generation == 0 || generation == _gen && _host || !FoundInScan.Done || FoundInScan.Generation != generation || FoundInScan.Data == null || Browser.Index == null) return;
+            if (generation == 0 || generation == _gen && _host || !FoundInScan.DataReady || FoundInScan.Generation != generation || FoundInScan.Data == null || Browser.Index == null) return;
             _gen = generation;
             _host = host;
             Done = false;

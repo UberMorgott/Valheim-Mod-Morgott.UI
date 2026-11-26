@@ -388,6 +388,8 @@
   "ib_min": "min",
   "ib_armor": "armor",
   "ib_f_none": "Not specified",
+  "ib_f_loading": "Loading...",
+  "ib_f_empty": "No options",
   "ib_f_mod": "Mod",
   "ib_f_class": "Class",
   "ib_f_damage": "Damage",

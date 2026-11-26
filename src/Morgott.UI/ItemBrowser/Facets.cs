@@ -193,6 +193,14 @@ namespace Morgott.UI.ItemBrowser
         }
     }
 
+    /// <summary>One row in a facet dropdown popup (Header = non-clickable section header or empty status).</summary>
+    public struct PopItem
+    {
+        public string Facet, Key, Label;
+        public int Count;
+        public bool Header;
+    }
+
     /// <summary>All facets of one index generation + which chips each scope shows. No Unity calls.</summary>
     public sealed class FacetTable
     {
@@ -279,6 +287,38 @@ namespace Morgott.UI.ItemBrowser
         }
 
         public static string CatKey(ItemCategory c) => c == ItemCategory.Utility ? "utility" : c.ToString().ToLowerInvariant();
+
+        public string ValueLabel(string facet, string key, Func<string, string> localize)
+        {
+            if (key == Facet.NoneKey) return localize("$ib_f_none");
+            return Facets.TryGetValue(facet, out var f) && f.Labels.TryGetValue(key, out var label) ? localize(label) : key;
+        }
+
+        /// <summary>Populates dropdown items for <paramref name="chip"/>; falls back to one non-clickable status row when empty.</summary>
+        public void FillPopup(FacetChip chip, IReadOnlyList<Entry> scoped, bool ready, Func<string, string> localize, List<PopItem> items)
+        {
+            items.Clear();
+            foreach (var id in chip.Facets)
+            {
+                if (!Facets.TryGetValue(id, out var f)) continue;
+                var counts = new Dictionary<string, int>(StringComparer.Ordinal);
+                foreach (var e in scoped)
+                {
+                    if (!f.ByEntry.TryGetValue(e.Id, out var keys)) { counts.TryGetValue(Facet.NoneKey, out var c0); counts[Facet.NoneKey] = c0 + 1; continue; }
+                    foreach (var k in keys) { counts.TryGetValue(k, out var c); counts[k] = c + 1; }
+                }
+                var rows = new List<PopItem>(counts.Count);
+                foreach (var kv in counts)
+                    if (kv.Key != Facet.NoneKey) rows.Add(new PopItem { Facet = id, Key = kv.Key, Label = ValueLabel(id, kv.Key, localize), Count = kv.Value });
+                rows.Sort((a, b) => id == "duration" || id == "tier" || id == "level" ? string.CompareOrdinal(a.Key, b.Key) : StringComparer.CurrentCultureIgnoreCase.Compare(a.Label, b.Label));
+                if (rows.Count == 0) continue;
+                if (id != chip.Facets[0]) items.Add(new PopItem { Header = true, Label = localize("$ib_f_" + id) }); // the chip names its own first facet
+                items.AddRange(rows);
+                if (counts.TryGetValue(Facet.NoneKey, out var none)) items.Add(new PopItem { Facet = id, Key = Facet.NoneKey, Label = localize("$ib_f_none"), Count = none });
+            }
+            if (items.Count == 0)
+                items.Add(new PopItem { Header = true, Label = localize(ready ? "$ib_f_empty" : "$ib_f_loading") });
+        }
 
         public static string Scope(int type, int category, string[] catKeys)
         {

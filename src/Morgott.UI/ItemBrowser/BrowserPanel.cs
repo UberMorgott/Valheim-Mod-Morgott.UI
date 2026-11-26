@@ -268,6 +268,11 @@ namespace Morgott.UI.ItemBrowser
             if (InventoryGui.IsVisible()) HoverKeys();
             FoundInScan.UnloadWhenSafe(_up);
             if (InventoryGui.IsVisible()) StoreTick();
+            if (Browser.Index != null && ZoneSystem.instance)
+            {
+                FoundInScan.Ensure(this, Browser.Generation);
+                StageScan.Ensure(this, Browser.Generation);
+            }
             if (!_up) return;
             if (!InventoryGui.IsVisible())
             {
@@ -283,11 +288,9 @@ namespace Morgott.UI.ItemBrowser
             {
                 _nextCheck = Time.unscaledTime + 1f;
                 if (Browser.EnsureReady() != _resultsGen) _dirty = true;
-                FoundInScan.Ensure(this, Browser.Generation);
-                StageScan.Ensure(this, Browser.Generation);
-                if (StageScan.Revision != _stageRev) { _stageRev = StageScan.Revision; _dirty = true; }
-                if (FoundInScan.Revision != _foundRev && _pageId != null) { _foundRev = FoundInScan.Revision; _dirty = true; }
             }
+            if (StageScan.Revision != _stageRev) { _stageRev = StageScan.Revision; _dirty = true; }
+            if (FoundInScan.Revision != _foundRev && _pageId != null) { _foundRev = FoundInScan.Revision; _dirty = true; }
             if (!typing) Keys();
             Browser.RenderQueued();
         }

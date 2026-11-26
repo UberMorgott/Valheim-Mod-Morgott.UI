@@ -43,16 +43,37 @@ namespace Morgott.UI.ItemBrowser
         private static char Code(Origin k) => k == Origin.Nest ? 'n' : k == Origin.Boss ? 'b' : 'w';
         private static Origin Kind(char c) => c == 'n' ? Origin.Nest : c == 'b' ? Origin.Boss : Origin.World;
 
+        /// <summary>Collapses CR/LF/tab/space runs to single spaces and trims, so multiline game versions stay one TSV token.</summary>
+        public static string SanitizeGameVersion(string raw)
+        {
+            if (string.IsNullOrEmpty(raw)) return "";
+            var sb = new StringBuilder(raw.Length);
+            var space = false;
+            foreach (var c in raw)
+            {
+                if (c == '\r' || c == '\n' || c == '\t' || c == ' ')
+                {
+                    if (sb.Length > 0) space = true;
+                }
+                else
+                {
+                    if (space) { sb.Append(' '); space = false; }
+                    sb.Append(c);
+                }
+            }
+            return sb.ToString();
+        }
+
         public static string Write(string version, IEnumerable<KeyValuePair<string, Scanned>> entries)
         {
             var list = new List<KeyValuePair<string, Scanned>>(entries);
             list.Sort((a, b) => string.CompareOrdinal(a.Key, b.Key));
             var sb = new StringBuilder();
-            sb.Append("# game ").Append(version).Append('\t').Append(list.Count).Append('\n');
+            sb.Append("# game ").Append(SanitizeGameVersion(version)).Append('\t').Append(list.Count).Append('\n');
             foreach (var kv in list)
             {
                 var s = kv.Value;
-                sb.Append(kv.Key).Append('\t').Append(s.Themes).Append('\t').Append(s.Interior ? '1' : '0').Append('\t');
+                sb.Append(SanitizeGameVersion(kv.Key)).Append('\t').Append(s.Themes).Append('\t').Append(s.Interior ? '1' : '0').Append('\t');
                 for (var i = 0; i < s.Creatures.Count; i++)
                 {
                     if (i > 0) sb.Append(',');
@@ -82,7 +103,7 @@ namespace Morgott.UI.ItemBrowser
                 if (line.StartsWith("# game ", StringComparison.Ordinal))
                 {
                     var head = line.Substring(7).Split('\t');
-                    version = head[0];
+                    version = SanitizeGameVersion(head[0]);
                     if (head.Length > 1 && int.TryParse(head[1], out var n)) count = n;
                     continue;
                 }
