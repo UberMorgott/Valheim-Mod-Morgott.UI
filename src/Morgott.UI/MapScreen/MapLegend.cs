@@ -632,10 +632,10 @@ namespace Morgott.UI.MapScreen
             _pinsRowH = rowH;
             _pinsScrolling = scrolling;
             _playerRowH = playerRow;
-            if (_scroll && Mathf.Abs(_scroll.Delta) > 0.01f)
+            if (_scroll && Mathf.Abs(_scroll.Delta) > 1e-5f)
             {
                 // Over the ИГРОКИ block (last frame's place) the wheel scrolls the players, elsewhere the pin rows.
-                var step = Mathf.RoundToInt(Mathf.Sign(_scroll.Delta) * Mathf.Max(1f, Mathf.Abs(_scroll.Delta)));
+                var step = ScrollSpeed.WheelRows(_scroll.Delta);
                 var overPlayers = RectTransformUtility.ScreenPointToLocalPointInRectangle(_legend, _scroll.At, _scroll.Cam, out var lp)
                     && _legend.rect.yMax - lp.y >= _playersTop && _legend.rect.yMax - lp.y < _playersBottom;
                 if (overPlayers) _firstPlayer -= step;

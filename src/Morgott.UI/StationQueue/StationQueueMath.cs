@@ -110,8 +110,11 @@ namespace Morgott.UI.StationQueue
             }
         }
 
-        public static string DisplayName(string name, int outputAmount) =>
-            outputAmount > 1 ? (name ?? "") + " ×" + Group(outputAmount) : name ?? "";
+        private static bool HasYield(int outputAmount, bool approximate) => outputAmount > 1 || (approximate && outputAmount > 0);
+        private static string Yield(long count, bool approximate) => (approximate ? "≈" : "") + Group(count);
+
+        public static string DisplayName(string name, int outputAmount, bool approximate = false) =>
+            HasYield(outputAmount, approximate) ? (name ?? "") + " ×" + Yield(outputAmount, approximate) : name ?? "";
 
         // Multi-ingredient recipes (Cauldron / Mead Ketill) show the crafted output; single-input conversions
         // (Kiln, Smelter, Fermenter, CookingStation) show the input (e.g. Wood / FineWood / RoundLog, not 3 identical Coal rows).
@@ -156,8 +159,10 @@ namespace Morgott.UI.StationQueue
         public static string Group(int n) => Group((long)n);
         public static string Group(long n) => n.ToString("#,0", CultureInfo.InvariantCulture).Replace(',', ' ');
 
-        public static string MakeYield(int crafts, int outputAmount, string yieldTemplate) =>
-            outputAmount > 1 && !string.IsNullOrEmpty(yieldTemplate) ? Format(yieldTemplate, Group(crafts), Group((long)crafts * outputAmount)) : "";
+        public static string MakeYield(int crafts, int outputAmount, string yieldTemplate, bool approximate = false) =>
+            HasYield(outputAmount, approximate) && !string.IsNullOrEmpty(yieldTemplate)
+                ? Format(yieldTemplate, Group(crafts), Yield((long)crafts * outputAmount, approximate))
+                : "";
 
         public static string KeepNowText(int chests, int pending, string nowTemplate, string pendingTemplate) =>
             pending > 0 && !string.IsNullOrEmpty(pendingTemplate)
@@ -211,14 +216,14 @@ namespace Morgott.UI.StationQueue
         // until {0} item {1} condition {2} comparator {3} threshold {4} current; keep-in-stock count {0} item {1} its output
         // {2} target {3} current; keep until = the until line + keepTail.
         public static string Summary(StationQueueEntry e, string item, string cond, int current, string countTemplate, string infiniteTemplate, string untilTemplate,
-            string keepTemplate = null, string keepTail = null, int outputAmount = 1, string yieldCountTemplate = null)
+            string keepTemplate = null, string keepTail = null, int outputAmount = 1, string yieldCountTemplate = null, bool approximate = false)
         {
             switch (e.Mode)
             {
                 case StationQueueMode.Count:
                     if (e.Keep && keepTemplate != null) return Format(keepTemplate, item, cond, Group(e.Target), Group(current));
-                    if (outputAmount > 1 && !string.IsNullOrEmpty(yieldCountTemplate))
-                        return Format(yieldCountTemplate, item, Group(e.Target), Group((long)e.Target * outputAmount));
+                    if (HasYield(outputAmount, approximate) && !string.IsNullOrEmpty(yieldCountTemplate))
+                        return Format(yieldCountTemplate, item, Group(e.Target), Yield((long)e.Target * outputAmount, approximate));
                     return Format(countTemplate, item, Group(e.Target));
                 case StationQueueMode.Infinite: return Format(infiniteTemplate, item);
                 default:
@@ -304,12 +309,13 @@ namespace Morgott.UI.StationQueue
         // Card slot under a pointer `y` units below the list top (rows `step` apart, first shown = scroll).
         public static int SlotAt(float y, float step, int scroll) => scroll + (int)Math.Floor(Math.Max(0f, y) / step);
 
-        // Header "loaded" word per station kind, from kind tag ("craft" -> ui_sq_crafting) or its piece name token
-        // (lowercased): furnace "В печи", machine "В машине", barrel "В бочке", fire "На огне"; else generic "Загружено".
+        // Header "loaded" word per station kind, from kind tag ("craft" -> ui_sq_crafting, "seedbed" -> loaded_seedbed)
+        // or its piece name token (lowercased): furnace "В печи", machine "В машине", barrel "В бочке", fire "На огне"; else generic "Загружено".
         public static string LoadedKey(string nameToken, string kind = "")
         {
             if (string.Equals(kind, "craft", StringComparison.OrdinalIgnoreCase)) return "ui_sq_crafting";
             var n = (nameToken ?? "").ToLowerInvariant();
+            if (string.Equals(kind, "seedbed", StringComparison.OrdinalIgnoreCase) || n.Contains("seedbed")) return "loaded_seedbed";
             if (Has(n, "kiln", "smelter", "blastfurnace", "furnace", "oven")) return "loaded_furnace";
             if (Has(n, "eitr", "refinery", "windmill", "spinning")) return "loaded_machine";
             if (n.Contains("fermenter")) return "loaded_barrel";

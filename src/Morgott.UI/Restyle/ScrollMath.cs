@@ -26,6 +26,19 @@ namespace Morgott.UI.Restyle
         internal static float Sensitivity(float notchPx, float deltaPerNotch) =>
             deltaPerNotch > 1e-5f ? notchPx / deltaPerNotch : notchPx;
 
+        // Raw scrollDelta converted into wheel notches (Valheim's InputSystemUIInputModule emits 0.05 per notch).
+        public static float WheelTicks(float delta, float deltaPerNotch) =>
+            deltaPerNotch > 1e-5f ? delta / deltaPerNotch : delta;
+
+        // Discrete rows for non-ScrollRect steppers (MapLegend): scaled by speed, rounding away from 0 so any non-zero notch moves >= 1 row.
+        public static int WheelRows(float delta, float deltaPerNotch, float speed)
+        {
+            if (Math.Abs(delta) <= 1e-5f || speed <= 0f) return 0;
+            var scaled = WheelTicks(delta, deltaPerNotch) * speed;
+            var mag = (int)Math.Round(Math.Max(1f, Math.Abs(scaled)), MidpointRounding.AwayFromZero);
+            return scaled < 0f ? -mag : mag;
+        }
+
         // Representative item pitch from scanned active children: nested grids (structured cells) beat section headers;
         // otherwise pick the 75th-percentile row pitch so a leading header does not shrink the whole list while a single
         // tall banner does not inflate it.

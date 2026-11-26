@@ -611,7 +611,7 @@ namespace Morgott.UI.WorldHud
             for (var i = 0; i < segs.Length; i++)
             {
                 var seg = segs[i];
-                HexColor.TryParse(seg.ColorHex, out var c);
+                if (!HexColor.TryParse(seg.ColorHex, out var c)) c = Color.white;
                 _arcColors[i] = c;
                 var arcImg = _art.Image("Arc" + i, _efficiencyRoot, "sprite.hud.gp.ring", null, Image.Type.Simple);
                 MapScreen.MinimapSkin.Stretch(arcImg.rectTransform);

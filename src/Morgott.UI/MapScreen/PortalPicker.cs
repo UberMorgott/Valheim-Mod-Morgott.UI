@@ -409,9 +409,9 @@ namespace Morgott.UI.MapScreen
             var content = PortalRowY(_ppRows.Count);
             _ppContentH = content;
             _ppViewH = view;
-            if (_ppScroll && Mathf.Abs(_ppScroll.Delta) > 0.01f)
+            if (_ppScroll && Mathf.Abs(_ppScroll.Delta) > 1e-5f)
             {
-                _ppScrollPx -= _ppScroll.Delta * rowH;
+                _ppScrollPx -= ScrollSpeed.WheelPx(_ppScroll.Delta, rowH, view);
                 _ppScroll.Delta = 0f;
             }
             _ppScrollPx = Mathf.Clamp(_ppScrollPx, 0f, Mathf.Max(0f, content - view));

@@ -839,6 +839,7 @@
   "ui_sq_loaded_machine": "В машине: {0}/{1}",
   "ui_sq_loaded_barrel": "В бочке: {0}/{1}",
   "ui_sq_loaded_fire": "На огне: {0}/{1}",
+  "ui_sq_loaded_seedbed": "Посажено: {0}/{1}",
   "ui_sq_crafting": "Готовится",
   "ui_sq_ingredients": "Ингредиенты: {0}",
   "ui_sq_drag": "Перетащить",

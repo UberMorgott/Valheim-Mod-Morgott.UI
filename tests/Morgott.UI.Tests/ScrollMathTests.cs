@@ -101,5 +101,35 @@ namespace Morgott.UI.Tests
             Assert.False(drag.Dragging);
             Assert.False(drag.Move(0f, 50f, 6f, out _, out _));
         }
+
+        // Custom IScrollHandler wheel callers (PortalPicker, MapLegend): Valheim emits 0.05 per notch, not 1.0.
+        [Fact]
+        public void WheelTicksAndPortalPickerNotchPixelsMatchScrollRectSpeed()
+        {
+            Assert.Equal(1f, ScrollMath.WheelTicks(0.05f, 0.05f), 3);
+            Assert.Equal(-3f, ScrollMath.WheelTicks(-0.15f, 0.05f), 3);
+            Assert.Equal(0.5f, ScrollMath.WheelTicks(0.5f, 0f), 3);
+
+            // PortalPicker: rowH = 54, view = 400, speed = 1 -> 1 notch = 81 px (1.5 rows), same as ScrollRect.
+            Assert.Equal(81f, ScrollMath.WheelTicks(0.05f, 0.05f) * ScrollMath.NotchPx(54f, 400f, 1f), 3);
+            Assert.Equal(-81f, ScrollMath.WheelTicks(-0.05f, 0.05f) * ScrollMath.NotchPx(54f, 400f, 1f), 3);
+            Assert.Equal(162f, ScrollMath.WheelTicks(0.05f, 0.05f) * ScrollMath.NotchPx(54f, 400f, 2f), 3);
+        }
+
+        // MapLegend discrete row stepper: single notch >= +-1 even below 1x speed; multi-notch bursts and speed scale proportionally.
+        [Fact]
+        public void WheelRowsPreservesBurstsAndSpeedWithoutSquashing()
+        {
+            Assert.Equal(0, ScrollMath.WheelRows(0f, 0.05f, 1f));
+            Assert.Equal(1, ScrollMath.WheelRows(0.05f, 0.05f, 1f));
+            Assert.Equal(-1, ScrollMath.WheelRows(-0.05f, 0.05f, 1f));
+            Assert.Equal(1, ScrollMath.WheelRows(0.05f, 0.05f, 0.25f));
+            Assert.Equal(-1, ScrollMath.WheelRows(-0.05f, 0.05f, 0.25f));
+            Assert.Equal(3, ScrollMath.WheelRows(0.15f, 0.05f, 1f));
+            Assert.Equal(-3, ScrollMath.WheelRows(-0.15f, 0.05f, 1f));
+            Assert.Equal(6, ScrollMath.WheelRows(0.15f, 0.05f, 2f));
+            Assert.Equal(2, ScrollMath.WheelRows(0.05f, 0.05f, 1.5f));
+            Assert.Equal(3, ScrollMath.WheelRows(0.10f, 0.05f, 1.5f));
+        }
     }
 }

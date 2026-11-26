@@ -760,6 +760,7 @@
   "ui_sq_loaded_machine": "In the machine: {0}/{1}",
   "ui_sq_loaded_barrel": "In the barrel: {0}/{1}",
   "ui_sq_loaded_fire": "On the fire: {0}/{1}",
+  "ui_sq_loaded_seedbed": "Planted: {0}/{1}",
   "ui_sq_crafting": "Crafting",
   "ui_sq_ingredients": "Ingredients: {0}",
   "ui_sq_drag": "Drag",

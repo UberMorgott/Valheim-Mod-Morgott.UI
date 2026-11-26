@@ -494,7 +494,7 @@ namespace Morgott.UI.StationQueue
                 if (k >= known.Count) continue;
                 var input = known[k];
                 var display = DisplayItem(input, input.Key);
-                var title = StationQueueMath.DisplayName(Name(display), input.OutputAmount);
+                var title = StationQueueMath.DisplayName(Name(display), input.OutputAmount, input.ApproximateYield);
                 var hasIng = input.Ingredients != null && input.Ingredients.Count > 0;
                 row.Item = input.Key;
                 row.Icon.sprite = Icon(display);
@@ -534,7 +534,7 @@ namespace Morgott.UI.StationQueue
             card.Index = index;
             var input = FindInputByKey(e.Item);
             var item = DisplayItem(input, e.Item);
-            var displayName = StationQueueMath.DisplayName(item ? Name(item) : e.Item, input != null ? input.OutputAmount : 1);
+            var displayName = StationQueueMath.DisplayName(item ? Name(item) : e.Item, input != null ? input.OutputAmount : 1, input != null && input.ApproximateYield);
             var outName = OutputName(e.Item);
             if (string.IsNullOrEmpty(outName)) outName = displayName;
             card.Num.text = (index + 1).ToString(System.Globalization.CultureInfo.InvariantCulture);
@@ -642,7 +642,7 @@ namespace Morgott.UI.StationQueue
             {
                 SetField(_sCount, e.Target);
                 var fed = StationQueueMath.Format(W("fed"), StationQueueMath.Group(e.Fed), StationQueueMath.Group(e.Target));
-                var yield = StationQueueMath.MakeYield(e.Target, input.OutputAmount, W("make_yield"));
+                var yield = StationQueueMath.MakeYield(e.Target, input.OutputAmount, W("make_yield"), input.ApproximateYield);
                 _sFed.text = string.IsNullOrEmpty(yield) ? fed : fed + StationQueueMath.Separator + yield;
             }
             else if (tab == StationQueueMath.TabKeep)
@@ -803,11 +803,12 @@ namespace Morgott.UI.StationQueue
             var input = FindInputByKey(_draft.Item);
             var item = DisplayItem(input, _draft.Item);
             var outputAmount = input != null ? input.OutputAmount : 1;
+            var approximate = input != null && input.ApproximateYield;
             _eIcon.sprite = Icon(item);
             _eIcon.enabled = _eIcon.sprite;
             var net = InputNet(_draft.Item);
             _eBadge.text = StationQueueMath.Group(net);
-            _eName.text = StationQueueMath.DisplayName(item ? Name(item) : _draft.Item, outputAmount);
+            _eName.text = StationQueueMath.DisplayName(item ? Name(item) : _draft.Item, outputAmount, approximate);
             _eNet.text = StationQueueMath.Format(W("net_count"), StationQueueMath.Group(net));
             var hasIng = input?.Ingredients != null && input.Ingredients.Count > 0;
             SetActive(_eIngredients, hasIng);
@@ -839,7 +840,7 @@ namespace Morgott.UI.StationQueue
             if (tab == StationQueueMath.TabMake)
             {
                 SetField(_eCount, target);
-                var yield = StationQueueMath.MakeYield(target, outputAmount, W("make_yield"));
+                var yield = StationQueueMath.MakeYield(target, outputAmount, W("make_yield"), approximate);
                 SetActive(_eMakeYield, !string.IsNullOrEmpty(yield));
                 if (!string.IsNullOrEmpty(yield)) _eMakeYield.text = yield;
             }
@@ -867,7 +868,7 @@ namespace Morgott.UI.StationQueue
             if (string.IsNullOrEmpty(keepOut)) keepOut = _eName.text;
             _eSummary.text = StationQueueMath.Summary(_draft, _eName.text, keepCount ? keepOut : _eCondName.text, keepCount ? Stocked(_draft.Item) : Have(_draft.Condition),
                 W("sum_count"), W("sum_infinite"), W("sum_until"), W(IsFuel(_draft.Item) ? "sum_keep_fuel" : "sum_keep"), W("keep_tail"),
-                outputAmount, W("sum_count_yield"));
+                outputAmount, W("sum_count_yield"), approximate);
             SetActive(_eDelete, _editIndex >= 0);
             var actionWord = _editIndex < 0 ? W("add") : W("save");
             _eSaveLabel.text = actionWord;

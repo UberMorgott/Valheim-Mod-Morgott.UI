@@ -358,6 +358,8 @@ namespace Morgott.UI.Tests
         [InlineData("$piece_spinningwheel", "", "loaded_machine")]
         [InlineData("$piece_fermenter", "", "loaded_barrel")]
         [InlineData("$piece_cookingstation", "", "loaded_fire")]
+        [InlineData("$bsb_seedbed", "seedbed", "loaded_seedbed")]
+        [InlineData("$bsb_seedbed", "", "loaded_seedbed")]
         [InlineData("$piece_bathtub", "", "loaded")]
         [InlineData("$piece_cauldron", "craft", "ui_sq_crafting")]
         [InlineData("$piece_MeadCauldron", "craft", "ui_sq_crafting")]
@@ -450,7 +452,7 @@ namespace Morgott.UI.Tests
                 "ui_sq_keep_net_label", "ui_sq_keep_fuel_label", "ui_sq_keep_now", "ui_sq_keep_now_pending", "ui_sq_keep_now_fuel",
                 "ui_sq_repeat", "ui_sq_oneshot", "ui_sq_choose_mode",
                 "ui_sq_st_running", "ui_sq_st_missing", "ui_sq_st_stocked", "ui_sq_st_pending", "ui_sq_st_blocked", "ui_sq_st_queued",
-                "ui_sq_start",
+                "ui_sq_start", "ui_sq_loaded_seedbed",
             };
             foreach (var k in keys)
             {
@@ -553,6 +555,27 @@ namespace Morgott.UI.Tests
             Assert.False(StationQueueMath.PrefersOutput(hasInputItem: true, ingredientCount: 0)); // Kiln Wood/FineWood/RoundLog -> show input, not Coal
             Assert.True(StationQueueMath.PrefersOutput(hasInputItem: true, ingredientCount: 2));  // Cauldron multi-ingredient recipe -> show output dish
             Assert.True(StationQueueMath.PrefersOutput(hasInputItem: false, ingredientCount: 0)); // recipe without single input item -> show output
+        }
+
+        [Fact]
+        public void ApproximateYieldPrefixesExpectedCounts()
+        {
+            var bedInput = new StationQueueInput(null, null, true, 4, "SeedCarrot", 15, null) { ApproximateYield = true };
+            Assert.True(bedInput.ApproximateYield);
+            Assert.Equal("Морковь ×≈15", StationQueueMath.DisplayName("Морковь", bedInput.OutputAmount, bedInput.ApproximateYield));
+            Assert.Equal("Морковь ×≈1", StationQueueMath.DisplayName("Морковь", 1, approximate: true));
+            Assert.Equal("Морковь", StationQueueMath.DisplayName("Морковь", 0, approximate: true));
+
+            Assert.Equal("10 раз → ≈150 шт.", StationQueueMath.MakeYield(10, 15, "{0} раз → {1} шт.", approximate: true));
+            Assert.Equal("5 раз → ≈5 шт.", StationQueueMath.MakeYield(5, 1, "{0} раз → {1} шт.", approximate: true));
+            Assert.Equal("", StationQueueMath.MakeYield(5, 0, "{0} раз → {1} шт.", approximate: true));
+
+            var e = StationQueueMath.NewEntry("SeedCarrot", StationQueueMode.Count, "Carrot");
+            e.Target = 3;
+            Assert.Equal("3 × Морковь ×≈15", StationQueueMath.CardText(e, "Морковь ×≈15", "Морковь", Until));
+            Assert.Equal("Морковь ×≈15: 3 раз → ≈45 шт., затем следующая запись.", StationQueueMath.Summary(
+                e, "Морковь ×≈15", "", 0, "{0}: {1}", "{0}", "", null, null,
+                outputAmount: 15, yieldCountTemplate: "{0}: {1} раз → {2} шт., затем следующая запись.", approximate: true));
         }
     }
 }

@@ -19,6 +19,8 @@ namespace Morgott.UI.Restyle
         private static readonly List<TMP_Text> TmpScratch = new List<TMP_Text>(16);
         private static readonly List<Text> TextScratch = new List<Text>(16);
 
+        private static float Speed => Plugin.ScrollSpeed?.Value ?? 1f;
+
         [HarmonyPatch(typeof(ScrollRect), nameof(ScrollRect.OnScroll))]
         [HarmonyPrefix]
         private static void OnScroll_Prefix(ScrollRect __instance)
@@ -27,9 +29,15 @@ namespace Morgott.UI.Restyle
             var vertical = __instance.vertical || !__instance.horizontal;
             var view = __instance.viewport ? __instance.viewport.rect : ((RectTransform)__instance.transform).rect;
             var px = ScrollMath.NotchPx(Pitch(__instance.content, vertical, vertical ? view.height : view.width),
-                vertical ? view.height : view.width, Plugin.ScrollSpeed?.Value ?? 1f);
+                vertical ? view.height : view.width, Speed);
             __instance.scrollSensitivity = ScrollMath.Sensitivity(px, DeltaPerNotch());
         }
+
+        internal static float WheelPx(float delta, float pitch, float view) =>
+            ScrollMath.WheelTicks(delta, DeltaPerNotch()) * ScrollMath.NotchPx(pitch, view, Speed);
+
+        internal static int WheelRows(float delta) =>
+            ScrollMath.WheelRows(delta, DeltaPerNotch(), Speed);
 
         // scrollDelta of one wheel notch as the active input module reports it (Valheim: 0.05).
         internal static float DeltaPerNotch()
