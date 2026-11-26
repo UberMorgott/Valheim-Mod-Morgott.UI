@@ -1,6 +1,7 @@
 // Fullscreen Deferred seasonal pass (consumer: Patcher): paints winter snow on world geometry (bushes/pines/rocks/
 // ruins/grown crops/roofs) and autumn fallen-leaf carpet under deciduous trees while skipping skybox (stencil 0x80 == 1)
-// and characters marked by CreatureSnow Pass 1 (stencil 0x04 == 0). Preserves GB0.a (AO), GB1.a (smoothness), GB2, GB3.
+// and characters marked by CreatureSnow Pass 1 (stencil 0x04 == 0). Blends SV_Target2 (CameraTarget/GBuffer3 ambient)
+// while preserving GB0.a (AO), GB1.a (smoothness), and GB2 (normals).
 Shader "Morgott/WorldSeason"
 {
     Properties
@@ -26,13 +27,15 @@ Shader "Morgott/WorldSeason"
             ColorMask RGB 0
             Blend 1 SrcAlpha OneMinusSrcAlpha
             ColorMask RGB 1
-            ColorMask 0 2
+            Blend 2 SrcAlpha OneMinusSrcAlpha
+            ColorMask RGB 2
             ColorMask 0 3
 
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag
             #pragma target 4.0
+            #pragma multi_compile ___ UNITY_HDR_ON
             #include "UnityCG.cginc"
 
             UNITY_DECLARE_DEPTH_TEXTURE(_CameraDepthTexture);
@@ -147,10 +150,19 @@ Shader "Morgott/WorldSeason"
                 }
             }
 
+            float3 EvalTrilightAmbient(float3 wn)
+            {
+                float3 sky = unity_AmbientSky.rgb;
+                float3 eq  = unity_AmbientEquator.rgb;
+                float3 gnd = unity_AmbientGround.rgb;
+                return wn.y >= 0.0 ? lerp(eq, sky, saturate(wn.y)) : lerp(eq, gnd, saturate(-wn.y));
+            }
+
             void frag(
                 v2f i,
                 out half4 gb0 : SV_Target0,
-                out half4 gb1 : SV_Target1)
+                out half4 gb1 : SV_Target1,
+                out half4 gb2_em : SV_Target2)
             {
                 if (_MorgottWorldSnowActive < 0.5) discard;
                 if (_MorgottSeasonLeafLitter <= 0.02 && _MorgottSeasonSnow <= 0.08) discard;
@@ -192,16 +204,16 @@ Shader "Morgott/WorldSeason"
                     leafAlpha = leafMask * sh.b * _MorgottSeasonLeafLitter * (1.0 - underRoofOrFire) * smoothstep(0.70, 0.88, wn.y) * distFade * 0.88;
                 }
 
-                float3 snowColor = float3(0.75, 0.80, 0.87);
+                float3 snowColor = float3(0.78, 0.82, 0.88);
                 float snowAlpha = 0.0;
                 if (_MorgottSeasonSnow > 0.08)
                 {
                     float rawN = ValueNoise3(worldPos * 2.6) * 0.65 + ValueNoise3(worldPos * 9.0) * 0.35;
                     float n = saturate((rawN - 0.22) / 0.56);
                     float snowAmt = smoothstep(0.08, 0.95, _MorgottSeasonSnow);
-                    float minUp = lerp(0.82, 0.48, pow(snowAmt, 0.7));
+                    float minUp = lerp(0.78, 0.40, pow(snowAmt, 0.7));
                     float snowMask = smoothstep(minUp - 0.14, minUp + 0.14, wn.y + (n - 0.5) * 0.22);
-                    snowAlpha = snowMask * snowAmt * (1.0 - underRoofOrFire) * distFade * 0.86;
+                    snowAlpha = snowMask * snowAmt * (1.0 - underRoofOrFire) * distFade * 0.96;
                     snowColor *= (0.94 + 0.06 * n);
                 }
 
@@ -209,8 +221,13 @@ Shader "Morgott/WorldSeason"
                 if (outAlpha < 0.008) discard;
 
                 float3 outAlbedo = lerp(leafColor, snowColor, snowAlpha / max(outAlpha, 1e-4));
+                float3 emCol = outAlbedo * EvalTrilightAmbient(wn) * 0.90;
+                #ifndef UNITY_HDR_ON
+                    emCol = exp2(-emCol);
+                #endif
                 gb0 = half4(outAlbedo, outAlpha);
                 gb1 = half4(0.035, 0.04, 0.048, outAlpha);
+                gb2_em = half4(emCol, outAlpha);
             }
             ENDCG
         }
