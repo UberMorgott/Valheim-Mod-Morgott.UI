@@ -40,15 +40,6 @@ namespace Morgott.UI.StationQueue
         /// <summary>Harness: why the window last closed or failed to open ("" = never).</summary>
         public static string LastCloseReason { get; private set; } = "";
         public static void OpenEditor(int index) { if (_instance && IsOpen) _instance.EditorOpen(index, null); }
-
-        // Harness: the multi window's title badge text ("" when not shown), the shown header / status line, the card being
-        // dragged (-1 = none).
-        public static string BadgeText => !IsOpen ? "" : _instance._badge && _instance._badge.gameObject.activeInHierarchy ? _instance._badgeLabel.text :
-            _instance._sBadge && _instance._sBadge.gameObject.activeInHierarchy ? _instance._sBadgeLabel.text : "";
-
-        /// <summary>Harness: the header selector's mode (true = keep in stock) and its click (what the badge button does).</summary>
-        public static bool StockMode => IsOpen && _instance.Stock;
-        public static void ToggleStockMode() { if (IsOpen) _instance.ToggleStock(); }
         public static string StatusLine => !IsOpen ? "" : _instance._multi.gameObject.activeSelf ? _instance._mStatus.text : _instance._sStatus.text;
         public static int DraggingCard => _instance ? _instance._dragCard : -1;
 
@@ -103,10 +94,10 @@ namespace Morgott.UI.StationQueue
         private string _dragItem;
         private Image _ghost;
 
-        // editor: index of the edited entry (-1 = new), draft; open flag
-        private bool _editing;
+        // editor: index of the edited entry (-1 = new), draft; per-edit Keep memory for Until/Infinite; open flag
+        private bool _editing, _untilKeep = true, _infiniteKeep = true;
         private int _editIndex;
-        private StationQueueEntry _draft;
+        private StationQueueEntry _draft, _singleDraft;
 
         // ---------------------------------------------------------------- widgets
 
@@ -114,10 +105,8 @@ namespace Morgott.UI.StationQueue
         private TMP_Text _mStatus, _mHidden, _mPause, _sStatus, _sPause;
         private readonly List<InputRow> _rows = new List<InputRow>();
         private readonly List<Card> _cards = new List<Card>();
-        private RectTransform _rowsRt, _cardsRt, _addHint, _badge, _sBadge;
+        private RectTransform _rowsRt, _cardsRt, _addHint;
         private DragScroll _rowsDrag, _cardsDrag;
-        private TMP_Text _badgeLabel, _sBadgeLabel;
-        private bool _stockChoice; // header selector of an empty queue (no entry to carry it yet)
 
         private sealed class InputRow
         {
@@ -134,31 +123,44 @@ namespace Morgott.UI.StationQueue
             public Image[] Rim;
             public Image Icon, Fill;
             public RectTransform Trough;
-            public TMP_Text Num, Text, Pct, Fed, Chip;
-            public Image[] ChipRim;
+            public TMP_Text Num, Text, Pct, Fed, Chip, Status;
+            public Image[] ChipRim, StatusRim;
             public Image ChipIcon;
             public int Index;
         }
 
+        private sealed class TabBar
+        {
+            public readonly Button[] Buttons = new Button[StationQueueMath.TabCount];
+            public readonly Image[][] Rims = new Image[StationQueueMath.TabCount][];
+            public readonly TMP_Text[] Labels = new TMP_Text[StationQueueMath.TabCount];
+        }
+
+        private sealed class RepeatToggle
+        {
+            public Image[] RepeatRim, OneShotRim;
+            public TMP_Text RepeatLabel, OneShotLabel;
+        }
+
         // single-input window
         private Image _sIn, _sOut, _sFuel, _sCond;
-        private TMP_Text _sInCount, _sOutCount, _sFuelCount, _sInName, _sOutName, _sFuelName, _sFuelLabel, _sCondName, _sCompare, _sNow, _sFed;
-        private RectTransform _sFuelBox, _sCountBox, _sInfBox, _sUntilBox, _sNowTrough;
+        private TMP_Text _sInCount, _sOutCount, _sFuelCount, _sInName, _sOutName, _sFuelName, _sFuelLabel, _sCondName, _sNow, _sFed, _sKeepLabel, _sKeepNow, _sKeepStock, _sInfNote, _sFrom;
+        private RectTransform _sFuelBox, _sMakeBox, _sKeepBox, _sInfBox, _sUntilBox, _sNowTrough;
         private Image _sNowFill;
-        private readonly Button[] _sModes = new Button[3];
-        private readonly Image[][] _sModeRims = new Image[3][];
-        private readonly TMP_Text[] _sModeLabels = new TMP_Text[3];
-        private Stepper _sCount, _sThreshold;
+        private Image[] _sLessRim, _sAtLeastRim;
+        private TabBar _sTabs;
+        private RepeatToggle _sRepeat;
+        private Stepper _sCount, _sKeepTarget, _sThreshold;
+        private Button _sStart;
 
         // editor
         private Image _eIcon, _eCondIcon;
-        private TMP_Text _eBadge, _eName, _eNet, _eIngredients, _eCondName, _eSummary;
-        private readonly Button[] _eModes = new Button[3];
-        private readonly Image[][] _eModeRims = new Image[3][];
-        private readonly TMP_Text[] _eModeLabels = new TMP_Text[3];
-        private Image[] _eLessRim, _eAtLeastRim, _eUntilRim;
-        private CanvasGroup _eCountGroup, _eUntilGroup;
-        private Stepper _eCount, _eThreshold;
+        private TMP_Text _eBadge, _eName, _eNet, _eIngredients, _eCondName, _eSummary, _eMakeYield, _eKeepLabel, _eKeepNow, _eUntilNow, _eSaveLabel, _eHint;
+        private RectTransform _eMakeBox, _eKeepBox, _eUntilBox, _eInfBox;
+        private TabBar _eTabs;
+        private RepeatToggle _eRepeat;
+        private Image[] _eLessRim, _eAtLeastRim;
+        private Stepper _eCount, _eKeepTarget, _eThreshold;
         private Button _eDelete;
 
         // item picker (until-condition dropdown)
@@ -243,6 +245,9 @@ namespace Morgott.UI.StationQueue
         private static Color Hex(string hex) => ColorUtility.TryParseHtmlString(hex, out var c) ? c : Color.white;
         private static Color Gold => ThemeTokens.GetColor("color.text.active", Hex("#E8B64A"));
         private static Color Cyan => ThemeTokens.GetColor("color.text.accent", Hex("#4FE0E6"));
+        private static Color Ok => ThemeTokens.GetColor("color.text.ok", Hex("#9FD66B"));
+        private static Color Ember => ThemeTokens.GetColor("color.text.ember", Hex("#F08A3A"));
+        private static Color BodyText => ThemeTokens.GetColor("color.text.body", Hex("#E3E6E8"));
         private static Color Muted => ThemeTokens.GetColor("color.state.disabled", Hex("#8A9096"));
         private static Color Sub => ThemeTokens.GetColor("color.stats.sub", Hex("#A9B3B7"));
         private static Color Missing => ThemeTokens.GetColor("color.text.missing", Hex("#E0413A"));
@@ -284,7 +289,7 @@ namespace Morgott.UI.StationQueue
             }
             if (ZInput.GetKeyDown(KeyCode.Escape, false))
             {
-                if (_picker.gameObject.activeSelf) _picker.gameObject.SetActive(false);
+                if (_picker.gameObject.activeSelf) ClosePicker();
                 else if (_editing) EditorClose();
                 else Hide("Esc");
                 return;
@@ -334,12 +339,12 @@ namespace Morgott.UI.StationQueue
                 return;
             }
             _station = station;
-            _stockChoice = false;
             _inScroll = _cardScroll = 0;
             _editing = false;
+            _singleDraft = null;
             _dragCard = _hoverCard = -1; // a Hud destroyed mid-drag never ran Hide
             _dragItem = null;
-            _picker.gameObject.SetActive(false);
+            ClosePicker();
             _root.gameObject.SetActive(true);
             _nextRead = Time.unscaledTime + RefreshEvery;
             RefreshAll();
@@ -355,9 +360,11 @@ namespace Morgott.UI.StationQueue
             if (_root && _root.gameObject.activeSelf) _closedFrame = Time.frameCount;
             _station = null;
             _editing = false;
+            _singleDraft = null;
             _dragCard = -1;
             _dragItem = null;
             _hoverCard = -1;
+            ClosePicker();
             if (_ghost) _ghost.gameObject.SetActive(false);
             if (_root) _root.gameObject.SetActive(false);
             LastScreen = "";
@@ -375,25 +382,17 @@ namespace Morgott.UI.StationQueue
         }
 
         // Write, then show what the station holds now (a refused write reverts the window to it).
-        private void Commit(List<StationQueueEntry> entries, bool paused)
+        private void Commit(List<StationQueueEntry> entries, bool paused, Action onAccepted = null)
         {
             if (_queue == null || !_station) return;
-            if (!_queue.Write(_station, entries, paused) && Player.m_localPlayer)
+            var ok = _queue.Write(_station, entries, paused);
+            if (!ok && Player.m_localPlayer)
                 Player.m_localPlayer.Message(MessageHud.MessageType.Center, "$msg_privatezone");
+            if (ok) onAccepted?.Invoke();
             Reload();
         }
 
         private List<StationQueueEntry> Entries() => StationQueueMath.Clone(_state.Entries);
-
-        // Header selector: Queue (one-shot entries) or Stock (every entry keeps its stock and stays); new entries take it.
-        private bool Stock => StationQueueMath.IsStock(_state.Entries, _stockChoice);
-
-        private void ToggleStock()
-        {
-            _stockChoice = !Stock;
-            if (_state.Entries.Count == 0) RefreshAll();
-            else Commit(StationQueueMath.WithKeep(_state.Entries, _stockChoice), _state.Paused);
-        }
 
         // ---------------------------------------------------------------- items
 
@@ -442,17 +441,6 @@ namespace Morgott.UI.StationQueue
         private int Stocked(string item) => IsFuel(item) ? Mathf.FloorToInt(_state.FuelLevel) : Have(OutputOf(item));
         private string OutputName(string item) => IsFuel(item) ? W("fuel") : Name(OutputOf(item));
 
-        private string StatusWord()
-        {
-            switch (_state.Status)
-            {
-                case StationQueueStatus.Working: return W("status_working");
-                case StationQueueStatus.Waiting: return W("status_waiting");
-                case StationQueueStatus.Paused: return W("status_paused");
-                default: return W("status_idle");
-            }
-        }
-
         private string NetworkPart() => _state.InNetwork
             ? StationQueueMath.Format(W("network"), _state.Chests, StationQueueMath.Plural(_state.Chests, W("chest_one"), W("chest_few"), W("chest_many")))
             : W("no_network");
@@ -461,16 +449,16 @@ namespace Morgott.UI.StationQueue
 
         private void RefreshAll()
         {
-            var single = StationQueueMath.IsSingle(_state.Inputs.Count, _state.MultiOnly);
-            if (single) _editing = false; // the single window edits its one entry in place
+            // Keep _multi + _editor open while _editing is true even if a 1-input queue shrinks from 2 to 1.
+            var single = StationQueueMath.IsSingle(_state.Inputs.Count, _state.MultiOnly, _state.Entries.Count, _editing);
+            if (!single) _singleDraft = null;
             SetActive(_multi, !single);
             SetActive(_single, single);
             SetActive(_editorLayer, _editing);
             SetActive(_multi.Find(HintsName), !_editing); // entry-editor.png: only the dialog's hints under it
             Stamp();
-            if (!_editing && _picker.gameObject.activeSelf && !single) _picker.gameObject.SetActive(false);
+            if (!_editing && !single) ClosePicker();
             LastScreen = _editing ? "editor" : single ? "single" : "multi";
-            _badgeLabel.text = _sBadgeLabel.text = Stock ? W("chip_keep") : W("badge");
             if (single) RefreshSingle();
             else RefreshMulti();
             if (_editing) RefreshEditor();
@@ -548,44 +536,74 @@ namespace Morgott.UI.StationQueue
             card.Icon.sprite = Icon(item);
             card.Icon.enabled = card.Icon.sprite;
             card.Text.text = StationQueueMath.CardText(e, displayName, Name(e.Condition), W("card_until"), W("card_keep"), outName);
-            var active = StationQueueMath.IsActive(index, _state.Active, _state.Status);
+
+            var entryStatus = StationQueueMath.EntryStatus(e.Id, index, _state.Active, _state.Status, _state.EntryStatuses);
+            var active = entryStatus == StationQueueEntryStatus.Running;
             SetRim(card.Rim, active ? Cyan : Dim);
             SetActive(card.Trough, active);
-            SetActive(card.Fed, active && e.Mode == StationQueueMode.Count);
+            var showFed = active && e.Mode == StationQueueMode.Count;
+            SetActive(card.Fed, showFed);
             var textRt = card.Text.rectTransform;
-            Put(textRt, 126f, active ? 6f : 0f, 230f, active ? 44f : CardH);
+            Put(textRt, 124f, active ? 6f : 0f, 216f, active ? 44f : CardH);
             if (active)
             {
+                Put(card.Trough, 124f, 54f, showFed ? 148f : 216f, 16f);
                 var share = StationQueueMath.Share(e, _state.Progress, Stocked(e.Item));
                 FillBar(card.Fill, card.Trough, share);
                 card.Pct.text = Mathf.RoundToInt(share * 100f) + "%";
-                card.Fed.text = StationQueueMath.Group(e.Keep ? Stocked(e.Item) : e.Fed) + " / " + StationQueueMath.Group(e.Target);
+                if (showFed) card.Fed.text = StationQueueMath.Group(e.Keep ? Stocked(e.Item) : e.Fed) + " / " + StationQueueMath.Group(e.Target);
             }
-            // keep-in-stock entries: the "stock" chip (gold), an until one keeps its condition icon
-            card.Chip.text = e.Keep && StationQueueMath.CanKeep(e.Mode) ? W("chip_keep") : e.Mode == StationQueueMode.Count ? W("mode_count") : e.Mode == StationQueueMode.Infinite ? "∞" : W("mode_until");
-            var chip = e.Mode == StationQueueMode.Count && !e.Keep ? Cyan : Gold;
+
+            // Mode chip (top) + live entry status chip (bottom)
+            var tab = StationQueueMath.TabOf(e);
+            card.Chip.text = tab == StationQueueMath.TabKeep ? W("chip_keep")
+                : tab == StationQueueMath.TabMake ? W("tab_make")
+                : tab == StationQueueMath.TabInfinite ? "∞"
+                : W("mode_until");
+            var chip = tab == StationQueueMath.TabMake ? Cyan : Gold;
             card.Chip.color = chip;
             SetRim(card.ChipRim, new Color(chip.r, chip.g, chip.b, 0.7f));
-            Put(card.Chip.transform.parent, 372f, active ? 14f : (CardH - ChipH) / 2f, 84f, ChipH); // kiln.png: centred, on top of the running card
-            // until chip: "Пока" + the condition item's icon (mockup coal cloud)
             var until = e.Mode == StationQueueMode.Until;
             card.ChipIcon.sprite = until ? Icon(Item(e.Condition)) : null;
             card.ChipIcon.enabled = card.ChipIcon.sprite;
-            Stretch(card.Chip.rectTransform, 2f, 0f, card.ChipIcon.enabled ? 26f : 2f, 0f);
+            Stretch(card.Chip.rectTransform, 4f, 0f, card.ChipIcon.enabled ? 28f : 4f, 0f);
+
+            var stColor = StatusColor(entryStatus);
+            card.Status.text = W(StationQueueMath.StatusKey(entryStatus));
+            card.Status.color = stColor;
+            SetRim(card.StatusRim, new Color(stColor.r, stColor.g, stColor.b, 0.65f));
+        }
+
+        private static Color StatusColor(StationQueueEntryStatus status)
+        {
+            switch (status)
+            {
+                case StationQueueEntryStatus.Running: return Cyan;
+                case StationQueueEntryStatus.MissingInput: return Missing;
+                case StationQueueEntryStatus.Stocked: return Ok;
+                case StationQueueEntryStatus.Pending: return Gold;
+                case StationQueueEntryStatus.Blocked: return Ember;
+                default: return Muted;
+            }
         }
 
         private void RefreshSingle()
         {
             Header(_single).Text(Title(_state.Name));
             var input = _state.Inputs[0];
-            var id = input.Item ? input.Item.name : null;
-            var e = StationQueueMath.SingleEntry(_state.Entries, id);
+            var id = input.Key;
+            if (string.IsNullOrEmpty(id) && input.Item) id = input.Item.name;
+            var cur = StationQueueMath.SingleEntry(_state.Entries, id);
+            if (cur != null || (_singleDraft != null && !string.Equals(_singleDraft.Item, id, StringComparison.Ordinal))) _singleDraft = null;
+            var e = cur ?? _singleDraft;
             Cell(_sIn, _sInCount, _sInName, input.Item, input.Network);
             Cell(_sOut, _sOutCount, _sOutName, input.Output, input.Output ? Net(input.Output.name) : 0);
             SetActive(_sFuelBox, _state.Fuel);
             if (_state.Fuel) Cell(_sFuel, _sFuelCount, _sFuelName, _state.Fuel, Net(_state.Fuel.name));
             _sFuelLabel.text = W("fuel");
-            var status = "<color=#" + ColorUtility.ToHtmlStringRGB(Cyan) + ">" + StatusWord() + "</color>";
+            var stKey = StationQueueMath.SingleStatusKey(cur, _state.Status, _state.EntryStatuses, out var liveSt);
+            var stColor = liveSt.HasValue ? StatusColor(liveSt.Value) : Cyan;
+            var status = "<color=#" + ColorUtility.ToHtmlStringRGB(stColor) + ">" + W(stKey) + "</color>";
             var unit = id != null ? Words.Get("$ui_sq_unit_" + id) : null;
             if (unit != null && unit.StartsWith("[", StringComparison.Ordinal)) unit = null; // no unit word for this input
             _sStatus.text = StationQueueMath.Join(
@@ -595,37 +613,64 @@ namespace Morgott.UI.StationQueue
                 status);
             _sPause.text = _state.Paused ? W("resume") : W("pause");
 
-            // modes: 0 = infinite, 1 = count, 2 = until (mockup order); none = empty queue
-            var mode = e == null ? -1 : e.Mode == StationQueueMode.Infinite ? 0 : e.Mode == StationQueueMode.Count ? 1 : 2;
-            for (var i = 0; i < 3; i++)
+            var tab = StationQueueMath.TabOf(e);
+            if (tab != StationQueueMath.TabUntil) ClosePicker();
+            StyleTabs(_sTabs, tab);
+            SetActive(_sMakeBox, tab == StationQueueMath.TabMake);
+            SetActive(_sKeepBox, tab == StationQueueMath.TabKeep);
+            SetActive(_sUntilBox, tab == StationQueueMath.TabUntil);
+            SetActive(_sInfBox, tab == StationQueueMath.TabInfinite || tab < 0);
+            var showStart = cur == null && _singleDraft != null;
+            SetActive(_sStart, showStart);
+            SetActive(_sFrom, !showStart);
+            if (tab < 0)
             {
-                var on = i == mode;
-                SetRim(_sModeRims[i], on ? Cyan : Dim);
-                ModeLabel(_sModeLabels[i], on, i == 0 ? W("mode_infinite") : i == 1 ? W("mode_count") : W("mode_until"));
+                _sInfNote.text = W("choose_mode");
+                return;
             }
-            SetActive(_sCountBox, mode == 1);
-            SetActive(_sInfBox, mode == 0 || mode < 0);
-            SetActive(_sUntilBox, mode == 2);
-            if (e == null) return;
-            if (mode == 1)
+            if (tab == StationQueueMath.TabInfinite)
+            {
+                _sInfNote.text = W("infinite_note");
+                return;
+            }
+            if (tab == StationQueueMath.TabMake)
             {
                 SetField(_sCount, e.Target);
-                _sFed.text = e.Keep
-                    ? StationQueueMath.Format(W("in_stock"), StationQueueMath.Group(Have(input.Output ? input.Output.name : null)), StationQueueMath.Group(e.Target))
-                    : StationQueueMath.Format(W("fed"), StationQueueMath.Group(e.Fed), StationQueueMath.Group(e.Target));
+                var fed = StationQueueMath.Format(W("fed"), StationQueueMath.Group(e.Fed), StationQueueMath.Group(e.Target));
+                var yield = StationQueueMath.MakeYield(e.Target, input.OutputAmount, W("make_yield"));
+                _sFed.text = string.IsNullOrEmpty(yield) ? fed : fed + StationQueueMath.Separator + yield;
             }
-            if (mode == 2)
+            else if (tab == StationQueueMath.TabKeep)
+            {
+                SetField(_sKeepTarget, e.Target);
+                var fuel = IsFuel(id);
+                _sKeepLabel.text = W(fuel ? "keep_fuel_label" : "keep_net_label");
+                _sKeepNow.text = KeepReadout(id, input.Output ? input.Output.name : null);
+                _sKeepStock.text = StationQueueMath.Format(W("in_stock"), StationQueueMath.Group(Stocked(id)), StationQueueMath.Group(e.Target));
+            }
+            else if (tab == StationQueueMath.TabUntil)
             {
                 var cond = Item(e.Condition);
                 _sCond.sprite = Icon(cond);
                 _sCond.enabled = _sCond.sprite;
                 _sCondName.text = cond ? Name(cond) : e.Condition;
-                _sCompare.text = StationQueueMath.CompareText(e.Compare);
+                SetRim(_sLessRim, e.Compare == StationQueueCompare.Less ? Cyan : Dim);
+                SetRim(_sAtLeastRim, e.Compare == StationQueueCompare.AtLeast ? Cyan : Dim);
+                StyleRepeatToggle(_sRepeat, e.Keep);
                 SetField(_sThreshold, e.Threshold);
                 var now = Have(e.Condition);
                 _sNow.text = StationQueueMath.Format(W("now"), StationQueueMath.Group(now), StationQueueMath.Group(e.Threshold));
                 FillBar(_sNowFill, _sNowTrough, StationQueueMath.Share(now, e.Threshold));
             }
+        }
+
+        private string KeepReadout(string itemKey, string explicitOut = null)
+        {
+            if (IsFuel(itemKey))
+                return StationQueueMath.Format(W("keep_now_fuel"), StationQueueMath.Group(Mathf.FloorToInt(_state.FuelLevel)), StationQueueMath.Group(_state.FuelMax));
+            var outId = explicitOut ?? OutputOf(itemKey);
+            var pend = outId != null && _state.Pending.TryGetValue(outId, out var p) ? p : 0;
+            return StationQueueMath.KeepNowText(Net(outId), pend, W("keep_now"), W("keep_now_pending"));
         }
 
         private static void Cell(Image icon, TMP_Text count, TMP_Text name, ItemDrop item, int n)
@@ -636,33 +681,63 @@ namespace Morgott.UI.StationQueue
             name.text = Name(item);
         }
 
-        // The single window's one entry, edited and written (none yet = a new one in that mode).
-        private void SingleEdit(Action<StationQueueEntry> edit, StationQueueMode? mode = null)
+        private string SingleKey(StationQueueInput input) =>
+            input == null ? null : !string.IsNullOrEmpty(input.Key) ? input.Key : (input.Item ? input.Item.name : null);
+
+        private void SingleTab(int tab)
+        {
+            if (tab != StationQueueMath.TabUntil) ClosePicker();
+            var input = _state.Inputs.Count > 0 ? _state.Inputs[0] : null;
+            var id = SingleKey(input);
+            if (string.IsNullOrEmpty(id)) return;
+            var cur = StationQueueMath.SingleEntry(_state.Entries, id);
+            var outId = input.Output ? input.Output.name : id;
+            if (StationQueueMath.SingleTab(cur, ref _singleDraft, tab, id, outId, out var next))
+                Commit(StationQueueMath.Single(next), _state.Paused);
+            else if (next != null)
+                RefreshSingle();
+        }
+
+        // The single window's active entry (committed immediately) or local draft on an empty station.
+        private void SingleEdit(Action<StationQueueEntry> edit)
         {
             var input = _state.Inputs.Count > 0 ? _state.Inputs[0] : null;
-            if (input == null || !input.Item) return;
-            var cur = StationQueueMath.SingleEntry(_state.Entries, input.Item.name);
-            if (cur == null && mode == null) return;
-            var e = cur != null ? cur.Clone() : StationQueueMath.NewEntry(input.Item.name, mode.Value, input.Output ? input.Output.name : null, Stock);
-            if (mode != null && e.Mode != mode.Value)
-            {
-                e.Mode = mode.Value;
-                e.Fed = 0;
-                if (e.Condition == null) e.Condition = input.Output ? input.Output.name : null;
-            }
-            edit?.Invoke(e);
-            Commit(StationQueueMath.Single(e), _state.Paused);
+            var id = SingleKey(input);
+            if (string.IsNullOrEmpty(id)) return;
+            var cur = StationQueueMath.SingleEntry(_state.Entries, id);
+            if (StationQueueMath.SingleEdit(cur, _singleDraft, edit, out var next))
+                Commit(StationQueueMath.Single(next), _state.Paused);
+            else if (next != null)
+                RefreshSingle();
+        }
+
+        private void SingleStart()
+        {
+            if (_singleDraft == null) return;
+            ClosePicker();
+            Commit(StationQueueMath.Single(_singleDraft), _state.Paused, () => _singleDraft = null);
+        }
+
+        private void SingleReset()
+        {
+            _singleDraft = null;
+            ClosePicker();
+            if (_state.Entries.Count > 0) Commit(new List<StationQueueEntry>(), _state.Paused);
+            else RefreshSingle();
         }
 
         // ---------------------------------------------------------------- editor
 
         private void EditorOpen(int index, string newItem)
         {
-            if (StationQueueMath.IsSingle(_state.Inputs.Count, _state.MultiOnly)) return;
+            if (StationQueueMath.IsSingle(_state.Inputs.Count, _state.MultiOnly, _state.Entries.Count)) return;
+            ClosePicker();
             if (index >= 0 && index < _state.Entries.Count)
             {
                 _editIndex = index;
                 _draft = _state.Entries[index].Clone();
+                _untilKeep = _draft.Mode != StationQueueMode.Until || _draft.Keep;
+                _infiniteKeep = _draft.Mode != StationQueueMode.Infinite || _draft.Keep;
             }
             else
             {
@@ -671,7 +746,9 @@ namespace Morgott.UI.StationQueue
                         if (i.Known && (i.Item || i.Output) && !string.IsNullOrEmpty(i.Key)) { newItem = i.Key; break; }
                 if (newItem == null) return;
                 _editIndex = -1;
-                _draft = StationQueueMath.NewEntry(newItem, StationQueueMode.Count, OutputOf(newItem), Stock);
+                _draft = StationQueueMath.NewEntry(newItem, StationQueueMode.Count, OutputOf(newItem), keep: false);
+                _untilKeep = true;
+                _infiniteKeep = true;
             }
             _editing = true;
             RefreshAll();
@@ -680,16 +757,20 @@ namespace Morgott.UI.StationQueue
         private void EditorClose()
         {
             _editing = false;
-            _picker.gameObject.SetActive(false);
+            ClosePicker();
             RefreshAll();
         }
 
         private void EditorSave()
         {
             if (!_editing || _draft == null) return;
-            _draft.Keep = Stock; // the selector's mode now, not when the editor opened (another player may have switched it)
             _editing = false;
-            _picker.gameObject.SetActive(false);
+            ClosePicker();
+            if (_editIndex >= 0 && StationQueueMath.Find(_state.Entries, _editIndex, _draft) < 0)
+            {
+                Reload();
+                return;
+            }
             Commit(StationQueueMath.Save(_state.Entries, _editIndex, _draft), _state.Paused);
         }
 
@@ -699,15 +780,15 @@ namespace Morgott.UI.StationQueue
             var at = _editIndex >= 0 ? StationQueueMath.Find(list, _editIndex, _draft) : -1;
             if (at >= 0) list.RemoveAt(at);
             _editing = false;
-            _picker.gameObject.SetActive(false);
+            ClosePicker();
             Commit(list, _state.Paused);
         }
 
-        private void EditorMode(StationQueueMode m)
+        private void EditorTab(int tab)
         {
-            _draft.Mode = m;
-            if (m == StationQueueMode.Count) _draft.Target = StationQueueMath.ShownTarget(_draft.Target);
-            if (m == StationQueueMode.Until && _draft.Condition == null) _draft.Condition = OutputOf(_draft.Item) ?? _draft.Item;
+            if (_draft == null) return;
+            if (tab != StationQueueMath.TabUntil) ClosePicker();
+            StationQueueMath.SwitchTab(_draft, tab, OutputOf(_draft.Item) ?? _draft.Item, _untilKeep, _infiniteKeep);
             RefreshEditor();
         }
 
@@ -716,11 +797,12 @@ namespace Morgott.UI.StationQueue
             if (_draft == null) return;
             var input = FindInputByKey(_draft.Item);
             var item = DisplayItem(input, _draft.Item);
+            var outputAmount = input != null ? input.OutputAmount : 1;
             _eIcon.sprite = Icon(item);
             _eIcon.enabled = _eIcon.sprite;
             var net = InputNet(_draft.Item);
             _eBadge.text = StationQueueMath.Group(net);
-            _eName.text = StationQueueMath.DisplayName(item ? Name(item) : _draft.Item, input != null ? input.OutputAmount : 1);
+            _eName.text = StationQueueMath.DisplayName(item ? Name(item) : _draft.Item, outputAmount);
             _eNet.text = StationQueueMath.Format(W("net_count"), StationQueueMath.Group(net));
             var hasIng = input?.Ingredients != null && input.Ingredients.Count > 0;
             SetActive(_eIngredients, hasIng);
@@ -739,44 +821,52 @@ namespace Morgott.UI.StationQueue
                 Put(_eNet, 120f, 110f, EditorW - 150f, 28f);
                 _eNet.fontSize = 20f;
             }
-            var mode = (int)_draft.Mode; // Count, Infinite, Until = mockup order
-            for (var i = 0; i < 3; i++)
+
+            var tab = StationQueueMath.TabOf(_draft);
+            if (tab != StationQueueMath.TabUntil) ClosePicker();
+            StyleTabs(_eTabs, tab);
+            SetActive(_eMakeBox, tab == StationQueueMath.TabMake);
+            SetActive(_eKeepBox, tab == StationQueueMath.TabKeep);
+            SetActive(_eUntilBox, tab == StationQueueMath.TabUntil);
+            SetActive(_eInfBox, tab == StationQueueMath.TabInfinite);
+
+            var target = StationQueueMath.ShownTarget(_draft.Target);
+            if (tab == StationQueueMath.TabMake)
             {
-                var on = i == mode;
-                SetRim(_eModeRims[i], on ? Cyan : Dim);
-                ModeLabel(_eModeLabels[i], on, i == 0 ? W("mode_count") : i == 1 ? W("mode_infinite") : W("mode_until"));
+                SetField(_eCount, target);
+                var yield = StationQueueMath.MakeYield(target, outputAmount, W("make_yield"));
+                SetActive(_eMakeYield, !string.IsNullOrEmpty(yield));
+                if (!string.IsNullOrEmpty(yield)) _eMakeYield.text = yield;
             }
-            Group(_eCountGroup, _draft.Mode == StationQueueMode.Count);
-            Group(_eUntilGroup, _draft.Mode == StationQueueMode.Until);
-            SetRim(_eUntilRim, _draft.Mode == StationQueueMode.Until ? Cyan : Dim);
-            SetField(_eCount, StationQueueMath.ShownTarget(_draft.Target));
-            SetField(_eThreshold, _draft.Threshold);
-            var cond = Item(_draft.Condition);
-            _eCondIcon.sprite = Icon(cond);
-            _eCondIcon.enabled = _eCondIcon.sprite;
-            _eCondName.text = cond ? Name(cond) : _draft.Condition ?? "";
-            SetRim(_eLessRim, _draft.Compare == StationQueueCompare.Less ? Cyan : Dim);
-            SetRim(_eAtLeastRim, _draft.Compare == StationQueueCompare.AtLeast ? Cyan : Dim);
+            else if (tab == StationQueueMath.TabKeep)
+            {
+                SetField(_eKeepTarget, target);
+                _eKeepLabel.text = W(IsFuel(_draft.Item) ? "keep_fuel_label" : "keep_net_label");
+                _eKeepNow.text = KeepReadout(_draft.Item);
+            }
+            else if (tab == StationQueueMath.TabUntil)
+            {
+                SetField(_eThreshold, _draft.Threshold);
+                var cond = Item(_draft.Condition);
+                _eCondIcon.sprite = Icon(cond);
+                _eCondIcon.enabled = _eCondIcon.sprite;
+                _eCondName.text = cond ? Name(cond) : _draft.Condition ?? "";
+                SetRim(_eLessRim, _draft.Compare == StationQueueCompare.Less ? Cyan : Dim);
+                SetRim(_eAtLeastRim, _draft.Compare == StationQueueCompare.AtLeast ? Cyan : Dim);
+                StyleRepeatToggle(_eRepeat, _draft.Keep);
+                _eUntilNow.text = StationQueueMath.Format(W("now"), StationQueueMath.Group(Have(_draft.Condition)), StationQueueMath.Group(_draft.Threshold));
+            }
+
             var keepCount = _draft.Keep && _draft.Mode == StationQueueMode.Count;
             var keepOut = OutputName(_draft.Item);
             if (string.IsNullOrEmpty(keepOut)) keepOut = _eName.text;
             _eSummary.text = StationQueueMath.Summary(_draft, _eName.text, keepCount ? keepOut : _eCondName.text, keepCount ? Stocked(_draft.Item) : Have(_draft.Condition),
-                W("sum_count"), W("sum_infinite"), W("sum_until"), W(IsFuel(_draft.Item) ? "sum_keep_fuel" : "sum_keep"), W("keep_tail"));
+                W("sum_count"), W("sum_infinite"), W("sum_until"), W(IsFuel(_draft.Item) ? "sum_keep_fuel" : "sum_keep"), W("keep_tail"),
+                outputAmount, W("sum_count_yield"));
             SetActive(_eDelete, _editIndex >= 0);
-        }
-
-        // Mode button text (mockups): the selected one gold with a cyan radio mark.
-        private static void ModeLabel(TMP_Text label, bool on, string word)
-        {
-            label.richText = true;
-            label.color = on ? Gold : ThemeTokens.GetColor("color.text.body", Color.white);
-            label.text = StationQueueMath.ModeText(on, word, ColorUtility.ToHtmlStringRGB(Cyan));
-        }
-
-        private static void Group(CanvasGroup g, bool on)
-        {
-            g.alpha = on ? 1f : 0.45f;
-            g.interactable = on;
+            var actionWord = _editIndex < 0 ? W("add") : W("save");
+            _eSaveLabel.text = actionWord;
+            _eHint.text = Hint("Enter", actionWord) + "      " + Hint("Esc", W("cancel"));
         }
 
         // ---------------------------------------------------------------- build
@@ -802,7 +892,6 @@ namespace Morgott.UI.StationQueue
             _pRows.Clear();
             _headers.Clear();
             _serif.Clear();
-            _badgeShare = _sBadgeShare = 0f;
             _root = NewRect(RootName, host);
             Plugin.Log.LogInfo($"[StationQueue] window built under {Path(host)} (layer {host.gameObject.layer})");
             _root.SetAsLastSibling();
@@ -860,7 +949,7 @@ namespace Morgott.UI.StationQueue
         }
 
         private const string HintsName = "Hints", Serif = "font.display"; // 3rd face (Averia) is map-list only (biome-overlay-design.md)
-        private const float CloseColumn = 58f, BadgeW = 150f, MultiH = 680f;
+        private const float CloseColumn = 58f, MultiH = 680f;
         private readonly List<TMP_Text> _serif = new List<TMP_Text>();
 
         // Section heads + titles in the serif face (ChangelogPanel.Stamp: the face is late-bound, set once it exists).
@@ -871,57 +960,6 @@ namespace Morgott.UI.StationQueue
         }
 
         private static string Title(string key) => Words.Get(key).ToUpperInvariant();
-        private float _badgeShare, _sBadgeShare;
-
-        // The "Очередь" / "Запас" selector badge in the header's aux slot (right end of the plaque, kiln.png).
-        private void LateUpdate()
-        {
-            if (!IsOpen) return;
-            if (_multi.gameObject.activeSelf) PlaceBadge(_multi, _badge, ref _badgeShare);
-            else if (_single.gameObject.activeSelf) PlaceBadge(_single, _sBadge, ref _sBadgeShare);
-        }
-
-        private void PlaceBadge(RectTransform panel, RectTransform badge, ref float placedShare)
-        {
-            if (!badge) return;
-            var h = Header(panel);
-            var rt = (RectTransform)h.transform;
-            var hh = rt.rect.height;
-            if (!(hh > 0f)) return;
-            var share = BadgeW / hh;
-            if (Mathf.Abs(share - placedShare) > 0.001f)
-            {
-                placedShare = share;
-                h.Stretch(share);
-            }
-            var aux = h.AuxLocal;
-            SetActive(badge, aux.width > 0f);
-            if (aux.width <= 0f) return;
-            badge.anchorMin = badge.anchorMax = badge.pivot = new Vector2(0.5f, 0.5f);
-            var pos = aux.center - rt.rect.center;
-            if ((badge.anchoredPosition - pos).sqrMagnitude > 0.01f) badge.anchoredPosition = pos;
-            if ((badge.sizeDelta - aux.size).sqrMagnitude > 0.01f) badge.sizeDelta = aux.size;
-        }
-
-        // Header selector button: gold rimmed plate, click switches Queue / Stock (ToggleStock).
-        private RectTransform NewBadge(RectTransform panel, out TMP_Text label)
-        {
-            var image = Img(Header(panel).transform, "QueueBadge", "button.primary");
-            image.preserveAspect = false;
-            image.raycastTarget = true;
-            var b = image.gameObject.AddComponent<Button>();
-            b.targetGraphic = image;
-            b.navigation = new Navigation { mode = Navigation.Mode.None };
-            b.onClick.AddListener(ToggleStock);
-            var rt = image.rectTransform;
-            SetRim(Rim(rt), Gold);
-            label = Txt(rt, "Label", "text.accent", TextAlignmentOptions.Center, 22f);
-            label.text = W("badge");
-            label.color = Gold;
-            Stretch(label.rectTransform, 34f, 0f, 6f, 0f);
-            SwapGlyph(rt);
-            return rt;
-        }
 
         private static string Hint(string key, string word) => StationQueueMath.KeyHint(key, word, ColorUtility.ToHtmlStringRGB(Gold));
 
@@ -930,7 +968,6 @@ namespace Morgott.UI.StationQueue
             const float W0 = 1100f, H0 = MultiH;
             _multi = Panel(_root, "Multi", W0, H0, "station.queue", () => Hide("close button"),
                 Hint("Esc", W("close")) + "      " + Hint("LMB", W("drag")) + "      " + Hint("Del", W("delete")));
-            _badge = NewBadge(_multi, out _badgeLabel);
             _mStatus = Txt(_multi, "Status", "text.body", TextAlignmentOptions.Center, 22f);
             Put(_mStatus, 40f, 70f, W0 - 80f, 32f);
             Put(Rule(_multi, "TopRule", Dim), 28f, 108f, W0 - 56f, 1f);
@@ -1028,9 +1065,7 @@ namespace Morgott.UI.StationQueue
                 _dragItem = null;
                 _ghost.gameObject.SetActive(false);
                 if (item == null || !RectTransformUtility.RectangleContainsScreenPoint(_cardsRt, e.position, e.pressEventCamera)) return;
-                var list = Entries();
-                list.Add(StationQueueMath.NewEntry(item, StationQueueMode.Count, OutputOf(item), Stock));
-                Commit(list, _state.Paused);
+                EditorOpen(-1, item);
             };
             row.Group = row.Rt.gameObject.AddComponent<CanvasGroup>();
             row.Icon = SlotIcon(row.Rt, 0f, 6f, 68f, out row.Badge);
@@ -1041,10 +1076,7 @@ namespace Morgott.UI.StationQueue
             Put(row.Count, 284f, 0f, 60f, 80f);
             var plus = Btn(row.Rt, "Add", "button.icon", out var pl, () =>
             {
-                if (row.Item == null) return;
-                var list = Entries();
-                list.Add(StationQueueMath.NewEntry(row.Item, StationQueueMode.Count, OutputOf(row.Item), Stock));
-                Commit(list, _state.Paused);
+                if (row.Item != null) EditorOpen(-1, row.Item);
             });
             pl.text = "+";
             pl.fontSize = 26f;
@@ -1096,27 +1128,41 @@ namespace Morgott.UI.StationQueue
                 else if (_hoverCard == card.Index) _hoverCard = -1;
             };
             card.Num = Txt(card.Rt, "Num", "text.body", TextAlignmentOptions.Center, 22f);
-            Put(card.Num, 28f, 0f, 30f, CardH);
-            card.Icon = SlotIcon(card.Rt, 62f, (CardH - 58f) / 2f, 58f, out var badge);
+            Put(card.Num, 28f, 0f, 28f, CardH);
+            card.Icon = SlotIcon(card.Rt, 60f, (CardH - 58f) / 2f, 58f, out var badge);
             Destroy(badge.gameObject);
-            card.Text = Txt(card.Rt, "Text", "text.body", TextAlignmentOptions.Left, 19f);
+            card.Text = Txt(card.Rt, "Text", "text.body", TextAlignmentOptions.Left, 18.5f);
             card.Text.textWrappingMode = TextWrappingModes.Normal;
             card.Trough = Bar(card.Rt, out card.Fill);
-            Put(card.Trough, 126f, 54f, 230f, 16f);
-            card.Pct = Txt(card.Trough, "Pct", "text.body", TextAlignmentOptions.Center, 15f);
+            Put(card.Trough, 124f, 54f, 148f, 16f);
+            card.Pct = Txt(card.Trough, "Pct", "text.body", TextAlignmentOptions.Center, 14f);
             Stretch(card.Pct.rectTransform, 0f, -2f, 0f, -2f);
-            card.Fed = Txt(card.Rt, "Fed", "text.accent", TextAlignmentOptions.Left, 18f);
+            card.Fed = Txt(card.Rt, "Fed", "text.accent", TextAlignmentOptions.MidlineRight, 15.5f);
             card.Fed.color = Cyan;
-            Put(card.Fed, 372f, 48f, 92f, 24f);
+            card.Fed.enableAutoSizing = true;
+            card.Fed.fontSizeMin = 12f;
+            card.Fed.fontSizeMax = 15.5f;
+            Put(card.Fed, 276f, 50f, 64f, 22f);
             var chipRt = NewRect("Chip", card.Rt);
-            Put(chipRt, 372f, 14f, 84f, ChipH);
+            Put(chipRt, 346f, 10f, 118f, 26f);
             card.ChipRim = Rim(chipRt);
             card.ChipIcon = IconIn(chipRt, 0f);
-            Put(card.ChipIcon, 60f, 3f, 22f, 22f);
-            card.Chip = Txt(chipRt, "Label", "text.body", TextAlignmentOptions.Center, 17f);
-            Stretch(card.Chip.rectTransform, 2f, 0f, 2f, 0f);
-            Arrow(card, "Up", "▲", 466f, () => Reorder(card.Index, -1));
-            Arrow(card, "Down", "▼", 512f, () => Reorder(card.Index, 1));
+            Put(card.ChipIcon, 92f, 2f, 22f, 22f);
+            card.Chip = Txt(chipRt, "Label", "text.body", TextAlignmentOptions.Center, 16f);
+            card.Chip.enableAutoSizing = true;
+            card.Chip.fontSizeMin = 12f;
+            card.Chip.fontSizeMax = 16f;
+            Stretch(card.Chip.rectTransform, 4f, 0f, 4f, 0f);
+            var statusRt = NewRect("StatusChip", card.Rt);
+            Put(statusRt, 346f, 44f, 118f, 26f);
+            card.StatusRim = Rim(statusRt);
+            card.Status = Txt(statusRt, "Label", "text.body", TextAlignmentOptions.Center, 15f);
+            card.Status.enableAutoSizing = true;
+            card.Status.fontSizeMin = 12f;
+            card.Status.fontSizeMax = 15f;
+            Stretch(card.Status.rectTransform, 4f, 0f, 4f, 0f);
+            Arrow(card, "Up", "▲", 474f, () => Reorder(card.Index, -1));
+            Arrow(card, "Down", "▼", 516f, () => Reorder(card.Index, 1));
             Arrow(card, "Remove", "×", 558f, () =>
             {
                 var list = Entries();
@@ -1131,7 +1177,7 @@ namespace Morgott.UI.StationQueue
             var b = Btn(card.Rt, name, "button.icon", out var l, click);
             l.text = glyph;
             l.fontSize = name == "Remove" ? 24f : 16f;
-            Put(b, x, (CardH - 38f) / 2f, 38f, 38f);
+            Put(b, x, (CardH - 36f) / 2f, 36f, 36f);
         }
 
         private void Reorder(int index, int delta)
@@ -1140,11 +1186,65 @@ namespace Morgott.UI.StationQueue
             if (StationQueueMath.Move(list, index, delta)) Commit(list, _state.Paused);
         }
 
+        private static readonly int[] MakeChips = { 10, 50, 100, -1 }, KeepChips = { 20, 50, 100, 200 };
+
+        private TabBar BuildTabs(Transform parent, float x, float y, float w, float gap, float h, float font, Action<int> onSelect)
+        {
+            var bar = new TabBar();
+            string[] keys = { "tab_make", "tab_keep", "tab_until", "tab_infinite" };
+            for (var i = 0; i < StationQueueMath.TabCount; i++)
+            {
+                var tab = i;
+                bar.Buttons[i] = Btn(parent, "Mode" + i, "field", out bar.Labels[i], () => onSelect(tab));
+                bar.Labels[i].text = W(keys[i]);
+                bar.Labels[i].fontSize = font;
+                bar.Labels[i].enableAutoSizing = true;
+                bar.Labels[i].fontSizeMin = 14f;
+                bar.Labels[i].fontSizeMax = font;
+                bar.Rims[i] = Rim(bar.Buttons[i].transform);
+                Put(bar.Buttons[i], x + i * (w + gap), y, w, h);
+            }
+            return bar;
+        }
+
+        private static void StyleTabs(TabBar bar, int activeTab)
+        {
+            for (var i = 0; i < StationQueueMath.TabCount; i++)
+            {
+                var on = i == activeTab;
+                SetRim(bar.Rims[i], on ? Cyan : Dim);
+                bar.Labels[i].color = on ? Gold : BodyText;
+            }
+        }
+
+        private RepeatToggle BuildRepeatToggle(Transform parent, float x, float y, float w, float h, Action<bool> onSelect)
+        {
+            var t = new RepeatToggle();
+            var rep = Btn(parent, "Repeat", "field", out t.RepeatLabel, () => onSelect(true));
+            t.RepeatLabel.text = W("repeat");
+            t.RepeatLabel.fontSize = 17f;
+            t.RepeatRim = Rim(rep.transform);
+            Put(rep, x, y, w, h);
+            var one = Btn(parent, "OneShot", "field", out t.OneShotLabel, () => onSelect(false));
+            t.OneShotLabel.text = W("oneshot");
+            t.OneShotLabel.fontSize = 17f;
+            t.OneShotRim = Rim(one.transform);
+            Put(one, x + w + 8f, y, w, h);
+            return t;
+        }
+
+        private static void StyleRepeatToggle(RepeatToggle t, bool repeat)
+        {
+            SetRim(t.RepeatRim, repeat ? Cyan : Dim);
+            SetRim(t.OneShotRim, !repeat ? Cyan : Dim);
+            t.RepeatLabel.color = repeat ? Gold : Sub;
+            t.OneShotLabel.color = !repeat ? Gold : Sub;
+        }
+
         private void BuildSingle()
         {
             const float W0 = 720f, H0 = 636f;
             _single = Panel(_root, "Single", W0, H0, "station.queue.single", () => Hide("close button"), Hint("Esc", W("close")));
-            _sBadge = NewBadge(_single, out _sBadgeLabel);
             // recipe row: input -> output | fuel (counts = network)
             _sIn = SlotIcon(_single, 80f, 84f, 100f, out _sInCount);
             _sInName = CellName(_single, "InName", 50f);
@@ -1164,74 +1264,97 @@ namespace Morgott.UI.StationQueue
             Put(_sStatus, 28f, 242f, W0 - 56f, 30f);
             Put(Rule(_single, "Rule1", Dim), 28f, 278f, W0 - 56f, 1f);
             Section(_single, "ModeLabel", W("mode"), 28f, 284f);
-            var modes = new[] { StationQueueMode.Infinite, StationQueueMode.Count, StationQueueMode.Until };
-            for (var i = 0; i < 3; i++)
-            {
-                var m = modes[i];
-                _sModes[i] = Btn(_single, "Mode" + i, "field", out _sModeLabels[i], () => SingleEdit(null, m));
-                _sModeLabels[i].fontSize = 22f;
-                _sModeRims[i] = Rim(_sModes[i].transform);
-                Put(_sModes[i], 28f + i * 226f, 324f, 212f, 46f);
-            }
+            _sTabs = BuildTabs(_single, 28f, 322f, 160f, 8f, 44f, 20f, SingleTab);
 
-            // detail boxes of the selected mode
+            // detail well: only the active tab's controls are shown
             var box = Img(_single, "Detail", "well");
             box.preserveAspect = false;
-            Put(box, 28f, 384f, W0 - 56f, 170f);
-            _sCountBox = NewRect("Count", box.transform);
-            Stretch(_sCountBox, 0f, 0f, 0f, 0f);
-            Label(_sCountBox, W("count_label"), 20f, 10f);
-            _sCount = NewStepper(_sCountBox, 20f, 50f, () => CurrentSingle()?.Target ?? 0, v => SingleEdit(e => e.Target = v));
-            Chips(_sCountBox, 330f, 50f, v => SingleEdit(e => e.Target = v), () => _state.Inputs.Count > 0 ? _state.Inputs[0].Network : 0);
-            _sFed = Txt(_sCountBox, "Fed", "text.body", TextAlignmentOptions.Left, 20f);
-            Put(_sFed, 20f, 110f, 400f, 30f);
+            Put(box, 28f, 378f, W0 - 56f, 180f);
+
+            _sMakeBox = NewRect("Make", box.transform);
+            Stretch(_sMakeBox, 0f, 0f, 0f, 0f);
+            Label(_sMakeBox, W("count_label"), 20f, 12f);
+            _sCount = NewStepper(_sMakeBox, 20f, 48f, () => CurrentSingle()?.Target ?? 0, v => SingleEdit(e => e.Target = v));
+            Chips(_sMakeBox, 330f, 48f, MakeChips, v => SingleEdit(e => e.Target = v), () => _state.Inputs.Count > 0 ? _state.Inputs[0].Network : 0);
+            _sFed = Txt(_sMakeBox, "Fed", "text.body", TextAlignmentOptions.Left, 20f);
+            Put(_sFed, 20f, 110f, 624f, 30f);
+
+            _sKeepBox = NewRect("Keep", box.transform);
+            Stretch(_sKeepBox, 0f, 0f, 0f, 0f);
+            _sKeepLabel = Label(_sKeepBox, W("keep_net_label"), 20f, 12f);
+            _sKeepTarget = NewStepper(_sKeepBox, 20f, 48f, () => CurrentSingle()?.Target ?? 0, v => SingleEdit(e => e.Target = v));
+            Chips(_sKeepBox, 330f, 48f, KeepChips, v => SingleEdit(e => e.Target = v));
+            _sKeepNow = Txt(_sKeepBox, "KeepNow", "text.body", TextAlignmentOptions.Left, 20f);
+            Put(_sKeepNow, 20f, 104f, 624f, 28f);
+            _sKeepStock = Txt(_sKeepBox, "KeepStock", "text.body", TextAlignmentOptions.Left, 18f);
+            _sKeepStock.color = Sub;
+            Put(_sKeepStock, 20f, 134f, 624f, 26f);
+
             _sInfBox = NewRect("Infinite", box.transform);
             Stretch(_sInfBox, 0f, 0f, 0f, 0f);
-            var note = Label(_sInfBox, W("infinite_note"), 20f, 60f);
-            note.color = Muted;
+            _sInfNote = Label(_sInfBox, W("infinite_note"), 20f, 64f);
+            _sInfNote.color = Muted;
+            _sInfNote.textWrappingMode = TextWrappingModes.Normal;
+            Put(_sInfNote, 20f, 52f, 624f, 70f);
+
             _sUntilBox = NewRect("Until", box.transform);
             Stretch(_sUntilBox, 0f, 0f, 0f, 0f);
-            Label(_sUntilBox, W("process_while"), 20f, 8f);
+            Label(_sUntilBox, W("until_net"), 20f, 10f);
+            _sRepeat = BuildRepeatToggle(_sUntilBox, 376f, 8f, 130f, 30f, keep => SingleEdit(e => e.Keep = keep));
             var condBtn = Btn(_sUntilBox, "Condition", "slot.cell", out var cl, null);
             Destroy(cl.gameObject);
-            Put(condBtn, 20f, 42f, 56f, 56f);
+            Put(condBtn, 20f, 46f, 56f, 56f);
             _sCond = IconIn(condBtn.transform, 6f);
             condBtn.onClick.AddListener(() => OpenPicker((RectTransform)condBtn.transform, id => SingleEdit(e => e.Condition = id)));
             _sCondName = Txt(_sUntilBox, "CondName", "text.body", TextAlignmentOptions.Left, 19f);
             _sCondName.textWrappingMode = TextWrappingModes.Normal;
-            Put(_sCondName, 84f, 42f, 150f, 56f);
-            var cmp = Btn(_sUntilBox, "Compare", "button.icon", out _sCompare,
-                () => SingleEdit(e => e.Compare = e.Compare == StationQueueCompare.Less ? StationQueueCompare.AtLeast : StationQueueCompare.Less));
-            _sCompare.fontSize = 22f;
-            Put(cmp, 242f, 50f, 44f, 40f);
-            _sThreshold = NewStepper(_sUntilBox, 300f, 50f, () => CurrentSingle()?.Threshold ?? 0, v => SingleEdit(e => e.Threshold = v));
-            var inNet = Txt(_sUntilBox, "InNet", "text.body", TextAlignmentOptions.Left, 20f);
+            Put(_sCondName, 84f, 46f, 150f, 56f);
+            var sLess = Btn(_sUntilBox, "Less", "button.icon", out var sll, () => SingleEdit(e => e.Compare = StationQueueCompare.Less));
+            sll.text = "<";
+            sll.fontSize = 22f;
+            _sLessRim = Rim(sLess.transform);
+            Put(sLess, 242f, 54f, 38f, 40f);
+            var sAtLeast = Btn(_sUntilBox, "AtLeast", "button.icon", out var sal, () => SingleEdit(e => e.Compare = StationQueueCompare.AtLeast));
+            sal.text = "≥";
+            sal.fontSize = 22f;
+            _sAtLeastRim = Rim(sAtLeast.transform);
+            Put(sAtLeast, 284f, 54f, 38f, 40f);
+            _sThreshold = NewStepper(_sUntilBox, 332f, 54f, () => CurrentSingle()?.Threshold ?? 0, v => SingleEdit(e => e.Threshold = v));
+            var inNet = Txt(_sUntilBox, "InNet", "text.body", TextAlignmentOptions.Left, 19f);
             inNet.text = W("in_network");
-            Put(inNet, 504f, 50f, 140f, 40f);
-            _sNow = Txt(_sUntilBox, "Now", "text.body", TextAlignmentOptions.Left, 20f);
-            Put(_sNow, 20f, 104f, 400f, 28f);
+            Put(inNet, 532f, 54f, 118f, 40f);
+            _sNow = Txt(_sUntilBox, "Now", "text.body", TextAlignmentOptions.Left, 19f);
+            Put(_sNow, 20f, 108f, 624f, 26f);
             _sNowTrough = Bar(_sUntilBox, out _sNowFill);
-            Put(_sNowTrough, 20f, 134f, W0 - 56f - 40f, 22f);
+            Put(_sNowTrough, 20f, 138f, W0 - 56f - 40f, 20f);
 
             Put(Rule(_single, "Rule2", Dim), 28f, 570f, W0 - 56f, 1f);
             var pause = PlainBtn(_single, "Pause", out _sPause, () => Commit(Entries(), !_state.Paused), Light);
             _sPause.fontSize = 22f;
             Put(pause, 40f, 582f, 150f, 42f);
-            var reset = PlainBtn(_single, "Reset", out var rl, () => Commit(new List<StationQueueEntry>(), _state.Paused), Light);
+            var reset = PlainBtn(_single, "Reset", out var rl, SingleReset, Light);
             rl.text = W("reset");
             rl.fontSize = 22f;
             Put(reset, 206f, 582f, 170f, 42f);
+            _sStart = PlainBtn(_single, "Start", out var sl, SingleStart, Gold);
+            sl.text = W("start");
+            sl.color = Gold;
+            sl.fontSize = 22f;
+            Put(_sStart, 500f, 582f, 180f, 42f);
             // two lines inside the frame (eitr-refinery.png), clear of its right border
-            var from = Txt(_single, "FromNetwork", "text.muted", TextAlignmentOptions.TopLeft, 20f);
-            from.text = W("from_network");
-            from.color = Muted;
-            from.textWrappingMode = TextWrappingModes.Normal;
-            from.overflowMode = TextOverflowModes.Overflow;
-            Put(from, 450f, 578f, 230f, 52f);
+            _sFrom = Txt(_single, "FromNetwork", "text.muted", TextAlignmentOptions.TopLeft, 20f);
+            _sFrom.text = W("from_network");
+            _sFrom.color = Muted;
+            _sFrom.textWrappingMode = TextWrappingModes.Normal;
+            _sFrom.overflowMode = TextOverflowModes.Overflow;
+            Put(_sFrom, 450f, 578f, 230f, 52f);
         }
 
-        private StationQueueEntry CurrentSingle() =>
-            _state.Inputs.Count > 0 && _state.Inputs[0].Item ? StationQueueMath.SingleEntry(_state.Entries, _state.Inputs[0].Item.name) : null;
+        private StationQueueEntry CurrentSingle()
+        {
+            var id = _state.Inputs.Count > 0 ? SingleKey(_state.Inputs[0]) : null;
+            return (string.IsNullOrEmpty(id) ? null : StationQueueMath.SingleEntry(_state.Entries, id)) ?? _singleDraft;
+        }
 
         // Own name per cell: Txt reuses a same-named child (InfoArt.RowText), so one shared "Name" left the input unnamed.
         private TMP_Text CellName(Transform parent, string name, float x, float w = 160f)
@@ -1260,19 +1383,6 @@ namespace Morgott.UI.StationQueue
             return a;
         }
 
-        // "⇄" switch mark at the selector badge's left end (Codex review 2026-11-22: the badge read as a static label), drawn
-        // from rules as ArrowGlyph: the header face may lack the glyph.
-        private static void SwapGlyph(RectTransform badge)
-        {
-            const float W = 22f, H = 20f;
-            var g = NewRect("Swap", badge);
-            g.anchorMin = g.anchorMax = g.pivot = new Vector2(0f, 0.5f);
-            g.anchoredPosition = new Vector2(10f, 0f);
-            g.sizeDelta = new Vector2(W, H);
-            ArrowGlyph(g, 0f, 5f, W, 9f, 2f, gold: true);
-            ArrowGlyph(g, W, H - 5f, W, 9f, 2f, gold: true).localScale = new Vector3(-1f, 1f, 1f); // mirrored on its left edge: points back
-        }
-
         private TMP_Text Label(Transform parent, string text, float x, float y)
         {
             var t = Txt(parent, "Label", "text.body", TextAlignmentOptions.Left, 20f);
@@ -1281,13 +1391,12 @@ namespace Morgott.UI.StationQueue
             return t;
         }
 
-        private void Chips(Transform parent, float x, float y, Action<int> set, Func<int> all)
+        private void Chips(Transform parent, float x, float y, int[] values, Action<int> set, Func<int> all = null)
         {
-            var values = new[] { 10, 50, 100, -1 };
             for (var i = 0; i < values.Length; i++)
             {
                 var v = values[i];
-                var b = PlainBtn(parent, "Chip" + i, out var l, () => set(StationQueueMath.Clamp(v > 0 ? v : all())), Light);
+                var b = PlainBtn(parent, "Chip" + i, out var l, () => set(StationQueueMath.Clamp(v > 0 ? v : (all != null ? all() : 1))), Light);
                 l.text = v > 0 ? v.ToString(System.Globalization.CultureInfo.InvariantCulture) : W("all");
                 l.fontSize = 20f;
                 Put(b, x + i * 70f, y, 62f, 40f);
@@ -1327,11 +1436,11 @@ namespace Morgott.UI.StationQueue
             if (s.Field.text != text) s.Field.SetTextWithoutNotify(text);
         }
 
-        private const float EditorW = 620f;
+        private const float EditorW = 620f, EditorH = 526f;
 
         private void BuildEditor()
         {
-            const float W0 = EditorW, H0 = 628f;
+            const float W0 = EditorW, H0 = EditorH;
             _editorLayer = NewRect("EditorLayer", _root);
             Stretch(_editorLayer, 0f, 0f, 0f, 0f);
             var dim = _editorLayer.gameObject.AddComponent<Image>();
@@ -1341,6 +1450,7 @@ namespace Morgott.UI.StationQueue
             dim.raycastTarget = true; // the queue window under the editor takes no clicks
             DollCell.Mark(dim, "content", "station queue editor backdrop");
             _editor = Panel(_editorLayer, "Editor", W0, H0, "station.queue.editor", EditorClose, Hint("Enter", W("save")) + "      " + Hint("Esc", W("cancel")));
+            _eHint = _editor.Find(HintsName)?.GetComponent<TMP_Text>();
             // entry-editor.png: the dialog hangs below the queue window's bottom edge, its hints right under it
             _editor.anchoredPosition = new Vector2(0f, -StationQueueMath.EditorDrop(MultiH, H0, 12f));
             Header(_editor).Text(Title("$ui_sq_editor_title"));
@@ -1357,70 +1467,86 @@ namespace Morgott.UI.StationQueue
             _eIngredients.textWrappingMode = TextWrappingModes.Normal;
             Put(_eIngredients, 120f, 122f, W0 - 150f, 34f);
             Put(Rule(_editor, "Rule0", Dim), 28f, 158f, W0 - 56f, 1f);
-            Section(_editor, "ModeLabel", W("mode"), 28f, 162f);
-            var modes = new[] { StationQueueMode.Count, StationQueueMode.Infinite, StationQueueMode.Until };
-            for (var i = 0; i < 3; i++)
-            {
-                var m = modes[i];
-                _eModes[i] = Btn(_editor, "Mode" + i, "field", out _eModeLabels[i], () => EditorMode(m));
-                _eModeLabels[i].fontSize = 20f;
-                _eModeRims[i] = Rim(_eModes[i].transform);
-                Put(_eModes[i], 28f + i * 190f, 200f, 178f, 40f);
-            }
-            var countRt = NewRect("Count", _editor);
-            Put(countRt, 28f, 252f, W0 - 56f, 44f);
-            _eCountGroup = countRt.gameObject.AddComponent<CanvasGroup>();
-            _eCount = NewStepper(countRt, 0f, 0f, () => StationQueueMath.ShownTarget(_draft.Target), v => { _draft.Target = v; RefreshEditor(); });
-            Chips(countRt, 270f, 0f, v => { _draft.Target = v; RefreshEditor(); }, () => InputNet(_draft.Item));
 
-            var until = NewRect("Until", _editor);
-            Put(until, 28f, 308f, W0 - 56f, 108f);
-            _eUntilGroup = until.gameObject.AddComponent<CanvasGroup>();
-            _eUntilRim = Rim(until);
-            var ut = Section2(until, W("until_net"));
-            Put(ut, 16f, 8f, 300f, 32f);
-            var drop = Btn(until, "Item", "dropdown.field", out _eCondName, null);
+            _eTabs = BuildTabs(_editor, 28f, 166f, 135f, 8f, 42f, 18f, EditorTab);
+
+            var detail = Img(_editor, "Detail", "well");
+            detail.preserveAspect = false;
+            Put(detail, 28f, 216f, W0 - 56f, 142f);
+
+            _eMakeBox = NewRect("Make", detail.transform);
+            Stretch(_eMakeBox, 0f, 0f, 0f, 0f);
+            Label(_eMakeBox, W("count_label"), 16f, 12f);
+            _eCount = NewStepper(_eMakeBox, 16f, 46f, () => StationQueueMath.ShownTarget(_draft.Target), v => { _draft.Target = v; RefreshEditor(); });
+            Chips(_eMakeBox, 268f, 46f, MakeChips, v => { _draft.Target = v; RefreshEditor(); }, () => InputNet(_draft.Item));
+            _eMakeYield = Txt(_eMakeBox, "Yield", "text.accent", TextAlignmentOptions.Left, 19f);
+            _eMakeYield.color = Cyan;
+            Put(_eMakeYield, 16f, 100f, 532f, 28f);
+
+            _eKeepBox = NewRect("Keep", detail.transform);
+            Stretch(_eKeepBox, 0f, 0f, 0f, 0f);
+            _eKeepLabel = Label(_eKeepBox, W("keep_net_label"), 16f, 12f);
+            _eKeepTarget = NewStepper(_eKeepBox, 16f, 46f, () => StationQueueMath.ShownTarget(_draft.Target), v => { _draft.Target = v; RefreshEditor(); });
+            Chips(_eKeepBox, 268f, 46f, KeepChips, v => { _draft.Target = v; RefreshEditor(); });
+            _eKeepNow = Txt(_eKeepBox, "KeepNow", "text.body", TextAlignmentOptions.Left, 19f);
+            _eKeepNow.color = Sub;
+            Put(_eKeepNow, 16f, 100f, 532f, 28f);
+
+            _eUntilBox = NewRect("Until", detail.transform);
+            Stretch(_eUntilBox, 0f, 0f, 0f, 0f);
+            Label(_eUntilBox, W("until_net"), 16f, 10f);
+            _eRepeat = BuildRepeatToggle(_eUntilBox, 276f, 8f, 132f, 30f, keep => { _draft.Keep = _untilKeep = keep; RefreshEditor(); });
+            var drop = Btn(_eUntilBox, "Item", "dropdown.field", out _eCondName, null);
             _eCondName.alignment = TextAlignmentOptions.Left;
             Stretch(_eCondName.rectTransform, 50f, 0f, 34f, 0f);
-            Put(drop, 16f, 50f, 230f, 42f);
+            Put(drop, 16f, 46f, 214f, 42f);
             _eCondIcon = IconIn(drop.transform, 4f);
             Put(_eCondIcon, 6f, 4f, 34f, 34f);
             var arrow = Txt(drop.transform, "Arrow", "text.body", TextAlignmentOptions.Center, 16f);
             arrow.text = "▼";
-            Put(arrow, 196f, 0f, 30f, 42f);
+            Put(arrow, 180f, 0f, 30f, 42f);
             drop.onClick.AddListener(() => OpenPicker((RectTransform)drop.transform, id => { _draft.Condition = id; RefreshEditor(); }));
-            var less = Btn(until, "Less", "button.icon", out var ll, () => { _draft.Compare = StationQueueCompare.Less; RefreshEditor(); });
+            var less = Btn(_eUntilBox, "Less", "button.icon", out var ll, () => { _draft.Compare = StationQueueCompare.Less; RefreshEditor(); });
             ll.text = "<";
             ll.fontSize = 22f;
             _eLessRim = Rim(less.transform);
-            Put(less, 256f, 51f, 40f, 40f);
-            var atLeast = Btn(until, "AtLeast", "button.icon", out var al, () => { _draft.Compare = StationQueueCompare.AtLeast; RefreshEditor(); });
+            Put(less, 238f, 47f, 38f, 40f);
+            var atLeast = Btn(_eUntilBox, "AtLeast", "button.icon", out var al, () => { _draft.Compare = StationQueueCompare.AtLeast; RefreshEditor(); });
             al.text = "≥";
             al.fontSize = 22f;
             _eAtLeastRim = Rim(atLeast.transform);
-            Put(atLeast, 300f, 51f, 40f, 40f);
-            _eThreshold = NewStepper(until, 356f, 51f, () => _draft.Threshold, v => { _draft.Threshold = v; RefreshEditor(); });
+            Put(atLeast, 280f, 47f, 38f, 40f);
+            _eThreshold = NewStepper(_eUntilBox, 326f, 47f, () => _draft.Threshold, v => { _draft.Threshold = v; RefreshEditor(); });
+            _eUntilNow = Txt(_eUntilBox, "UntilNow", "text.body", TextAlignmentOptions.Left, 19f);
+            _eUntilNow.color = Sub;
+            Put(_eUntilNow, 16f, 100f, 532f, 28f);
 
-            // keep in stock = the header selector's Stock mode (no own toggle here): the summary takes the freed band
-            _eSummary = Txt(_editor, "Summary", "text.body", TextAlignmentOptions.TopLeft, 19f);
+            _eInfBox = NewRect("Infinite", detail.transform);
+            Stretch(_eInfBox, 0f, 0f, 0f, 0f);
+            var infNote = Label(_eInfBox, W("infinite_note"), 16f, 40f);
+            infNote.color = Muted;
+            infNote.textWrappingMode = TextWrappingModes.Normal;
+            Put(infNote, 16f, 40f, 532f, 60f);
+
+            _eSummary = Txt(_editor, "Summary", "text.body", TextAlignmentOptions.TopLeft, 18.5f);
             _eSummary.textWrappingMode = TextWrappingModes.Normal;
-            Put(_eSummary, 36f, 432f, W0 - 72f, 104f);
-            Put(Rule(_editor, "Rule1", Dim), 28f, 544f, W0 - 56f, 1f);
+            Put(_eSummary, 32f, 368f, W0 - 64f, 72f);
+            Put(Rule(_editor, "Rule1", Dim), 28f, 448f, W0 - 56f, 1f);
             var red = ThemeTokens.GetColor("color.text.missing", Hex("#E0413A"));
             _eDelete = PlainBtn(_editor, "Delete", out var dl, EditorDelete, red);
             dl.text = W("delete");
             dl.color = red;
             dl.fontSize = 22f;
-            Put(_eDelete, 40f, 558f, 160f, 44f);
+            Put(_eDelete, 40f, 462f, 160f, 44f);
             var cancel = PlainBtn(_editor, "Cancel", out var cl, EditorClose, Light);
             cl.text = W("cancel");
             cl.fontSize = 22f;
-            Put(cancel, 230f, 558f, 160f, 44f);
-            var save = PlainBtn(_editor, "Save", out var sl, EditorSave, Gold);
-            sl.text = W("save");
-            sl.fontSize = 22f;
-            sl.color = Gold;
-            Put(save, 420f, 558f, 160f, 44f);
+            Put(cancel, 230f, 462f, 160f, 44f);
+            var save = PlainBtn(_editor, "Save", out _eSaveLabel, EditorSave, Gold);
+            _eSaveLabel.text = W("save");
+            _eSaveLabel.fontSize = 22f;
+            _eSaveLabel.color = Gold;
+            Put(save, 420f, 462f, 160f, 44f);
         }
 
         // Plain rimmed plate (mockups: footer / dialog buttons are flat rectangles with a coloured rim, no knotwork).
@@ -1432,14 +1558,6 @@ namespace Morgott.UI.StationQueue
         }
 
         private static Color Light => new Color(0.62f, 0.68f, 0.72f, 0.75f);
-
-        private TMP_Text Section2(Transform parent, string text)
-        {
-            var t = Txt(parent, "Title", "text.header", TextAlignmentOptions.Left, 24f);
-            t.text = text;
-            _serif.Add(t);
-            return t;
-        }
 
         // ---------------------------------------------------------------- picker
 
@@ -1478,7 +1596,7 @@ namespace Morgott.UI.StationQueue
         // Candidates: every item in the station network + the station's inputs, outputs and fuel (names sorted).
         private void OpenPicker(RectTransform anchor, Action<string> pick)
         {
-            if (_picker.gameObject.activeSelf) { _picker.gameObject.SetActive(false); return; }
+            if (_picker.gameObject.activeSelf) { ClosePicker(); return; }
             _pPick = pick;
             var set = new HashSet<string>(_state.Network.Keys, StringComparer.Ordinal);
             foreach (var i in _state.Inputs)
@@ -1523,12 +1641,19 @@ namespace Morgott.UI.StationQueue
             }
         }
 
+        private void ClosePicker()
+        {
+            _pPick = null;
+            if (_picker && _picker.gameObject.activeSelf) _picker.gameObject.SetActive(false);
+        }
+
         private void PickerChoose(int row)
         {
             var k = row + _pScroll;
             if (k < 0 || k >= _pShown.Count) return;
-            _picker.gameObject.SetActive(false);
-            _pPick?.Invoke(_pShown[k]);
+            var pick = _pPick;
+            ClosePicker();
+            pick?.Invoke(_pShown[k]);
         }
 
         // ---------------------------------------------------------------- widget helpers (ChangelogPanel house style)

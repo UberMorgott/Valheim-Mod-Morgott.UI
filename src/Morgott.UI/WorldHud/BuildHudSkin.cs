@@ -1,8 +1,11 @@
+using Morgott.Core;
 using Morgott.UI.Api;
 using System;
 using Morgott.UI.Classify;
+using Morgott.UI.InfoScreens;
 using Morgott.UI.Ownership;
 using Morgott.UI.PreWorld;
+using Morgott.UI.Theme;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -24,7 +27,9 @@ namespace Morgott.UI.WorldHud
             if (hud.m_buildUi) Register(hud.m_buildUi.transform, ScreenId);
             if (hud.m_buildHud)
             {
-                StripWell(hud.m_buildHud.transform.Find("SelectedInfo"));
+                var info = hud.m_buildHud.transform.Find("SelectedInfo");
+                StripWell(info);
+                EnsureCreator(info as RectTransform);
                 Register(hud.m_buildHud.transform, ScreenId + ".Selected");
             }
             // Hovered piece author window (crossplay author name / platform id; kit popup): its own root unless it lives
@@ -44,6 +49,7 @@ namespace Morgott.UI.WorldHud
         // Selected-piece strip (mockup m6-build-a: frame_inset well): vanilla draws its backgrounds only in some states
         // (Bkg2 objects off with the menu open, run 20261022-101946), so the strip gets its own well behind everything.
         private const string WellName = "RuneSkin_StripWell";
+        public const string RepairCreatorName = "RuneSkin_RepairCreator";
 
         private static void StripWell(Transform info)
         {
@@ -60,10 +66,36 @@ namespace Morgott.UI.WorldHud
             go.GetComponent<Image>().raycastTarget = false;
         }
 
+        private static TMP_Text EnsureCreator(RectTransform info)
+        {
+            if (!info) return null;
+            var t = InfoArt.RowText(info, RepairCreatorName, "text.body", TextAlignmentOptions.MidlineLeft);
+            t.raycastTarget = false;
+            t.richText = false;
+            t.textWrappingMode = TextWrappingModes.NoWrap;
+            t.overflowMode = TextOverflowModes.Ellipsis;
+            t.enableAutoSizing = false;
+            var rt = t.rectTransform;
+            rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0.5f, 0.5f);
+            StyleCreator(t);
+            if (!t.gameObject.activeSelf && string.IsNullOrEmpty(t.text)) t.gameObject.SetActive(false);
+            return t;
+        }
+
+        private static void StyleCreator(TMP_Text t)
+        {
+            if (!t) return;
+            t.richText = false;
+            var gold = ThemeTokens.GetColor("color.text.active", new Color(0.91f, 0.71f, 0.29f));
+            var sub = ThemeTokens.GetColor("color.stats.sub", new Color(0.66f, 0.70f, 0.72f));
+            t.color = Color.Lerp(gold, sub, 0.35f);
+            t.fontSize = MessageSkin.HudReadable(ThemeTokens.GetFloat("size.build.creator.font", 18f));
+        }
+
         // Hud.SetupPieceInfo (Hud.cs:1526) fills these two; the prefab rects abut (PlayHudMath.DescriptionTop), run
         // 20261108-051942: name line box bottom == description line box top (324 px at 1080). Rect fix, set once.
         // Strip = ONE row of what Hud.SetupPieceInfo (Hud.cs:1511) shows (user 2026-11-14 "ещё уже надо. в 1 строку"; earlier:
-        // the description box covered the screen): [piece icon][piece name][requirement cells][snapping hint], each element
+        // the description box covered the screen): [piece icon][piece name][requirement cells][snapping hint][repair creator], each element
         // centred on one midline, the row centred on x 0, its bottom margin above y 0 (SelectedInfo pivot bottom-centre),
         // so StripClear's flush placement (drawn bottom) never jumps. The description (Hud.cs:1527) is not drawn: one row
         // cannot hold it. The icon is scaled to the cell height. The requirement row moves as one block (`requirements`
@@ -71,6 +103,7 @@ namespace Morgott.UI.WorldHud
         // Bkg2 (vanilla 50 % black) + the well hug the row.
         private static RectTransform _req, _bkg, _wellRt;
         private static Transform _info;
+        private static TMP_Text _creator;
 
         public static void FitStrip(Hud hud)
         {
@@ -81,11 +114,13 @@ namespace Morgott.UI.WorldHud
                 _req = info.Find("requirements") as RectTransform;
                 _bkg = info.Find("Bkg2") as RectTransform;
                 _wellRt = info.Find(WellName) as RectTransform;
+                _creator = EnsureCreator(info);
                 if (!_req) return;
                 _info = info;
             }
             if (hud.m_pieceDescription && hud.m_pieceDescription.enabled) hud.m_pieceDescription.enabled = false;
             var cellH = ((RectTransform)hud.m_requirementItems[0].transform).rect.height;
+            UpdateRepairCreator(hud, info, cellH);
             var icon = hud.m_buildIcon && hud.m_buildIcon.enabled ? hud.m_buildIcon.rectTransform : null;
             if (icon && icon.rect.height > 0f)
             {
@@ -94,8 +129,8 @@ namespace Morgott.UI.WorldHud
             }
 
             // Drawn box of each element in SelectedInfo space.
-            var moves = new System.Collections.Generic.List<RectTransform>(4);
-            var boxes = new System.Collections.Generic.List<Rect>(4);
+            var moves = new System.Collections.Generic.List<RectTransform>(5);
+            var boxes = new System.Collections.Generic.List<Rect>(5);
             Rect Box(Transform from, Vector2 min, Vector2 max)
             {
                 Vector2 a = info.InverseTransformPoint(from.TransformPoint(min)), c = info.InverseTransformPoint(from.TransformPoint(max));
@@ -130,6 +165,7 @@ namespace Morgott.UI.WorldHud
             if (cells) Element(_req, row);
             var snap = hud.m_snappingIcon && hud.m_snappingIcon.enabled ? hud.m_snappingIcon.rectTransform : null;
             if (snap) Element(snap, Box(snap, snap.rect.min, snap.rect.max));
+            if (TextBox(_creator, out var creatorBox)) Element(_creator.rectTransform, creatorBox);
             if (moves.Count == 0) return;
 
             var inner = Theme.ThemeTokens.GetFloat("size.build.strip.inner", 6f);
@@ -151,6 +187,59 @@ namespace Morgott.UI.WorldHud
             var full = info.rect;
             Hug(_bkg, box, full, inner);
             Hug(_wellRt, box, full, inner + pad);
+        }
+
+        private static void UpdateRepairCreator(Hud hud, RectTransform info, float cellH)
+        {
+            var player = Player.m_localPlayer;
+            var menuOpen = Hud.IsPieceSelectionVisible() || (hud && hud.m_buildUi && hud.m_buildUi.gameObject.activeSelf);
+            var inRepair = player && player.InRepairMode();
+            var piece = !menuOpen && inRepair ? player.GetHoveringPiece() : null;
+            var creatorId = piece ? piece.GetCreator() : 0L;
+            if (!PlayHudMath.ShouldShowRepairCreator(menuOpen, inRepair, creatorId))
+            {
+                if (_creator && _creator.gameObject.activeSelf) _creator.gameObject.SetActive(false);
+                return;
+            }
+            if (!_creator) _creator = EnsureCreator(info);
+            if (!_creator) return;
+            var serviceName = Services.TryGet<IPlayerNames>(out var names) ? names.NameOf(creatorId) : null;
+            var history = ZNet.World?.m_playerHistory;
+            var unknown = Localization.instance != null ? Localization.instance.Localize("$build_piece_author_unknown") : "Unknown";
+            var resolved = PlayHudMath.ResolveCreatorName(
+                creatorId,
+                serviceName,
+                player.GetPlayerID(),
+                player.GetPlayerName(),
+                FindLivePlayerName,
+                history?.Count ?? 0,
+                i => (history[i].m_serverAssignedDisplayName, history[i].m_displayName),
+                piece.GetCreatorPlatformUserIdIndex(),
+                unknown,
+                (name, id) => CensorShittyWords.FilterUGC(name, UGCType.CharacterName, id));
+            var line = PlayHudMath.FormatRepairCreator(Words.Get("$ui_repair_built_by"), resolved);
+            StyleCreator(_creator);
+            var turnedOn = !_creator.gameObject.activeSelf;
+            if (turnedOn) _creator.gameObject.SetActive(true);
+            if (turnedOn || !string.Equals(_creator.text, line, StringComparison.Ordinal))
+            {
+                _creator.text = line;
+                var pref = _creator.GetPreferredValues(line, float.PositiveInfinity, float.PositiveInfinity);
+                _creator.rectTransform.sizeDelta = new Vector2(Mathf.Min(520f, Mathf.Ceil(pref.x) + 4f), Mathf.Max(cellH, Mathf.Ceil(pref.y) + 2f));
+                _creator.ForceMeshUpdate();
+            }
+        }
+
+        private static string FindLivePlayerName(long creatorId)
+        {
+            var players = Player.s_players;
+            if (players == null) return null;
+            for (var i = 0; i < players.Count; i++)
+            {
+                var p = players[i];
+                if (p && p.GetPlayerID() == creatorId) return p.GetPlayerName();
+            }
+            return null;
         }
 
         // Stretched backdrop (anchors 0..1) -> content box + margin, in the parent's rect space.
@@ -219,6 +308,7 @@ namespace Morgott.UI.WorldHud
                 if (ctx.AdapterRoles.ContainsKey(t)) continue;
                 if (t.name == "piece_name") ctx.Role(t, "text.display", "selected piece name (display serif)");
                 else if (t.name == "res_amount") ctx.Role(t, "skill.level", "requirement amount");
+                else if (t.name == RepairCreatorName) ctx.Role(t, "text.body", "repair hovered piece creator (SelectedInfo)");
                 else if (t.name == ComfortBadge.ValueName) ctx.Role(t, "content", "piece comfort value (ComfortBadge, fixed size)");
             }
             PreWorldKit.Common(ctx, root);

@@ -200,5 +200,55 @@ namespace Morgott.UI.WorldHud
             if (age < 0f || age >= hold + fade) return 0f;
             return age <= hold ? 1f : 1f - (age - hold) / fade;
         }
+
+        // Show the repair-mode piece creator label only outside the build selection menu on player-authored pieces.
+        public static bool ShouldShowRepairCreator(bool pieceSelectionVisible, bool inRepairMode, long creatorId) =>
+            !pieceSelectionVisible && inRepairMode && creatorId != 0L;
+
+        // Repair-mode piece creator resolution order: IPlayerNames -> local player -> live Player.s_players ->
+        // ZNet.World.m_playerHistory[historyIndex] (bounds-checked) -> optional UGC filter -> fallback unknown label.
+        public static string ResolveCreatorName(
+            long creatorId,
+            string serviceName,
+            long localPlayerId,
+            string localPlayerName,
+            Func<long, string> livePlayerName,
+            int historyCount,
+            Func<int, (string serverName, string displayName)> historyAt,
+            int historyIndex,
+            string unknown,
+            Func<string, long, string> filterUgc = null)
+        {
+            string raw = null;
+            if (!string.IsNullOrWhiteSpace(serviceName)) raw = serviceName;
+            else if (creatorId != 0 && creatorId == localPlayerId && !string.IsNullOrWhiteSpace(localPlayerName)) raw = localPlayerName;
+            else
+            {
+                var live = livePlayerName?.Invoke(creatorId);
+                if (!string.IsNullOrWhiteSpace(live)) raw = live;
+                else if (historyAt != null && historyIndex >= 0 && historyIndex < historyCount)
+                {
+                    var (serverName, displayName) = historyAt(historyIndex);
+                    var name = !string.IsNullOrEmpty(serverName) ? serverName : displayName;
+                    if (!string.IsNullOrWhiteSpace(name)) raw = name;
+                }
+            }
+            if (raw != null)
+            {
+                var filtered = filterUgc != null ? filterUgc(raw, creatorId) : raw;
+                if (!string.IsNullOrWhiteSpace(filtered)) return filtered;
+            }
+            return unknown ?? "";
+        }
+
+        public static string FormatRepairCreator(string template, string creatorName)
+        {
+            if (string.IsNullOrEmpty(template)) return "";
+            var name = creatorName ?? "";
+            var body = template.IndexOf("{0}", StringComparison.Ordinal) >= 0 ? string.Format(System.Globalization.CultureInfo.InvariantCulture, template, name)
+                : template.IndexOf("$1", StringComparison.Ordinal) >= 0 ? template.Replace("$1", name)
+                : template;
+            return "·  " + body;
+        }
     }
 }

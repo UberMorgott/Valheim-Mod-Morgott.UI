@@ -10,11 +10,105 @@ namespace Morgott.UI.StationQueue
     internal static class StationQueueMath
     {
         public const int DefaultCount = 10, DefaultThreshold = 100, MaxValue = 99999;
+        public const int TabMake = 0, TabKeep = 1, TabUntil = 2, TabInfinite = 3, TabCount = 4;
         public const string Separator = " · ";
 
-        // One input = the single-input window (windmill, spinning wheel) unless multiOnly forces the recipe queue UI;
-        // more = the queue window, also a fuelled station (eitr refinery: sap + its fuel, Patcher lists fuel last).
-        public static bool IsSingle(int inputs, bool multiOnly = false) => !multiOnly && inputs == 1;
+        // One input = the single-input window (windmill, spinning wheel) unless multiOnly forces the recipe queue UI,
+        // the station already has multiple queued entries, or the multi modal editor is currently open (preserve draft).
+        public static bool IsSingle(int inputs, bool multiOnly = false, int entryCount = 0, bool editing = false) =>
+            !editing && !multiOnly && inputs == 1 && entryCount <= 1;
+
+        public static int TabOf(StationQueueEntry e)
+        {
+            if (e == null) return -1;
+            switch (e.Mode)
+            {
+                case StationQueueMode.Count: return e.Keep ? TabKeep : TabMake;
+                case StationQueueMode.Until: return TabUntil;
+                case StationQueueMode.Infinite: return TabInfinite;
+                default: return TabMake;
+            }
+        }
+
+        public static void SwitchTab(StationQueueEntry e, int tab, string defaultCondition, bool untilKeep = true, bool infiniteKeep = true)
+        {
+            if (e == null) return;
+            switch (tab)
+            {
+                case TabMake:
+                    if (e.Mode != StationQueueMode.Count) e.Fed = 0;
+                    e.Mode = StationQueueMode.Count;
+                    e.Keep = false;
+                    e.Target = ShownTarget(e.Target);
+                    break;
+                case TabKeep:
+                    if (e.Mode != StationQueueMode.Count) e.Fed = 0;
+                    e.Mode = StationQueueMode.Count;
+                    e.Keep = true;
+                    e.Target = ShownTarget(e.Target);
+                    break;
+                case TabUntil:
+                    if (e.Mode != StationQueueMode.Until)
+                    {
+                        e.Mode = StationQueueMode.Until;
+                        e.Keep = untilKeep;
+                        e.Fed = 0;
+                    }
+                    if (string.IsNullOrEmpty(e.Condition)) e.Condition = defaultCondition;
+                    if (e.Threshold <= 0) e.Threshold = DefaultThreshold;
+                    break;
+                case TabInfinite:
+                    if (e.Mode != StationQueueMode.Infinite)
+                    {
+                        e.Mode = StationQueueMode.Infinite;
+                        e.Keep = infiniteKeep;
+                        e.Fed = 0;
+                    }
+                    break;
+            }
+        }
+
+        public static StationQueueEntryStatus EntryStatus(int id, int index, int active, StationQueueStatus stationStatus,
+            IReadOnlyDictionary<int, StationQueueEntryStatus> statuses)
+        {
+            if (statuses != null && statuses.Count > 0)
+                return id != 0 && statuses.TryGetValue(id, out var st) ? st : StationQueueEntryStatus.Queued;
+            return IsActive(index, active, stationStatus) ? StationQueueEntryStatus.Running : StationQueueEntryStatus.Queued;
+        }
+
+        // Single-input header status key: surfaces the live entry's specific reason when unpaused (and not plain
+        // Queued), otherwise the station-level status word.
+        public static string SingleStatusKey(StationQueueEntry live, StationQueueStatus stationStatus,
+            IReadOnlyDictionary<int, StationQueueEntryStatus> statuses, out StationQueueEntryStatus? entryStatus)
+        {
+            if (stationStatus != StationQueueStatus.Paused && live != null && live.Id != 0 && statuses != null &&
+                statuses.TryGetValue(live.Id, out var st) && st != StationQueueEntryStatus.Queued)
+            {
+                entryStatus = st;
+                return StatusKey(st);
+            }
+            entryStatus = null;
+            switch (stationStatus)
+            {
+                case StationQueueStatus.Working: return "status_working";
+                case StationQueueStatus.Waiting: return "status_waiting";
+                case StationQueueStatus.Paused: return "status_paused";
+                default: return "status_idle";
+            }
+        }
+
+        public static string StatusKey(StationQueueEntryStatus status)
+        {
+            switch (status)
+            {
+                case StationQueueEntryStatus.Running: return "st_running";
+                case StationQueueEntryStatus.MissingInput: return "st_missing";
+                case StationQueueEntryStatus.Stocked: return "st_stocked";
+                case StationQueueEntryStatus.Pending: return "st_pending";
+                case StationQueueEntryStatus.Blocked: return "st_blocked";
+                default: return "st_queued";
+            }
+        }
 
         public static string DisplayName(string name, int outputAmount) =>
             outputAmount > 1 ? (name ?? "") + " ×" + Group(outputAmount) : name ?? "";
@@ -55,7 +149,16 @@ namespace Morgott.UI.StationQueue
         public static string CompareText(StationQueueCompare c) => c == StationQueueCompare.Less ? "<" : "≥";
 
         // "1 240": thousands grouped by a space (mockup counts).
-        public static string Group(int n) => n.ToString("#,0", CultureInfo.InvariantCulture).Replace(',', ' ');
+        public static string Group(int n) => Group((long)n);
+        public static string Group(long n) => n.ToString("#,0", CultureInfo.InvariantCulture).Replace(',', ' ');
+
+        public static string MakeYield(int crafts, int outputAmount, string yieldTemplate) =>
+            outputAmount > 1 && !string.IsNullOrEmpty(yieldTemplate) ? Format(yieldTemplate, Group(crafts), Group((long)crafts * outputAmount)) : "";
+
+        public static string KeepNowText(int chests, int pending, string nowTemplate, string pendingTemplate) =>
+            pending > 0 && !string.IsNullOrEmpty(pendingTemplate)
+                ? Format(pendingTemplate, Group(chests), Group(pending))
+                : Format(nowTemplate, Group(chests));
 
         // Russian plural form index: 0 = one (1, 21), 1 = few (2-4, 22-24), 2 = many (0, 5-20, 11-14).
         public static int PluralForm(int n)
@@ -100,16 +203,19 @@ namespace Morgott.UI.StationQueue
             }
         }
 
-        // Editor summary line: count {0} item {1} target; infinite {0} item; until {0} item {1} condition {2} comparator
-        // {3} threshold {4} current count of the condition item (network + pending); keep-in-stock count {0} item {1} its
-        // output (passed as cond) {2} target {3} current (passed as current); keep until = the until line + keepTail.
+        // Editor summary line: count {0} item {1} target (or with yield: {0} item {1} crafts {2} total); infinite {0} item;
+        // until {0} item {1} condition {2} comparator {3} threshold {4} current; keep-in-stock count {0} item {1} its output
+        // {2} target {3} current; keep until = the until line + keepTail.
         public static string Summary(StationQueueEntry e, string item, string cond, int current, string countTemplate, string infiniteTemplate, string untilTemplate,
-            string keepTemplate = null, string keepTail = null)
+            string keepTemplate = null, string keepTail = null, int outputAmount = 1, string yieldCountTemplate = null)
         {
             switch (e.Mode)
             {
                 case StationQueueMode.Count:
-                    return e.Keep && keepTemplate != null ? Format(keepTemplate, item, cond, Group(e.Target), Group(current)) : Format(countTemplate, item, Group(e.Target));
+                    if (e.Keep && keepTemplate != null) return Format(keepTemplate, item, cond, Group(e.Target), Group(current));
+                    if (outputAmount > 1 && !string.IsNullOrEmpty(yieldCountTemplate))
+                        return Format(yieldCountTemplate, item, Group(e.Target), Group((long)e.Target * outputAmount));
+                    return Format(countTemplate, item, Group(e.Target));
                 case StationQueueMode.Infinite: return Format(infiniteTemplate, item);
                 default:
                     return Format(untilTemplate, item, cond, CompareText(e.Compare), Group(e.Threshold), Group(current)) + (e.Keep && !string.IsNullOrEmpty(keepTail) ? " " + keepTail : "");
@@ -118,23 +224,6 @@ namespace Morgott.UI.StationQueue
 
         // Keep in stock means something for count / until entries (infinite never ends anyway).
         public static bool CanKeep(StationQueueMode mode) => mode != StationQueueMode.Infinite;
-
-        // Header selector (Queue / Stock): a station keeps stock when every entry does (an older mixed list reads as Queue,
-        // one click makes it all Stock); an empty queue shows the window's own choice, which its first entry takes.
-        public static bool IsStock(IList<StationQueueEntry> entries, bool emptyChoice)
-        {
-            if (entries.Count == 0) return emptyChoice;
-            foreach (var e in entries) if (!e.Keep) return false;
-            return true;
-        }
-
-        // Selector switch: every entry becomes keep-in-stock (true) or one-shot (false); ids stay, so the owner keeps progress.
-        public static List<StationQueueEntry> WithKeep(IList<StationQueueEntry> entries, bool keep)
-        {
-            var list = Clone(entries);
-            foreach (var e in list) e.Keep = keep;
-            return list;
-        }
 
         // The running entry (provider's Active: resting keep entries are skipped) shows the cyan rim + progress while the
         // station works or waits for input.
@@ -247,18 +336,23 @@ namespace Morgott.UI.StationQueue
             return index >= 0 && index < entries.Count && entries[index].Item == draft.Item ? index : -1;
         }
 
-        // Editor save: replaces the edited entry (Find), else appends the draft (a new one, or one the owner finished: dropped there).
+        // Editor save: when index < 0 (new entry) appends draft; when index >= 0 (editing existing) replaces Find, or
+        // leaves the list unchanged if that entry finished/vanished meanwhile (never creates a silent duplicate).
         public static List<StationQueueEntry> Save(IList<StationQueueEntry> entries, int index, StationQueueEntry draft)
         {
             var list = Clone(entries);
-            var at = Find(list, index, draft);
             var copy = draft.Clone();
+            if (index < 0)
+            {
+                list.Add(copy);
+                return list;
+            }
+            var at = Find(list, index, draft);
             if (at >= 0)
             {
                 if (copy.Id == 0) copy.Id = list[at].Id; // numbered by the owner since: the same entry, its progress kept
                 list[at] = copy;
             }
-            else list.Add(copy);
             return list;
         }
 
@@ -272,6 +366,42 @@ namespace Morgott.UI.StationQueue
         // Single-input window writes exactly one entry (or none).
         public static List<StationQueueEntry> Single(StationQueueEntry e) =>
             e == null ? new List<StationQueueEntry>() : new List<StationQueueEntry> { e.Clone() };
+
+        // Single-input tab change: on an empty station (`live == null`) updates `draft` locally and returns false so no
+        // default order is committed until Start; when `live != null` clones and switches it, returning true to commit.
+        public static bool SingleTab(StationQueueEntry live, ref StationQueueEntry draft, int tab, string item,
+            string defaultCondition, out StationQueueEntry next)
+        {
+            if (live != null)
+            {
+                if (TabOf(live) == tab) { next = null; return false; }
+                next = live.Clone();
+                SwitchTab(next, tab, defaultCondition, untilKeep: true, infiniteKeep: true);
+                return true;
+            }
+            if (draft != null && TabOf(draft) == tab) { next = null; return false; }
+            if (draft == null)
+                draft = NewEntry(item, StationQueueMode.Count, defaultCondition == item ? null : defaultCondition, keep: false);
+            SwitchTab(draft, tab, defaultCondition, untilKeep: true, infiniteKeep: true);
+            next = draft;
+            return false;
+        }
+
+        // Single-input control edit: edits `draft` in place when `live == null` (false = keep local draft); clones and
+        // edits `live` when an active entry exists (true = commit immediately).
+        public static bool SingleEdit(StationQueueEntry live, StationQueueEntry draft, Action<StationQueueEntry> edit,
+            out StationQueueEntry next)
+        {
+            if (live != null)
+            {
+                next = live.Clone();
+                edit?.Invoke(next);
+                return true;
+            }
+            next = draft;
+            if (next != null) edit?.Invoke(next);
+            return false;
+        }
 
         // Picker search: case-insensitive substring, empty query = all.
         public static bool Matches(string name, string query) =>

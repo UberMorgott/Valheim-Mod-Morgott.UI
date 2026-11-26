@@ -1,2 +1,2 @@
 # valbuild ref lock: <file> <version> <sha256 of the raw bytes>. Update with `valbuild ref add <repo> <dll>`.
-Morgott.Core.dll 0.37.1 1ffd27ac6e9dc6ce5171dae5fd57d4036bd21a2c1abcd93a413d483cf8ebce8b
+Morgott.Core.dll 0.38.0 3827f8c4c59b707f01ba2854e2b53f1d444f02cf8046cfa788c932caf3804b56
