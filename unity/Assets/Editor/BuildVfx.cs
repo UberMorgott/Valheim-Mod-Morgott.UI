@@ -1,5 +1,5 @@
 // Shared gameplay / UI VFX bundle "morgott_vfx" (plan 5a, Morgott.Core IVfx): art/vfx/*.shader (Morgott/Shell,
-// Morgott/Telegraph, Morgott/UI Boss FX, Morgott/UI Bar, Morgott/UI Grey, Morgott/Snow, Morgott/Snow Mask) + the AdditiveParticle template (white soft dot, Legacy
+// Morgott/Telegraph, Morgott/UI Boss FX, Morgott/UI Bar, Morgott/UI Grey, Morgott/Snow, Morgott/Snow Mask, Morgott/CreatureSnow) + the AdditiveParticle template (white soft dot, Legacy
 // Particles/Additive) + the Web template (Morgott/Web + strand atlas from art/vfx/web) + the Overlay template (Morgott/Overlay, white) -> unity/Build/vfx/morgott_vfx (StandaloneWindows64, LZ4), then loaded back and verified (shader
 // compiled, supported, pass count) into unity/Build/vfx/morgott_vfx.contents.txt. Explicit AssetBundleBuild: asset
 // bundle names stay untouched, so BuildBundles (the "runeskin" UI bundle) never picks these up.
@@ -17,7 +17,7 @@ public static class BuildVfx
     const string BundleName = "morgott_vfx";
     const string Dir = "Assets/Morgott/Vfx";
     const string OutDir = "Build/vfx";
-    static readonly string[] Shaders = { "Morgott/Shell", "Morgott/Telegraph", "Morgott/UI Boss FX", "Morgott/UI Bar", "Morgott/Web", "Morgott/Overlay", "Morgott/UI Grey", "Morgott/Snow", "Morgott/Snow Mask" };
+    static readonly string[] Shaders = { "Morgott/Shell", "Morgott/Telegraph", "Morgott/UI Boss FX", "Morgott/UI Bar", "Morgott/Web", "Morgott/Overlay", "Morgott/UI Grey", "Morgott/Snow", "Morgott/Snow Mask", "Morgott/CreatureSnow" };
     // Web strand atlas tiles (Codex image gen, white silk on black) in Core WebBurn.Tile* order: lower-left, lower-right, upper-left, upper-right.
     static readonly string[] WebTiles = { "sheet", "orb", "carpet", "band" };
     const int BandGutter = 16;
