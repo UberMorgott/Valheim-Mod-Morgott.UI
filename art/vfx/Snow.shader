@@ -36,6 +36,7 @@ Shader "Morgott/Snow"
         _SnowNormal ("Snow normal (vanilla Heightmap material)", 2D) = "bump" {}
         _NormalTile ("Snow normal tiles per m", Float) = 0.5
         _TrailTex ("Trail mask", 2D) = "black" {}
+        _ShelterTex ("Shelter/Fire Mask", 2D) = "black" {}
         _TrailRect ("Trail rect", Vector) = (0, 0, 0, 0)
         _ClearedMaskTex ("Paint mask", 2D) = "black" {}
         _DepthTex ("Deep snow G", 2D) = "black" {}
@@ -60,7 +61,7 @@ Shader "Morgott/Snow"
         #pragma target 4.6
         #include "Tessellation.cginc"
 
-        sampler2D _TrailTex, _ClearedMaskTex, _DepthTex, _SnowNormal;
+        sampler2D _TrailTex, _ShelterTex, _ClearedMaskTex, _DepthTex, _SnowNormal;
         float4 _TrailRect, _Center;
         fixed4 _Color, _TrailColor;
         float _FadeNear, _FadeFar, _WaterLevel, _MorgottSeasonSnow, _LodHideDistance;
@@ -75,12 +76,15 @@ Shader "Morgott/Snow"
             INTERNAL_DATA
         };
 
-        half Trail(float2 tl)
+        half MaskSample(sampler2D tex, float2 tl)
         {
             float2 uv = tl * _TrailRect.z;
             float2 edge = min(uv, 1 - uv);
-            return tex2Dlod(_TrailTex, float4(uv, 0, 0)).r * saturate(min(edge.x, edge.y) * 50); // no hard border at the mask edge (last 1.3 m, past _FadeFar)
+            return tex2Dlod(tex, float4(uv, 0, 0)).r * saturate(min(edge.x, edge.y) * 50); // no hard border at the mask edge (last 1.3 m, past _FadeFar)
         }
+
+        half Trail(float2 tl)   { return MaskSample(_TrailTex, tl); }
+        half Shelter(float2 tl) { return MaskSample(_ShelterTex, tl); }
 
         // Vanilla Heightmap hull factor (terrain-tess-foot-ik.md: _Tess * clamp(1 - (dist - 10) * 0.025, 0.01, 1)): x4 within 10 m,
         // ~1 by 50 m. Without it the trench was displaced only at the 1 m chunk vertices: angular ledges along its walls and a
@@ -136,7 +140,10 @@ Shader "Morgott/Snow"
             float innerFade = (_LodHideDistance > 0.001) ? smoothstep(_LodHideDistance - 6.0, _LodHideDistance + 6.0, distToCenter) : 1.0;
             float2 tl = wp.xz - _TrailRect.xy;
             half t = Trail(tl);
-            float dy = max(deep * (1 - t), min(deep, 0.06) * (1 - smoothstep(0.92, 0.98, t))) * innerFade; // trail floor; pieces (1) cut it all
+            half shelter = Shelter(tl);
+            float shelterFade = 1.0 - smoothstep(0.05, 0.85, shelter);
+            float dyBase = max(deep * (1 - t), min(deep, 0.06) * (1 - smoothstep(0.92, 0.98, t))) * innerFade; // trail floor; pieces (1) cut it all
+            float dy = dyBase * shelterFade;
             float farLift = 0;
             if (_LodHideDistance > 100.0)
             {
@@ -145,12 +152,12 @@ Shader "Morgott/Snow"
             }
             // Heightmap chunks are translation only: object y = world y.
             v.vertex.y += 0.1 * wMountain * bareMask + dy + farLift;
-            v.color = float4(dy, 0, 0, 0);
+            v.color = float4(dyBase, 0, 0, 0);
             v.texcoord1 = float4(tl, 0, 0); // read back as uv2_TrailTex (_TrailTex_ST stays identity)
 #if !defined(UNITY_PASS_SHADOWCASTER) // the caster only needs the height (and the clip)
             // Tilt the normal by the trail's slope (0.5 m central difference) so trail walls catch the light.
             float2 grad = float2(Trail(tl + float2(0.5, 0)) - Trail(tl - float2(0.5, 0)),
-                                 Trail(tl + float2(0, 0.5)) - Trail(tl - float2(0, 0.5))) * deep; // d(-dy) per m
+                                 Trail(tl + float2(0, 0.5)) - Trail(tl - float2(0, 0.5))) * (deep * shelterFade); // d(-dy) per m
             float ny = max(wn.y, 0.05);
             float3 nw = normalize(float3(wn.x + grad.x * ny, ny, wn.z + grad.y * ny));
             v.normal = mul((float3x3)unity_WorldToObject, nw);
@@ -164,6 +171,9 @@ Shader "Morgott/Snow"
             if (_LodHideDistance > 0.001) clip(distance(xz, _Center.xz) - (_LodHideDistance - 6.5));
             clip(IN.color.x - max(0.001, min(0.035, _DepthScale * 0.25))); // no deep snow here: vanilla terrain (and its thin snow) shows through
             float2 tl = IN.uv2_TrailTex;
+            half shelter = Shelter(tl);
+            float cov = 1.0 - smoothstep(0.55, 0.92, shelter + (Fbm(xz * 1.8) - 0.5) * 0.22);
+            clip(cov - 0.02);
             float t = Trail(tl);
             // |world gradient of t| from screen derivatives: [ddx(tl); ddy(tl)] g = (ddx t, ddy t), solved by Cramer
             float2 px = ddx(tl), py = ddy(tl), dt = float2(ddx(t), ddy(t));

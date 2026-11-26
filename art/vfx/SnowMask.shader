@@ -1,8 +1,9 @@
 // Morgott.Core ISnowVfx.SnowMask(): updates the R8 snow trail mask (consumer: Patcher SnowTrails).
 // Pass 0 (Graphics.Blit previous -> next): next(uv) = saturate(previous(uv + _Shift.xy) - _Fade), 0 where uv + _Shift
 // leaves 0..1: re-centre by whole texels and refill in one blit. Pass 1 (GL quads in 0..1 space): UV0 = quad-local -1..1
-// (y = walk direction), vertex colour R = depth 0..1; soft footprint ellipse, BlendOp Max. Pass 2 (GL quads): same, but a
-// soft-edged rectangle (piece footprint): full inside |uv.x| < colour G and |uv.y| < colour B, 0 at the quad edge.
+// (y = walk direction), vertex colour R = depth 0..1; soft footprint ellipse, BlendOp Max. Pass 2 (GL quads):
+// colour A >= 0.5 = soft-edged rectangle / rotated OBB (full inside |uv.x| < colour G and |uv.y| < colour B, 0 at quad edge);
+// colour A < 0.5 = radial circle for fire melt (full inside length(uv) < colour G, 0 at quad edge).
 Shader "Morgott/Snow Mask"
 {
     Properties
@@ -114,6 +115,11 @@ Shader "Morgott/Snow Mask"
 
             fixed4 frag(v2f i) : SV_Target
             {
+                if (i.color.a < 0.5)
+                {
+                    float d = saturate((length(i.uv) - i.color.g) / max(1 - i.color.g, 1e-3));
+                    return (1 - smoothstep(0, 1, d)) * i.color.r;
+                }
                 float2 inner = i.color.gb;
                 float2 k = saturate((abs(i.uv) - inner) / max(1 - inner, 1e-3));
                 return (1 - smoothstep(0, 1, max(k.x, k.y))) * i.color.r;
