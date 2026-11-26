@@ -1,17 +1,20 @@
 // Morgott.Core ISnowVfx.Snow(): vanilla-style deep snow outside the Deep North (consumer: Patcher SnowTrails), drawn as an
 // extra opaque pass over a vanilla Heightmap chunk's own render mesh (Graphics.DrawMesh). Mirrors the Custom/Heightmap
 // Deep North vertex displacement (+Y only; Morgott.Patcher docs\terrain-tess-foot-ik.md "Formula"):
-//   wSnow = max(0, 1 - max(|c.r|, |c.g-1|, |c.b|, |c.a|))      (Mountain colour; Seasonality winter paints other biomes so)
-//   base  = 0.1 * wSnow * (1 - sat(m.r + m.g + 10 m.b))        (vanilla thin snow, so our surface starts on top of it)
-//   deep  = _DepthScale * wSnow * G * (1 - sat(m.r + m.g + 10 m.b)) * smoothstep(_WaterLevel, _WaterLevel + 2.2, y)
+//   wMountain = max(0, 1 - max(|c.r|, |c.g-1|, |c.b|, |c.a|)) (Mountain / DeepNorth colour)
+//   wSnow     = max(wMountain, step(0.01, _MorgottSeasonSnow) * (1 - wAsh)) (seasonal winter covers non-Ashlands biomes)
+//   base      = 0.1 * wMountain * bareMask                     (vanilla thin snow on Mountain only, so our surface starts on top of it)
+//   deep      = _DepthScale * wSnow * G * bare * smoothstep(_WaterLevel, _WaterLevel + 2.2, y)
 // with G = Deep North depth noise baked per chunk by the consumer (_DepthTex over uv0, _DepthGrid texels per side, texel centres on the chunk grid),
-// _DepthScale = 2.1 x config scale, m = the chunk's _ClearedMaskTex (dug / cultivated / paved stay bare). Also cut by
-// slope (_SlopeMin), distance (_FadeNear.._FadeFar from _Center) and the R8 trail mask _TrailTex over _TrailRect (xy world
+// _DepthScale = 2.1 x config scale (or thin distant snow depth on TerrainLod), m = the chunk's _ClearedMaskTex (dug / cultivated / paved stay bare
+// on Mountain / when seasonal snow is 0, bypassed for seasonal winter snow until trampled). Also cut by
+// slope (_SlopeMin), distance (_FadeNear.._FadeFar from _Center), inner LOD clip (0.7 x _LodHideDistance on distant LOD), and the R8 trail mask _TrailTex over _TrailRect (xy world
 // origin, z = 1 / size m; prints write up to 0.9, pieces 1): dy = max(deep * (1 - trail), min(deep, 0.06) * (1 - piece)),
 // piece = smoothstep(0.92, 0.98, trail). Trails keep a 0.06 m floor of compressed snow on top of the 0.1 m base, as vanilla
 // Deep North trails bottom out on its 0.1 m thin snow (m.g -> 0 brings the base term back, terrain-tess-foot-ik.md "Formula"),
 // instead of clipping the pass and exposing the (tessellated, angular) vanilla terrain. Where dy is ~0 (no deep snow, or
-// under a piece) the pass is clipped, so vanilla terrain shows. Trampled colour + trench-wall shading are per pixel from the
+// under a piece) the pass is clipped, so vanilla terrain shows. Distant vertices (> 100 m from camera) match Custom/Heightmap's
+// smoothstep(100, 300, d) +/-1 m shoreline offset so TerrainLod snow stays above vanilla distant terrain. Trampled colour + trench-wall shading are per pixel from the
 // bilinear mask; the mesh is tessellated like vanilla's (x4 within 10 m), so the trench walls follow it; the wall slope is the mask's world gradient from the pixel
 // derivatives of that one sample (no extra fetches; faded where the pixel footprint is near-degenerate). ZWrite on + shadow
 // caster: the snow hides what it buries, casts and receives shadows, fogged. The consumer draws it one queue before the
@@ -44,6 +47,8 @@ Shader "Morgott/Snow"
         _WaterLevel ("Water level", Float) = 30
         _SlopeMin ("Slope min (normal.y)", Range(0, 1)) = 0.55
         _Tess ("Tessellation (vanilla Heightmap _Tess)", Float) = 4
+        _MorgottSeasonSnow ("Seasonal snow coverage", Range(0, 1)) = 0
+        _LodHideDistance ("LOD hide distance (m)", Float) = 0
     }
     SubShader
     {
@@ -58,7 +63,8 @@ Shader "Morgott/Snow"
         sampler2D _TrailTex, _ClearedMaskTex, _DepthTex, _SnowNormal;
         float4 _TrailRect, _Center;
         fixed4 _Color, _TrailColor;
-        half _Drift, _NormalTile, _DepthScale, _DepthGrid, _FadeNear, _FadeFar, _WaterLevel, _SlopeMin, _Tess;
+        float _FadeNear, _FadeFar, _WaterLevel, _MorgottSeasonSnow, _LodHideDistance;
+        half _Drift, _NormalTile, _DepthScale, _DepthGrid, _SlopeMin, _Tess;
 
         struct Input
         {
@@ -88,10 +94,14 @@ Shader "Morgott/Snow"
         {
             float3 wp = mul(unity_ObjectToWorld, v.vertex).xyz;
             float4 c = v.color;
-            float wSnow = max(0, 1 - max(max(abs(c.r), abs(c.g - 1)), max(abs(c.b), abs(c.a))));
+            float wMountain = max(0, 1 - max(max(abs(c.r), abs(c.g - 1)), max(abs(c.b), abs(c.a))));
+            float wAsh = max(0, 1 - max(max(abs(c.r - 1), abs(c.g)), max(abs(c.b), abs(c.a - 1))));
+            float seasonOn = step(0.01, _MorgottSeasonSnow);
+            float wSnow = max(wMountain, seasonOn * (1 - wAsh));
             half4 m = tex2Dlod(_ClearedMaskTex, float4(v.texcoord.xy, 0, 0));
-            float bare = 1 - saturate(m.r + m.g + 10 * m.b);
-            float n = _DepthGrid;
+            float bareMask = 1 - saturate(m.r + m.g + 10 * m.b);
+            float bare = max(bareMask, seasonOn * (1 - wMountain));
+            float n = max(1, _DepthGrid);
             float g = tex2Dlod(_DepthTex, float4(v.texcoord.xy * ((n - 1) / n) + 0.5 / n, 0, 0)).r;
             float3 wn = UnityObjectToWorldNormal(v.normal + float3(0, 1e-4, 0)); // never normalize a zero normal (NaN)
             float deep = _DepthScale * wSnow * g * bare * smoothstep(_WaterLevel, _WaterLevel + 2.2, wp.y);
@@ -99,8 +109,13 @@ Shader "Morgott/Snow"
             float2 tl = wp.xz - _TrailRect.xy;
             half t = Trail(tl);
             float dy = max(deep * (1 - t), min(deep, 0.06) * (1 - smoothstep(0.92, 0.98, t))); // trail floor; pieces (1) cut it all
+            float farLift = 0;
+#if !defined(UNITY_PASS_SHADOWCASTER)
+            farLift = smoothstep(100, 300, length(wp.xz - _WorldSpaceCameraPos.xz));
+            farLift = wp.y > _WaterLevel ? farLift : -farLift;
+#endif
             // Heightmap chunks are translation only: object y = world y.
-            v.vertex.y += 0.1 * wSnow * bare + dy;
+            v.vertex.y += 0.1 * wMountain * bareMask + dy + farLift;
             v.color = float4(dy, 0, 0, 0);
             v.texcoord1 = float4(tl, 0, 0); // read back as uv2_TrailTex (_TrailTex_ST stays identity)
 #if !defined(UNITY_PASS_SHADOWCASTER) // the caster only needs the height (and the clip)
@@ -130,8 +145,9 @@ Shader "Morgott/Snow"
 
         void surf(Input IN, inout SurfaceOutput o)
         {
-            clip(IN.color.x - 0.02); // no deep snow here: vanilla terrain (and its thin snow) shows through
             float2 xz = IN.worldPos.xz;
+            if (_LodHideDistance > 0) clip(distance(xz, _Center.xz) - _LodHideDistance * 0.7);
+            clip(IN.color.x - max(0.001, min(0.02, _DepthScale * 0.25))); // no deep snow here: vanilla terrain (and its thin snow) shows through
             float2 tl = IN.uv2_TrailTex;
             float t = Trail(tl);
             // |world gradient of t| from screen derivatives: [ddx(tl); ddy(tl)] g = (ddx t, ddy t), solved by Cramer

@@ -40,6 +40,12 @@
     <EmbeddedResource Include="Assets\ChangelogRune.png" LogicalName="Morgott.UI.ChangelogRune.png" />
     <!-- Portal style icons, Core PortalStyle ids 1..32 (tools\portalatlas packs Assets\PortalIcons\NN_name.png). -->
     <EmbeddedResource Include="Assets\PortalIcons.png" LogicalName="Morgott.UI.PortalIcons.png" />
+    <!-- Seasonal minimap ring overlays (spring/summer/fall/winter wreaths + blizzard frost rim). -->
+    <EmbeddedResource Include="Assets\Seasons\minimap_spring.png" LogicalName="Morgott.UI.Seasons.minimap_spring.png" />
+    <EmbeddedResource Include="Assets\Seasons\minimap_summer.png" LogicalName="Morgott.UI.Seasons.minimap_summer.png" />
+    <EmbeddedResource Include="Assets\Seasons\minimap_fall.png" LogicalName="Morgott.UI.Seasons.minimap_fall.png" />
+    <EmbeddedResource Include="Assets\Seasons\minimap_winter.png" LogicalName="Morgott.UI.Seasons.minimap_winter.png" />
+    <EmbeddedResource Include="Assets\Seasons\minimap_blizzard_rim.png" LogicalName="Morgott.UI.Seasons.minimap_blizzard_rim.png" />
   </ItemGroup>
 
   <ItemGroup>
@@ -93,6 +99,10 @@
     </Reference>
     <Reference Include="UnityEngine.CoreModule">
       <HintPath>$(ManagedDir)\UnityEngine.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.PhysicsModule">
+      <HintPath>$(ManagedDir)\UnityEngine.PhysicsModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="UnityEngine.ClothModule">

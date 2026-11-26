@@ -197,6 +197,8 @@ namespace Morgott.UI
             WorldHud.EnemyHudConfig.Bind(Config);
             PlayerHud.BarFxConfig.Bind(Config);
             MapScreen.MapConfig.Bind(Config);
+            MapScreen.SeasonHudConfig.Bind(Config);
+            WorldHud.ShipHudConfig.Bind(Config);
             GameScreens.RuneRevealConfig.Bind(Config);
             WorldHud.TypedDamageConfig.Bind(Config);
             // [Diagnostics]: development switches, not looks (perf audit B4: were mixed into [Ownership]).

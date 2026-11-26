@@ -877,5 +877,20 @@
   "ui_hildir_sub_goblinbrutebros": "Братья-громилы",
   "ui_hildir_desc_goblinbrutebros": "Два брата-фулинга стерегут мой сундук в своей крепости. Две головы — плачу вдвойне.",
   "ui_hildir_sub_generic": "Цель Хильдир",
-  "ui_hildir_desc_generic": "Кто-то перешёл дорогу Хильдир. Она хочет расплаты."
+  "ui_hildir_desc_generic": "Кто-то перешёл дорогу Хильдир. Она хочет расплаты.",
+  "ui_season_spring": "Весна",
+  "ui_season_summer": "Лето",
+  "ui_season_fall": "Осень",
+  "ui_season_winter": "Зима",
+  "ui_season_blizzard": "Буран",
+  "ui_season_thaw": "Оттепель",
+  "ui_season_unit_d": "д",
+  "ui_season_unit_h": "ч",
+  "ui_season_unit_m": "м",
+  "ui_season_unit_s": "с",
+  "ui_ship_thrust": "Тяга паруса {0}%",
+  "ui_ship_oars": "Вёсла",
+  "ui_ship_calm": "Штиль",
+  "ui_ship_unit_ms": "м/с",
+  "ui_ship_unit_kmh": "км/ч"
 }

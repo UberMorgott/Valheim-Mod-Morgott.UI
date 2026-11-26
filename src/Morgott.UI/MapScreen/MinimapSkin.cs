@@ -31,6 +31,7 @@ namespace Morgott.UI.MapScreen
         private Minimap _map;
         private RectTransform _small, _mask, _plaque;
         private Image _maskImage, _ring, _windSocket, _windGlyph, _time, _timeSocket;
+        private MinimapSeasonOverlay _seasonOverlay;
         private readonly Image[] _runes = new Image[4];
         private readonly TMP_Text[] _letters = new TMP_Text[4];
         private RawImage _mapImage;
@@ -116,6 +117,7 @@ namespace Morgott.UI.MapScreen
             }
 
             _ring = _art.Image("RuneSkin_Ring", _small, "sprite.minimap.ring", "color.frame", Image.Type.Simple);
+            _seasonOverlay = new MinimapSeasonOverlay(_art, _small, _ring.rectTransform);
             for (var i = 0; i < 4; i++)
             {
                 _runes[i] = _art.Image("RuneSkin_Rune" + Letters[i], _small, "sprite.minimap.rune", "color.frame", Image.Type.Simple);
@@ -166,6 +168,7 @@ namespace Morgott.UI.MapScreen
             {
                 if (!_maskChecked) CheckMask();
                 SyncMapMaterial();
+                _seasonOverlay?.Update(Time.deltaTime);
                 Layout(false);
                 UpdateDials();
                 // Pins move only when vanilla re-places them (Minimap.UpdatePins, on m_pinUpdateRequired; a frame
@@ -231,7 +234,10 @@ namespace Morgott.UI.MapScreen
             HudMath.HudBox(safe.x, safe.width, safe.height, Plugin.UltrawideBox?.Value ?? true,
                 ThemeTokens.GetFloat("ratio.hud.ultrawide", 2.2f), out var boxX, out var boxW);
             var margin = ThemeTokens.GetFloat("size.hud.margin", 24f) * pxPerRef;
-            var corner = new Vector2(boxX + boxW - margin, safe.yMax - margin);
+            var k = box / 220f;
+            var t = ThemeTokens.GetFloat("size.minimap.time", 26f) * k;
+            var timerDrop = _seasonOverlay != null && _seasonOverlay.TimerVisible ? _seasonOverlay.TopClearance(t, k, pxPerRef, margin) : 0f;
+            var corner = new Vector2(boxX + boxW - margin, safe.yMax - margin - timerDrop);
             if (!force && Mathf.Approximately(box, _box) && Mathf.Approximately(pxPerRef, _pxPerRef) && corner == _screenCorner) return;
             _box = box;
             _pxPerRef = pxPerRef;
@@ -247,10 +253,10 @@ namespace Morgott.UI.MapScreen
                 if (RectTransformUtility.ScreenPointToWorldPointInRectangle(parent, corner, cam, out var world)) _small.position = world;
             }
 
-            var k = box / 220f;
             var side = MinimapMath.MapSide(box, ThemeTokens.GetFloat("ratio.minimap.hole", 0.777f), _masked);
             _mapImage.rectTransform.sizeDelta = new Vector2(side, side);
             Center(_ring.rectTransform, Vector2.zero, new Vector2(box, box));
+            _seasonOverlay?.Layout(box, k, t);
             var band = box * 0.5f * ThemeTokens.GetFloat("ratio.minimap.band", 0.889f);
             var rune = ThemeTokens.GetFloat("size.minimap.rune", 32f) * k;
             for (var i = 0; i < 4; i++)
@@ -273,7 +279,6 @@ namespace Morgott.UI.MapScreen
             g.pivot = new Vector2(0.5f, 0.5f);
             g.anchoredPosition = Vector2.zero;
             g.sizeDelta = new Vector2(gs, gs);
-            var t = ThemeTokens.GetFloat("size.minimap.time", 26f) * k;
             _timeSocket.rectTransform.sizeDelta = new Vector2(t, t);
             var inner = t * 0.18f;
             _time.rectTransform.offsetMin = new Vector2(inner, inner);

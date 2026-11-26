@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using BepInEx.Configuration;
 using HarmonyLib;
 using Morgott.UI.Diagnostics;
 using Morgott.UI.Ownership;
@@ -428,20 +429,45 @@ namespace Morgott.UI.WorldHud
     // Placement (tester 2026-10-26: the ladder sat on the vanilla PowerIcon spot, under the RuneSkin minimap ring):
     // screen px from the minimap footprint (Minimap.m_smallRoot + its plaque / key tip children, reserved whether the
     // small map shows or not) and the HUD strip top, PlayHudMath.ShipPlacement; hidden while the large map is open.
+    public static class ShipHudConfig
+    {
+        public const string Section = "ShipHUD";
+
+        public static ConfigEntry<ShipSpeedUnit> SpeedUnit { get; private set; }
+        public static ConfigEntry<bool> ShowWindEfficiencyArc { get; private set; }
+        public static ConfigEntry<bool> ShowSpeedReadout { get; private set; }
+
+        internal static void Bind(ConfigFile config)
+        {
+            SpeedUnit = config.Bind(Section, "SpeedUnit", ShipSpeedUnit.MetersPerSecond,
+                "Unit for live ship speed readout below the ship HUD (MetersPerSecond or KilometersPerHour). Applied live.");
+            ShowWindEfficiencyArc = config.Bind(Section, "ShowWindEfficiencyArc", true,
+                "Show the color-coded sail efficiency arc around the ship wind compass dial.");
+            ShowSpeedReadout = config.Bind(Section, "ShowSpeedReadout", true,
+                "Show sail thrust percentage and live boat speed below the ship rudder indicator.");
+        }
+    }
+
     public sealed class ShipHudSkin : MonoBehaviour
     {
         public static ShipHudSkin Instance { get; private set; }
         private readonly HudArt _art = new HudArt(OwnershipRegistry.ShipHud);
         private static readonly string[] Glyphs = { "sprite.glyph.ship.sail.full", "sprite.glyph.ship.sail.half", "sprite.glyph.ship.oar", "sprite.glyph.stop", "sprite.glyph.chevron.down" };
         private Hud _hud;
-        private RectTransform _column;
+        private RectTransform _column, _efficiencyRoot;
         private CanvasGroup _group;
         private readonly Image[] _cells = new Image[PlayHudMath.LadderCells];
         private readonly Image[] _glyphs = new Image[PlayHudMath.LadderCells];
         private Image _left, _right, _arc, _windIcon;
-        private int _shown = -1;
-        private float _rudderShown = float.NaN;
-        private bool _hiddenForMap;
+        private Image[] _arcSegments;
+        private Color[] _arcColors;
+        private TMP_Text _thrustText, _speedText;
+        private int _shown = -1, _lastThrustPct = -1, _lastSpeedSetting = -1, _lastSpeedTenths = -1;
+        private float _rudderShown = float.NaN, _smoothedSpeed, _baseBlockHeight;
+        private bool _hiddenForMap, _arcShown = true, _readoutShown = true;
+        private WindEfficiencyZone _activeZone = (WindEfficiencyZone)(-1), _lastThrustZone = (WindEfficiencyZone)(-1);
+        private ShipSpeedUnit _lastSpeedUnit = (ShipSpeedUnit)(-1);
+        private string _lastLang;
         private float _compassUnits; // compass left of the block: placed with it (ShipPlacement min-left)
         private Vector2 _blockUnits, _placedAt = new Vector2(float.NaN, float.NaN);
         private readonly Vector3[] _corners = new Vector3[4];
@@ -488,7 +514,9 @@ namespace Morgott.UI.WorldHud
             _group.blocksRaycasts = false;
             var popup = _art.Image("Popup", _column, "sprite.frame.tooltip", "color.frame", Image.Type.Sliced);
             var block = PlayHudMath.ShipBlock(cell, gap, pad, ring, arrow);
-            _blockUnits = new Vector2(block.width, block.height);
+            _baseBlockHeight = block.height;
+            _readoutShown = ShipHudConfig.ShowSpeedReadout?.Value ?? true;
+            _blockUnits = new Vector2(block.width, _baseBlockHeight + (_readoutShown ? ShipHudRules.ReadoutBlockHeight : 0f));
             _column.sizeDelta = _blockUnits;
             // Column, cells and rudder row share the block's vertical centre line (anchor / pivot x 0.5).
             Pin(popup, 0f, 0f, 2f * pad + cell, ladderH);
@@ -524,6 +552,20 @@ namespace Morgott.UI.WorldHud
             var arrowX = ring * 0.5f + gap + arrow * 0.5f;
             _left = Arrow("RudderLeft", "sprite.glyph.arrow.left", -arrowX, rowY - (ring - arrow) * 0.5f, arrow);
             _right = Arrow("RudderRight", "sprite.glyph.arrow.right", arrowX, rowY - (ring - arrow) * 0.5f, arrow);
+            var readoutY = -_baseBlockHeight - ShipHudRules.ReadoutGap;
+            var readoutSize = MessageSkin.HudReadable(ThemeTokens.GetFloat("size.ship.readout.font", 16f));
+            _thrustText = Pin(_art.Text("RuneSkin_ShipThrust", _column, "font.body", "color.text.body", readoutSize, TextAlignmentOptions.Center),
+                0f, readoutY, block.width, ShipHudRules.ReadoutLineHeight);
+            TextLook.ApplyNameplate(_thrustText, "font.body", "ship.readout", 0f);
+            _thrustText.fontSize = readoutSize;
+            _art.Note(_thrustText, "ship.thrust", true, "sail thrust percentage readout");
+            _speedText = Pin(_art.Text("RuneSkin_ShipSpeed", _column, "font.body", "color.text.body", readoutSize, TextAlignmentOptions.Center),
+                0f, readoutY - ShipHudRules.ReadoutLineHeight - ShipHudRules.ReadoutLineGap, block.width, ShipHudRules.ReadoutLineHeight);
+            TextLook.ApplyNameplate(_speedText, "font.body", "ship.readout", 0f);
+            _speedText.fontSize = readoutSize;
+            _art.Note(_speedText, "ship.speed", true, "live ship speed readout");
+            _thrustText.gameObject.SetActive(_readoutShown);
+            _speedText.gameObject.SetActive(_readoutShown);
             Compass(hud, rs, ring, arrow, gap);
             Plugin.Log.LogInfo($"[Morgott.UI] ship HUD attached (block {block.width:0}x{block.height:0} units)");
             PlayHud.Reports.Add(() => Instance && root ? _art.Report(root) : null);
@@ -560,6 +602,27 @@ namespace Morgott.UI.WorldHud
                 Centre(circle.rectTransform, w, ring);
                 _round[1] = circle.rectTransform;
             }
+            _efficiencyRoot = HudArt.Rect("RuneSkin_WindEfficiency", w);
+            if (circle) _efficiencyRoot.SetSiblingIndex(circle.transform.GetSiblingIndex() + 1);
+            Centre(_efficiencyRoot, w, ring);
+            var segs = ShipHudRules.ArcSegments;
+            _arcSegments = new Image[segs.Length];
+            _arcColors = new Color[segs.Length];
+            for (var i = 0; i < segs.Length; i++)
+            {
+                var seg = segs[i];
+                HexColor.TryParse(seg.ColorHex, out var c);
+                _arcColors[i] = c;
+                var arcImg = _art.Image("Arc" + i, _efficiencyRoot, "sprite.hud.gp.ring", null, Image.Type.Simple);
+                MapScreen.MinimapSkin.Stretch(arcImg.rectTransform);
+                Radial(arcImg, Image.Origin360.Top, true, seg.SpanDeg / 360f);
+                arcImg.rectTransform.localRotation = Quaternion.Euler(0f, 0f, -seg.StartDeg);
+                c.a = 0.62f;
+                arcImg.color = c;
+                _arcSegments[i] = arcImg;
+            }
+            _arcShown = ShipHudConfig.ShowWindEfficiencyArc?.Value ?? true;
+            _efficiencyRoot.gameObject.SetActive(_arcShown);
             var hull = w.Find("Ship")?.GetComponent<Image>();
             Tint(hull, "color.text.active", "ship heading silhouette (vanilla art)");
             if (hull)
@@ -582,7 +645,7 @@ namespace Morgott.UI.WorldHud
             var reach = ring * 0.5f;
             foreach (var g in w.GetComponentsInChildren<Graphic>(true)) // ShipHud is inactive at Hud.Awake
             {
-                if (!g.enabled || Array.IndexOf(_round, g.rectTransform) >= 0) continue;
+                if (!g.enabled || Array.IndexOf(_round, g.rectTransform) >= 0 || (_efficiencyRoot && g.transform.IsChildOf(_efficiencyRoot))) continue;
                 g.rectTransform.GetWorldCorners(_corners);
                 foreach (var c in _corners) reach = Mathf.Max(reach, ((Vector2)w.InverseTransformPoint(c)).magnitude);
             }
@@ -613,10 +676,34 @@ namespace Morgott.UI.WorldHud
             if (!ship) return;
             // Round art does not turn with vanilla's yaw rotation: its square rect would stick out by up to sqrt 2 x radius.
             foreach (var r in _round) if (r) r.rotation = _column.rotation;
+            SyncEfficiencyArc(ship);
             if (!_windIcon) return;
             var off = ThemeTokens.GetColor("color.text.body", Color.white);
             off.a = ThemeTokens.GetFloat("share.ship.idle.alpha", 0.55f);
             _windIcon.color = Color.Lerp(off, ThemeTokens.GetColor("color.hud.glyph", Color.cyan), ship.GetWindAngleFactor());
+        }
+
+        private void SyncEfficiencyArc(Ship ship)
+        {
+            if (!_efficiencyRoot || _arcSegments == null) return;
+            var wantArc = ShipHudConfig.ShowWindEfficiencyArc?.Value ?? true;
+            if (wantArc != _arcShown)
+            {
+                _arcShown = wantArc;
+                _efficiencyRoot.gameObject.SetActive(wantArc);
+            }
+            if (!wantArc || !ship || !EnvMan.instance) return;
+            var zone = ShipHudRules.ClassifyZone(ShipHudRules.AngleFromBowDeg(ship.GetWindAngle()));
+            if (zone == _activeZone) return;
+            _activeZone = zone;
+            for (var i = 0; i < _arcSegments.Length; i++)
+            {
+                var segImg = _arcSegments[i];
+                if (!segImg) continue;
+                var c = _arcColors[i];
+                c.a = ShipHudRules.ArcSegments[i].Zone == zone ? 0.96f : 0.56f;
+                segImg.color = c;
+            }
         }
 
         // Top-centre anchored rect in the block (x from the centre line, y down from the top).
@@ -658,6 +745,7 @@ namespace Morgott.UI.WorldHud
             var player = Player.m_localPlayer;
             var ship = player ? player.GetControlledShip() : null;
             if (!ship || !_column) return;
+            SyncConfigReactive(ship);
             HideForLargeMap();
             Place();
             var index = PlayHudMath.LadderIndex((int)ship.GetSpeedSetting());
@@ -686,6 +774,74 @@ namespace Morgott.UI.WorldHud
                 Side(_left, PlayHudMath.RudderSideAlpha(value, -1, idle, minLit), idle);
                 Side(_right, PlayHudMath.RudderSideAlpha(value, 1, idle, minLit), idle);
             }
+            UpdateReadouts(ship, Time.deltaTime);
+        }
+
+        private void SyncConfigReactive(Ship ship)
+        {
+            SyncEfficiencyArc(ship);
+            var wantReadout = ShipHudConfig.ShowSpeedReadout?.Value ?? true;
+            if (wantReadout == _readoutShown) return;
+            _readoutShown = wantReadout;
+            if (_thrustText) _thrustText.gameObject.SetActive(wantReadout);
+            if (_speedText) _speedText.gameObject.SetActive(wantReadout);
+            _blockUnits.y = _baseBlockHeight + (wantReadout ? ShipHudRules.ReadoutBlockHeight : 0f);
+            _column.sizeDelta = _blockUnits;
+            _placedAt = new Vector2(float.NaN, float.NaN);
+        }
+
+        private void UpdateReadouts(Ship ship, float dt)
+        {
+            if (!_readoutShown || !_thrustText || !_speedText) return;
+            var vel = ship.m_body ? ship.m_body.linearVelocity : Vector3.zero;
+            var raw = ShipHudRules.HorizontalSpeed(vel.x, vel.z);
+            _smoothedSpeed = ShipHudRules.StepSmoothedSpeed(_smoothedSpeed, raw, dt);
+
+            var lang = Localization.instance != null ? Localization.instance.GetSelectedLanguage() : "";
+            var langChanged = !string.Equals(lang, _lastLang, StringComparison.Ordinal);
+
+            var unit = ShipHudConfig.SpeedUnit?.Value ?? ShipSpeedUnit.MetersPerSecond;
+            var converted = ShipHudRules.ConvertSpeed(_smoothedSpeed < 0.05f ? 0f : _smoothedSpeed, unit);
+            var tenths = Mathf.RoundToInt(converted * 10f);
+            if (tenths != _lastSpeedTenths || unit != _lastSpeedUnit || langChanged)
+            {
+                _lastSpeedTenths = tenths;
+                _lastSpeedUnit = unit;
+                _speedText.text = ShipHudRules.FormatSpeed(_smoothedSpeed, unit, Words.Get("$ui_ship_unit_ms"), Words.Get("$ui_ship_unit_kmh"));
+            }
+
+            var speedSetting = (int)ship.GetSpeedSetting();
+            var hasEnv = EnvMan.instance != null;
+            var factor = hasEnv ? ship.GetWindAngleFactor() : 0f;
+            var pct = ShipHudRules.ThrustPercent(factor);
+            var zone = hasEnv ? ShipHudRules.ClassifyZone(ShipHudRules.AngleFromBowDeg(ship.GetWindAngle())) : WindEfficiencyZone.DeadZone;
+            if (pct != _lastThrustPct || speedSetting != _lastSpeedSetting || zone != _lastThrustZone || langChanged)
+            {
+                _lastThrustPct = pct;
+                _lastSpeedSetting = speedSetting;
+                _lastThrustZone = zone;
+                _thrustText.text = ShipHudRules.FormatThrust(speedSetting, factor, Words.Get("$ui_ship_thrust"), Words.Get("$ui_ship_oars"), Words.Get("$ui_ship_calm"));
+                _thrustText.color = ThrustColor(speedSetting, zone);
+            }
+            _lastLang = lang;
+        }
+
+        private static Color ThrustColor(int speedSetting, WindEfficiencyZone zone)
+        {
+            if (speedSetting == 3 || speedSetting == 4)
+            {
+                switch (zone)
+                {
+                    case WindEfficiencyZone.Optimal: return new Color(0.45f, 0.90f, 0.56f, 1f);
+                    case WindEfficiencyZone.Tailwind: return ThemeTokens.GetColor("color.text.active", new Color(0.91f, 0.71f, 0.29f, 1f));
+                    case WindEfficiencyZone.CloseHauled: return ThemeTokens.GetColor("color.text.ember", new Color(0.94f, 0.54f, 0.23f, 1f));
+                    default: return ThemeTokens.GetColor("color.text.missing", new Color(0.88f, 0.25f, 0.23f, 1f));
+                }
+            }
+            if (speedSetting == 1 || speedSetting == 2) return ThemeTokens.GetColor("color.hud.glyph", Color.cyan);
+            var c = ThemeTokens.GetColor("color.text.body", Color.white);
+            c.a = 0.78f;
+            return c;
         }
 
         private static void Side(Image arrow, float alpha, float idle)

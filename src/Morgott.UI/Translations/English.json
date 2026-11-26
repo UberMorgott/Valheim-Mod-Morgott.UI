@@ -798,5 +798,20 @@
   "ui_hildir_sub_goblinbrutebros": "Fuling brute brothers",
   "ui_hildir_desc_goblinbrutebros": "Two fuling brothers guard my chest in their fortress. Two heads, so I pay double.",
   "ui_hildir_sub_generic": "Hildir's mark",
-  "ui_hildir_desc_generic": "Someone crossed Hildir. She wants it settled."
+  "ui_hildir_desc_generic": "Someone crossed Hildir. She wants it settled.",
+  "ui_season_spring": "Spring",
+  "ui_season_summer": "Summer",
+  "ui_season_fall": "Fall",
+  "ui_season_winter": "Winter",
+  "ui_season_blizzard": "Blizzard",
+  "ui_season_thaw": "Thaw",
+  "ui_season_unit_d": "d",
+  "ui_season_unit_h": "h",
+  "ui_season_unit_m": "m",
+  "ui_season_unit_s": "s",
+  "ui_ship_thrust": "Sail thrust {0}%",
+  "ui_ship_oars": "Oars",
+  "ui_ship_calm": "Calm",
+  "ui_ship_unit_ms": "m/s",
+  "ui_ship_unit_kmh": "km/h"
 }
