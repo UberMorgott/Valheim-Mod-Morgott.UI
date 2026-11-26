@@ -1,9 +1,10 @@
 // Morgott.Core ISnowVfx.SnowMask(): updates the R8 snow trail mask (consumer: Patcher SnowTrails).
 // Pass 0 (Graphics.Blit previous -> next): next(uv) = saturate(previous(uv + _Shift.xy) - _Fade), 0 where uv + _Shift
 // leaves 0..1: re-centre by whole texels and refill in one blit. Pass 1 (GL quads in 0..1 space): UV0 = quad-local -1..1
-// (y = walk direction), vertex colour R = depth 0..1; soft footprint ellipse, BlendOp Max. Pass 2 (GL quads):
+// (y = walk direction), vertex colour R = depth 0..1; soft footprint ellipse, BlendOp Max. Pass 2 (GL quads, ARGBHalf):
 // colour A >= 0.5 = soft-edged rectangle / rotated OBB (full inside |uv.x| < colour G and |uv.y| < colour B, 0 at quad edge);
-// colour A < 0.5 = radial circle for fire melt (full inside length(uv) < colour G, 0 at quad edge).
+// colour A < 0.5 = radial circle for fire melt / leaf disc (full inside length(uv) < colour G, 0 at quad edge);
+// outputs float4(shelter * _MaskMeta.z, roofRelY_or_-1000, leaf * _MaskMeta.y, 0) via BlendOp Max + ColorMask RGB.
 Shader "Morgott/Snow Mask"
 {
     Properties
@@ -11,6 +12,7 @@ Shader "Morgott/Snow Mask"
         _MainTex ("Previous mask", 2D) = "black" {}
         _Shift ("Shift (uv)", Vector) = (0, 0, 0, 0)
         _Fade ("Fade per blit", Float) = 0
+        _MaskMeta ("Mask meta (roofRelY, leafStrength, isRoofOrFire, unused)", Vector) = (500, 0, 1, 0)
     }
     SubShader
     {
@@ -84,11 +86,14 @@ Shader "Morgott/Snow Mask"
         {
             BlendOp Max
             Blend One One
+            ColorMask RGB
 
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag
             #include "UnityCG.cginc"
+
+            float4 _MaskMeta;
 
             struct appdata
             {
@@ -113,16 +118,14 @@ Shader "Morgott/Snow Mask"
                 return o;
             }
 
-            fixed4 frag(v2f i) : SV_Target
+            float4 frag(v2f i) : SV_Target
             {
-                if (i.color.a < 0.5)
-                {
-                    float d = saturate((length(i.uv) - i.color.g) / max(1 - i.color.g, 1e-3));
-                    return (1 - smoothstep(0, 1, d)) * i.color.r;
-                }
                 float2 inner = i.color.gb;
-                float2 k = saturate((abs(i.uv) - inner) / max(1 - inner, 1e-3));
-                return (1 - smoothstep(0, 1, max(k.x, k.y))) * i.color.r;
+                float2 k = saturate((abs(i.uv) - inner) / max(1.0 - inner, 1e-3));
+                float shape = (i.color.a < 0.5)
+                    ? (1.0 - smoothstep(0.0, 1.0, saturate((length(i.uv) - i.color.g) / max(1.0 - i.color.g, 1e-3))))
+                    : (1.0 - smoothstep(0.0, 1.0, max(k.x, k.y)));
+                return float4(shape * i.color.r * _MaskMeta.z, (shape > 0.05 && _MaskMeta.z > 0.5) ? _MaskMeta.x : -1000.0, shape * _MaskMeta.y, 0.0);
             }
             ENDCG
         }

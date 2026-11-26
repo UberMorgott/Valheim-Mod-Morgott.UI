@@ -153,6 +153,41 @@ Shader "Morgott/CreatureSnow"
             }
             ENDCG
         }
+
+        // Marks visible creature/character pixels in stencil bit 2 (0x04) so Morgott/WorldSeason skips them.
+        Pass
+        {
+            Name "CreatureStencilMark"
+            Tags { "LightMode" = "Deferred" }
+            Cull Back
+            ZWrite Off
+            ZTest LEqual
+            ColorMask 0
+            Stencil
+            {
+                Ref 4
+                WriteMask 4
+                Comp Always
+                Pass Replace
+            }
+
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+            #pragma target 4.0
+            #include "UnityCG.cginc"
+
+            float4 vert(float4 vertex : POSITION) : SV_POSITION
+            {
+                return UnityObjectToClipPos(vertex);
+            }
+
+            fixed4 frag() : SV_Target
+            {
+                return 0;
+            }
+            ENDCG
+        }
     }
     FallBack Off
 }
