@@ -113,6 +113,10 @@ namespace Morgott.UI.StationQueue
         public static string DisplayName(string name, int outputAmount) =>
             outputAmount > 1 ? (name ?? "") + " ×" + Group(outputAmount) : name ?? "";
 
+        // Multi-ingredient recipes (Cauldron / Mead Ketill) show the crafted output; single-input conversions
+        // (Kiln, Smelter, Fermenter, CookingStation) show the input (e.g. Wood / FineWood / RoundLog, not 3 identical Coal rows).
+        public static bool PrefersOutput(bool hasInputItem, int ingredientCount) => !hasInputItem || ingredientCount > 0;
+
         public static StationQueueInput FindInput(IReadOnlyList<StationQueueInput> inputs, string key)
         {
             if (inputs == null || string.IsNullOrEmpty(key)) return null;

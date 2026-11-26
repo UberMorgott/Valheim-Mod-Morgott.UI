@@ -415,7 +415,12 @@ namespace Morgott.UI.StationQueue
         private int Have(string prefab) => Net(prefab) + (prefab != null && _state.Pending.TryGetValue(prefab, out var n) ? n : 0);
 
         private StationQueueInput FindInputByKey(string key) => StationQueueMath.FindInput(_state.Inputs, key);
-        private ItemDrop DisplayItem(StationQueueInput input, string key) => input != null ? (input.Output ? input.Output : input.Item) : Item(key);
+        private ItemDrop DisplayItem(StationQueueInput input, string key) =>
+            input != null
+                ? (StationQueueMath.PrefersOutput(input.Item, input.Ingredients?.Count ?? 0)
+                    ? (input.Output ? input.Output : input.Item)
+                    : (input.Item ? input.Item : input.Output))
+                : Item(key);
         private int InputNet(string key) => FindInputByKey(key) is StationQueueInput i ? i.Network : Net(key);
         private string OutputOf(string key) => FindInputByKey(key) is StationQueueInput i && i.Output ? i.Output.name : null;
 

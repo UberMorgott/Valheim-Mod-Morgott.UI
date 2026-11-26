@@ -546,5 +546,13 @@ namespace Morgott.UI.Tests
             Assert.Equal(60f, left); // plate 100: each knot squeezed to 50
             Assert.Equal(150f, right);
         }
+
+        [Fact]
+        public void PrefersOutputOnlyForRecipesOrMissingInputItem()
+        {
+            Assert.False(StationQueueMath.PrefersOutput(hasInputItem: true, ingredientCount: 0)); // Kiln Wood/FineWood/RoundLog -> show input, not Coal
+            Assert.True(StationQueueMath.PrefersOutput(hasInputItem: true, ingredientCount: 2));  // Cauldron multi-ingredient recipe -> show output dish
+            Assert.True(StationQueueMath.PrefersOutput(hasInputItem: false, ingredientCount: 0)); // recipe without single input item -> show output
+        }
     }
 }
