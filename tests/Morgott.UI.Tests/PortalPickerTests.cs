@@ -37,6 +37,21 @@ namespace Morgott.UI.Tests
         }
 
         [Fact]
+        public void ExplicitReferencePosComputesDistanceFromPlayerOnNormalMap()
+        {
+            var rows = new List<PortalRow>();
+            var playerPos = new Vector3(5000f, 10f, 0f);
+            var fav = PortalPickerMath.Build(World(), null, playerPos, "", rows);
+            Assert.Equal(2, fav);
+            Assert.DoesNotContain(rows, r => r.Here);
+            // Favorites sorted by distance from player at x=5000: Шахта (3870 -> 1130m) before Дом (1240 -> 3760m).
+            Assert.Equal(new[] { "Шахта", "Дом", "Равнины", "Курганы", "Болото-1" }, rows.Select(r => r.Portal.Name));
+            Assert.Equal(1130f, rows[0].Distance, 1);
+            Assert.Equal(3760f, rows[1].Distance, 1);
+            Assert.Equal(920f, rows[2].Distance, 1);
+        }
+
+        [Fact]
         public void DistanceIsOnTheMapPlane()
         {
             Assert.Equal(5f, PortalPickerMath.DistanceXZ(new Vector3(0f, 100f, 0f), new Vector3(3f, -50f, 4f)), 3);

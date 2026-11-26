@@ -425,5 +425,105 @@ namespace Morgott.UI.MapScreen
 
         // Rows that fit a list height (at least one).
         public static int Window(float height, float rowH) => Mathf.Max(1, Mathf.FloorToInt((height + 0.5f) / Mathf.Max(1f, rowH)));
+
+        public readonly struct CustomSectionLayout
+        {
+            public readonly float CellSize;
+            public readonly int TotalRows, VisibleRows, PlayersShown;
+            public readonly bool Scrolling;
+            public readonly float GridHeight, SectionHeight, PinsAvailHeight;
+
+            public CustomSectionLayout(float cellSize, int totalRows, int visibleRows, int playersShown, bool scrolling, float gridHeight, float sectionHeight, float pinsAvailHeight)
+            {
+                CellSize = cellSize;
+                TotalRows = totalRows;
+                VisibleRows = visibleRows;
+                PlayersShown = playersShown;
+                Scrolling = scrolling;
+                GridHeight = gridHeight;
+                SectionHeight = sectionHeight;
+                PinsAvailHeight = pinsAvailHeight;
+            }
+        }
+
+        // Budgets the collapsible СВОИ МЕТКИ 5-column grid and scrollable ИГРОКИ window inside the right MapLegend so:
+        // - lower sections (ИГРОКИ / СЛОИ / PublicPanel / Масштаб) NEVER overflow even at 1280x720 @ 150% GUI with 25 icons & 4+ players,
+        // - expanded СВОИ МЕТКИ always reserves >= 1 visible row (shrinking scrollable ИГРОКИ down to >= 1 row first if tight),
+        // - МЕТКИ always keeps >= minPinsHeight.
+        public static CustomSectionLayout ComputeCustomSectionLayout(
+            float legendHeight,
+            float pad,
+            float sectionH,
+            float fixedBelowWithoutPlayers,
+            int playerCount,
+            int maxPlayersShown,
+            float playerRowH,
+            float minPinsHeight,
+            int iconCount,
+            bool expanded,
+            int cols,
+            float maxCell,
+            float minCell,
+            float gap)
+        {
+            var listTop = pad + sectionH;
+            var playersShown = Mathf.Min(playerCount, maxPlayersShown);
+            var minPlayersShown = Mathf.Min(playerCount, 1);
+
+            float PlayersSectionH(int shown) => sectionH + shown * playerRowH + 6f;
+
+            if (iconCount <= 0)
+            {
+                var budget = legendHeight - listTop - fixedBelowWithoutPlayers - PlayersSectionH(playersShown);
+                return new CustomSectionLayout(maxCell, 0, 0, playersShown, false, 0f, 0f, Mathf.Max(minPinsHeight, budget));
+            }
+
+            var totalRows = (iconCount + cols - 1) / cols;
+            var headerCost = sectionH + 6f;
+            var minCustomNeeded = headerCost + (expanded ? minCell + 4f : 0f);
+
+            // Reserve space for at least 1 visible СВОИ МЕТКИ row from scrollable ИГРОКИ when tight (keeping >= 1 player row).
+            while (playersShown > minPlayersShown)
+            {
+                var availForCustom = legendHeight - listTop - fixedBelowWithoutPlayers - PlayersSectionH(playersShown) - minPinsHeight;
+                if (availForCustom >= minCustomNeeded) break;
+                playersShown--;
+            }
+
+            var budgetWithoutCustom = legendHeight - listTop - fixedBelowWithoutPlayers - PlayersSectionH(playersShown);
+            if (!expanded)
+            {
+                var availCollapsed = Mathf.Max(minPinsHeight, budgetWithoutCustom - headerCost);
+                return new CustomSectionLayout(maxCell, totalRows, 0, playersShown, false, 0f, headerCost, availCollapsed);
+            }
+
+            var maxGridBudget = budgetWithoutCustom - minPinsHeight - headerCost;
+            var cell = maxCell;
+            var visibleRows = 0;
+            if (maxGridBudget > 0f)
+            {
+                var fitFull = Mathf.FloorToInt((maxGridBudget - 4f + gap) / (cell + gap));
+                if (fitFull < totalRows && cell > minCell)
+                {
+                    var compactFit = Mathf.FloorToInt((maxGridBudget - 4f + gap) / (minCell + gap));
+                    if (compactFit > fitFull)
+                    {
+                        cell = minCell;
+                        fitFull = compactFit;
+                    }
+                }
+                visibleRows = Mathf.Clamp(fitFull, 0, totalRows);
+                if (visibleRows == 0 && maxGridBudget >= 20f)
+                {
+                    cell = Mathf.Max(16f, Mathf.Floor(maxGridBudget - 4f));
+                    visibleRows = 1;
+                }
+            }
+
+            var gridH = visibleRows > 0 ? visibleRows * cell + (visibleRows - 1) * gap + 4f : 0f;
+            var sectionTotal = headerCost + gridH;
+            var pinsAvail = Mathf.Max(minPinsHeight, budgetWithoutCustom - sectionTotal);
+            return new CustomSectionLayout(cell, totalRows, visibleRows, playersShown, visibleRows < totalRows && visibleRows > 0, gridH, sectionTotal, pinsAvail);
+        }
     }
 }

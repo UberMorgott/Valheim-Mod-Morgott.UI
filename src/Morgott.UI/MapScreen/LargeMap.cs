@@ -145,6 +145,9 @@ namespace Morgott.UI.MapScreen
             BiomeOverlay.Instance?.LateUpdate();
             LegendRows(inset);
             PortalLateUpdate(inset, top, band);
+            UpdateSmoothPan();
+            PollDeferredPinClick();
+            CustomPinModalUpdate();
             HidePlayers();
             // Every frame while open: a label vanilla activates late (DelayActivation 1 s, Minimap.cs:883-890) or a zoom /
             // pan re-place (UpdatePins) is hung under its pin and decluttered before the canvas draws (PinLabels.cs).
@@ -208,7 +211,9 @@ namespace Morgott.UI.MapScreen
 
             if (_rows) ctx.Exclude(_rows, "RuneSkin legend rows (own sockets, names, checkboxes, players, zoom)");
             if (_footer) ctx.Exclude(_footer, "RuneSkin map key hint line");
-            if (_pp) ctx.Exclude(_pp, "RuneSkin portal picker (own title, search, rows)");
+            if (_pp) ctx.Exclude(_pp, "RuneSkin left map sidebar (portals + quests)");
+            if (_sbExpand) ctx.Exclude(_sbExpand, "RuneSkin left map sidebar expand button");
+            if (_pinModal) ctx.Exclude(_pinModal, "RuneSkin custom map pin editor modal");
             if (_legendImage) ctx.Role(_legendImage, "craft.well", "map legend column");
             var mapImage = _map.m_mapImageLarge ? _map.m_mapImageLarge.transform : null;
             foreach (var g in root.GetComponentsInChildren<Graphic>(true))

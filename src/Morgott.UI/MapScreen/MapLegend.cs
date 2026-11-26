@@ -58,7 +58,17 @@ namespace Morgott.UI.MapScreen
             private void OnDisable() => Over = false;
         }
 
-        internal static bool LegendHover => Instance && (Instance._scroll && Instance._scroll.Over || PortalHover) && Instance._large && Instance._large.gameObject.activeInHierarchy;
+        private sealed class CustomPinCellUi
+        {
+            public RectTransform Root;
+            public Image Socket, Glyph;
+            public Button Button;
+            public UITooltip Tooltip;
+            public string IconId;
+            public int Look = -1;
+        }
+
+        internal static bool LegendHover => Instance && (Instance._scroll && Instance._scroll.Over || PortalHover || Instance.CustomPinModalShown || Instance.PortalEditorShown) && Instance._large && Instance._large.gameObject.activeInHierarchy;
 
         private RectTransform _rows, _footer;
         private readonly List<PinRow> _pinRows = new List<PinRow>();
@@ -66,15 +76,22 @@ namespace Morgott.UI.MapScreen
         private readonly List<PinRow> _playerRows = new List<PinRow>();
         private readonly List<Button> _iconButtons = new List<Button>();
         private readonly HashSet<string> _hiddenPlayers = new HashSet<string>();
-        private TMP_Text _pinsHeader, _playersHeader, _layersHeader, _zoomLabel;
-        private Image _pinsDivider, _playersDivider, _layersDivider, _scrollTrack, _scrollThumb;
+        private TMP_Text _pinsHeader, _customHeader, _playersHeader, _layersHeader, _zoomLabel;
+        private Image _pinsDivider, _customDivider, _playersDivider, _layersDivider, _scrollTrack, _scrollThumb;
+        private Button _customHeaderBtn;
+        private readonly List<CustomPinCellUi> _customCells = new List<CustomPinCellUi>();
+        private readonly List<CustomIconSummary> _customSummary = new List<CustomIconSummary>();
+        private readonly List<string> _customRawNames = new List<string>();
+        private bool _customPinsExpanded = true;
+        private int _customSummaryPinsVer = -1, _customSummaryFilterVer = -1;
         private PinRow _biomeRow, _othersRow;
         private readonly List<(Image Swatch, TMP_Text Name)> _key = new List<(Image, TMP_Text)>();
         private LegendScroll _scroll;
-        private int _firstRow, _firstPlayer;
-        private float _pinsTop, _pinsBottom, _pinsRowH = 36f, _playersTop, _playersBottom, _playerRowH = 26f;
-        private bool _pinsScrolling, _playersScrolling, _dragLegendPlayers;
-        private Image _playerTrack, _playerThumb;
+        private int _firstRow, _firstPlayer, _firstCustomRow;
+        private float _pinsTop, _pinsBottom, _pinsRowH = 36f, _customTop, _customBottom, _customRowH = 36f, _playersTop, _playersBottom, _playerRowH = 26f;
+        private bool _pinsScrolling, _customScrolling, _playersScrolling;
+        private int _dragLegendTarget; // 0 = pins, 1 = custom pins, 2 = players
+        private Image _customTrack, _customThumb, _playerTrack, _playerThumb;
         private Slider _zoom;
         private bool _zoomWrite;
         private int _loggedButtons = -1;
@@ -111,25 +128,44 @@ namespace Morgott.UI.MapScreen
             {
                 if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(_legend, e.pressPosition, e.pressEventCamera, out var lp)) return false;
                 var y = _legend.rect.yMax - lp.y;
-                if (_pinsScrolling && y >= _pinsTop && y < _pinsBottom) { _dragLegendPlayers = false; return true; }
-                if (_playersScrolling && y >= _playersTop && y < _playersBottom) { _dragLegendPlayers = true; return true; }
+                if (_pinsScrolling && y >= _pinsTop && y < _pinsBottom) { _dragLegendTarget = 0; return true; }
+                if (_customScrolling && y >= _customTop && y < _customBottom) { _dragLegendTarget = 1; return true; }
+                if (_playersScrolling && y >= _playersTop && y < _playersBottom) { _dragLegendTarget = 2; return true; }
                 return false;
             };
-            legendDrag.StepSize = () => _dragLegendPlayers ? _playerRowH : _pinsRowH;
+            legendDrag.StepSize = () => _dragLegendTarget == 2 ? _playerRowH : _dragLegendTarget == 1 ? _customRowH : _pinsRowH;
             legendDrag.OnStep = (steps, _) =>
             {
-                if (_dragLegendPlayers) _firstPlayer += steps;
+                if (_dragLegendTarget == 2) _firstPlayer += steps;
+                else if (_dragLegendTarget == 1) _firstCustomRow += steps;
                 else _firstRow += steps;
             };
             var headerSize = ThemeTokens.GetFloat("size.map.legend.header", 21f);
             _pinsHeader = _art.Text("PinsHeader", _rows, "font.display", "color.text.header", headerSize, TextAlignmentOptions.Center);
             _pinsDivider = _art.Image("PinsDivider", _rows, "sprite.divider", "color.frame", Image.Type.Sliced);
+            var customHeaderHit = _art.Image("CustomPinsHeaderBtn", _rows, null, "color.frame", Image.Type.Simple, raycast: true);
+            customHeaderHit.color = Color.clear;
+            _customHeaderBtn = customHeaderHit.gameObject.AddComponent<Button>();
+            _customHeaderBtn.targetGraphic = customHeaderHit;
+            _customHeaderBtn.transition = Selectable.Transition.None;
+            _customHeaderBtn.navigation = new Navigation { mode = Navigation.Mode.None };
+            _customHeaderBtn.onClick.AddListener(() =>
+            {
+                var es = EventSystem.current;
+                if (es && es.currentSelectedGameObject == _customHeaderBtn.gameObject) es.SetSelectedGameObject(null);
+                _customPinsExpanded = !_customPinsExpanded;
+            });
+            _customHeader = _art.Text("CustomPinsHeader", customHeaderHit.transform, "font.display", "color.text.header", headerSize, TextAlignmentOptions.Center);
+            Stretch(_customHeader.rectTransform);
+            _customDivider = _art.Image("CustomPinsDivider", _rows, "sprite.divider", "color.frame", Image.Type.Sliced);
             _playersHeader = _art.Text("PlayersHeader", _rows, "font.display", "color.text.header", headerSize, TextAlignmentOptions.Center);
             _playersDivider = _art.Image("PlayersDivider", _rows, "sprite.divider", "color.frame", Image.Type.Sliced);
             _layersHeader = _art.Text("LayersHeader", _rows, "font.display", "color.text.header", headerSize, TextAlignmentOptions.Center);
             _layersDivider = _art.Image("LayersDivider", _rows, "sprite.divider", "color.frame", Image.Type.Sliced);
             _scrollTrack = _art.Image("ScrollTrack", _rows, "sprite.bar.skill.trough", "color.frame", Image.Type.Sliced);
             _scrollThumb = _art.Image("ScrollThumb", _scrollTrack.transform, "sprite.bar.skill.fill", "color.text.accent", Image.Type.Sliced);
+            _customTrack = _art.Image("CustomScrollTrack", _rows, "sprite.bar.skill.trough", "color.frame", Image.Type.Sliced);
+            _customThumb = _art.Image("ScrollThumb", _customTrack.transform, "sprite.bar.skill.fill", "color.text.accent", Image.Type.Sliced);
             _playerTrack = _art.Image("PlayerScrollTrack", _rows, "sprite.bar.skill.trough", "color.frame", Image.Type.Sliced);
             _playerThumb = _art.Image("ScrollThumb", _playerTrack.transform, "sprite.bar.skill.fill", "color.text.accent", Image.Type.Sliced);
             _biomeRow = NewRow("LayerRow");
@@ -613,17 +649,26 @@ namespace Morgott.UI.MapScreen
             var layersH = section + 2f * playerRow + keyRows * keyRow + 6f;
             var players = ZNet.instance ? ZNet.instance.GetPlayerList() : null;
             var playerCount = players?.Count ?? 0;
-            var playersShown = Mathf.Min(playerCount, Mathf.RoundToInt(ThemeTokens.GetFloat("count.map.players.max", 4f)));
-            var playersH = section + playersShown * playerRow + 6f;
+            var maxPlayers = Mathf.RoundToInt(ThemeTokens.GetFloat("count.map.players.max", 4f));
+
+            // Collapsible СВОИ МЕТКИ section height (reserves >= 1 visible row when expanded, shrinking scrollable ИГРОКИ if tight).
+            RefreshCustomSummary();
+            const int customCols = 5;
+            const float customGap = 6f;
+            var fixedBelowWithoutPlayers = (h - zoomTop) + labelH + toggles + layersH + 6f;
+            var maxCell = Mathf.Min(36f, Mathf.Floor((rowW - (customCols - 1) * customGap) / customCols));
+            var customLay = MapFilterMath.ComputeCustomSectionLayout(
+                h, pad, section, fixedBelowWithoutPlayers, playerCount, maxPlayers, playerRow, rowMin,
+                _customSummary.Count, _customPinsExpanded, customCols, maxCell, 28f, customGap);
+            var playersShown = customLay.PlayersShown;
             var listTop = pad + section;
-            var listBottom = zoomTop - labelH - toggles - layersH - playersH - 6f;
 
             // МЕТКИ.
             Place(_pinsHeader.rectTransform, pad, pad, rowW, headerH);
             HeaderFace(_pinsHeader);
             _pinsHeader.text = Words.Get("$ui_map_pins");
             Place(_pinsDivider.rectTransform, pad, pad + headerH, rowW, divider);
-            var avail = Mathf.Max(rowMin, listBottom - listTop);
+            var avail = customLay.PinsAvailHeight;
             var rowH = MinimapMath.RowHeight(avail, _entries.Count, rowPref, rowMin);
             var window = MapFilterMath.Window(avail, rowH);
             var scrolling = _entries.Count > window;
@@ -634,11 +679,12 @@ namespace Morgott.UI.MapScreen
             _playerRowH = playerRow;
             if (_scroll && Mathf.Abs(_scroll.Delta) > 1e-5f)
             {
-                // Over the ИГРОКИ block (last frame's place) the wheel scrolls the players, elsewhere the pin rows.
+                // Wheel scrolls whichever section (ИГРОКИ, СВОИ МЕТКИ, or МЕТКИ) the pointer is over.
                 var step = ScrollSpeed.WheelRows(_scroll.Delta);
-                var overPlayers = RectTransformUtility.ScreenPointToLocalPointInRectangle(_legend, _scroll.At, _scroll.Cam, out var lp)
-                    && _legend.rect.yMax - lp.y >= _playersTop && _legend.rect.yMax - lp.y < _playersBottom;
-                if (overPlayers) _firstPlayer -= step;
+                var hasPt = RectTransformUtility.ScreenPointToLocalPointInRectangle(_legend, _scroll.At, _scroll.Cam, out var lp);
+                var ly = hasPt ? _legend.rect.yMax - lp.y : -1f;
+                if (hasPt && _playersScrolling && ly >= _playersTop && ly < _playersBottom) _firstPlayer -= step;
+                else if (hasPt && _customScrolling && ly >= _customTop && ly < _customBottom) _firstCustomRow -= step;
                 else _firstRow -= step;
                 _scroll.Delta = 0f;
             }
@@ -684,8 +730,11 @@ namespace Morgott.UI.MapScreen
                 thumb.offsetMin = thumb.offsetMax = Vector2.zero;
             }
 
-            // ИГРОКИ.
+            // СВОИ МЕТКИ (collapsible 5-column custom icon grid; hidden when world has no custom pins).
             y = listTop + window * rowH + 6f;
+            y = LayoutCustomPinsSection(pad, y, rowW, headerH, divider, customCols, customGap, barW2, customLay);
+
+            // ИГРОКИ.
             y = Section(_playersHeader, _playersDivider, "$ui_map_players", pad, y, rowW, headerH, divider);
             var localName = Game.instance && Game.instance.GetPlayerProfile() != null ? Game.instance.GetPlayerProfile().GetName() : null;
             _playersTop = y;
@@ -784,6 +833,136 @@ namespace Morgott.UI.MapScreen
             }
 
             LayoutHints(inset);
+        }
+
+        private void RefreshCustomSummary()
+        {
+            if (_customSummaryPinsVer == PinsVersion && _customSummaryFilterVer == _customFilterVersion) return;
+            _customSummaryPinsVer = PinsVersion;
+            _customSummaryFilterVer = _customFilterVersion;
+            _customRawNames.Clear();
+            if (_map && _map.m_pins != null)
+                foreach (var pin in _map.m_pins)
+                    if (pin != null && !string.IsNullOrEmpty(pin.m_name)) _customRawNames.Add(pin.m_name);
+            CustomPinMath.CollectPresentCustomIcons(_customRawNames, _hiddenCustomIcons, _customSummary);
+        }
+
+        private CustomPinCellUi NewCustomPinCell()
+        {
+            var root = HudArtRect("CustomPinCell", _rows);
+            Top(root);
+            var socket = root.gameObject.AddComponent<Image>();
+            _art.Restyle(socket, "sprite.slot.cell", "color.frame", Image.Type.Sliced);
+            socket.raycastTarget = true;
+            var glyph = _art.Image("Glyph", root, null, "color.frame", Image.Type.Simple);
+            glyph.preserveAspect = true;
+            Stretch(glyph.rectTransform);
+            glyph.rectTransform.offsetMin = new Vector2(5f, 5f);
+            glyph.rectTransform.offsetMax = new Vector2(-5f, -5f);
+            var btn = root.gameObject.AddComponent<Button>();
+            btn.targetGraphic = socket;
+            btn.navigation = new Navigation { mode = Navigation.Mode.None };
+            var cell = new CustomPinCellUi { Root = root, Socket = socket, Glyph = glyph, Button = btn };
+            btn.onClick.AddListener(() =>
+            {
+                var es = EventSystem.current;
+                if (es && es.currentSelectedGameObject == btn.gameObject) es.SetSelectedGameObject(null);
+                if (!string.IsNullOrEmpty(cell.IconId)) ToggleCustomIconFilter(cell.IconId);
+            });
+            if (_ppTooltip)
+            {
+                var tip = root.gameObject.AddComponent<UITooltip>();
+                tip.m_tooltipPrefab = _ppTooltip;
+                cell.Tooltip = tip;
+            }
+            return cell;
+        }
+
+        private float LayoutCustomPinsSection(float pad, float y, float rowW, float headerH, float divider, int cols, float gap, float barW, MapFilterMath.CustomSectionLayout lay)
+        {
+            var has = _customSummary.Count > 0;
+            if (_customHeaderBtn.gameObject.activeSelf != has) _customHeaderBtn.gameObject.SetActive(has);
+            if (_customDivider.gameObject.activeSelf != has) _customDivider.gameObject.SetActive(has);
+            if (!has)
+            {
+                _customScrolling = false;
+                _customTop = _customBottom = 0f;
+                if (_customTrack.gameObject.activeSelf) _customTrack.gameObject.SetActive(false);
+                for (var i = 0; i < _customCells.Count; i++)
+                    if (_customCells[i].Root.gameObject.activeSelf) _customCells[i].Root.gameObject.SetActive(false);
+                return y;
+            }
+
+            Place((RectTransform)_customHeaderBtn.transform, pad, y, rowW, headerH);
+            HeaderFace(_customHeader);
+            var arrow = _customPinsExpanded ? " ▾" : " ▸";
+            var title = Words.Get("$ui_map_custom_pins") + arrow;
+            if (_customHeader.text != title) _customHeader.text = title;
+            Place(_customDivider.rectTransform, pad, y + headerH, rowW, divider);
+            y += headerH + divider + 4f;
+
+            var showCells = _customPinsExpanded && lay.VisibleRows > 0;
+            _customScrolling = showCells && lay.Scrolling;
+            _customTop = y;
+            _customRowH = lay.CellSize + gap;
+            _firstCustomRow = showCells ? MapFilterMath.ClampScroll(_firstCustomRow, lay.TotalRows, lay.VisibleRows) : 0;
+
+            var contentW = _customScrolling ? rowW - barW - 6f : rowW;
+            var cellSize = Mathf.Min(lay.CellSize, Mathf.Floor((contentW - (cols - 1) * gap) / cols));
+            while (_customCells.Count < _customSummary.Count) _customCells.Add(NewCustomPinCell());
+            var gridW = cols * cellSize + (cols - 1) * gap;
+            var startX = pad + (contentW - gridW) * 0.5f;
+            var firstItem = _firstCustomRow * cols;
+            var lastItem = (_firstCustomRow + lay.VisibleRows) * cols;
+
+            for (var i = 0; i < _customCells.Count; i++)
+            {
+                var c = _customCells[i];
+                var on = showCells && i < _customSummary.Count && i >= firstItem && i < lastItem;
+                if (c.Root.gameObject.activeSelf != on) c.Root.gameObject.SetActive(on);
+                if (!on) continue;
+                var item = _customSummary[i];
+                c.IconId = item.IconId;
+                var col = i % cols;
+                var visRow = i / cols - _firstCustomRow;
+                Place(c.Root, startX + col * (cellSize + gap), y + visRow * (cellSize + gap), cellSize, cellSize);
+                var sprite = CustomPinIcons.Get(item.IconIndex);
+                if (c.Glyph.sprite != sprite) c.Glyph.sprite = sprite;
+                c.Glyph.enabled = sprite;
+                var look = item.Hidden ? 0 : 1;
+                if (c.Look != look)
+                {
+                    c.Look = look;
+                    _art.Restyle(c.Socket, item.Hidden ? "sprite.slot.recess" : "sprite.slot.cell", "color.frame", Image.Type.Sliced);
+                }
+                c.Socket.color = item.Hidden ? new Color(0.55f, 0.55f, 0.55f, 0.65f) : Color.white;
+                var activeTint = item.HasColor ? CustomPinMath.ToColor(item.R, item.G, item.B) : Color.white;
+                c.Glyph.color = item.Hidden ? new Color(0.45f, 0.45f, 0.45f, 0.45f) : activeTint;
+                if (c.Tooltip)
+                {
+                    var iconName = Words.Get(CustomPinMath.IconNameToken(item.IconId));
+                    if (c.Tooltip.m_topic != iconName) c.Tooltip.m_topic = iconName;
+                    var tipText = Localization.instance.Localize(
+                        item.Hidden ? "$ui_mpin_legend_count_hidden" : "$ui_mpin_legend_count",
+                        item.Count.ToString());
+                    if (c.Tooltip.m_text != tipText) c.Tooltip.m_text = tipText;
+                }
+            }
+
+            if (_customTrack.gameObject.activeSelf != _customScrolling) _customTrack.gameObject.SetActive(_customScrolling);
+            if (_customScrolling)
+            {
+                var trackH = lay.VisibleRows * cellSize + (lay.VisibleRows - 1) * gap;
+                Place(_customTrack.rectTransform, pad + rowW - barW, y, barW, trackH);
+                var thumb = _customThumb.rectTransform;
+                thumb.anchorMin = new Vector2(0f, 1f - (float)(_firstCustomRow + lay.VisibleRows) / lay.TotalRows);
+                thumb.anchorMax = new Vector2(1f, 1f - (float)_firstCustomRow / lay.TotalRows);
+                thumb.offsetMin = thumb.offsetMax = Vector2.zero;
+            }
+
+            if (showCells) y += lay.GridHeight;
+            _customBottom = y;
+            return y + 6f;
         }
 
         private float Section(TMP_Text header, Image line, string token, float pad, float y, float w, float headerH, float divider)

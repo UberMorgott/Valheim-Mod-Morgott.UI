@@ -21,14 +21,17 @@ namespace Morgott.UI.MapScreen
         // Same window as vanilla's map double click (Minimap.OnMapLeftUp, Minimap.cs:2412).
         public const float DoubleClick = 0.3f;
 
-        // portals: names already localized. here: the entry portal row (Here = true), null when unknown. Returns the
-        // number of favourite rows (rows [0, n) = ИЗБРАННОЕ, the rest = ВСЕ ПОРТАЛЫ).
-        public static int Build(List<PortalInfo> portals, PortalInfo? here, string query, List<PortalRow> into)
+        // portals: names already localized. here: the entry portal row (Here = true), null when browsing on the normal map.
+        // referencePos: distance origin (entry portal position during travel, player position on normal M map).
+        // Returns the number of favourite rows (rows [0, n) = ИЗБРАННОЕ, the rest = ВСЕ ПОРТАЛЫ).
+        public static int Build(List<PortalInfo> portals, PortalInfo? here, string query, List<PortalRow> into) =>
+            Build(portals, here, here?.Position ?? Vector3.zero, query, into);
+
+        public static int Build(List<PortalInfo> portals, PortalInfo? here, Vector3 referencePos, string query, List<PortalRow> into)
         {
             into.Clear();
-            var origin = here?.Position ?? Vector3.zero;
             foreach (var p in portals)
-                if (Matches(p.Name, query)) into.Add(new PortalRow { Portal = p, Distance = DistanceXZ(origin, p.Position) });
+                if (Matches(p.Name, query)) into.Add(new PortalRow { Portal = p, Distance = DistanceXZ(referencePos, p.Position) });
             into.Sort((a, b) => a.Portal.Favorite != b.Portal.Favorite ? (a.Portal.Favorite ? -1 : 1)
                 : a.Distance != b.Distance ? a.Distance.CompareTo(b.Distance)
                 : string.Compare(a.Portal.Name, b.Portal.Name, StringComparison.OrdinalIgnoreCase));

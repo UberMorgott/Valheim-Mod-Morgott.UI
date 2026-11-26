@@ -75,6 +75,22 @@ namespace Morgott.UI.MapScreen
                     }
                     if (text.enableAutoSizing) text.enableAutoSizing = false;
                     if (text.fontSize < min) text.fontSize = min;
+                    // Defense-in-depth against DelayActivation(1s): never display raw [mp1:...] metadata suffix.
+                    if (CustomPinMath.TryDecode(pin.m_name, out var decoded))
+                    {
+                        if (!IsCustomIconVisible(decoded.IconId) || string.IsNullOrEmpty(decoded.VisibleName))
+                        {
+                            if (go.activeSelf) go.SetActive(false);
+                            continue;
+                        }
+                        var stripped = CustomPinMath.StripTag(text.text);
+                        if (text.text != stripped) text.text = stripped;
+                    }
+                }
+                if (!pin.m_uiElement.gameObject.activeSelf)
+                {
+                    if (go.activeSelf) go.SetActive(false);
+                    continue;
                 }
                 if (!go.activeSelf) continue; // vanilla shows names on the large map only, zoomed in (Minimap.cs:1678)
 

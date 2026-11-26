@@ -56,6 +56,8 @@
     <Compile Include="..\..\src\Morgott.UI\MapScreen\MapFilterMath.cs" Link="Linked\MapFilterMath.cs" />
     <Compile Include="..\..\src\Morgott.UI\MapScreen\MapConfig.cs" Link="Linked\MapConfig.cs" />
     <Compile Include="..\..\src\Morgott.UI\MapScreen\PortalPickerMath.cs" Link="Linked\PortalPickerMath.cs" />
+    <Compile Include="..\..\src\Morgott.UI\MapScreen\CustomPinMath.cs" Link="Linked\CustomPinMath.cs" />
+    <Compile Include="..\..\src\Morgott.UI\MapScreen\MapQuestSidebarMath.cs" Link="Linked\MapQuestSidebarMath.cs" />
     <Compile Include="..\..\src\Morgott.UI\WorldHud\EnemyHudMath.cs" Link="Linked\EnemyHudMath.cs" />
     <Compile Include="..\..\src\Morgott.UI\WorldHud\PlayHudMath.cs" Link="Linked\PlayHudMath.cs" />
     <Compile Include="..\..\src\Morgott.UI\WorldHud\ShipHudRules.cs" Link="Linked\ShipHudRules.cs" />

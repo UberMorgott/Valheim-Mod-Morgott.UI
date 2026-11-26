@@ -11,7 +11,7 @@
     <AssemblyName>Morgott.UI</AssemblyName>
     <RootNamespace>Morgott.UI</RootNamespace>
     <!-- Keep in sync with Plugin.Version. -->
-    <Version>0.51.3</Version>
+    <Version>0.52.0</Version>
     <!-- Plugin internals are not public API (the public contract is Morgott.Core). -->
     <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
@@ -40,6 +40,8 @@
     <EmbeddedResource Include="Assets\ChangelogRune.png" LogicalName="Morgott.UI.ChangelogRune.png" />
     <!-- Portal style icons, Core PortalStyle ids 1..32 (tools\portalatlas packs Assets\PortalIcons\NN_name.png). -->
     <EmbeddedResource Include="Assets\PortalIcons.png" LogicalName="Morgott.UI.PortalIcons.png" />
+    <!-- Custom colored 25-icon map pin sheet (5x5 of 128x128 white-on-alpha), loaded by MapScreen\CustomPinIcons. -->
+    <EmbeddedResource Include="Assets\MapPinIcons.png" LogicalName="Morgott.UI.MapPinIcons.png" />
     <!-- Seasonal minimap ring overlays (spring/summer/fall/winter wreaths + blizzard frost rim). -->
     <EmbeddedResource Include="Assets\Seasons\minimap_spring.png" LogicalName="Morgott.UI.Seasons.minimap_spring.png" />
     <EmbeddedResource Include="Assets\Seasons\minimap_summer.png" LogicalName="Morgott.UI.Seasons.minimap_summer.png" />

@@ -239,7 +239,7 @@ namespace Morgott.UI.MapScreen
         // Pencil on a row (and the entry row): open for that portal, unless the ward rule denies it.
         private void OpenPortalEditor(ZDOID id)
         {
-            var travel = PortalPickerService.Travel();
+            var travel = PortalPickerService.AnyTravel();
             if (travel == null || id == ZDOID.None) return;
             if (!travel.CanEdit(id, out var denied))
             {
@@ -276,7 +276,7 @@ namespace Morgott.UI.MapScreen
 
         private void EdSave()
         {
-            var travel = PortalPickerService.Travel();
+            var travel = PortalPickerService.AnyTravel();
             if (travel == null || _edId == ZDOID.None) return;
             var token = ++_edToken;
             string failure = null;

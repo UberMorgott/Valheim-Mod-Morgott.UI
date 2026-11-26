@@ -87,6 +87,7 @@ namespace Morgott.UI.Tests
                 MapConfig.BindEpicLoot();
                 MapConfig.ModFilter(MapConfig.BountiesKey).Value = false;
                 MapConfig.ModFilter("CustomModFilter").Value = false;
+                MapConfig.HiddenCustomPins.Value = "ore,cave";
                 MapConfig.BiomeOverlay.Value = false;
                 cfg.Save();
 
@@ -96,6 +97,7 @@ namespace Morgott.UI.Tests
                 Assert.False(MapConfig.Shown(MapFilterMath.Rows.Single(r => r.Key == "Hammer")));
                 Assert.False(MapConfig.Shown(MapFilterMath.Rows.Single(r => r.Key == "Portal")));
                 Assert.True(MapConfig.Shown(MapFilterMath.Rows.Single(r => r.Key == "Fire")));
+                Assert.Equal("ore,cave", MapConfig.HiddenCustomPins.Value);
                 MapConfig.BindEpicLoot();
                 Assert.False(MapConfig.ModFilter(MapConfig.BountiesKey).Value);
                 Assert.True(MapConfig.ModFilter(MapConfig.TreasureMapsKey).Value);
@@ -441,6 +443,46 @@ namespace Morgott.UI.Tests
             Assert.Equal(0, MapFilterMath.ClampScroll(-3, 16, 5));
             Assert.Equal(11, MapFilterMath.ClampScroll(40, 16, 5));
             Assert.Equal(0, MapFilterMath.ClampScroll(4, 3, 5)); // everything fits: no scroll
+        }
+
+        [Fact]
+        public void CustomPinsGridNeverOverflowsLegendAt720p150GuiWithAll25Icons()
+        {
+            // 1280x720 @ 150% GUI (legend height 642px), 25 icons (5 rows), 4 players, layers(227) + zoom/label(74) + gap(6) = 307px without Public toggle, 343px with Public toggle(36).
+            const float legendH = 642f, pad = 16f, sectionH = 45f, playerRow = 36f, minPinsH = 28f;
+
+            foreach (var toggles in new[] { 36f, 0f })
+            {
+                var fixedBelowWithoutPlayers = 74f + toggles + 227f + 6f;
+                var tight = MapFilterMath.ComputeCustomSectionLayout(
+                    legendH, pad, sectionH, fixedBelowWithoutPlayers, playerCount: 4, maxPlayersShown: 4, playerRow, minPinsH,
+                    iconCount: 25, expanded: true, cols: 5, maxCell: 36f, minCell: 28f, gap: 6f);
+
+                Assert.Equal(5, tight.TotalRows);
+                Assert.True(tight.VisibleRows >= 1 && tight.VisibleRows < 5, $"toggles={toggles}: VisibleRows={tight.VisibleRows}");
+                Assert.True(tight.Scrolling, $"toggles={toggles}: expected Scrolling=true");
+                Assert.True(tight.PlayersShown >= 1, $"toggles={toggles}: PlayersShown={tight.PlayersShown}");
+                var playersH = sectionH + tight.PlayersShown * playerRow + 6f;
+                var total = pad + sectionH + tight.PinsAvailHeight + tight.SectionHeight + playersH + fixedBelowWithoutPlayers;
+                Assert.True(total <= legendH + 0.5f, $"toggles={toggles}: overflow {total} > {legendH}");
+            }
+
+            // 1920x1080 @ 100% GUI (~960px legend height), 4 players, Public toggle on: all 5 rows (25 icons) + all 4 players fit without scrolling.
+            var tall = MapFilterMath.ComputeCustomSectionLayout(
+                960f, pad, sectionH, 74f + 36f + 227f + 6f, playerCount: 4, maxPlayersShown: 4, playerRow, minPinsH,
+                iconCount: 25, expanded: true, cols: 5, maxCell: 36f, minCell: 28f, gap: 6f);
+            Assert.Equal(5, tall.VisibleRows);
+            Assert.Equal(4, tall.PlayersShown);
+            Assert.False(tall.Scrolling);
+            Assert.True(pad + sectionH + tall.PinsAvailHeight + tall.SectionHeight + (sectionH + 4f * playerRow + 6f) + (74f + 36f + 227f + 6f) <= 960f + 0.5f);
+
+            // Collapsed keeps only header cost, 0 grid height.
+            var collapsed = MapFilterMath.ComputeCustomSectionLayout(
+                legendH, pad, sectionH, 74f + 36f + 227f + 6f, playerCount: 4, maxPlayersShown: 4, playerRow, minPinsH,
+                iconCount: 25, expanded: false, cols: 5, maxCell: 36f, minCell: 28f, gap: 6f);
+            Assert.Equal(0, collapsed.VisibleRows);
+            Assert.Equal(0f, collapsed.GridHeight);
+            Assert.False(collapsed.Scrolling);
         }
     }
 }

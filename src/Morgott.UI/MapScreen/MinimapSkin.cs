@@ -62,6 +62,7 @@ namespace Morgott.UI.MapScreen
                 BiomeOverlay.Attach(map);
                 OthersFog.Attach();
                 MapIcons.ApplyBoss(map);
+                SyncHiddenCustomIconsFromConfig();
                 ApplyFilters();
             }
             catch (Exception e) { Plugin.Log.LogError($"[Morgott.UI] map filters / biome overlay failed (vanilla filters stay): {e}"); }
@@ -184,7 +185,7 @@ namespace Morgott.UI.MapScreen
             }
             var largeOn = _large && _large.gameObject.activeInHierarchy;
             if (largeOn) LargeLateUpdate();
-            else if (_ppShown) PortalSession(false); // session closed with the map: picker off, vanilla key row back
+            else OnLargeMapClosed();
             HideHudCluster(largeOn);
         }
 
@@ -433,16 +434,24 @@ namespace Morgott.UI.MapScreen
             map.m_icons[i] = entry;
         }
 
-        // Pin markers re-placed (Minimap.cs:1601-1655): the small-map cull runs on the next LateUpdate.
+        // Pin markers re-placed (Minimap.cs:1601-1655): apply custom pin visuals synchronously + bump version for cull/legend.
         [HarmonyPatch(typeof(Minimap), nameof(Minimap.UpdatePins))]
         [HarmonyPostfix]
-        private static void UpdatePins_Postfix() => MinimapSkin.PinsVersion++;
+        private static void UpdatePins_Postfix(Minimap __instance)
+        {
+            MinimapSkin.PinsVersion++;
+            MinimapSkin.Instance?.ApplyCustomPinVisuals(__instance);
+        }
 
         [HarmonyPatch(typeof(Minimap), nameof(Minimap.SetMapMode))]
         [HarmonyPostfix]
         private static void SetMapMode_Postfix(Minimap.MapMode mode)
         {
-            if (mode != Minimap.MapMode.Large) return;
+            if (mode != Minimap.MapMode.Large)
+            {
+                MinimapSkin.Instance?.OnLargeMapClosed();
+                return;
+            }
             MinimapSkin.Instance?.ApplyFilters();
             MinimapSkin.Instance?.MarkLargeDirty();
         }

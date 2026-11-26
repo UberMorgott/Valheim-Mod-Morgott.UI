@@ -19,6 +19,7 @@ namespace Morgott.UI.MapScreen
         public static ConfigEntry<bool> OthersLayer { get; private set; }
         public static ConfigEntry<bool> PortalPicker { get; private set; }
         public static ConfigEntry<bool> PortalArchIcons { get; private set; }
+        public static ConfigEntry<string> HiddenCustomPins { get; private set; }
         public static readonly Dictionary<string, ConfigEntry<bool>> Filters = new Dictionary<string, ConfigEntry<bool>>(System.StringComparer.Ordinal);
         public static readonly Dictionary<string, ConfigEntry<bool>> ModFilters = new Dictionary<string, ConfigEntry<bool>>(System.StringComparer.Ordinal);
         private static ConfigFile _config;
@@ -45,6 +46,8 @@ namespace Morgott.UI.MapScreen
             foreach (var row in MapFilterMath.Rows)
                 Filters[row.Key] = config.Bind(FilterSection, row.Key, true,
                     $"Large map: show {row.Key} pins (the checkbox of that row in the map's filter list).");
+            HiddenCustomPins = config.Bind(FilterSection, "HiddenCustomPins", "",
+                "Large map: comma-separated custom pin icon IDs currently hidden in the Custom Pins filter grid.");
         }
 
         public static void BindEpicLoot()
