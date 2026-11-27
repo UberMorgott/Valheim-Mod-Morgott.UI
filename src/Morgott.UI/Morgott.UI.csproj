@@ -142,6 +142,8 @@
     </Reference>
     <Reference Include="Unity.TextMeshPro">
       <HintPath>$(ManagedDir)\Unity.TextMeshPro.dll</HintPath>
+      <!-- Theme\EllipsisLookup sets the protected TMP_Text.m_Ellipsis. -->
+      <Publicize>true</Publicize>
       <Private>false</Private>
     </Reference>
     <!-- GlyphMetrics / GlyphRect for the runtime TMP sprite asset (DamageIcons). -->
