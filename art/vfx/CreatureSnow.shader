@@ -206,8 +206,10 @@ Shader "Morgott/CreatureSnow"
             ENDCG
         }
 
-        // Real 3D puffed snow cap on upward surfaces, smoothly tucked -1.2 cm inside the mesh on sides/underside
-        // so Pass 0's surface snow transitions seamlessly into a volumetric silhouette without any frag clip() seams.
+        // Real 3D puffed snow cap on upward surfaces, smoothly tucked inside the mesh on sides/underside
+        // so surface snow transitions seamlessly into a volumetric silhouette without any frag clip() seams.
+        // Driven by global floats (_MorgottCapHeight, _MorgottCapWorldNoise) for both 2.2 cm character caps
+        // and world-continuous roof snow blankets up to 18 cm across adjacent roof blocks.
         Pass
         {
             Name "CreatureSnowCap"
@@ -232,6 +234,8 @@ Shader "Morgott/CreatureSnow"
             #include "UnityCG.cginc"
 
             float _MorgottCreatureSnow;
+            float _MorgottCapHeight;
+            float _MorgottCapWorldNoise;
 
             struct appdata
             {
@@ -336,8 +340,9 @@ Shader "Morgott/CreatureSnow"
             v2f vert(appdata v)
             {
                 v2f o;
+                bool worldMode = _MorgottCapWorldNoise > 0.5;
                 float snow = saturate(_MorgottCreatureSnow);
-                float capAmt = smoothstep(0.30, 1.0, snow);
+                float capAmt = worldMode ? smoothstep(0.08, 1.0, snow) : smoothstep(0.30, 1.0, snow);
                 if (capAmt <= 0.001)
                 {
                     o.pos = float4(0.0, 0.0, 0.0, 0.0);
@@ -351,10 +356,13 @@ Shader "Morgott/CreatureSnow"
                 float3 wn = SafeNormalize(mul(v.normal, (float3x3)unity_WorldToObject), float3(0.0, 1.0, 0.0));
                 float3 localPos = WorldToMetricLocal(wp);
 
-                float vertNoise = saturate((NoiseGrad3(localPos * 6.5).x - 0.20) / 0.60);
-                float upMask = smoothstep(0.50, 0.85, wn.y);
-                float maxPuff = capAmt * 0.022 * (0.72 + 0.28 * vertNoise);
-                float disp = lerp(-0.012, maxPuff, upMask);
+                float3 driftPos = worldMode ? (wp * 0.65) : (localPos * 6.5);
+                float vertNoise = saturate((NoiseGrad3(driftPos).x - 0.20) / 0.60);
+                float upMask = worldMode ? smoothstep(0.45, 0.72, wn.y) : smoothstep(0.50, 0.85, wn.y);
+                float capHeight = (_MorgottCapHeight > 0.0001) ? _MorgottCapHeight : 0.022;
+                float tuck = worldMode ? -0.025 : -0.012;
+                float maxPuff = capAmt * capHeight * (0.72 + 0.28 * vertNoise);
+                float disp = lerp(tuck, maxPuff, upMask);
                 float3 puffDir = SafeNormalize(lerp(wn, float3(0.0, 1.0, 0.0), 0.45), float3(0.0, 1.0, 0.0));
                 float3 dispDir = SafeNormalize(lerp(wn, puffDir, upMask), wn);
                 wp += dispDir * disp;
@@ -362,7 +370,7 @@ Shader "Morgott/CreatureSnow"
                 o.pos = mul(UNITY_MATRIX_VP, float4(wp, 1.0));
                 o.wn = wn;
                 o.uv = v.texcoord.xy;
-                o.localPos = localPos;
+                o.localPos = worldMode ? wp : localPos;
                 return o;
             }
 
@@ -382,13 +390,14 @@ Shader "Morgott/CreatureSnow"
                 out half4 em  : SV_Target3)
             {
                 float3 wn = SafeNormalize(i.wn, float3(0.0, 1.0, 0.0));
+                bool worldMode = _MorgottCapWorldNoise > 0.5;
 
                 float rawUvN = ValueNoise2(i.uv * 18.0) * 0.68 + ValueNoise2(i.uv * 6.0) * 0.32;
                 float nUV = saturate((rawUvN - 0.18) / 0.64);
                 float rawPosN = NoiseGrad3(i.localPos * 10.0).x * 0.68 + NoiseGrad3(i.localPos * 3.5).x * 0.32;
                 float nPos = saturate((rawPosN - 0.22) / 0.56);
                 float uvDensity = dot(fwidth(i.uv), float2(1.0, 1.0)) / max(length(fwidth(i.localPos)), 1e-5);
-                float n = lerp(nPos, nUV, smoothstep(0.05, 0.25, uvDensity));
+                float n = worldMode ? nPos : lerp(nPos, nUV, smoothstep(0.05, 0.25, uvDensity));
 
                 // Round normal upward into a soft snow cushion + metric powdery bump perturbation.
                 float3 baseNormal = SafeNormalize(lerp(wn, float3(0.0, 1.0, 0.0), 0.28), float3(0.0, 1.0, 0.0));
@@ -396,9 +405,13 @@ Shader "Morgott/CreatureSnow"
                 float4 ng1 = NoiseGrad3(bp);
                 float4 ng2 = NoiseGrad3(bp * 2.13 + 7.3);
                 float3 gradLocal = ng1.yzw * 0.65 + ng2.yzw * (0.35 * 2.13);
-                float3 ax, ay, az;
-                ObjectAxes(ax, ay, az);
-                float3 gradWS = gradLocal.x * ax + gradLocal.y * ay + gradLocal.z * az;
+                float3 gradWS = gradLocal;
+                if (!worldMode)
+                {
+                    float3 ax, ay, az;
+                    ObjectAxes(ax, ay, az);
+                    gradWS = gradLocal.x * ax + gradLocal.y * ay + gradLocal.z * az;
+                }
                 float3 gradTan = gradWS - baseNormal * dot(gradWS, baseNormal);
                 float3 puffedNormalWS = SafeNormalize(baseNormal - gradTan * 0.08, baseNormal);
 
