@@ -205,6 +205,216 @@ Shader "Morgott/CreatureSnow"
             }
             ENDCG
         }
+
+        // Real 3D puffed snow cap on upward surfaces, smoothly tucked -1.2 cm inside the mesh on sides/underside
+        // so Pass 0's surface snow transitions seamlessly into a volumetric silhouette without any frag clip() seams.
+        Pass
+        {
+            Name "CreatureSnowCap"
+            Tags { "LightMode" = "Deferred" }
+            Cull Back
+            ZWrite On
+            ZTest LEqual
+            Offset 0, 0
+            Stencil
+            {
+                Ref 192
+                WriteMask 192
+                Comp Always
+                Pass Replace
+            }
+
+            CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+            #pragma target 4.0
+            #pragma multi_compile ___ UNITY_HDR_ON
+            #include "UnityCG.cginc"
+
+            float _MorgottCreatureSnow;
+
+            struct appdata
+            {
+                float4 vertex   : POSITION;
+                float3 normal   : NORMAL;
+                float2 texcoord : TEXCOORD0;
+            };
+
+            struct v2f
+            {
+                float4 pos      : SV_POSITION;
+                float3 wn       : TEXCOORD0;
+                float2 uv       : TEXCOORD1;
+                float3 localPos : TEXCOORD2;
+            };
+
+            float3 SafeNormalize(float3 v, float3 fallback)
+            {
+                float d = dot(v, v);
+                return d > 1e-12 ? v * rsqrt(d) : fallback;
+            }
+
+            float Hash2(float2 p)
+            {
+                p = frac(p * float2(123.34, 456.21));
+                p += dot(p, p + 45.32);
+                return frac(p.x * p.y);
+            }
+
+            float ValueNoise2(float2 p)
+            {
+                float2 i = floor(p);
+                float2 f = frac(p);
+                f = f * f * (3.0 - 2.0 * f);
+                float a = Hash2(i);
+                float b = Hash2(i + float2(1.0, 0.0));
+                float c = Hash2(i + float2(0.0, 1.0));
+                float d = Hash2(i + float2(1.0, 1.0));
+                return lerp(lerp(a, b, f.x), lerp(c, d, f.x), f.y);
+            }
+
+            float Hash3(float3 p)
+            {
+                p = frac(p * float3(0.1031, 0.1030, 0.0973));
+                p += dot(p, p.yxz + 33.33);
+                return frac((p.x + p.y) * p.z);
+            }
+
+            // Trilinear value noise + analytic gradient in noise-cell units: (value, d/dx, d/dy, d/dz).
+            float4 NoiseGrad3(float3 x)
+            {
+                float3 i = floor(x);
+                float3 f = frac(x);
+                float3 u = f * f * (3.0 - 2.0 * f);
+                float3 du = 6.0 * f * (1.0 - f);
+
+                float a = Hash3(i + float3(0.0, 0.0, 0.0));
+                float b = Hash3(i + float3(1.0, 0.0, 0.0));
+                float c = Hash3(i + float3(0.0, 1.0, 0.0));
+                float d = Hash3(i + float3(1.0, 1.0, 0.0));
+                float e = Hash3(i + float3(0.0, 0.0, 1.0));
+                float f1 = Hash3(i + float3(1.0, 0.0, 1.0));
+                float g = Hash3(i + float3(0.0, 1.0, 1.0));
+                float h = Hash3(i + float3(1.0, 1.0, 1.0));
+
+                float k0 = a;
+                float k1 = b - a;
+                float k2 = c - a;
+                float k3 = e - a;
+                float k4 = a - b - c + d;
+                float k5 = a - c - e + g;
+                float k6 = a - b - e + f1;
+                float k7 = -a + b + c - d + e - f1 - g + h;
+
+                float val = k0 + k1 * u.x + k2 * u.y + k3 * u.z
+                          + k4 * u.x * u.y + k5 * u.y * u.z + k6 * u.z * u.x
+                          + k7 * u.x * u.y * u.z;
+                float3 grad = du * float3(
+                    k1 + k4 * u.y + k6 * u.z + k7 * u.y * u.z,
+                    k2 + k5 * u.z + k4 * u.x + k7 * u.z * u.x,
+                    k3 + k6 * u.x + k5 * u.y + k7 * u.x * u.y
+                );
+                return float4(val, grad);
+            }
+
+            void ObjectAxes(out float3 ax, out float3 ay, out float3 az)
+            {
+                ax = SafeNormalize(float3(unity_ObjectToWorld[0][0], unity_ObjectToWorld[1][0], unity_ObjectToWorld[2][0]), float3(1.0, 0.0, 0.0));
+                ay = SafeNormalize(float3(unity_ObjectToWorld[0][1], unity_ObjectToWorld[1][1], unity_ObjectToWorld[2][1]), float3(0.0, 1.0, 0.0));
+                az = SafeNormalize(float3(unity_ObjectToWorld[0][2], unity_ObjectToWorld[1][2], unity_ObjectToWorld[2][2]), float3(0.0, 0.0, 1.0));
+            }
+
+            float3 WorldToMetricLocal(float3 wp)
+            {
+                float3 objOrigin = float3(unity_ObjectToWorld[0][3], unity_ObjectToWorld[1][3], unity_ObjectToWorld[2][3]);
+                float3 rel = wp - objOrigin;
+                float3 ax, ay, az;
+                ObjectAxes(ax, ay, az);
+                return float3(dot(rel, ax), dot(rel, ay), dot(rel, az));
+            }
+
+            v2f vert(appdata v)
+            {
+                v2f o;
+                float snow = saturate(_MorgottCreatureSnow);
+                float capAmt = smoothstep(0.30, 1.0, snow);
+                if (capAmt <= 0.001)
+                {
+                    o.pos = float4(0.0, 0.0, 0.0, 0.0);
+                    o.wn = float3(0.0, 1.0, 0.0);
+                    o.uv = float2(0.0, 0.0);
+                    o.localPos = float3(0.0, 0.0, 0.0);
+                    return o;
+                }
+
+                float3 wp = mul(unity_ObjectToWorld, float4(v.vertex.xyz, 1.0)).xyz;
+                float3 wn = SafeNormalize(mul(v.normal, (float3x3)unity_WorldToObject), float3(0.0, 1.0, 0.0));
+                float3 localPos = WorldToMetricLocal(wp);
+
+                float vertNoise = saturate((NoiseGrad3(localPos * 6.5).x - 0.20) / 0.60);
+                float upMask = smoothstep(0.50, 0.85, wn.y);
+                float maxPuff = capAmt * 0.022 * (0.72 + 0.28 * vertNoise);
+                float disp = lerp(-0.012, maxPuff, upMask);
+                float3 puffDir = SafeNormalize(lerp(wn, float3(0.0, 1.0, 0.0), 0.45), float3(0.0, 1.0, 0.0));
+                float3 dispDir = SafeNormalize(lerp(wn, puffDir, upMask), wn);
+                wp += dispDir * disp;
+
+                o.pos = mul(UNITY_MATRIX_VP, float4(wp, 1.0));
+                o.wn = wn;
+                o.uv = v.texcoord.xy;
+                o.localPos = localPos;
+                return o;
+            }
+
+            float3 EvalTrilightAmbient(float3 wn)
+            {
+                float3 sky = unity_AmbientSky.rgb;
+                float3 eq  = unity_AmbientEquator.rgb;
+                float3 gnd = unity_AmbientGround.rgb;
+                return wn.y >= 0.0 ? lerp(eq, sky, saturate(wn.y)) : lerp(eq, gnd, saturate(-wn.y));
+            }
+
+            void frag(
+                v2f i,
+                out half4 gb0 : SV_Target0,
+                out half4 gb1 : SV_Target1,
+                out half4 gb2 : SV_Target2,
+                out half4 em  : SV_Target3)
+            {
+                float3 wn = SafeNormalize(i.wn, float3(0.0, 1.0, 0.0));
+
+                float rawUvN = ValueNoise2(i.uv * 18.0) * 0.68 + ValueNoise2(i.uv * 6.0) * 0.32;
+                float nUV = saturate((rawUvN - 0.18) / 0.64);
+                float rawPosN = NoiseGrad3(i.localPos * 10.0).x * 0.68 + NoiseGrad3(i.localPos * 3.5).x * 0.32;
+                float nPos = saturate((rawPosN - 0.22) / 0.56);
+                float uvDensity = dot(fwidth(i.uv), float2(1.0, 1.0)) / max(length(fwidth(i.localPos)), 1e-5);
+                float n = lerp(nPos, nUV, smoothstep(0.05, 0.25, uvDensity));
+
+                // Round normal upward into a soft snow cushion + metric powdery bump perturbation.
+                float3 baseNormal = SafeNormalize(lerp(wn, float3(0.0, 1.0, 0.0), 0.28), float3(0.0, 1.0, 0.0));
+                float3 bp = i.localPos * 9.0;
+                float4 ng1 = NoiseGrad3(bp);
+                float4 ng2 = NoiseGrad3(bp * 2.13 + 7.3);
+                float3 gradLocal = ng1.yzw * 0.65 + ng2.yzw * (0.35 * 2.13);
+                float3 ax, ay, az;
+                ObjectAxes(ax, ay, az);
+                float3 gradWS = gradLocal.x * ax + gradLocal.y * ay + gradLocal.z * az;
+                float3 gradTan = gradWS - baseNormal * dot(gradWS, baseNormal);
+                float3 puffedNormalWS = SafeNormalize(baseNormal - gradTan * 0.08, baseNormal);
+
+                float3 snowAlbedo = float3(0.76, 0.81, 0.88) * (0.94 + 0.06 * n);
+                float3 emCol = EvalTrilightAmbient(puffedNormalWS) * snowAlbedo * 0.90;
+                #ifndef UNITY_HDR_ON
+                    emCol = exp2(-emCol);
+                #endif
+
+                gb0 = half4(snowAlbedo, 1.0);
+                gb1 = half4(0.04, 0.045, 0.055, 0.24);
+                gb2 = half4(puffedNormalWS * 0.5 + 0.5, 1.0);
+                em  = half4(emCol, 1.0);
+            }
+            ENDCG
+        }
     }
     FallBack Off
 }
