@@ -58,6 +58,7 @@ namespace Morgott.UI.Api
                 Restyler.RestyleRoot(pair.Key, pair.Value());
             }
             foreach (var d in dead) Roots.Remove(d);
+            ModScreens.ForeignUi.AfterAll();
         }
 
         // Nearest registered ancestor (or self).

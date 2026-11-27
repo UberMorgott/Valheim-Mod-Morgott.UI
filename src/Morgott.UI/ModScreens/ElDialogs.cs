@@ -77,7 +77,7 @@ namespace Morgott.UI.ModScreens
             }
         }
 
-        private static Geo _icon, _name;
+        private static Geo _icon, _name, _scroll;
 
         // InventoryGui.Awake prefix: the serialized prefab geometry, before any postfix (CraftingSkin) moves them.
         internal static void Snapshot(InventoryGui gui)
@@ -85,6 +85,7 @@ namespace Morgott.UI.ModScreens
             if (!gui) return;
             if (gui.m_recipeIcon) _icon = Geo.Of(gui.m_recipeIcon.rectTransform);
             if (gui.m_recipeName) _name = Geo.Of(gui.m_recipeName.rectTransform);
+            if (gui.m_recipeListScroll) _scroll = Geo.Of((RectTransform)gui.m_recipeListScroll.transform);
         }
 
         // Patched once from InventoryGui.Awake (Epic Loot is loaded by then).
@@ -92,18 +93,25 @@ namespace Morgott.UI.ModScreens
         {
             if (_patched || Harmony == null) return;
             _patched = true;
-            var post = new HarmonyMethod(typeof(ElDialogs), nameof(Created_Postfix));
+            var createPost = new HarmonyMethod(typeof(ElDialogs), nameof(Created_Postfix));
+            var showPost = new HarmonyMethod(typeof(ElDialogs), nameof(Show_Postfix));
             // No Epic Loot (or one without these builders): nothing clones the variant dialog.
             var helper = Morgott.Core.TypeLookup.ByFullName(AugmentHelper);
-            if (helper != null) Patch(helper, "CreateAugmentChoiceDialog", post);
+            if (helper != null) Patch(helper, "CreateAugmentChoiceDialog", createPost, requireReturn: true);
+            var augment = Morgott.Core.TypeLookup.ByFullName(AugmentDialog);
+            if (augment != null) Patch(augment, "Show", showPost, requireReturn: false);
             var success = Morgott.Core.TypeLookup.ByFullName(SuccessDialog);
-            if (success != null) Patch(success, "Create", post);
+            if (success != null)
+            {
+                Patch(success, "Create", createPost, requireReturn: true);
+                Patch(success, "Show", showPost, requireReturn: false);
+            }
         }
 
-        private static void Patch(Type type, string method, HarmonyMethod post)
+        private static void Patch(Type type, string method, HarmonyMethod post, bool requireReturn)
         {
             var m = AccessTools.DeclaredMethod(type, method);
-            if (m == null || m.ReturnType == typeof(void))
+            if (m == null || (requireReturn && m.ReturnType == typeof(void)))
             {
                 Plugin.Log.LogWarning($"[Morgott.UI] {type.FullName}.{method} not found: Epic Loot dialogs keep the crafting geometry of their cloned parts");
                 return;
@@ -118,6 +126,12 @@ namespace Morgott.UI.ModScreens
             catch (Exception e) { Plugin.Log.LogError($"[Morgott.UI] Epic Loot dialog fix failed (its cloned parts keep the crafting layout): {e}"); }
         }
 
+        private static void Show_Postfix(object __instance)
+        {
+            try { OnShow(__instance as Component); }
+            catch (Exception e) { Plugin.Log.LogError($"[Morgott.UI] Epic Loot dialog show restyle failed: {e}"); }
+        }
+
         private static void Fix(Component dialog)
         {
             if (!dialog) return;
@@ -127,7 +141,59 @@ namespace Morgott.UI.ModScreens
             if (Field(type, "Icon")?.GetValue(dialog) is Image icon) _icon.To(icon.rectTransform);
             if (Field(type, "MagicBG")?.GetValue(dialog) is Image bg) _icon.To(bg.rectTransform);
             if (Field(type, "NameText")?.GetValue(dialog) is TMP_Text name) _name.To(name.rectTransform);
+            var frame = FrameOf(dialog);
+            if (frame && Column(frame) is RectTransform scroll && scroll.TryGetComponent<ScrollRect>(out var sr) &&
+                sr.verticalScrollbar && sr.verticalScrollbar.transform is RectTransform br)
+            {
+                _scroll.To(br);
+                PinScrollbar(scroll, br);
+            }
+            ResetScroll(dialog);
             Modal(dialog.transform);
+        }
+
+        // Synchronous restyle + layout in the exact Show frame so async MP RPC opens and late-frame Show calls never
+        // flash raw 380px Jotunn UI.
+        private static void OnShow(Component dialog)
+        {
+            if (!dialog) return;
+            if (ElDialogMath.IsStaleRootMark(dialog.TryGetComponent<RootMark>(out var mark), ScreenRegistry.IsRoot(dialog.transform)))
+                UnityEngine.Object.DestroyImmediate(mark);
+            Modal(dialog.transform);
+            var family = ForeignUi.RestyleNow(dialog.transform);
+            if (family == null)
+            {
+                var root = ScreenRegistry.RootOf(dialog.transform);
+                if (root) ScreenRegistry.Restyle(root);
+            }
+            if (family != OwnershipRegistry.EpicLootEnchanting && family != OwnershipRegistry.EpicLootBoard)
+                Apply(dialog);
+            ResetScroll(dialog);
+        }
+
+        private static RectTransform FrameOf(Component dialog)
+        {
+            if (!dialog) return null;
+            return Field(dialog.GetType(), "Frame")?.GetValue(dialog) as RectTransform
+                ?? dialog.transform.Find("Frame") as RectTransform;
+        }
+
+        private static void ResetScroll(Component dialog)
+        {
+            if (!dialog) return;
+            var t = dialog.GetType();
+            if (Field(t, "Description")?.GetValue(dialog) is TMP_Text desc && desc)
+            {
+                var rt = desc.rectTransform;
+                if (Mathf.Abs(rt.anchoredPosition.y) > 0.01f)
+                    rt.anchoredPosition = new Vector2(rt.anchoredPosition.x, 0f);
+            }
+            var frame = FrameOf(dialog);
+            if (frame && Column(frame) is RectTransform scroll && scroll.TryGetComponent<ScrollRect>(out var sr))
+            {
+                if (sr.verticalScrollbar && sr.verticalScrollbar.transform is RectTransform br) PinScrollbar(scroll, br);
+                sr.verticalNormalizedPosition = 1f;
+            }
         }
 
         // The clone keeps the variant dialog's UIGroupHandler at the template's priority. A full-screen page lifts its own
@@ -205,13 +271,18 @@ namespace Morgott.UI.ModScreens
             {
                 var d = Behaviours[i];
                 if (!d || !IsDialog(d.GetType())) continue;
-                var t = d.GetType();
-                if (t.FullName == AugmentDialog && Field(t, "EffectChoiceButtons")?.GetValue(d) is List<Button> buttons)
-                    Choices(d.transform, buttons);
-                else if (t.FullName == SuccessDialog && Field(t, "Frame")?.GetValue(d) is RectTransform frame && Field(t, "Description")?.GetValue(d) is TMP_Text desc)
-                    Success(d.transform, frame, desc);
+                Apply(d);
             }
             Behaviours.Clear();
+        }
+
+        private static void Apply(Component d)
+        {
+            var t = d.GetType();
+            if (t.FullName == AugmentDialog && Field(t, "EffectChoiceButtons")?.GetValue(d) is List<Button> buttons)
+                Choices(d.transform, buttons);
+            else if (t.FullName == SuccessDialog && Field(t, "Frame")?.GetValue(d) is RectTransform frame && Field(t, "Description")?.GetValue(d) is TMP_Text desc)
+                Success(d.transform, frame, desc);
         }
 
         // Craft result: the frame widens so the item tooltip's widest line shows on one line (Epic Loot's description
@@ -230,27 +301,48 @@ namespace Morgott.UI.ModScreens
             var right = Mathf.Max(0f, fr.xMax - d.xMax) + desc.margin.z;
             var w = Widen(frame, dialog, widest, left, right);
             FitColumn(frame, desc);
+            LayoutRebuilder.ForceRebuildLayoutImmediate(desc.rectTransform);
             if (Logged.Add(dialog.GetInstanceID()))
                 Plugin.Log.LogInfo($"[Morgott.UI] el dialog {dialog.name}: widest description line {widest.ToString("0.#", CultureInfo.InvariantCulture)}, insets {left.ToString("0.#", CultureInfo.InvariantCulture)}/{right.ToString("0.#", CultureInfo.InvariantCulture)} -> frame {w.ToString("0.#", CultureInfo.InvariantCulture)} (scale {frame.lossyScale.x.ToString("0.###", CultureInfo.InvariantCulture)})");
         }
 
-        // The description ends at its viewport's right edge, left of the scroll bar: the clone keeps the recipe
-        // description's sizeDelta on Epic Loot's stretch anchors (ConvertToScrollingDescription), so it ran past the
-        // viewport and the right-aligned stat values (TooltipSheet.RightCell) were cut (run 20261113-200608, "6 (2").
+        // Right-pin the cloned description scrollbar cleanly inside ScrollView (CraftingSkin relocates m_recipeListScroll
+        // via Geo.Place, so Epic Loot's Instantiate of it landed inward over right-aligned description text).
+        private static void PinScrollbar(RectTransform scroll, RectTransform bar)
+        {
+            if (!scroll || !bar || bar.parent != scroll) return;
+            var pad = ElDialogMath.ScrollbarPad;
+            var w = ElDialogMath.ScrollbarWidth(ThemeTokens.GetFloat("size.craft.scrollbar", ElDialogMath.DefaultScrollbarWidth), scroll.rect.width);
+            var aMin = new Vector2(1f, 0f);
+            var aMax = Vector2.one;
+            var piv = new Vector2(1f, 0.5f);
+            var oMin = new Vector2(-pad - w, pad);
+            var oMax = new Vector2(-pad, -pad);
+            if (bar.anchorMin != aMin) bar.anchorMin = aMin;
+            if (bar.anchorMax != aMax) bar.anchorMax = aMax;
+            if (bar.pivot != piv) bar.pivot = piv;
+            if ((bar.offsetMin - oMin).sqrMagnitude > 0.01f) bar.offsetMin = oMin;
+            if ((bar.offsetMax - oMax).sqrMagnitude > 0.01f) bar.offsetMax = oMax;
+            if (bar.localScale != Vector3.one) bar.localScale = Vector3.one;
+            if (bar.localRotation != Quaternion.identity) bar.localRotation = Quaternion.identity;
+        }
+
+        // The description ends at its viewport's right edge, clear of the right-pinned scrollbar: the clone keeps the
+        // recipe description's sizeDelta on Epic Loot's stretch anchors (ConvertToScrollingDescription), so it ran past
+        // the viewport and right-aligned stat values were cut or overlapped by the scrollbar.
         private static void FitColumn(RectTransform frame, TMP_Text desc)
         {
             var rt = desc.rectTransform;
             if (!(rt.parent is RectTransform view)) return;
+            var scroll = Column(frame);
+            var bar = scroll && scroll.TryGetComponent<ScrollRect>(out var sr) ? sr.verticalScrollbar : null;
+            var barRt = bar ? bar.transform as RectTransform : null;
+            if (barRt) PinScrollbar(scroll, barRt);
             var span = RectIn(rt, view);
-            var right = view.rect.xMax;
-            var bar = Column(frame) is RectTransform col && col.TryGetComponent<ScrollRect>(out var sr) ? sr.verticalScrollbar : null;
-            if (bar && bar.transform is RectTransform br)
-            {
-                // AutoHide: the bar shows once the text outgrows the view, so its place is kept either way.
-                var b = RectIn(br, view);
-                if (b.xMin > span.xMin && b.xMin < right) right = b.xMin;
-            }
-            var w = (right - span.xMin) / Mathf.Max(Mathf.Abs(rt.localScale.x), 1e-6f);
+            // AutoHide: the bar shows once the text outgrows the view, so its place is kept either way.
+            var hasBar = barRt != null;
+            var barLeft = hasBar ? RectIn(barRt, view).xMin : 0f;
+            var w = ElDialogMath.DescriptionWidth(span.xMin, view.rect.xMax, barLeft, hasBar, rt.localScale.x);
             if (w > 1f && Mathf.Abs(rt.rect.width - w) > 0.5f) rt.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, w);
         }
 
@@ -260,24 +352,24 @@ namespace Morgott.UI.ModScreens
         // 760 frame at 1920x1080: right caps and value column cut by the screen edge with only the rect kept inside).
         private static float Widen(RectTransform frame, Transform dialog, float content, float left, float right)
         {
-            SafeX(frame, out var lo, out var hi);
-            Overhang(frame, dialog, out var overL, out var overR);
-            var w = ElDialogMath.FrameWidth(content, left, right, hi - lo - overL - overR);
+            SafeRect(frame, out var loX, out var hiX, out _, out _);
+            Overhang(frame, dialog, out var overL, out var overR, out _, out _);
+            var w = ElDialogMath.FrameWidth(content, left, right, hiX - loX - overL - overR);
             if (Mathf.Abs(frame.rect.width - w) > 0.5f) frame.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, w);
             var fr = frame.rect;
-            var dx = ElDialogMath.CentreOn(fr.xMin - overL, fr.xMax + overR, lo, hi);
+            var dx = ElDialogMath.CentreOn(fr.xMin - overL, fr.xMax + overR, loX, hiX);
             if (Mathf.Abs(dx) > 0.5f) frame.position += frame.TransformVector(new Vector3(dx, 0f, 0f));
             return w;
         }
 
         private static readonly List<Graphic> DecorGraphics = new List<Graphic>();
 
-        // How far the frame's panel stack is drawn beyond the frame rect's left / right side (frame units; 0 without one).
+        // How far the frame's panel stack is drawn beyond the frame rect's four sides (frame units; 0 without one).
         // The corner caps count too: they sit in the sibling RuneSkinPanelCaps, not under the stack (run 20261114-011832:
         // caps-only overhang ~27 units, the frame drawn 3-4 px past the right screen edge).
-        private static void Overhang(RectTransform frame, Transform dialog, out float left, out float right)
+        private static void Overhang(RectTransform frame, Transform dialog, out float left, out float right, out float bottom, out float top)
         {
-            left = right = 0f;
+            left = right = bottom = top = 0f;
             var decor = Decor(frame, dialog);
             if (!decor) return;
             var fr = frame.rect;
@@ -290,21 +382,25 @@ namespace Morgott.UI.ModScreens
                 var r = RectIn(g.rectTransform, frame);
                 left = Mathf.Max(left, fr.xMin - r.xMin);
                 right = Mathf.Max(right, r.xMax - fr.xMax);
+                bottom = Mathf.Max(bottom, fr.yMin - r.yMin);
+                top = Mathf.Max(top, r.yMax - fr.yMax);
             }
             DecorGraphics.Clear();
         }
 
-        // Screen.safeArea's left / right edge in the frame's local units, inset by ElDialogMath.ScreenMargin.
-        private static void SafeX(RectTransform frame, out float lo, out float hi)
+        // Screen.safeArea edges in the frame's local units, inset by ElDialogMath.ScreenMargin.
+        private static void SafeRect(RectTransform frame, out float loX, out float hiX, out float loY, out float hiY)
         {
             var canvas = frame.GetComponentInParent<Canvas>();
             var root = canvas ? canvas.rootCanvas : null;
             var cam = root && root.renderMode != RenderMode.ScreenSpaceOverlay ? root.worldCamera : null;
             var s = Screen.safeArea;
-            RectTransformUtility.ScreenPointToLocalPointInRectangle(frame, new Vector2(s.xMin, s.center.y), cam, out var a);
-            RectTransformUtility.ScreenPointToLocalPointInRectangle(frame, new Vector2(s.xMax, s.center.y), cam, out var b);
-            lo = Mathf.Min(a.x, b.x) + ElDialogMath.ScreenMargin;
-            hi = Mathf.Max(a.x, b.x) - ElDialogMath.ScreenMargin;
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(frame, new Vector2(s.xMin, s.yMin), cam, out var a);
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(frame, new Vector2(s.xMax, s.yMax), cam, out var b);
+            loX = Mathf.Min(a.x, b.x) + ElDialogMath.ScreenMargin;
+            hiX = Mathf.Max(a.x, b.x) - ElDialogMath.ScreenMargin;
+            loY = Mathf.Min(a.y, b.y) + ElDialogMath.ScreenMargin;
+            hiY = Mathf.Max(a.y, b.y) - ElDialogMath.ScreenMargin;
         }
 
         // Label inset from the button's top / bottom edge (frame units).
@@ -313,9 +409,9 @@ namespace Morgott.UI.ModScreens
         private static readonly List<RectTransform> Active = new List<RectTransform>(8);
         private static readonly Vector3[] Corners4 = new Vector3[4];
 
-        // The choice stack: the frame's inner width between its drawn side borders, above the bottom corner caps; each label fills its button (inset by the plate's 9-slice border), wraps, auto-sizes down to the
-        // readable floor, and its button grows when two lines at the floor still need more; the description view gives
-        // up the height the stack takes.
+        // The choice stack: fixed stable frame width (never jumps between rolls), choices across the inner width above
+        // the bottom corner caps; frame height grows within the safe area so the bottom cap band and item description
+        // fit cleanly, and a scrolling description snaps to whole lines with its scrollbar pinned right of the text.
         private static void Choices(Transform dialog, List<Button> buttons)
         {
             Active.Clear();
@@ -329,29 +425,58 @@ namespace Morgott.UI.ModScreens
             if (!frame || Active.Count == 0) return;
             var scroll = Column(frame);
             if (!scroll) return;
+            var desc = DescriptionOf(dialog);
             var floor = ThemeTokens.GetFloat("size.text.fit.min", 12f);
-            // The frame widens so the widest label shows on one line at the body size (user 2026-10-27 "надо их пошире
-            // сделать ... чтобы всё влезло": 380-unit frame, 245 px buttons at 720p); the description view stretches with
-            // it (Epic Loot anchors it 0..1), the choices take the new inner width below.
-            var need = ElDialogMath.ElWidth;
-            var body = BodySize(dialog);
-            foreach (var rt in Active) need = Mathf.Max(need, LabelWidth(rt, body));
+            var body = BodySize(desc);
+            SafeRect(frame, out var loX, out var hiX, out var loY, out var hiY);
+            Overhang(frame, dialog, out var overL, out var overR, out var overB, out var overT);
+            var stableW = ElDialogMath.StableFrameWidth(hiX - loX - overL - overR);
+            if (Mathf.Abs(frame.rect.width - stableW) > 0.5f) frame.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, stableW);
             SideInsets(frame, dialog, out var left, out var right, out var art);
-            Widen(frame, dialog, need, left, right);
-            SideInsets(frame, dialog, out left, out right, out art);
+            // Align ScrollView horizontally with the choice buttons inside the frame borders.
+            if (Mathf.Approximately(scroll.anchorMin.x, 0f) && Mathf.Approximately(scroll.anchorMax.x, 1f))
+            {
+                if (Mathf.Abs(scroll.offsetMin.x - left) > 0.5f) scroll.offsetMin = new Vector2(left, scroll.offsetMin.y);
+                if (Mathf.Abs(scroll.offsetMax.x + right) > 0.5f) scroll.offsetMax = new Vector2(-right, scroll.offsetMax.y);
+            }
+            if (desc) FitColumn(frame, desc);
+
             var fr = frame.rect;
             var col = RectIn(scroll, frame);
+            var scrollTop = Mathf.Max(0f, fr.yMax - col.yMax);
             // Above the caps the row runs between the frame art's drawn side borders (+ row pad): the whole inner width.
             var width = ElDialogMath.InnerWidth(fr.width, left, right);
-            var centre = fr.center.x + (left - right) * 0.5f;
-            if (Logged.Add(dialog.GetInstanceID()))
-                Plugin.Log.LogInfo($"[Morgott.UI] el dialog {dialog.name}: frame {fr.width.ToString("0.#", CultureInfo.InvariantCulture)}x{fr.height.ToString("0.#", CultureInfo.InvariantCulture)} scale {frame.lossyScale.x.ToString("0.###", CultureInfo.InvariantCulture)}, widest label {need.ToString("0.#", CultureInfo.InvariantCulture)} at body {body.ToString("0.#", CultureInfo.InvariantCulture)}, frame art {art}, description view {col.width.ToString("0.#", CultureInfo.InvariantCulture)} wide " +
-                    $"(anchors {scroll.anchorMin.ToString()}-{scroll.anchorMax.ToString()} sizeDelta {scroll.sizeDelta.ToString()}), side insets {left.ToString("0.#", CultureInfo.InvariantCulture)}/{right.ToString("0.#", CultureInfo.InvariantCulture)} -> choices {width.ToString("0.#", CultureInfo.InvariantCulture)}");
             var vpad = ChoiceVPad;
             var heights = new float[Active.Count];
             for (var i = 0; i < Active.Count; i++)
                 heights[i] = Label(Active[i], width, body, floor, vpad);
-            var stack = ElDialogMath.Stack(fr.height, fr.yMax - col.yMax, heights, CapBand(frame, dialog), ElDialogMath.ElGap, 80f);
+
+            var capBand = CapBand(frame, dialog);
+            var probe = ElDialogMath.Stack(fr.height, scrollTop, heights, capBand, ElDialogMath.ElGap, 80f);
+            var descNeed = 0f;
+            float lineFirst = 0f, linePitch = 0f;
+            if (desc && !string.IsNullOrEmpty(desc.text))
+            {
+                var toFrame = Mathf.Abs(desc.rectTransform.lossyScale.y) / Mathf.Max(Mathf.Abs(frame.lossyScale.y), 1e-6f);
+                var descW = desc.rectTransform.rect.width;
+                if (descW > 1f) descNeed = (desc.GetPreferredValues(desc.text, descW, 0f).y + 4f) * toFrame;
+                var first = desc.GetPreferredValues("A", 10000f, 0f).y - desc.margin.w;
+                var pitch = desc.GetPreferredValues("A\nA", 10000f, 0f).y - desc.margin.w - first;
+                lineFirst = first * toFrame;
+                linePitch = pitch * toFrame;
+            }
+            var targetH = ElDialogMath.FrameHeight(ElDialogMath.ElFrameHeight(Active.Count), scrollTop, probe.Top, descNeed, ElDialogMath.ElGap, 80f, hiY - loY - overB - overT);
+            if (Mathf.Abs(frame.rect.height - targetH) > 0.5f) frame.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, targetH);
+
+            fr = frame.rect;
+            var dx = ElDialogMath.CentreOn(fr.xMin - overL, fr.xMax + overR, loX, hiX);
+            var dy = ElDialogMath.CentreOn(fr.yMin - overB, fr.yMax + overT, loY, hiY);
+            if (Mathf.Abs(dx) > 0.5f || Mathf.Abs(dy) > 0.5f)
+                frame.position += frame.TransformVector(new Vector3(dx, dy, 0f));
+
+            var centre = fr.center.x + (left - right) * 0.5f;
+            var stack = ElDialogMath.Stack(fr.height, scrollTop, heights, capBand, ElDialogMath.ElGap, 80f);
+            var scrollH = ElDialogMath.SnapScrollHeight(stack.ScrollHeight, descNeed, lineFirst, linePitch, 80f);
             for (var i = 0; i < Active.Count; i++)
             {
                 var rt = Active[i];
@@ -362,8 +487,15 @@ namespace Morgott.UI.ModScreens
                 var p = new Vector3(centre + (rt.pivot.x - 0.5f) * width, fr.yMin + stack.Bottoms[i] + rt.pivot.y * h, rt.localPosition.z);
                 if ((rt.localPosition - p).sqrMagnitude > 0.01f) rt.localPosition = p;
             }
-            if (Mathf.Abs(scroll.rect.height - stack.ScrollHeight) > 0.5f)
-                scroll.SetInsetAndSizeFromParentEdge(RectTransform.Edge.Top, fr.yMax - col.yMax, stack.ScrollHeight);
+            if (Mathf.Abs(scroll.rect.height - scrollH) > 0.5f || Mathf.Abs(fr.yMax - RectIn(scroll, frame).yMax - scrollTop) > 0.5f)
+                scroll.SetInsetAndSizeFromParentEdge(RectTransform.Edge.Top, scrollTop, scrollH);
+            if (desc)
+            {
+                FitColumn(frame, desc);
+                LayoutRebuilder.ForceRebuildLayoutImmediate(desc.rectTransform);
+            }
+            if (Logged.Add(dialog.GetInstanceID()))
+                Plugin.Log.LogInfo($"[Morgott.UI] el dialog {dialog.name}: frame {fr.width.ToString("0.#", CultureInfo.InvariantCulture)}x{fr.height.ToString("0.#", CultureInfo.InvariantCulture)} scale {frame.lossyScale.x.ToString("0.###", CultureInfo.InvariantCulture)}, body {body.ToString("0.#", CultureInfo.InvariantCulture)}, frame art {art}, scroll {scrollH.ToString("0.#", CultureInfo.InvariantCulture)} (desc need {descNeed.ToString("0.#", CultureInfo.InvariantCulture)}), side insets {left.ToString("0.#", CultureInfo.InvariantCulture)}/{right.ToString("0.#", CultureInfo.InvariantCulture)} -> choices {width.ToString("0.#", CultureInfo.InvariantCulture)}");
             Active.Clear();
         }
 
@@ -402,6 +534,9 @@ namespace Morgott.UI.ModScreens
         {
             var label = button.GetComponentInChildren<TMP_Text>(true);
             if (!label) return ElDialogMath.ElHeight;
+            // Claim ownership before measuring margins: reverts PlateLabelFit / TextSizeGroup / TextInset so they never
+            // re-enable auto-size or overwrite label.margin on subsequent frames.
+            OwnFit.Claim(label);
             var hpad = LabelPad(button);
             var lr = label.rectTransform;
             if (lr.parent == button)
@@ -476,24 +611,18 @@ namespace Morgott.UI.ModScreens
             return (plate ? TextInset.SliceBorder(plate).x : 0f) + ThemeTokens.GetFloat("size.row.cap.pad", 6f);
         }
 
-        // Button width that shows the label on one line at the dialog's body size (the size Label draws it at).
-        private static float LabelWidth(RectTransform button, float body)
-        {
-            var label = button.GetComponentInChildren<TMP_Text>(true);
-            if (!label || string.IsNullOrEmpty(label.text)) return 0f;
-            return Unwrapped(label, body) + 2f * LabelPad(button) + label.margin.x + label.margin.z;
-        }
-
         private static Type _augType;
 
-        // The dialog's body text size: its description's (Epic Loot sets 18, ConvertToScrollingDescription), else 18.
-        private static float BodySize(Transform dialog)
+        private static TMP_Text DescriptionOf(Transform dialog)
         {
             _augType = _augType ?? Morgott.Core.TypeLookup.ByFullName(AugmentDialog);
             var d = dialog && _augType != null ? dialog.GetComponent(_augType) : null;
-            var desc = d ? Field(d.GetType(), "Description")?.GetValue(d) as TMP_Text : null;
-            return desc && desc.fontSize > 1f ? desc.fontSize : ElDialogMath.ElBodySize;
+            return d ? Field(d.GetType(), "Description")?.GetValue(d) as TMP_Text : null;
         }
+
+        // The dialog's body text size: its description's (Epic Loot sets 18, ConvertToScrollingDescription), else 18.
+        private static float BodySize(TMP_Text desc) =>
+            desc && desc.fontSize > 1f ? desc.fontSize : ElDialogMath.ElBodySize;
 
         // The label's one-line width at size (auto-size off for the measure only).
         private static float Unwrapped(TMP_Text label, float size)
@@ -522,8 +651,12 @@ namespace Morgott.UI.ModScreens
     public static class ElDialogsAdapter
     {
         // Harmony asks before patching this class (Plugin: one PatchAll(Assembly), batched by FastStartup). Needed while
-        // RuneSkin moves the cloned parts (Crafting) or marks the cloned dialog (InventoryExtras).
-        private static bool Prepare() => OwnershipRegistry.IsOwned(OwnershipRegistry.Crafting) || OwnershipRegistry.IsOwned(OwnershipRegistry.InventoryExtras);
+        // RuneSkin moves the cloned parts (Crafting), marks the cloned dialog (InventoryExtras), or styles Epic Loot UI.
+        private static bool Prepare() =>
+            OwnershipRegistry.IsOwned(OwnershipRegistry.Crafting) ||
+            OwnershipRegistry.IsOwned(OwnershipRegistry.InventoryExtras) ||
+            OwnershipRegistry.IsOwned(OwnershipRegistry.EpicLootEnchanting) ||
+            OwnershipRegistry.IsOwned(OwnershipRegistry.EpicLootBoard);
 
         [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.Awake))]
         [HarmonyPrefix]

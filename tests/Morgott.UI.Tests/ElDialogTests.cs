@@ -148,5 +148,59 @@ namespace Morgott.UI.Tests
         [InlineData(false, false, false)] // no mark
         public void ClonedRootMarkIsStale(bool hasMark, bool registered, bool stale) =>
             Assert.Equal(stale, ElDialogMath.IsStaleRootMark(hasMark, registered));
+
+        [Theory]
+        [InlineData(1872f, 760f)] // 1080p/1440p/720p desktop: pinned at stable cap, never jumps between rolls
+        [InlineData(620f, 620f)]  // narrower safe area: clamped cleanly
+        [InlineData(300f, 380f)]  // narrower than Epic Loot's 380: keeps minimum 380
+        public void AugmentDialogUsesFixedStableWidth(float room, float want)
+        {
+            var w = ElDialogMath.StableFrameWidth(room);
+            Assert.Equal(want, w, 3);
+            Assert.True(w >= ElDialogMath.ElFrameWidth);
+        }
+
+        [Theory]
+        [InlineData(3, 550f)]
+        [InlineData(4, 595f)]
+        [InlineData(5, 640f)]
+        [InlineData(1, 550f)]
+        public void ElFrameHeightMatchesEpicLootSteps(int choices, float want) =>
+            Assert.Equal(want, ElDialogMath.ElFrameHeight(choices), 3);
+
+        [Theory]
+        [InlineData(595f, 74f, 238f, 200f, 1000f, 617f)] // 4 choices + 58u cap band: grows +22u to keep 300u scroll area
+        [InlineData(595f, 74f, 238f, 420f, 1000f, 737f)] // tall legendary tooltip: grows so full description fits
+        [InlineData(595f, 74f, 238f, 900f, 850f, 850f)]  // huge tooltip: capped to safe area height
+        [InlineData(595f, 74f, 238f, 200f, 500f, 500f)]  // tight screen: capped to safe area while keeping > minScroll
+        [InlineData(595f, 74f, 238f, 200f, 300f, 397f)]  // extreme tiny screen: keeps minScroll (80) above stack
+        [InlineData(550f, 74f, 165f, 150f, 1000f, 550f)] // 3 choices without cap band: keeps Epic Loot's 550
+        public void FrameHeightGrowsForCapsAndDescriptionWithinSafeArea(float minH, float scrollTop, float stackTop, float descNeed, float maxH, float want) =>
+            Assert.Equal(want, ElDialogMath.FrameHeight(minH, scrollTop, stackTop, descNeed, Gap, 80f, maxH), 3);
+
+        [Theory]
+        [InlineData(300f, 220f, 24f, 22f, 300f)] // description fits: no snap needed
+        [InlineData(300f, 500f, 24f, 22f, 288f)] // description overflows: snaps to 13 whole lines (24 + 12*22 = 288)
+        [InlineData(288f, 500f, 24f, 22f, 288f)] // already on exact whole-line boundary
+        [InlineData(90f, 500f, 24f, 22f, 90f)]   // exact 4 lines (24 + 3*22 = 90)
+        [InlineData(85f, 500f, 24f, 22f, 85f)]   // snapped (68) would drop below minScroll (80): keeps raw
+        [InlineData(300f, 500f, 0f, 22f, 300f)]  // missing line metrics: no-op
+        public void ScrollHeightSnapsToWholeLinesOnlyWhenScrolling(float raw, float descNeed, float first, float pitch, float want) =>
+            Assert.Equal(want, ElDialogMath.SnapScrollHeight(raw, descNeed, first, pitch, 80f), 3);
+
+        [Theory]
+        [InlineData(14f, 732f, 14f)]
+        [InlineData(0f, 732f, 14f)]  // missing token falls back to default
+        [InlineData(14f, 50f, 10f)]  // narrow scroll view clamps scrollbar to 20%
+        public void ScrollbarWidthClampsCleanly(float token, float scrollW, float want) =>
+            Assert.Equal(want, ElDialogMath.ScrollbarWidth(token, scrollW), 3);
+
+        [Theory]
+        [InlineData(-362f, 366f, 350f, true, 1f, 708f)]  // ends 4u left of right-pinned scrollbar (350 - 4 - (-362))
+        [InlineData(-362f, 366f, 350f, false, 1f, 728f)] // no scrollbar: ends at viewport right edge
+        [InlineData(-362f, 366f, 350f, true, 2f, 354f)]  // scaled text transform: divides by localScale.x
+        [InlineData(-362f, 366f, -400f, true, 1f, 728f)] // degenerate bar left of text: falls back to viewport right
+        public void DescriptionWidthStaysClearOfScrollbar(float textLeft, float viewRight, float barLeft, bool hasBar, float scaleX, float want) =>
+            Assert.Equal(want, ElDialogMath.DescriptionWidth(textLeft, viewRight, barLeft, hasBar, scaleX), 3);
     }
 }

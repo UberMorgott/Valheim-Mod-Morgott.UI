@@ -199,6 +199,7 @@ namespace Morgott.UI.Restyle
 
         public void Revert()
         {
+            if (_reverted) return;
             _reverted = true;
             // Only the maximum is the group's write (auto-size / minimum belong to the label fit that reverts itself).
             if (_text && _has && _text.fontSizeMax < _origMax) _text.fontSizeMax = _origMax;

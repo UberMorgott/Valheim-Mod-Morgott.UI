@@ -333,6 +333,7 @@ namespace Morgott.UI.Restyle
         // already leaves). Theme fonts are wider than the vanilla faces the layouts were made for.
         private static void Fit(TMP_Text text, SkinMark mark, float inset)
         {
+            if (OwnFit.Owns(text)) return;
             var button = text.GetComponentInParent<Selectable>(true);
             if (!button) return;
             mark.HasFit = true;

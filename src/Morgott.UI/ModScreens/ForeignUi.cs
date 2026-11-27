@@ -44,7 +44,7 @@ namespace Morgott.UI.ModScreens
         // through here: destroyed keys leave whenever a table doubled since its last prune (perf audit B1; the old
         // instance-id set only cleared itself at 200000 entries).
         private static readonly HashSet<Graphic> Decided = new HashSet<Graphic>();
-        private static int _decidedPrune = 1024, _cachePrune = 1024, _unitsPrune = Bounded.MinPrune, _anchorsPrune = Bounded.MinPrune;
+        private static int _decidedPrune = 1024, _cachePrune = 1024, _unitsPrune = Bounded.MinPrune, _unitFamiliesPrune = Bounded.MinPrune, _anchorsPrune = Bounded.MinPrune;
         private static readonly Predicate<Transform> TransformDead = t => !t;
         private static readonly List<Transform> DeadTransforms = new List<Transform>();
         private static readonly Func<Transform, bool> TransformAlive = t => t;
@@ -54,6 +54,7 @@ namespace Morgott.UI.ModScreens
         private static readonly HashSet<Transform> Anchors = new HashSet<Transform>();
         private static readonly List<Transform> NewAnchors = new List<Transform>();
         private static readonly Dictionary<Transform, string> Units = new Dictionary<Transform, string>();
+        private static readonly Dictionary<Transform, string> UnitFamilies = new Dictionary<Transform, string>();
         private static readonly HashSet<Transform> Dirty = new HashSet<Transform>();
         private static readonly List<Transform> DirtyWork = new List<Transform>();
         private static readonly List<Transform> Chain = new List<Transform>(32);
@@ -148,6 +149,7 @@ namespace Morgott.UI.ModScreens
             // Units and Jotunn anchors of a previous world (logout / re-enter) and of rebuilt mod windows: destroyed ones
             // leave when the table doubled (run 20261022-194855: Units 36 -> 69, Anchors 64 -> 76 over 4 relogs).
             Bounded.PruneWhenDoubled(Units, TransformAlive, ref _unitsPrune, DeadTransforms);
+            Bounded.PruneWhenDoubled(UnitFamilies, TransformAlive, ref _unitFamiliesPrune, DeadTransforms);
             if (Anchors.Count >= _anchorsPrune)
             {
                 Anchors.RemoveWhere(TransformDead);
@@ -326,16 +328,56 @@ namespace Morgott.UI.ModScreens
             public void Apply(ScreenContext ctx, Transform root) => Roles(ctx, root, _family);
         }
 
+        // Synchronous restyle of the fallback unit owning `t` (ElDialogs Show_Postfix: avoids a 1-frame raw Jotunn flash
+        // on async MP RPC opens or late-frame Show calls). Returns the restyled unit's family, or null if none.
+        internal static string RestyleNow(Transform t)
+        {
+            if (!_on || !t) return null;
+            if (_refresh || _version != ScreenRegistry.Version)
+            {
+                RebuildBoundary();
+                Cache.Clear();
+                _version = ScreenRegistry.Version;
+                _refresh = false;
+            }
+            var unit = ScreenRegistry.RootOf(t);
+            if (unit && UnitFamilies.TryGetValue(unit, out var existing))
+            {
+                Restyle(unit, existing);
+                return existing;
+            }
+            Cache.Remove(t);
+            var e = Resolve(t);
+            if (!e.Unit) return null;
+            var family = e.V.Family ?? OwnershipRegistry.ModUi;
+            Restyle(e.Unit, family);
+            return family;
+        }
+
+        // Run ForeignRoles.After for every registered fallback unit (called by ScreenRegistry.RestyleAll on theme reload).
+        internal static void AfterAll()
+        {
+            if (!_on || UnitFamilies.Count == 0) return;
+            foreach (var pair in new List<KeyValuePair<Transform, string>>(UnitFamilies))
+            {
+                if (!pair.Key) continue;
+                try { ForeignRoles.After(pair.Key, pair.Value); }
+                catch (Exception ex) { Plugin.Log.LogError($"[Morgott.UI] fallback after-restyle of {pair.Key.name} failed: {ex}"); }
+            }
+        }
+
         private static void Restyle(Transform unit, string family)
         {
             if (Units.ContainsKey(unit))
             {
+                UnitFamilies[unit] = family;
                 ScreenRegistry.Restyle(unit);
                 ForeignRoles.After(unit, family);
                 return;
             }
             var id = $"{ScreenPrefix}.{family}.{Clean(unit.name)}";
             Units[unit] = id;
+            UnitFamilies[unit] = family;
             if (!unit.TryGetComponent<RootMark>(out var mark)) mark = unit.gameObject.AddComponent<RootMark>();
             mark.ScreenId = id;
             mark.Owner = "Morgott.UI.ModUi";
