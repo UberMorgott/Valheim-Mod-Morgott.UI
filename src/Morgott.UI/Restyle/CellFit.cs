@@ -53,13 +53,13 @@ namespace Morgott.UI.Restyle
         private Transform _cachedScope;
         private int _cachedScopeChildCount = -1;
         private int _themeRev = -1;
-        private long _lastStamp;
+        private long _lastIconStamp, _lastTextStamp;
         private bool _childrenDirty = true;
         private bool _dirty = true;
 
         public static void Ensure(Image cell, bool zones = false)
         {
-            if (!cell) return;
+            if (!cell || OwnFit.Owns(cell)) return;
             if (!cell.TryGetComponent<CellFit>(out var fit))
             {
                 fit = cell.gameObject.AddComponent<CellFit>();
@@ -130,7 +130,7 @@ namespace Morgott.UI.Restyle
             _childrenDirty = false;
         }
 
-        private long StateStamp(Rect cr)
+        private long IconStamp(Rect cr)
         {
             unchecked
             {
@@ -158,6 +158,17 @@ namespace Morgott.UI.Restyle
                     h = h * 31 + s.x.GetHashCode();
                     h = h * 31 + s.y.GetHashCode();
                 }
+                return h;
+            }
+        }
+
+        private long TextBarStamp(Rect cr)
+        {
+            unchecked
+            {
+                long h = 17;
+                h = h * 31 + cr.width.GetHashCode();
+                h = h * 31 + cr.height.GetHashCode();
                 for (var i = 0; i < _texts.Length; i++)
                 {
                     var t = _texts[i];
@@ -209,7 +220,7 @@ namespace Morgott.UI.Restyle
             if (_reverted) return;
             if (!_cell) _cell = GetComponent<Image>();
             if (!_cell || !_cell.enabled) return;
-            if (_zones && (_owned || (_owned = TryGetComponent<InventoryScreen.GridCellLook>(out _)))) return;
+            if (_owned || (_owned = OwnFit.Owns(this) || (_zones && TryGetComponent<InventoryScreen.GridCellLook>(out _)))) return;
             var space = _cell.rectTransform;
             var cr = space.rect;
             if (!LayoutMath.IsCellShape(cr.width, cr.height)) return;
@@ -224,28 +235,35 @@ namespace Morgott.UI.Restyle
                 _themeRev = ThemeTokens.Revision;
                 _dirty = true;
             }
-            var stamp = StateStamp(cr);
+            var iconStamp = IconStamp(cr);
+            var textStamp = _childrenDirty ? long.MinValue : TextBarStamp(cr);
             if (_childrenDirty)
             {
                 RefreshChildren(scope);
                 _dirty = true;
             }
-            else if (!_dirty && stamp == _lastStamp) return;
+            var iconDirty = _dirty || iconStamp != _lastIconStamp;
+            var textDirty = _dirty || textStamp != _lastTextStamp;
+            if (!iconDirty && !textDirty) return;
 
             if (_zones)
             {
                 var band = LayoutMath.ZoneBand(Mathf.Min(cr.width, cr.height), ThemeTokens.GetFloat("share.cell.zone", 0.17f), ThemeTokens.GetFloat("size.cell.zone.min", 9f));
-                ZoneIcon(space, cr, band);
-                ZoneTexts(space, cr, band);
-                ZoneBars(space, cr, band);
+                if (iconDirty) ZoneIcon(space, cr, band);
+                if (textDirty)
+                {
+                    ZoneTexts(space, cr, band);
+                    ZoneBars(space, cr, band);
+                }
             }
             else
             {
-                CentreIcon(space, cr);
-                KeepTexts(space, cr);
+                if (iconDirty) CentreIcon(space, cr);
+                if (textDirty) KeepTexts(space, cr);
             }
             _dirty = false;
-            _lastStamp = StateStamp(cr);
+            if (iconDirty) _lastIconStamp = IconStamp(cr);
+            if (textDirty) _lastTextStamp = TextBarStamp(cr);
         }
 
         // Main icon: largest drawn sprite image whose centre lies in the cell, 12-150 % of its area. Images drawn in

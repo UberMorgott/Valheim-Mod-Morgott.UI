@@ -19,6 +19,14 @@ namespace Morgott.UI.Restyle
             text.gameObject.AddComponent<OwnFit>().hideFlags = HideFlags.HideInInspector;
         }
 
-        public static bool Owns(TMP_Text text) => text && text.TryGetComponent<OwnFit>(out _);
+        public static void ClaimCell(Component cell)
+        {
+            if (!cell) return;
+            if (cell.TryGetComponent<CellFit>(out var fit)) fit.Revert();
+            if (cell.TryGetComponent<OwnFit>(out _)) return;
+            cell.gameObject.AddComponent<OwnFit>().hideFlags = HideFlags.HideInInspector;
+        }
+
+        public static bool Owns(Component component) => component && component.TryGetComponent<OwnFit>(out _);
     }
 }

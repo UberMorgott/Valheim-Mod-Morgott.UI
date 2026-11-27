@@ -604,5 +604,55 @@ namespace Morgott.UI.CraftingScreen
 
         // Crafts of a producer yielding `perCraft` each that cover `shortBy` missing units.
         public static int CraftsFor(int shortBy, int perCraft) => shortBy <= 0 ? 0 : (shortBy + Math.Max(1, perCraft) - 1) / Math.Max(1, perCraft);
+
+        // Requirement amount font size: keeps `baseSize` while `preferredWidth` fits `maxWidth`, otherwise scales down
+        // proportionally so long counters (e.g. "20000/100" from full drawers) stay inside their socket, floored at `minSize`.
+        public static float AmountFontSize(float baseSize, float preferredWidth, float maxWidth, float minSize)
+        {
+            if (baseSize <= 0f) return 0f;
+            var floor = Math.Min(baseSize, Math.Max(0f, minSize));
+            if (!(maxWidth > 0f) || !(preferredWidth > maxWidth)) return baseSize;
+            return Math.Max(floor, baseSize * (maxWidth / preferredWidth));
+        }
+
+        // Full-panel Apply() dirty key: stock epochs (chest/drawer Inventory.Changed) are excluded so background storage
+        // updates never re-apply the whole panel; reactive counts/colors update via RowDataDue, MaxAmount and SocketState.
+        public struct ApplyState
+        {
+            public int LayoutHash, WindowMoveRevision, RecipeId, ItemKey;
+            public int Max, Want, Flags, QueueKey, TabSelMask;
+            public int RowCount, FirstRowId, StationId, StationDetached;
+            public int LevelShown, LevelTextHash, ViewKey, PanelsMask;
+            public bool DescChanged;
+            public int LanguageHash, ThemeRevision;
+        }
+
+        public static int ApplyKey(in ApplyState s)
+        {
+            unchecked
+            {
+                var h = s.LayoutHash;
+                h = h * 31 + s.WindowMoveRevision;
+                h = h * 31 + s.RecipeId;
+                h = h * 31 + s.ItemKey;
+                h = h * 31 + s.Max;
+                h = h * 31 + s.Want;
+                h = h * 31 + s.Flags;
+                h = h * 31 + s.QueueKey;
+                h = h * 31 + s.TabSelMask;
+                h = h * 31 + s.RowCount;
+                h = h * 31 + s.FirstRowId;
+                h = h * 31 + s.StationId;
+                h = h * 31 + s.StationDetached;
+                h = h * 31 + s.LevelShown;
+                h = h * 31 + s.LevelTextHash;
+                h = h * 31 + s.ViewKey;
+                h = h * 31 + s.PanelsMask;
+                if (s.DescChanged) h ^= 0x5A5A5A5A;
+                h = h * 31 + s.LanguageHash;
+                h = h * 31 + s.ThemeRevision;
+                return h;
+            }
+        }
     }
 }

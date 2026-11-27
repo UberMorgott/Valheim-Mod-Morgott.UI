@@ -65,6 +65,7 @@ namespace Morgott.UI.CraftingScreen
         private readonly List<RectTransform> _subs = new List<RectTransform>(16);
         private readonly List<int> _reqActive = new List<int>(8);
         private readonly Dictionary<GameObject, CraftingMath.Stock> _cellShown = new Dictionary<GameObject, CraftingMath.Stock>();
+        private readonly Dictionary<GameObject, TMP_Text> _cellAmount = new Dictionary<GameObject, TMP_Text>();
 
         public static void Attach(InventoryGui gui)
         {
@@ -561,10 +562,11 @@ namespace Morgott.UI.CraftingScreen
 
         public void StockChanged() => _stockEpoch++;
 
-        public void Requirement(Transform cell, Piece.Requirement req, int quality, int multi)
+        public void Requirement(Transform cell, Piece.Requirement req, int quality, int multi, bool shown = true)
         {
             if (!IsRequirementCell(cell)) return; // Hud build pieces draw with it too (Hud.cs)
             _cellReq[cell.gameObject] = (req.m_resItem.m_itemData.m_shared.m_name, req.GetAmount(quality) * multi, multi, req.m_resItem.gameObject.name);
+            if (shown) SocketState(cell.gameObject);
         }
 
         // Prefab id of the requirement cell `go` is (or sits in); null outside the cells. Click (ReqCellClick) and the
@@ -752,6 +754,7 @@ namespace Morgott.UI.CraftingScreen
             }
             var browserUp = ItemBrowser.BrowserPanel.Up;
             var progress = _gui.m_craftProgressPanel && _gui.m_craftProgressPanel.gameObject.activeSelf;
+            if (!browserUp && AmountShown()) MaxAmount();
             var key = ApplyKey(hash, browserUp, progress);
             if (_applyDirty || key != _applyKey)
             {
@@ -775,45 +778,46 @@ namespace Morgott.UI.CraftingScreen
 
         private int ApplyKey(int hash, bool browserUp, bool progress)
         {
-            unchecked
+            var sel = _gui.m_selectedRecipe;
+            var rows = _gui.m_availableRecipes;
+            var station = Station();
+            var net = Network();
+            var level = _gui.m_craftingStationLevelRoot;
+            var rl = RecipeList();
+            var dr = _crafting.Find("Decription");
+            var desc = _gui.m_recipeDecription;
+            var queueKey = 0;
+            if (progress || _queue.Running)
+                unchecked { queueKey = (((_queue.Running ? 1 : 0) + (_gui.m_multiCrafting ? 2 : 0)) * 31 + _queue.Done) * 31 + _queue.Total * 13 + _gui.m_multiCraftAmount; }
+            var state = new CraftingMath.ApplyState
             {
-                var h = hash;
-                h = h * 31 + Restyle.WindowMove.Revision;
-                var sel = _gui.m_selectedRecipe;
-                h = h * 31 + (sel.Recipe ? sel.Recipe.GetInstanceID() : 0);
-                h = h * 31 + (sel.ItemData != null ? sel.ItemData.GetHashCode() ^ (sel.ItemData.m_quality * 17) : 0);
-                h = h * 31 + _stockEpoch;
-                h = h * 31 + _max;
-                h = h * 31 + _want;
-                h = h * 31 + (progress ? 1 : 0) + (browserUp ? 2 : 0) + (_gui.InCraftTab() ? 4 : 0) +
+                LayoutHash = hash,
+                WindowMoveRevision = Restyle.WindowMove.Revision,
+                RecipeId = sel.Recipe ? sel.Recipe.GetInstanceID() : 0,
+                ItemKey = sel.ItemData != null ? sel.ItemData.GetHashCode() ^ (sel.ItemData.m_quality * 17) : 0,
+                Max = _max,
+                Want = _want,
+                Flags = (progress ? 1 : 0) + (browserUp ? 2 : 0) + (_gui.InCraftTab() ? 4 : 0) +
                     (_rowsRebuilt ? 8 : 0) + (_amountField && _amountField.isFocused ? 16 : 0) +
                     (_gui.m_variantButton && _gui.m_variantButton.gameObject.activeSelf ? 32 : 0) +
-                    (_gui.m_craftButton && _gui.m_craftButton.interactable ? 64 : 0);
-                if (progress || _queue.Running)
-                    h = ((h * 31 + (_queue.Running ? 1 : 0) + (_gui.m_multiCrafting ? 2 : 0)) * 31 + _queue.Done) * 31 + _queue.Total * 13 + _gui.m_multiCraftAmount;
-                h = h * 31 + _tabSelMask;
-                var rows = _gui.m_availableRecipes;
-                h = h * 31 + rows.Count;
-                if (rows.Count > 0 && rows[0].InterfaceElement) h = h * 31 + rows[0].InterfaceElement.GetInstanceID();
-                var station = Station();
-                var net = Network();
-                h = h * 31 + (station ? station.GetInstanceID() : 0);
-                h = h * 31 + (station && net != null && net.IsDetached(station) ? 1 : 0);
-                var level = _gui.m_craftingStationLevelRoot;
-                h = h * 31 + (level && level.gameObject.activeInHierarchy ? 1 : 0);
-                if (_gui.m_craftingStationLevel && !string.IsNullOrEmpty(_gui.m_craftingStationLevel.text))
-                    h = h * 31 + StringComparer.Ordinal.GetHashCode(_gui.m_craftingStationLevel.text);
-                if (View() is Morgott.Core.ICraftingAvailability view)
-                    h = h * 31 + ((int)view.Sort | ((int)view.Show << 4) | (view.Descending ? 64 : 0) | (view.NewOnly ? 128 : 0) | (view.ControlsShown ? 256 : 0));
-                var rl = RecipeList();
-                var dr = _crafting.Find("Decription");
-                h = h * 31 + (rl && rl.gameObject.activeSelf ? 1 : 0) + (dr && dr.gameObject.activeSelf ? 2 : 0);
-                var desc = _gui.m_recipeDecription;
-                if (desc && !ReferenceEquals(desc.text, _descText)) h ^= 0x5A5A5A5A;
-                h = h * 31 + StringComparer.Ordinal.GetHashCode(Localization.instance.GetSelectedLanguage());
-                h = h * 31 + ThemeTokens.Revision;
-                return h;
-            }
+                    (_gui.m_craftButton && _gui.m_craftButton.interactable ? 64 : 0),
+                QueueKey = queueKey,
+                TabSelMask = _tabSelMask,
+                RowCount = rows.Count,
+                FirstRowId = rows.Count > 0 && rows[0].InterfaceElement ? rows[0].InterfaceElement.GetInstanceID() : 0,
+                StationId = station ? station.GetInstanceID() : 0,
+                StationDetached = station && net != null && net.IsDetached(station) ? 1 : 0,
+                LevelShown = level && level.gameObject.activeInHierarchy ? 1 : 0,
+                LevelTextHash = _gui.m_craftingStationLevel && !string.IsNullOrEmpty(_gui.m_craftingStationLevel.text)
+                    ? StringComparer.Ordinal.GetHashCode(_gui.m_craftingStationLevel.text) : 0,
+                ViewKey = View() is Morgott.Core.ICraftingAvailability view
+                    ? (int)view.Sort | ((int)view.Show << 4) | (view.Descending ? 64 : 0) | (view.NewOnly ? 128 : 0) | (view.ControlsShown ? 256 : 0) : 0,
+                PanelsMask = (rl && rl.gameObject.activeSelf ? 1 : 0) + (dr && dr.gameObject.activeSelf ? 2 : 0),
+                DescChanged = desc && !ReferenceEquals(desc.text, _descText),
+                LanguageHash = StringComparer.Ordinal.GetHashCode(Localization.instance.GetSelectedLanguage()),
+                ThemeRevision = ThemeTokens.Revision,
+            };
+            return CraftingMath.ApplyKey(in state);
         }
 
         private void Collect()
@@ -1719,7 +1723,11 @@ namespace Morgott.UI.CraftingScreen
                 // (MinLevel) in the face, the level digit (level_text) in the count band.
                 var cell = o.RequirementCells[slot];
                 var socket = levelSocket;
-                if (socket) Geo.Place(_canvas, socket, cell);
+                if (socket)
+                {
+                    OwnFit.ClaimCell(socket);
+                    Geo.Place(_canvas, socket, cell);
+                }
                 if (_gui.m_craftingStationIcon && _gui.m_craftingStationIcon.sprite && min.sprite != _gui.m_craftingStationIcon.sprite) min.sprite = _gui.m_craftingStationIcon.sprite;
                 if (min.type != Image.Type.Simple) min.type = Image.Type.Simple;
                 if (!min.preserveAspect) min.preserveAspect = true;
@@ -1737,6 +1745,7 @@ namespace Morgott.UI.CraftingScreen
         {
             var k = _in.Scale;
             // Left click = the material's item browser page; the socket image is the hit target (UITooltip hover too).
+            OwnFit.ClaimCell(cell); // StyleSocket owns res_name / res_icon / res_amount placement: keep CellFit off it
             if (!cell.TryGetComponent<ReqCellClick>(out _)) cell.gameObject.AddComponent<ReqCellClick>();
             if (cell.TryGetComponent<Image>(out var socket) && !socket.raycastTarget) socket.raycastTarget = true;
             foreach (var c in Children.Of(cell))
@@ -1765,7 +1774,12 @@ namespace Morgott.UI.CraftingScreen
                         Anchors(rt, new Vector2(0.05f, 0.02f), new Vector2(0.95f, 0.02f + CraftingMath.AmountBand), Vector2.zero, Vector2.zero);
                         // One line that always draws (Label's Ellipsis drops a line taller than its band: "0/1" vanished
                         // at 82-unit cells, run 20261116-163644).
-                        if (c.TryGetComponent<TMP_Text>(out var a)) StatText(a, TextAlignmentOptions.Center, ThemeTokens.GetFloat("size.craft.font.amount", 16f) * k);
+                        if (c.TryGetComponent<TMP_Text>(out var a))
+                        {
+                            OwnFit.Claim(a);
+                            _amountFit.Remove(a);
+                            StatText(a, TextAlignmentOptions.Center, ThemeTokens.GetFloat("size.craft.font.amount", 16f) * k);
+                        }
                         break;
                 }
             }
@@ -1835,15 +1849,52 @@ namespace Morgott.UI.CraftingScreen
             if (n.textWrappingMode != wrap) n.textWrappingMode = wrap;
         }
 
+        private struct AmountFitState
+        {
+            public string Text;
+            public float W, Base, Size;
+            public int Theme;
+        }
+
+        private readonly Dictionary<TMP_Text, AmountFitState> _amountFit = new Dictionary<TMP_Text, AmountFitState>();
+
+        private float AmountSize(TMP_Text text)
+        {
+            var baseSize = ThemeTokens.GetFloat("size.craft.font.amount", 16f) * _in.Scale;
+            var r = text.rectTransform.rect;
+            var w = r.width - text.margin.x - text.margin.z;
+            var s = text.text;
+            var rev = ThemeTokens.Revision;
+            if (_amountFit.TryGetValue(text, out var was) && was.Theme == rev &&
+                string.Equals(was.Text, s, StringComparison.Ordinal) &&
+                Mathf.Abs(was.W - w) < 0.1f && Mathf.Abs(was.Base - baseSize) < 0.01f)
+                return was.Size;
+            var size = baseSize;
+            if (!string.IsNullOrEmpty(s) && w > 1f)
+            {
+                var cur = text.fontSize;
+                var prefAtBase = cur > 0.01f
+                    ? text.GetPreferredValues(s, float.PositiveInfinity, float.PositiveInfinity).x * (baseSize / cur)
+                    : 0f;
+                size = CraftingMath.AmountFontSize(baseSize, prefAtBase, w, 9f * _in.Scale);
+            }
+            _amountFit[text] = new AmountFitState { Text = s, W = w, Base = baseSize, Size = size, Theme = rev };
+            return size;
+        }
+
         // Requirement stock (CraftingMath.Stock). ValheimPlus' SetupRequirement replacement (CraftFromChest: counts nearby
-        // chests) writes "have/need": parsed, so the count is the one its craft uses. Vanilla writes only "need" (:1766)
-        // and counts the player inventory (:1759): the same count here, no reading of its red blink (:1769).
-        // The amount gets the steady theme colour instead of the blink.
+        // chests) writes "have/need" and overwrites res_amount.color / fontSize every frame; vanilla overwrites color too.
+        // Called right after SetupRequirement and from RequirementGrid so color and size stay steady with zero flicker.
         private void SocketState(GameObject cell)
         {
-            var amount = cell.transform.Find("res_amount");
             var player = Player.m_localPlayer;
-            if (!amount || !amount.TryGetComponent<TMP_Text>(out var text) || !player || !_cellReq.TryGetValue(cell, out var req)) return;
+            if (!player || !_cellReq.TryGetValue(cell, out var req)) return;
+            if (!_cellAmount.TryGetValue(cell, out var text) || !text)
+            {
+                var amount = cell.transform.Find("res_amount");
+                if (!amount || !amount.TryGetComponent(out text)) return;
+                _cellAmount[cell] = text;
+            }
             if (!CraftingMath.TryParseHaveNeed(text.text, out var have, out var need))
             {
                 have = player.GetInventory().CountItems(req.Name);
@@ -1851,6 +1902,7 @@ namespace Morgott.UI.CraftingScreen
             }
             var enough = have >= need || ZoneSystem.instance && ZoneSystem.instance.GetGlobalKey(GlobalKeys.NoCraftCost);
             var stock = CraftingMath.StockOf(enough, !enough && CellChain(player, req.Name, need - have, req.Multi));
+            StatText(text, TextAlignmentOptions.Center, AmountSize(text));
             var want = ThemeTokens.GetColor(CraftingMath.CellTextColor(stock), text.color);
             if (text.color != want) text.color = want;
             if (CellShown(cell) == stock) return;
@@ -1858,7 +1910,7 @@ namespace Morgott.UI.CraftingScreen
             if (!cell.TryGetComponent<Image>(out var socket)) return;
             var role = CraftingMath.SocketRole(stock);
             var mark = socket.GetComponent<SkinMark>();
-            if (!mark) return;
+            if (!mark || mark.Role == role) return;
             mark.Role = role;
             mark.Outcome = Restyler.Apply(socket, mark, ThemeTokens.Role(role)) ? Outcome.Styled : Outcome.Degraded;
         }

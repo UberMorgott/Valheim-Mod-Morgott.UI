@@ -78,7 +78,7 @@ namespace Morgott.UI.CraftingScreen
             if (!skin || !craft || !elementRoot || req == null || !req.m_resItem) return;
             try
             {
-                skin.Requirement(elementRoot, req, quality, craftMultiplier);
+                skin.Requirement(elementRoot, req, quality, craftMultiplier, __result);
                 if (__result) skin.RequirementTip(elementRoot, req);
             }
             catch (System.Exception e) { Fault(e); }
