@@ -30,7 +30,7 @@ namespace Morgott.UI.Tests
             var heights = new float[count];
             for (var i = 0; i < count; i++) heights[i] = 40f;
             var frame = FrameH + (count > 3 ? (count - 3) * 45f : 0f);
-            var s = ElDialogMath.Stack(frame, ScrollTop, heights, capBand, Gap, 80f);
+            var s = ElDialogMath.Stack(frame, ScrollTop, heights, capBand, Gap);
             var bottom = s.Bottoms[count - 1];
             Assert.Equal(System.Math.Max(ElDialogMath.ElBase, capBand + Gap), bottom, 3);
             for (var i = 0; i < count - 1; i++)
@@ -134,7 +134,7 @@ namespace Morgott.UI.Tests
         [Fact]
         public void GrownButtonsPushTheStackUp()
         {
-            var s = ElDialogMath.Stack(FrameH, ScrollTop, new[] { 49.2f, 40f, 40f }, 58f, Gap, 80f);
+            var s = ElDialogMath.Stack(FrameH, ScrollTop, new[] { 49.2f, 40f, 40f }, 58f, Gap);
             Assert.Equal(63f, s.Bottoms[2], 3);
             Assert.Equal(108f, s.Bottoms[1], 3);
             Assert.Equal(153f, s.Bottoms[0], 3);
@@ -173,10 +173,38 @@ namespace Morgott.UI.Tests
         [InlineData(595f, 74f, 238f, 420f, 1000f, 737f)] // tall legendary tooltip: grows so full description fits
         [InlineData(595f, 74f, 238f, 900f, 850f, 850f)]  // huge tooltip: capped to safe area height
         [InlineData(595f, 74f, 238f, 200f, 500f, 500f)]  // tight screen: capped to safe area while keeping > minScroll
-        [InlineData(595f, 74f, 238f, 200f, 300f, 397f)]  // extreme tiny screen: keeps minScroll (80) above stack
+        [InlineData(595f, 74f, 238f, 200f, 350f, 350f)]  // very tight screen: shrinks scroll below minScroll, stays <= safe area
+        [InlineData(595f, 74f, 238f, 200f, 300f, 300f)]  // extreme tiny screen: choices exceed room, frame strictly capped <= safe area
         [InlineData(550f, 74f, 165f, 150f, 1000f, 550f)] // 3 choices without cap band: keeps Epic Loot's 550
-        public void FrameHeightGrowsForCapsAndDescriptionWithinSafeArea(float minH, float scrollTop, float stackTop, float descNeed, float maxH, float want) =>
-            Assert.Equal(want, ElDialogMath.FrameHeight(minH, scrollTop, stackTop, descNeed, Gap, 80f, maxH), 3);
+        public void FrameHeightGrowsForCapsAndDescriptionWithinSafeArea(float minH, float scrollTop, float stackTop, float descNeed, float maxH, float want)
+        {
+            var h = ElDialogMath.FrameHeight(minH, scrollTop, stackTop, descNeed, Gap, 80f, maxH);
+            Assert.Equal(want, h, 3);
+            Assert.True(h <= maxH);
+        }
+
+        [Theory]
+        [InlineData(350f, 33f)] // very tight frame: scroll shrinks below 80 instead of overlapping choice buttons
+        [InlineData(300f, 0f)]  // extreme tiny frame: choices exceed room, scroll clamps to 0
+        public void StackShrinksScrollCleanlyInsideTightSafeArea(float frameH, float wantScroll)
+        {
+            var s = ElDialogMath.Stack(frameH, ScrollTop, new[] { 40f, 40f, 40f, 40f }, 58f, Gap);
+            Assert.Equal(238f, s.Top, 3);
+            Assert.Equal(wantScroll, s.ScrollHeight, 3);
+        }
+
+        [Theory]
+        [InlineData(null, false, false)]                  // opted out / no ForeignUi unit: OnShow skips restyle & Apply
+        [InlineData("", false, false)]                    // empty family: skipped
+        [InlineData("EpicLootEnchanting", true, false)]   // already applied by ForeignRoles.After
+        [InlineData("EpicLootBoard", true, false)]        // already applied by ForeignRoles.After
+        [InlineData("ModUi", true, true)]                 // other enabled ForeignUi unit: runs Apply
+        [InlineData("EpicLootTemper", true, true)]        // temper unit: runs Apply
+        public void ShowGatesOnEnabledForeignUiFamily(string family, bool style, bool apply)
+        {
+            Assert.Equal(style, ElDialogMath.ShouldStyleOnShow(family));
+            Assert.Equal(apply, ElDialogMath.NeedsShowApply(family));
+        }
 
         [Theory]
         [InlineData(300f, 220f, 24f, 22f, 300f)] // description fits: no snap needed

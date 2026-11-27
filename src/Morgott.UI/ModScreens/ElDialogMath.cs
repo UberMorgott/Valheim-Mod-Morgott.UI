@@ -17,9 +17,9 @@ namespace Morgott.UI.ModScreens
         }
 
         // The stack sits above the bottom corner caps (capBand = their top edge over the frame bottom) and never lower
-        // than Epic Loot's own base; the description view (top inset scrollTop) ends a gap above the stack, at least
-        // minScroll tall.
-        public static ChoiceLayout Stack(float frameH, float scrollTop, float[] heights, float capBand, float gap, float minScroll)
+        // than Epic Loot's own base; the description view (top inset scrollTop) ends a gap above the stack (clamped to
+        // available room so it shrinks instead of overlapping choices on tight screens).
+        public static ChoiceLayout Stack(float frameH, float scrollTop, float[] heights, float capBand, float gap)
         {
             var n = heights?.Length ?? 0;
             var s = new ChoiceLayout { Bottoms = new float[n] };
@@ -30,7 +30,7 @@ namespace Morgott.UI.ModScreens
                 y += heights[i] + (i > 0 ? gap : 0f);
             }
             s.Top = n > 0 ? y : Math.Max(ElBase, capBand + gap);
-            s.ScrollHeight = Math.Max(minScroll, frameH - scrollTop - s.Top - gap);
+            s.ScrollHeight = Math.Max(0f, frameH - scrollTop - s.Top - gap);
             return s;
         }
 
@@ -79,14 +79,13 @@ namespace Morgott.UI.ModScreens
             ElFrameBaseHeight + Math.Max(0, choiceCount - 3) * ElFrameRowStep;
 
         // Dialog frame height grown so the bottom cap band, taller wrapped choice buttons, and the item description
-        // fit cleanly without shrinking the description below Epic Loot's 300u scroll area; capped to the safe area.
+        // fit cleanly without shrinking the description below Epic Loot's 300u scroll area; strictly capped to the
+        // safe area (shrinking the description scroll height first, never exceeding maxFrameH).
         public static float FrameHeight(float minFrameH, float scrollTop, float stackTop, float descNeeded, float gap, float minScroll, float maxFrameH)
         {
             var wantScroll = Math.Max(Math.Max(minScroll, ElScrollHeight), descNeeded);
             var want = Math.Max(minFrameH, scrollTop + wantScroll + gap + stackTop);
-            var floor = scrollTop + Math.Max(0f, minScroll) + gap + stackTop;
-            var ceiling = Math.Max(floor, maxFrameH);
-            return Math.Min(want, ceiling);
+            return Math.Max(0f, Math.Min(want, maxFrameH));
         }
 
         // Snap a scrolling description viewport to whole text lines (CraftingMath.WholeLines) so the bottom edge never
@@ -152,5 +151,14 @@ namespace Morgott.UI.ModScreens
         // the restyled vanilla variant dialog): it is no root, and as a "nested root" it would keep the owning unit's pass
         // off the whole dialog.
         public static bool IsStaleRootMark(bool hasMark, bool registeredRoot) => hasMark && !registeredRoot;
+
+        // Show_Postfix only styles/lays out dialogs whose owning ForeignUi unit is enabled (non-null family; null when
+        // opted out via config or ModUiOptOut even if Crafting / InventoryExtras installed the dialog hooks).
+        public static bool ShouldStyleOnShow(string restyledFamily) => !string.IsNullOrEmpty(restyledFamily);
+
+        // EpicLootEnchanting / EpicLootBoard units already ran ElDialogs.After via ForeignRoles.After inside RestyleNow;
+        // other enabled ForeignUi families still need Apply(dialog).
+        public static bool NeedsShowApply(string restyledFamily) =>
+            ShouldStyleOnShow(restyledFamily) && restyledFamily != "EpicLootEnchanting" && restyledFamily != "EpicLootBoard";
     }
 }

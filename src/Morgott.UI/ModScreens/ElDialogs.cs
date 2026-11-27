@@ -153,20 +153,16 @@ namespace Morgott.UI.ModScreens
         }
 
         // Synchronous restyle + layout in the exact Show frame so async MP RPC opens and late-frame Show calls never
-        // flash raw 380px Jotunn UI.
+        // flash raw 380px Jotunn UI. No-op when the dialog's ForeignUi unit is opted out (RestyleNow returns null).
         private static void OnShow(Component dialog)
         {
             if (!dialog) return;
             if (ElDialogMath.IsStaleRootMark(dialog.TryGetComponent<RootMark>(out var mark), ScreenRegistry.IsRoot(dialog.transform)))
                 UnityEngine.Object.DestroyImmediate(mark);
-            Modal(dialog.transform);
             var family = ForeignUi.RestyleNow(dialog.transform);
-            if (family == null)
-            {
-                var root = ScreenRegistry.RootOf(dialog.transform);
-                if (root) ScreenRegistry.Restyle(root);
-            }
-            if (family != OwnershipRegistry.EpicLootEnchanting && family != OwnershipRegistry.EpicLootBoard)
+            if (!ElDialogMath.ShouldStyleOnShow(family)) return;
+            Modal(dialog.transform);
+            if (ElDialogMath.NeedsShowApply(family))
                 Apply(dialog);
             ResetScroll(dialog);
         }
@@ -452,7 +448,7 @@ namespace Morgott.UI.ModScreens
                 heights[i] = Label(Active[i], width, body, floor, vpad);
 
             var capBand = CapBand(frame, dialog);
-            var probe = ElDialogMath.Stack(fr.height, scrollTop, heights, capBand, ElDialogMath.ElGap, 80f);
+            var probe = ElDialogMath.Stack(fr.height, scrollTop, heights, capBand, ElDialogMath.ElGap);
             var descNeed = 0f;
             float lineFirst = 0f, linePitch = 0f;
             if (desc && !string.IsNullOrEmpty(desc.text))
@@ -475,7 +471,7 @@ namespace Morgott.UI.ModScreens
                 frame.position += frame.TransformVector(new Vector3(dx, dy, 0f));
 
             var centre = fr.center.x + (left - right) * 0.5f;
-            var stack = ElDialogMath.Stack(fr.height, scrollTop, heights, capBand, ElDialogMath.ElGap, 80f);
+            var stack = ElDialogMath.Stack(fr.height, scrollTop, heights, capBand, ElDialogMath.ElGap);
             var scrollH = ElDialogMath.SnapScrollHeight(stack.ScrollHeight, descNeed, lineFirst, linePitch, 80f);
             for (var i = 0; i < Active.Count; i++)
             {
