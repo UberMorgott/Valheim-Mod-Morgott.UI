@@ -231,17 +231,24 @@ Shader "Morgott/CreatureSnow"
             #pragma fragment frag
             #pragma target 4.0
             #pragma multi_compile ___ UNITY_HDR_ON
+            #pragma multi_compile_instancing
             #include "UnityCG.cginc"
 
             float _MorgottCreatureSnow;
             float _MorgottCapHeight;
             float _MorgottCapWorldNoise;
 
+            // Per-instance snow override for CommandBuffer.DrawMeshInstanced; falls back to global _MorgottCreatureSnow when unset (<= 0).
+            UNITY_INSTANCING_BUFFER_START(Props)
+                UNITY_DEFINE_INSTANCED_PROP(float, _MorgottCreatureSnowInst)
+            UNITY_INSTANCING_BUFFER_END(Props)
+
             struct appdata
             {
                 float4 vertex   : POSITION;
                 float3 normal   : NORMAL;
                 float2 texcoord : TEXCOORD0;
+                UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
             struct v2f
@@ -250,6 +257,7 @@ Shader "Morgott/CreatureSnow"
                 float3 wn       : TEXCOORD0;
                 float2 uv       : TEXCOORD1;
                 float3 localPos : TEXCOORD2;
+                UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
             float3 SafeNormalize(float3 v, float3 fallback)
@@ -340,8 +348,15 @@ Shader "Morgott/CreatureSnow"
             v2f vert(appdata v)
             {
                 v2f o;
+                UNITY_SETUP_INSTANCE_ID(v);
+                UNITY_TRANSFER_INSTANCE_ID(v, o);
                 bool worldMode = _MorgottCapWorldNoise > 0.5;
-                float snow = saturate(_MorgottCreatureSnow);
+                float snowRaw = _MorgottCreatureSnow;
+                #ifdef UNITY_INSTANCING_ENABLED
+                    float snowInst = UNITY_ACCESS_INSTANCED_PROP(Props, _MorgottCreatureSnowInst);
+                    if (snowInst > 0.0) snowRaw = snowInst;
+                #endif
+                float snow = saturate(snowRaw);
                 float capAmt = worldMode ? smoothstep(0.08, 1.0, snow) : smoothstep(0.30, 1.0, snow);
                 if (capAmt <= 0.001)
                 {
@@ -389,6 +404,7 @@ Shader "Morgott/CreatureSnow"
                 out half4 gb2 : SV_Target2,
                 out half4 em  : SV_Target3)
             {
+                UNITY_SETUP_INSTANCE_ID(i);
                 float3 wn = SafeNormalize(i.wn, float3(0.0, 1.0, 0.0));
                 bool worldMode = _MorgottCapWorldNoise > 0.5;
 
