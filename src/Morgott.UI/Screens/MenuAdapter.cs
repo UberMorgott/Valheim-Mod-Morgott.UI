@@ -1,3 +1,4 @@
+using System;
 using Morgott.UI.Api;
 using HarmonyLib;
 using Morgott.UI.Classify;
@@ -5,6 +6,7 @@ using Morgott.UI.Responsive;
 using Morgott.UI.Restyle;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using Morgott.UI.Ownership;
 using Morgott.UI.Compat;
@@ -35,16 +37,73 @@ namespace Morgott.UI.Screens
         private static void Show_Postfix(Menu __instance)
         {
             Apply(__instance);
-            __instance.StartCoroutine(FitPanel(__instance));
+            FitPanel(__instance);
         }
 
-        // Show sets which entries exist (SetButtonsEnabled, Menu.cs:248) and flags m_rebuildLayout; the next
-        // Menu.Update rebuilds the entry column (Menu.cs:373-376). Fit the panel stack once after that frame.
-        private static System.Collections.IEnumerator FitPanel(Menu menu)
+        [HarmonyPatch(typeof(Menu), nameof(Menu.Hide))]
+        [HarmonyPrefix]
+        private static void Hide_Prefix(Menu __instance)
+        {
+            var es = EventSystem.current;
+            if (!es || !__instance || !__instance.m_root) return;
+            var sel = es.currentSelectedGameObject;
+            if (sel && sel.transform.IsChildOf(__instance.m_root)) es.SetSelectedGameObject(null);
+        }
+
+        // Guard vanilla's 2-frame SelectEntry coroutine so a hide in the same frame cannot re-select a hidden button
+        // (and steal focus from another screen) two frames later.
+        [HarmonyPatch(typeof(Menu), nameof(Menu.SelectEntry))]
+        [HarmonyPrefix]
+        private static bool SelectEntry_Prefix(Menu __instance, GameObject entry, ref System.Collections.IEnumerator __result)
+        {
+            __result = SafeSelectEntry(__instance, entry);
+            return false;
+        }
+
+        private static System.Collections.IEnumerator SafeSelectEntry(Menu menu, GameObject entry)
         {
             yield return null;
             yield return null;
-            if (!menu || !menu.menuEntriesParent) yield break;
+            if (!menu || !menu.m_root || !menu.m_root.gameObject.activeSelf || !entry || !entry.activeInHierarchy) yield break;
+            if (EventSystem.current) EventSystem.current.SetSelectedGameObject(entry);
+            menu.UpdateCursor();
+        }
+
+        [HarmonyPatch(typeof(Menu), nameof(Menu.OnQuitNo))]
+        [HarmonyPostfix]
+        private static void OnQuitNo_Postfix(Menu __instance) => FitPanel(__instance);
+
+        [HarmonyPatch(typeof(Menu), nameof(Menu.OnLogoutNo))]
+        [HarmonyPostfix]
+        private static void OnLogoutNo_Postfix(Menu __instance) => FitPanel(__instance);
+
+        [HarmonyPatch(typeof(Menu), nameof(Menu.Update))]
+        [HarmonyPrefix]
+        private static void Update_Prefix(Menu __instance, out bool __state)
+            => __state = __instance && __instance.m_root && __instance.m_root.gameObject.activeSelf && __instance.m_rebuildLayout;
+
+        [HarmonyPatch(typeof(Menu), nameof(Menu.Update))]
+        [HarmonyPostfix]
+        private static void Update_Postfix(Menu __instance, bool __state)
+        {
+            if (__state && __instance && !__instance.m_rebuildLayout) FitPanel(__instance);
+        }
+
+        // Rebuild the entry column synchronously so the panel stack is sized on the very first rendered frame
+        // (avoids the 2-frame tiny-box flash, especially when MemoryModule's pause GC freezes frame T+1).
+        private static void FitPanel(Menu menu)
+        {
+            if (!menu || !menu.menuEntriesParent || !menu.menuEntriesParent.gameObject.activeInHierarchy) return;
+            if (menu.lastSaveText && menu.lastSaveText.gameObject.activeSelf)
+            {
+                if (menu.m_lastSavedDate > DateTime.MinValue && Localization.instance != null)
+                {
+                    var minutes = (DateTime.Now - menu.m_lastSavedDate).Minutes;
+                    menu.lastSaveText.text = Localization.instance.Localize("$menu_manualsavetime", minutes < 1 ? "<1" : minutes.ToString());
+                }
+                LayoutRebuilder.ForceRebuildLayoutImmediate(menu.lastSaveText.rectTransform);
+            }
+            LayoutRebuilder.ForceRebuildLayoutImmediate(menu.menuEntriesParent);
             var panel = menu.menuEntriesParent.Find(PanelDecor.ChildName);
             if (panel && panel.TryGetComponent<PanelDecor>(out var decor)) decor.FitToChildren("size.panel.pad");
         }

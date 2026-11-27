@@ -22,7 +22,8 @@ namespace Morgott.UI.Screens
         public Graphic OrigTarget;
         public Graphic[] Knots;
         public Color[] KnotColors;
-        private bool _hover, _selected, _reverting;
+        private bool _reverting;
+        private static MenuEntryStyle _hovered, _selected, _shown;
 
         public static void Ensure(Button button, TMP_Text label)
         {
@@ -53,19 +54,52 @@ namespace Morgott.UI.Screens
             s.Show(false, true);
         }
 
-        public void OnPointerEnter(PointerEventData eventData) { _hover = true; Show(true, false); }
+        public void OnPointerEnter(PointerEventData eventData) { _hovered = this; SetShown(this); }
 
-        public void OnPointerExit(PointerEventData eventData) { _hover = false; Show(_selected, false); }
+        public void OnPointerExit(PointerEventData eventData)
+        {
+            if (_hovered == this) _hovered = null;
+            if (_shown == this) SetShown(Fallback());
+        }
 
-        public void OnSelect(BaseEventData eventData) { _selected = true; Show(true, false); }
+        public void OnSelect(BaseEventData eventData) { _selected = this; SetShown(this); }
 
-        public void OnDeselect(BaseEventData eventData) { _selected = false; Show(_hover, false); }
+        public void OnDeselect(BaseEventData eventData)
+        {
+            if (_selected == this) _selected = null;
+            if (_shown == this) SetShown(Fallback());
+        }
 
         private void OnDisable()
         {
             if (_reverting) return; // Destroy(this) below disables first: keep the restored knot alpha
-            _hover = _selected = false;
+            ClearRefs();
             Show(false, true);
+        }
+
+        private void ClearRefs()
+        {
+            if (_hovered == this) _hovered = null;
+            if (_selected == this) _selected = null;
+            if (_shown == this)
+            {
+                _shown = null;
+                SetShown(Fallback());
+            }
+        }
+
+        private static MenuEntryStyle Fallback()
+            => _hovered && _hovered.isActiveAndEnabled ? _hovered : (_selected && _selected.isActiveAndEnabled ? _selected : null);
+
+        // One active knot pair across the entry column: UIGroupHandler auto-selects Continue even on KBM, so tracking
+        // hover and selection per button drew knots on two entries at once.
+        private static void SetShown(MenuEntryStyle next)
+        {
+            if (next && !next.isActiveAndEnabled) next = null;
+            if (_shown == next) return;
+            if (_shown) _shown.Show(false, true);
+            _shown = next;
+            if (_shown) _shown.Show(true, false);
         }
 
         private void Show(bool on, bool instant)
@@ -79,6 +113,7 @@ namespace Morgott.UI.Screens
         public void Revert()
         {
             _reverting = true;
+            ClearRefs();
             if (Button)
             {
                 if (Button.transition == Selectable.Transition.ColorTint) Button.transition = OrigTransition;

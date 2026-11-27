@@ -47,20 +47,25 @@ namespace Morgott.UI.Screens
     }
 
     // Refits the dialog's panel stack to its content when it shows and whenever a text in it changes (the cloud
-    // warnings are filled before Show). Two frames after enable: vanilla / RuneSkin layout passes ran.
+    // warnings are filled before Show). Immediate on enable + first LateUpdate (same frame, before render).
     [DisallowMultipleComponent]
     public sealed class DialogFit : MonoBehaviour, IRevertible
     {
-        private int _wait;
+        private bool _dirty;
         private int _hash;
         private int _revision = -1;
 
-        private void OnEnable() => _wait = 2;
+        private void OnEnable()
+        {
+            _dirty = true;
+            Fit();
+        }
 
         private void LateUpdate()
         {
-            if (_wait > 0) { _wait--; if (_wait > 0) return; Fit(); return; }
-            if (Hash() != _hash || _revision != ThemeTokens.Revision) Fit();
+            if (!_dirty && Hash() == _hash && _revision == ThemeTokens.Revision) return;
+            _dirty = false;
+            Fit();
         }
 
         private static readonly System.Collections.Generic.List<TMP_Text> Texts = new System.Collections.Generic.List<TMP_Text>(8);
