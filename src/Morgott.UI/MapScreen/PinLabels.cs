@@ -19,8 +19,16 @@ namespace Morgott.UI.MapScreen
     {
         private PinLabelMath.Box[] _labelBoxes = new PinLabelMath.Box[64];
         private GameObject[] _labelObjects = new GameObject[64];
+        private RectTransform[] _labelRects = new RectTransform[64];
+        private Vector3[] _labelPositions = new Vector3[64];
         private int[] _labelOrder = new int[64];
         private bool[] _labelShown = new bool[64];
+        private int _labelCount;
+        private Minimap.MapMode _labelStateMode = (Minimap.MapMode)(-1);
+        private int _labelStatePinsVer = -1, _labelStateFilterVer = -1, _labelStateThemeRev = -1, _labelStatePinCount = -1, _labelStateSig;
+        private float _labelStateZoom = -1f;
+        private Vector3 _labelStateOffset;
+        private Rect _labelStateRect;
 
         // Name root = geometric copy of the pin root, drawn right above it (labels over pins, under later map children
         // such as the player marker or Jotunn's overlay panel).
@@ -51,15 +59,67 @@ namespace Morgott.UI.MapScreen
 
         private void PlaceLabels()
         {
+            var pins = _map.m_pins;
+            if (pins == null) return;
+            var mode = _map.m_mode;
+            var large = mode == Minimap.MapMode.Large;
+            var mapImg = large ? _map.m_mapImageLarge : _map.m_mapImageSmall;
+            var mapRect = mapImg ? mapImg.rectTransform.rect : default;
+            var zoom = large ? _map.LargeZoom : _map.SmallZoom;
+            var offset = _map.m_mapOffset;
+            var pinsVer = PinsVersion;
+            var filterVer = _customFilterVersion;
+            var themeRev = ThemeTokens.Revision;
+            var pinCount = pins.Count;
+            var sig = 17;
+            for (var i = 0; i < pinCount; i++)
+            {
+                var pin = pins[i];
+                var data = pin.m_NamePinData;
+                var go = data?.PinNameGameObject;
+                var icon = pin.m_uiElement;
+                if (!go || !icon) continue;
+                var flags = (icon.gameObject.activeSelf ? 1 : 0) | (go.activeSelf ? 2 : 0) | (Hidden(icon.gameObject) ? 4 : 0);
+                sig = sig * 31 + flags;
+                if (go.activeSelf)
+                {
+                    var txt = data.PinNameText ? data.PinNameText.text : null;
+                    sig = sig * 31 + (txt != null ? System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(txt) : 0);
+                }
+            }
+            if (mode == _labelStateMode && pinsVer == _labelStatePinsVer && filterVer == _labelStateFilterVer && themeRev == _labelStateThemeRev
+                && Mathf.Approximately(zoom, _labelStateZoom) && offset == _labelStateOffset && mapRect == _labelStateRect
+                && pinCount == _labelStatePinCount && sig == _labelStateSig)
+            {
+                // Re-apply cached label positions if anything overwrote them since the last declutter pass.
+                for (var i = 0; i < _labelCount; i++)
+                {
+                    var rt = _labelRects[i];
+                    if (!rt) continue;
+                    var want = _labelPositions[i];
+                    if ((rt.localPosition - want).sqrMagnitude > 0.0001f) rt.localPosition = want;
+                }
+                return;
+            }
+            _labelStateMode = mode;
+            _labelStatePinsVer = pinsVer;
+            _labelStateFilterVer = filterVer;
+            _labelStateThemeRev = themeRev;
+            _labelStateZoom = zoom;
+            _labelStateOffset = offset;
+            _labelStateRect = mapRect;
+            _labelStatePinCount = pinCount;
+            _labelStateSig = sig;
+
             MatchNameRoots();
-            var large = _map.m_mode == Minimap.MapMode.Large;
             var root = large ? _map.m_pinNameRootLarge : _map.m_pinNameRootSmall;
             var font = ThemeTokens.GetFont("font.body");
             var min = ThemeTokens.GetFloat("size.map.pin.label.min", 14f);
             var gap = ThemeTokens.GetFloat("size.map.pin.label.gap", 2f);
             var n = 0;
-            foreach (var pin in _map.m_pins)
+            for (var pi = 0; pi < pinCount; pi++)
             {
+                var pin = pins[pi];
                 var data = pin.m_NamePinData;
                 var go = data?.PinNameGameObject;
                 if (!go || !pin.m_uiElement) continue;
@@ -129,6 +189,8 @@ namespace Morgott.UI.MapScreen
                     Order = n,
                 };
                 _labelObjects[n] = go;
+                _labelRects[n] = rt;
+                _labelPositions[n] = want;
                 n++;
             }
             PinLabelMath.Declutter(_labelBoxes, n, _labelOrder, _labelShown, ThemeTokens.GetFloat("size.map.pin.label.pad", 1f));
@@ -137,6 +199,8 @@ namespace Morgott.UI.MapScreen
                 Show(_labelObjects[i], _labelShown[i] && _labelBoxes[i].Priority >= 0);
                 _labelObjects[i] = null;
             }
+            for (var i = n; i < _labelCount; i++) _labelRects[i] = null;
+            _labelCount = n;
         }
 
         private void Grow()
@@ -144,6 +208,8 @@ namespace Morgott.UI.MapScreen
             var size = _labelBoxes.Length * 2;
             System.Array.Resize(ref _labelBoxes, size);
             System.Array.Resize(ref _labelObjects, size);
+            System.Array.Resize(ref _labelRects, size);
+            System.Array.Resize(ref _labelPositions, size);
             System.Array.Resize(ref _labelOrder, size);
             System.Array.Resize(ref _labelShown, size);
         }

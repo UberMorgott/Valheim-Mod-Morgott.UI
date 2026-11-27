@@ -1,6 +1,7 @@
 using Morgott.UI.Api;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Reflection;
 using HarmonyLib;
 using Morgott.UI.Classify;
@@ -177,39 +178,40 @@ namespace Morgott.UI.ModScreens
             return false;
         }
 
-        private static void Each(Transform root, Action<MonoBehaviour> a)
-        {
-            Behaviours.Clear();
-            root.GetComponentsInChildren(true, Behaviours);
-            foreach (var b in Behaviours)
-                if (b && IsDialog(b.GetType())) a(b);
-            Behaviours.Clear();
-        }
-
         // Roles inside an Epic Loot window (ForeignRoles.Precise): what the variant dialog's own form gave them
         // (VanillaExtras: icons kept, popup backdrops), plus the item icon and its magic background as content.
         public static void Roles(ScreenContext ctx, Transform root)
         {
-            Each(root, d =>
+            Behaviours.Clear();
+            root.GetComponentsInChildren(true, Behaviours);
+            for (var i = 0; i < Behaviours.Count; i++)
             {
+                var d = Behaviours[i];
+                if (!d || !IsDialog(d.GetType())) continue;
                 VanillaExtras.VariantRoles(ctx, d.transform);
                 var t = d.GetType();
                 if (Field(t, "Icon")?.GetValue(d) is Image icon && icon) ctx.Role(icon, "content", "Epic Loot dialog item icon");
                 if (Field(t, "MagicBG")?.GetValue(d) is Image bg && bg) ctx.Role(bg, "content", "Epic Loot dialog magic item background");
-            });
+            }
+            Behaviours.Clear();
         }
 
         // After the unit pass: augment choice buttons across the frame's inner width (labels refit on the size change).
         public static void After(Transform unit)
         {
-            Each(unit, d =>
+            Behaviours.Clear();
+            unit.GetComponentsInChildren(true, Behaviours);
+            for (var i = 0; i < Behaviours.Count; i++)
             {
+                var d = Behaviours[i];
+                if (!d || !IsDialog(d.GetType())) continue;
                 var t = d.GetType();
                 if (t.FullName == AugmentDialog && Field(t, "EffectChoiceButtons")?.GetValue(d) is List<Button> buttons)
                     Choices(d.transform, buttons);
                 else if (t.FullName == SuccessDialog && Field(t, "Frame")?.GetValue(d) is RectTransform frame && Field(t, "Description")?.GetValue(d) is TMP_Text desc)
                     Success(d.transform, frame, desc);
-            });
+            }
+            Behaviours.Clear();
         }
 
         // Craft result: the frame widens so the item tooltip's widest line shows on one line (Epic Loot's description
@@ -229,7 +231,7 @@ namespace Morgott.UI.ModScreens
             var w = Widen(frame, dialog, widest, left, right);
             FitColumn(frame, desc);
             if (Logged.Add(dialog.GetInstanceID()))
-                Plugin.Log.LogInfo($"[Morgott.UI] el dialog {dialog.name}: widest description line {widest:0.#}, insets {left:0.#}/{right:0.#} -> frame {w:0.#} (scale {frame.lossyScale.x:0.###})");
+                Plugin.Log.LogInfo($"[Morgott.UI] el dialog {dialog.name}: widest description line {widest.ToString("0.#", CultureInfo.InvariantCulture)}, insets {left.ToString("0.#", CultureInfo.InvariantCulture)}/{right.ToString("0.#", CultureInfo.InvariantCulture)} -> frame {w.ToString("0.#", CultureInfo.InvariantCulture)} (scale {frame.lossyScale.x.ToString("0.###", CultureInfo.InvariantCulture)})");
         }
 
         // The description ends at its viewport's right edge, left of the scroll bar: the clone keeps the recipe
@@ -343,8 +345,8 @@ namespace Morgott.UI.ModScreens
             var width = ElDialogMath.InnerWidth(fr.width, left, right);
             var centre = fr.center.x + (left - right) * 0.5f;
             if (Logged.Add(dialog.GetInstanceID()))
-                Plugin.Log.LogInfo($"[Morgott.UI] el dialog {dialog.name}: frame {fr.width:0.#}x{fr.height:0.#} scale {frame.lossyScale.x:0.###}, widest label {need:0.#} at body {body:0.#}, frame art {art}, description view {col.width:0.#} wide " +
-                    $"(anchors {scroll.anchorMin}-{scroll.anchorMax} sizeDelta {scroll.sizeDelta}), side insets {left:0.#}/{right:0.#} -> choices {width:0.#}");
+                Plugin.Log.LogInfo($"[Morgott.UI] el dialog {dialog.name}: frame {fr.width.ToString("0.#", CultureInfo.InvariantCulture)}x{fr.height.ToString("0.#", CultureInfo.InvariantCulture)} scale {frame.lossyScale.x.ToString("0.###", CultureInfo.InvariantCulture)}, widest label {need.ToString("0.#", CultureInfo.InvariantCulture)} at body {body.ToString("0.#", CultureInfo.InvariantCulture)}, frame art {art}, description view {col.width.ToString("0.#", CultureInfo.InvariantCulture)} wide " +
+                    $"(anchors {scroll.anchorMin.ToString()}-{scroll.anchorMax.ToString()} sizeDelta {scroll.sizeDelta.ToString()}), side insets {left.ToString("0.#", CultureInfo.InvariantCulture)}/{right.ToString("0.#", CultureInfo.InvariantCulture)} -> choices {width.ToString("0.#", CultureInfo.InvariantCulture)}");
             var vpad = ChoiceVPad;
             var heights = new float[Active.Count];
             for (var i = 0; i < Active.Count; i++)

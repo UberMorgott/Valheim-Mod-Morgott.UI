@@ -5,6 +5,7 @@ import (
 	"image"
 	"image/color"
 	"image/png"
+	"io"
 	"math"
 	"os"
 	"path/filepath"
@@ -12,8 +13,35 @@ import (
 	"golang.org/x/image/draw"
 )
 
+func clampU8(v int) uint8 {
+	if v <= 0 {
+		return 0
+	}
+	if v >= 255 {
+		return 255
+	}
+	return uint8(v)
+}
+
+func readFileInDir(dir, name string) ([]byte, error) {
+	root, err := os.OpenRoot(dir)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = root.Close() }()
+	f, err := root.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = f.Close() }()
+	return io.ReadAll(f)
+}
+
 func loadPNG(path string) *image.NRGBA {
-	f, err := os.Open(path)
+	root, err := os.OpenRoot(filepath.Dir(path))
+	must(err)
+	defer func() { _ = root.Close() }()
+	f, err := root.Open(filepath.Base(path))
 	must(err)
 	defer func() { _ = f.Close() }()
 	src, err := png.Decode(f)
@@ -25,8 +53,12 @@ func loadPNG(path string) *image.NRGBA {
 }
 
 func savePNG(path string, img image.Image) {
-	must(os.MkdirAll(filepath.Dir(path), 0o755))
-	f, err := os.Create(path)
+	dir := filepath.Dir(path)
+	must(os.MkdirAll(dir, 0o755))
+	root, err := os.OpenRoot(dir)
+	must(err)
+	defer func() { _ = root.Close() }()
+	f, err := root.Create(filepath.Base(path))
 	must(err)
 	enc := png.Encoder{CompressionLevel: png.BestCompression}
 	must(enc.Encode(f, img))

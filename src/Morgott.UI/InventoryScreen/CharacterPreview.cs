@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using Morgott.UI.Theme;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -56,7 +57,7 @@ namespace Morgott.UI.InventoryScreen
         private static void Note(string what)
         {
             if (Events.Count >= 24) Events.Dequeue();
-            Events.Enqueue($"f{Time.frameCount} {what}");
+            Events.Enqueue($"f{Time.frameCount.ToString(CultureInfo.InvariantCulture)} {what}");
         }
 
         // The clone survives a close (parked, header): Live = rig active with a created texture (shown / showable now).
@@ -222,11 +223,11 @@ namespace Morgott.UI.InventoryScreen
                 && !concealed && !_hidden && !_failed && span <= PreviewMath.MaxFramedSpan) return;
             var history = Events.ToArray();
             Plugin.Log.LogWarning("[Morgott.UI] character preview not shown 0.5 s after open: "
-                + $"active={gameObject.activeSelf}/{gameObject.activeInHierarchy} image={(_image && _image.enabled)} "
-                + $"placed={_placed} hidden={_hidden} failed={_failed} concealed={concealed} span={span:0.00}m "
-                + $"gates='{Morgott.UI.Restyle.RenderGate.ConcealedBy(transform)}' suspended={Morgott.UI.Restyle.RenderGate.Suspended} "
-                + $"camera={(_camera && _camera.enabled)} rig={(_rig && _rig.activeSelf)} clone={(bool)_clone} "
-                + $"rt={(_rt ? $"{_rt.width}x{_rt.height} created={_rt.IsCreated()}" : "none")} "
+                + $"active={gameObject.activeSelf.ToString()}/{gameObject.activeInHierarchy.ToString()} image={(_image && _image.enabled).ToString()} "
+                + $"placed={_placed.ToString()} hidden={_hidden.ToString()} failed={_failed.ToString()} concealed={concealed.ToString()} span={span.ToString("0.00", CultureInfo.InvariantCulture)}m "
+                + $"gates='{Morgott.UI.Restyle.RenderGate.ConcealedBy(transform)}' suspended={Morgott.UI.Restyle.RenderGate.Suspended.ToString()} "
+                + $"camera={(_camera && _camera.enabled).ToString()} rig={(_rig && _rig.activeSelf).ToString()} clone={((bool)_clone).ToString()} "
+                + $"rt={(_rt ? $"{_rt.width.ToString(CultureInfo.InvariantCulture)}x{_rt.height.ToString(CultureInfo.InvariantCulture)} created={_rt.IsCreated().ToString()}" : "none")} "
                 + $"history: {string.Join(" | ", history, Math.Max(0, history.Length - 8), Math.Min(8, history.Length))}");
         }
 
@@ -268,16 +269,28 @@ namespace Morgott.UI.InventoryScreen
             if (_image) _image.enabled = false;
         }
 
-        // Next open: the parked rig back on, the world's directional lights re-read (the set Render swaps out).
+        // Next open: the parked rig back on, cached world directional lights reused unless empty / destroyed.
         private void Unpark()
         {
             if (!_rig || _rig.activeSelf) return;
             _rig.SetActive(true);
             _settleAt = PreviewMath.UnparkSettleAt(_settleAt, Time.frameCount, SettleFrames);
+            RefreshWorldLights();
+            Note("unpark");
+        }
+
+        private void RefreshWorldLights()
+        {
+            if (_worldLights.Count > 0)
+            {
+                var valid = true;
+                for (var i = 0; i < _worldLights.Count; i++)
+                    if (!_worldLights[i]) { valid = false; break; }
+                if (valid) return;
+            }
             _worldLights.Clear();
             foreach (var l in FindObjectsByType<Light>(FindObjectsSortMode.None))
                 if (l && l.type == LightType.Directional && !l.transform.IsChildOf(_rig.transform)) _worldLights.Add(l);
-            Note("unpark");
         }
 
         private void OnDestroy()
@@ -405,8 +418,7 @@ namespace Morgott.UI.InventoryScreen
                     for (var i = 0; i < 4; i++) animator.Update(2f);
                 }
                 _worldLights.Clear();
-                foreach (var l in FindObjectsByType<Light>(FindObjectsSortMode.None))
-                    if (l && l.type == LightType.Directional && !l.transform.IsChildOf(_rig.transform)) _worldLights.Add(l);
+                RefreshWorldLights();
                 _applied = -1;
                 Builds++;
                 Note("build");
@@ -615,7 +627,7 @@ namespace Morgott.UI.InventoryScreen
             if (added > 0 && !_ownedLogged)
             {
                 _ownedLogged = true;
-                Plugin.Log.LogInfo($"[Morgott.UI] character preview owns {added} runtime material(s) / mesh(es): {string.Join(", ", names)}");
+                Plugin.Log.LogInfo($"[Morgott.UI] character preview owns {added.ToString(CultureInfo.InvariantCulture)} runtime material(s) / mesh(es): {string.Join(", ", names)}");
             }
         }
 
@@ -696,7 +708,7 @@ namespace Morgott.UI.InventoryScreen
                     if (_points[i].y > highY) { highY = _points[i].y; high = r; }
                 }
             }
-            if (low) Note($"measure {lowY:0.00}..{highY:0.00} m low '{low.name}' high '{(high ? high.name : "-")}'");
+            if (low) Note($"measure {lowY.ToString("0.00", CultureInfo.InvariantCulture)}..{highY.ToString("0.00", CultureInfo.InvariantCulture)} m low '{low.name}' high '{(high ? high.name : "-")}'");
             foreach (var p in _points)
             {
                 if (p.y < lo) lo = p.y;
@@ -727,7 +739,7 @@ namespace Morgott.UI.InventoryScreen
             if (hi - lo > PreviewMath.MaxFramedSpan && _warnedSpanFor != _applied)
             {
                 _warnedSpanFor = _applied;
-                Plugin.Log.LogWarning($"[Morgott.UI] character preview framing outlier: {lo:0.00}..{hi:0.00} m (settle={settle}, low '{(low ? low.name : "-")}', high '{(high ? high.name : "-")}')");
+                Plugin.Log.LogWarning($"[Morgott.UI] character preview framing outlier: {lo.ToString("0.00", CultureInfo.InvariantCulture)}..{hi.ToString("0.00", CultureInfo.InvariantCulture)} m (settle={settle.ToString()}, low '{(low ? low.name : "-")}', high '{(high ? high.name : "-")}')");
             }
         }
 
@@ -841,7 +853,7 @@ namespace Morgott.UI.InventoryScreen
             if (s.ColorCoverage > 0.01f && s.Coverage < s.ColorCoverage * 0.1f)
             {
                 _opaqueClear = true;
-                Plugin.Log.LogInfo($"[Morgott.UI] character preview: shaders write no alpha (coverage {s.Coverage:0.000} vs colour {s.ColorCoverage:0.000}): opaque background");
+                Plugin.Log.LogInfo($"[Morgott.UI] character preview: shaders write no alpha (coverage {s.Coverage.ToString("0.000", CultureInfo.InvariantCulture)} vs colour {s.ColorCoverage.ToString("0.000", CultureInfo.InvariantCulture)}): opaque background");
             }
         }
 

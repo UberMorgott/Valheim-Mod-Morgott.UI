@@ -67,7 +67,7 @@ namespace Morgott.UI.ModScreens
             if (shift <= 0f) yield break;
             var scale = label.canvas ? label.canvas.scaleFactor : 1f;
             label.rectTransform.anchoredPosition -= new Vector2(shift / scale + 8f, 0f);
-            Plugin.Log.LogInfo($"[Morgott.UI] version label moved {shift / scale + 8f:0} units left of a foreign corner button");
+            Plugin.Log.LogInfo($"[Morgott.UI] version label moved {(shift / scale + 8f).ToString("0", System.Globalization.CultureInfo.InvariantCulture)} units left of a foreign corner button");
         }
 
         public static bool Owned() => OwnershipRegistry.IsOwned(OwnershipRegistry.ModUi);

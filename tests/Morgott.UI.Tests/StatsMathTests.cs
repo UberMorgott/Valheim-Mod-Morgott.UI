@@ -185,23 +185,39 @@ namespace Morgott.UI.Tests
             Assert.Equal(0f, StatsMath.SnapScroll(80f, tops, 10, 200f, 250f), 3);            // fits: no scroll
         }
 
+        private static bool HasSprite(ThemeFile t, string token)
+        {
+            for (var i = 0; i < t.sprites.Length; i++)
+                if (t.sprites[i].token == token) return true;
+            return false;
+        }
+
+        private static bool HasRole(ThemeFile t, string role)
+        {
+            for (var i = 0; i < t.roles.Length; i++)
+                if (t.roles[i].role == role) return true;
+            return false;
+        }
+
         [Fact]
         public void ThemeShipsTheStatsFamily()
         {
             var t = Default();
             Assert.Empty(ThemeSchema.Validate(t));
             Assert.Contains(t.families, f => f.family == "CharacterStats");
-            foreach (var token in t.families.Single(f => f.family == "CharacterStats").requires.Where(r => r.StartsWith("sprite.", System.StringComparison.Ordinal)))
-                Assert.Contains(t.sprites, s => s.token == token);
+            var reqs = t.families.Single(f => f.family == "CharacterStats").requires;
+            for (var i = 0; i < reqs.Length; i++)
+                if (reqs[i].StartsWith("sprite.", System.StringComparison.Ordinal))
+                    Assert.True(HasSprite(t, reqs[i]), reqs[i]);
             foreach (var role in new[] { "stats.chrome.tl", "stats.chrome.br", "stats.divider", "stats.hit", "stats.icon", "stats.title", "stats.header", "stats.label", "stats.value", "stats.sub" })
-                Assert.Contains(t.roles, r => r.role == role);
+                Assert.True(HasRole(t, role), role);
             // Every card / row icon the reader names has a sprite token.
             foreach (var icon in new[] { "res", "resist", "move", "defense", "food", "rest", "combat", "mt" })
-                Assert.Contains(t.sprites, s => s.token == "sprite.stats.head." + icon);
+                Assert.True(HasSprite(t, "sprite.stats.head." + icon), icon);
             foreach (var icon in new[] { "heart", "pulse", "bolt", "bolt2", "drop", "pulse2", "blunt", "slash", "pierce", "fire", "frost", "lightning", "poison", "spirit", "chop", "pickaxe",
                          "walk", "run", "swim", "weight", "rundrain", "dodge", "jump", "armor", "block", "parry", "fork", "flask", "hourglass", "bed", "clock",
                          "sword", "flame", "attackspeed", "backstab", "double", "lifesteal", "stagger", "boots", "ring", "es", "recharge", "breakdelay", "potion", "food", "potency" })
-                Assert.Contains(t.sprites, s => s.token == "sprite.stats.icon." + icon);
+                Assert.True(HasSprite(t, "sprite.stats.icon." + icon), icon);
             Assert.Contains(t.floats, f => f.token == "size.stats.card.px");
         }
     }

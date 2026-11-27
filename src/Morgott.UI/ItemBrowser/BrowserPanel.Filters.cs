@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using Morgott.Core;
 using Morgott.UI.Icons;
 using Morgott.UI.MapScreen;
@@ -63,9 +64,12 @@ namespace Morgott.UI.ItemBrowser
 
         private sealed class PopRow
         {
+            public BrowserPanel Owner;
             public Image Back, Check;
             public TMP_Text Label, Count;
             public int Item;
+
+            public void OnClick() => Owner.OnPopRowClick(this);
         }
 
         // Extra parts of a list row, built with the grid cell they belong to.
@@ -87,7 +91,10 @@ namespace Morgott.UI.ItemBrowser
         }
 
         private static void OnClick(Component c, Action act) =>
-            c.gameObject.AddComponent<Hit>().Click = e => { if (e.button == PointerEventData.InputButton.Left) act(); };
+            c.gameObject.AddComponent<Hit>().LeftClick = act;
+
+        private void OnPlaqueClick(int n) { _fs.Plaques ^= 1 << n; Touch(); }
+        private void OnChipClick(int n) { _chipOpen = _chipOpen == n ? -1 : n; _popScroll = 0; _dirty = true; }
 
         private void PlainGrid(Exception e)
         {
@@ -110,18 +117,17 @@ namespace Morgott.UI.ItemBrowser
             _fm = Txt(g, "FilterMeasure", "text.body", TextAlignmentOptions.Left);
             for (var i = 0; i < Plaques; i++)
             {
-                var n = i;
-                _plaques[i] = Btn(g, "Plaque" + i, "ib.square", out _plaqueName[i], () => { });
-                OnClick(_plaques[i], () => { _fs.Plaques ^= 1 << n; Touch(); });
+                _plaques[i] = Btn(g, "Plaque" + i, "ib.square", out _plaqueName[i], null);
+                OnClick(_plaques[i], new IntClick(OnPlaqueClick, i).Invoke);
                 _plaqueFade[i] = _plaques[i].gameObject.AddComponent<CanvasGroup>();
                 _plaqueCount[i] = Txt(_plaques[i].transform, "Count", "text.body", TextAlignmentOptions.Center);
                 _plaqueGlyph[i] = i == StageRules.PlaqueMagic ? Img(_plaques[i].transform, "Glyph", "ib.glyph.magic") : Img(_plaques[i].transform, "Glyph", "content");
                 if (i != StageRules.PlaqueMagic) SetSprite(_plaqueGlyph[i], Diamond());
             }
-            _reset = Btn(g, "FilterReset", "ib.square", out _resetLabel, () => { });
+            _reset = Btn(g, "FilterReset", "ib.square", out _resetLabel, null);
             _resetFade = _reset.gameObject.AddComponent<CanvasGroup>();
             OnClick(_reset, () => { _fs.Clear(); _chipOpen = -1; Touch(); });
-            _layoutBtn = Btn(g, "LayoutToggle", "ib.square", out var layoutLabel, () => { });
+            _layoutBtn = Btn(g, "LayoutToggle", "ib.square", out var layoutLabel, null);
             Off(layoutLabel);
             OnClick(_layoutBtn, () => { _listMode = !_listMode; Touch(); });
             _layoutGrid = Img(_layoutBtn.transform, "Grid", "ib.glyph.grid");
@@ -180,6 +186,13 @@ namespace Morgott.UI.ItemBrowser
 
         // ---------------------------------------------------------------- results
 
+        private int _fltCat;
+        private bool _fltKnown;
+        private HashSet<string> _fltFav;
+
+        private bool MatchesFilter(Entry e) =>
+            (_fltCat < 0 || (int)e.Category == _fltCat) && (!_fltKnown || Browser.Known(e)) && (_fltFav == null || _fltFav.Contains(e.Id));
+
         private List<Entry> Filtered(int cat, bool known, HashSet<string> fav, bool dev)
         {
             var scope = FacetTable.Scope(_type, cat, CatKeys);
@@ -190,8 +203,10 @@ namespace Morgott.UI.ItemBrowser
                 if (!_filters.TryGetValue(scope, out _fs)) _filters[scope] = _fs = new FilterState();
             }
             FacetTable.DropHidden(_fs, FacetTable.ChipsOf(scope, dev)); // devcommands off hides the Mod chip: its pick stops filtering
-            _scoped = Browser.Index.Search(_query, TypeOf[_type],
-                e => (cat < 0 || (int)e.Category == cat) && (!known || Browser.Known(e)) && (fav == null || fav.Contains(e.Id)), L, Browser.ModName, dev, GemWords);
+            _fltCat = cat;
+            _fltKnown = known;
+            _fltFav = fav;
+            _scoped = Browser.Index.Search(_query, TypeOf[_type], MatchesFilter, L, Browser.ModName, dev, GemWords);
             if (_plainGrid) return _scoped;
             try { return Staged(); }
             catch (Exception e)
@@ -311,11 +326,11 @@ namespace Morgott.UI.ItemBrowser
             while (_chips.Count < defs.Length)
             {
                 var n = _chips.Count;
-                var c = new FacetButton { B = Btn(_gridView.transform, "FacetChip" + n, "ib.square", out var label, () => { }) };
+                var c = new FacetButton { B = Btn(_gridView.transform, "FacetChip" + n, "ib.square", out var label, null) };
                 c.Label = label;
                 label.alignment = TextAlignmentOptions.Left;
                 c.Arrow = Img(c.B.transform, "Arrow", "ib.glyph.chevron");
-                OnClick(c.B, () => { _chipOpen = _chipOpen == n ? -1 : n; _popScroll = 0; _dirty = true; });
+                OnClick(c.B, new IntClick(OnChipClick, n).Invoke);
                 _chips.Add(c);
             }
             const float gap = 9f, resetW = 30f;
@@ -358,20 +373,22 @@ namespace Morgott.UI.ItemBrowser
 
         private void FillPopup(FacetChip chip) => StageScan.Facets.FillPopup(chip, _scoped, StageScan.Done, L, _popItems);
 
+        private void OnPopRowClick(PopRow r)
+        {
+            if (r.Item >= _popItems.Count || _popItems[r.Item].Header) return;
+            var it = _popItems[r.Item];
+            _fs.Toggle(it.Facet, it.Key, StageScan.Facets.Facets.TryGetValue(it.Facet, out var f) && f.Multi);
+            Touch();
+        }
+
         private PopRow NewPopRow(int i)
         {
-            var r = new PopRow { Back = Img(_popBack.transform, "Row" + i, "content", true) };
+            var r = new PopRow { Owner = this, Back = Img(_popBack.transform, "Row" + i, "content", true) };
             r.Back.color = Color.clear;
             r.Check = Img(_popBack.transform, "Check" + i, "toggle.check");
             r.Label = Txt(_popBack.transform, "Label" + i, "text.body", TextAlignmentOptions.Left);
             r.Count = Txt(_popBack.transform, "Count" + i, "text.muted", TextAlignmentOptions.Right);
-            OnClick(r.Back, () =>
-            {
-                if (r.Item >= _popItems.Count || _popItems[r.Item].Header) return;
-                var it = _popItems[r.Item];
-                _fs.Toggle(it.Facet, it.Key, StageScan.Facets.Facets.TryGetValue(it.Facet, out var f) && f.Multi);
-                Touch();
-            });
+            OnClick(r.Back, r.OnClick);
             return r;
         }
 
@@ -433,7 +450,8 @@ namespace Morgott.UI.ItemBrowser
                 while ((_fs.Plaques & (1 << i)) == 0) i++;
                 part = i == StageRules.PlaqueUnknown ? L("$ib_stage_unknown") : i == StageRules.PlaqueMagic ? L("$ib_stage_magic") : L(MapFilterMath.NameKey(BiomeAt(i)));
             }
-            return part == null ? $"{what} · {count}" : $"{what} · {part} · {count}";
+            var countText = count.ToString(CultureInfo.InvariantCulture);
+            return part == null ? $"{what} · {countText}" : $"{what} · {part} · {countText}";
         }
 
         // ---------------------------------------------------------------- entries
@@ -518,7 +536,7 @@ namespace Morgott.UI.ItemBrowser
                 Line = Img(_gridView.transform, "StageLine" + i, "ib.rule")
             });
             var color = GroupColor(b.Group);
-            var text = $"{GroupName(b.Group).ToUpperInvariant()} · {-b.Count}";
+            var text = $"{GroupName(b.Group).ToUpperInvariant()} · {(-b.Count).ToString(CultureInfo.InvariantCulture)}";
             Text(head.Label, $"<color=#{ColorUtility.ToHtmlStringRGB(color)}>{text}</color>", 18f);
             var w = Mathf.Min(head.Label.GetPreferredValues(text).x / Mathf.Max(_k * _f, 1e-6f) + 4f, UnitW - 60f); // measured in the label's own bold style
             Put(head.Label, 0f, y + 3f, w, 25f);
@@ -718,7 +736,7 @@ namespace Morgott.UI.ItemBrowser
         {
             foreach (var r in Browser.Index.ObtainedFrom(id))
                 if ((r.Kind == RelationKind.Craft || r.Kind == RelationKind.Build || r.Kind == RelationKind.Conversion) && r.Station != null)
-                    return r.StationLevel > 1 ? $"{NameOf(r.Station)} {r.StationLevel}" : NameOf(r.Station);
+                    return r.StationLevel > 1 ? $"{NameOf(r.Station)} {r.StationLevel.ToString(CultureInfo.InvariantCulture)}" : NameOf(r.Station);
             return null;
         }
 
@@ -731,7 +749,7 @@ namespace Morgott.UI.ItemBrowser
 
         private static void Dmg(List<string> list, string kind, float v)
         {
-            if (v > 0f) list.Add($"{L("$inventory_" + kind).ToLowerInvariant()} {Mathf.RoundToInt(v)}");
+            if (v > 0f) list.Add($"{L("$inventory_" + kind).ToLowerInvariant()} {Mathf.RoundToInt(v).ToString(CultureInfo.InvariantCulture)}");
         }
 
         private string SubLine(Entry e)
@@ -762,11 +780,11 @@ namespace Morgott.UI.ItemBrowser
                         Join(sb, string.Join(", ", parts));
                         break;
                     case ItemCategory.Armor:
-                        Join(sb, L("$ib_itemtype_" + sh.m_itemType.ToString().ToLowerInvariant()));
-                        Join(sb, $"{L("$ib_armor")} {Mathf.RoundToInt(sh.m_armor)}");
+                        Join(sb, L("$ib_itemtype_" + StageScan.ItemTypeLower(sh.m_itemType)));
+                        Join(sb, $"{L("$ib_armor")} {Mathf.RoundToInt(sh.m_armor).ToString(CultureInfo.InvariantCulture)}");
                         break;
                     case ItemCategory.Food:
-                        if (sh.m_foodBurnTime > 0f) Join(sb, $"{Mathf.RoundToInt(sh.m_foodBurnTime / 60f)} {L("$ib_min")}");
+                        if (sh.m_foodBurnTime > 0f) Join(sb, $"{Mathf.RoundToInt(sh.m_foodBurnTime / 60f).ToString(CultureInfo.InvariantCulture)} {L("$ib_min")}");
                         break;
                     default:
                         Join(sb, TypeName(e));
@@ -776,7 +794,7 @@ namespace Morgott.UI.ItemBrowser
             }
             else if (e.Type == EntryType.Creature && go && go.TryGetComponent<Character>(out var c))
             {
-                Join(sb, $"{Mathf.RoundToInt(c.m_health)} {L("$ib_hp")}");
+                Join(sb, $"{Mathf.RoundToInt(c.m_health).ToString(CultureInfo.InvariantCulture)} {L("$ib_hp")}");
                 var drops = new List<string>();
                 foreach (var r in Browser.Index.UsedIn(e.Id))
                     if (r.Source == e.Id && r.Kind == RelationKind.CreatureDrop && drops.Count < 3)

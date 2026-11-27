@@ -32,7 +32,7 @@ namespace Morgott.UI.Theme
                 w._watcher.Deleted += w.OnEvent;
                 w._watcher.Renamed += w.OnEvent;
                 w._watcher.EnableRaisingEvents = true;
-                Plugin.Log.LogInfo($"[Morgott.UI] watching {path} (theme reloads {Debounce:0.0} s after a write)");
+                Plugin.Log.LogInfo($"[Morgott.UI] watching {path} (theme reloads {Debounce.ToString("0.0")} s after a write)");
             }
             catch (Exception e)
             {
@@ -54,7 +54,7 @@ namespace Morgott.UI.Theme
             try
             {
                 Plugin.ReloadTheme();
-                Plugin.Log.LogInfo($"[Morgott.UI] theme reloaded after a change: '{ThemeTokens.ThemeName}' rev {ThemeTokens.Revision} from {ThemeTokens.Source}");
+                Plugin.Log.LogInfo($"[Morgott.UI] theme reloaded after a change: '{ThemeTokens.ThemeName}' rev {ThemeTokens.Revision.ToString()} from {ThemeTokens.Source}");
             }
             catch (Exception ex)
             {

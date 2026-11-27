@@ -1,5 +1,6 @@
 using Morgott.UI.Api;
 using System.Collections.Generic;
+using System.Globalization;
 using Morgott.UI.Classify;
 using Morgott.UI.InventoryScreen;
 using Morgott.UI.Ownership;
@@ -37,7 +38,16 @@ namespace Morgott.UI.InfoScreens
         private readonly List<Cell> _bossCells = new List<Cell>();
         private readonly List<(ItemDrop Item, RectTransform Element, Cell Own)> _grid = new List<(ItemDrop, RectTransform, Cell)>();
         private readonly List<(ItemDrop Item, bool Unlocked)> _bossList = new List<(ItemDrop, bool)>();
+        private readonly HashSet<GameObject> _styledElements = new HashSet<GameObject>();
+        private readonly List<GameObject> _restyleScratch = new List<GameObject>(32);
+        private readonly List<Image> _trophyImages = new List<Image>(8);
         private bool _catalogued;
+        private int _styledTheme = -1, _fillHash, _fillTheme = -1;
+        private string _fillLang;
+        private bool _wasOpen, _layoutDirty = true;
+        private Vector2 _lastCanvas;
+        private float _lastK = -1f;
+        private int _lastGridCount = -1, _lastBossCount = -1, _lastTheme = -1;
 
         private sealed class Cell
         {
@@ -131,7 +141,7 @@ namespace Morgott.UI.InfoScreens
                     if (d.m_prefab && d.m_prefab.TryGetComponent<ItemDrop>(out var item) && item.m_itemData.m_shared.m_itemType == ItemDrop.ItemData.ItemType.Trophy)
                         _bosses.Add(d.m_prefab.name);
             }
-            Plugin.Log.LogInfo($"[Morgott.UI] trophies: {_all.Count} trophy items, {_bosses.Count} boss trophies ({string.Join(",", _bosses)})");
+            Plugin.Log.LogInfo($"[Morgott.UI] trophies: {_all.Count.ToString(CultureInfo.InvariantCulture)} trophy items, {_bosses.Count.ToString(CultureInfo.InvariantCulture)} boss trophies ({string.Join(",", _bosses)})");
         }
 
         // InventoryGui.UpdateTrophyList postfix: map vanilla elements to trophies, build locked + boss cells.
@@ -150,6 +160,21 @@ namespace Morgott.UI.InfoScreens
                 if (n < _gui.m_trophyList.Count && _gui.m_trophyList[n]) byName[trophy] = (RectTransform)_gui.m_trophyList[n].transform;
                 n++;
             }
+            var unlockedHash = 17;
+            var unlocked = 0;
+            unchecked
+            {
+                for (var i = 0; i < _all.Count; i++)
+                    if (byName.ContainsKey(_all[i].name))
+                    {
+                        unlockedHash = unlockedHash * 31 + i + 1;
+                        unlocked++;
+                    }
+                unlockedHash = unlockedHash * 31 + unlocked;
+            }
+            var lang = Localization.instance.GetSelectedLanguage();
+            var themeRev = ThemeTokens.Revision;
+            var contentChanged = unlockedHash != _fillHash || _fillLang != lang || _fillTheme != themeRev;
             _grid.Clear();
             _bossList.Clear();
             var lockedUsed = 0;
@@ -165,9 +190,10 @@ namespace Morgott.UI.InfoScreens
                 Cell own = null;
                 if (!element)
                 {
-                    if (lockedUsed == _locked.Count) _locked.Add(MakeCell(_gui.m_trophieListRoot, "RuneSkinTrophyLocked" + lockedUsed, false));
+                    var created = lockedUsed == _locked.Count;
+                    if (created) _locked.Add(MakeCell(_gui.m_trophieListRoot, "RuneSkinTrophyLocked" + lockedUsed, false));
                     own = _locked[lockedUsed++];
-                    Fill(own, item, false);
+                    if (created || contentChanged) Fill(own, item, false);
                 }
                 else Tooltip(element, item, true);
                 _grid.Add((item, element, own));
@@ -176,17 +202,67 @@ namespace Morgott.UI.InfoScreens
                 if (_locked[i].Root.gameObject.activeSelf != i < lockedUsed) _locked[i].Root.gameObject.SetActive(i < lockedUsed);
             for (var i = 0; i < _bossList.Count; i++)
             {
-                if (i == _bossCells.Count) _bossCells.Add(MakeCell(_strip, "RuneSkinBoss" + i, true));
-                Fill(_bossCells[i], _bossList[i].Item, _bossList[i].Unlocked);
+                var created = i == _bossCells.Count;
+                if (created) _bossCells.Add(MakeCell(_strip, "RuneSkinBoss" + i, true));
+                if (created || contentChanged) Fill(_bossCells[i], _bossList[i].Item, _bossList[i].Unlocked);
             }
             for (var i = 0; i < _bossCells.Count; i++)
                 if (_bossCells[i].Root.gameObject.activeSelf != i < _bossList.Count) _bossCells[i].Root.gameObject.SetActive(i < _bossList.Count);
-            var unlocked = 0;
-            foreach (var item in _all) if (byName.ContainsKey(item.name)) unlocked++;
-            var title = _frame.Find("topic")?.GetComponent<TMP_Text>();
-            _count.text = $"{(title ? title.text : "")}: {unlocked} / {_all.Count}";
-            ScreenRegistry.Restyle(_root);
+            if (contentChanged)
+            {
+                var title = _frame.Find("topic")?.GetComponent<TMP_Text>();
+                _count.text = $"{(title ? title.text : "")}: {unlocked.ToString(CultureInfo.InvariantCulture)} / {_all.Count.ToString(CultureInfo.InvariantCulture)}";
+                _fillHash = unlockedHash;
+                _fillLang = lang;
+                _fillTheme = themeRev;
+            }
+            RestyleNewElements();
+            _layoutDirty = true;
             Layout();
+        }
+
+        // Restyles only newly instantiated vanilla trophy elements via RestyleSubtree instead of walking all of _root.
+        private void RestyleNewElements()
+        {
+            var list = _gui.m_trophyList;
+            if (list == null || list.Count == 0) return;
+            if (_styledTheme != ThemeTokens.Revision || _styledElements.Count > 4 * Mathf.Max(32, list.Count))
+            {
+                _styledTheme = ThemeTokens.Revision;
+                _styledElements.Clear();
+            }
+            _restyleScratch.Clear();
+            for (var i = 0; i < list.Count; i++)
+            {
+                var go = list[i];
+                if (go && !_styledElements.Contains(go)) _restyleScratch.Add(go);
+            }
+            if (_restyleScratch.Count == 0) return;
+            var ctx = new ScreenContext(ScreenId, OwnershipRegistry.Trophies);
+            for (var i = 0; i < _restyleScratch.Count; i++)
+            {
+                var go = _restyleScratch[i];
+                _trophyImages.Clear();
+                go.GetComponentsInChildren(true, _trophyImages);
+                for (var j = 0; j < _trophyImages.Count; j++)
+                {
+                    var image = _trophyImages[j];
+                    var t = image.transform;
+                    if (image.GetComponent<SkinMark>() is SkinMark m && m.Internal) continue;
+                    if (t.name == "icon_bkg") ctx.Role(image, "slot.recess", "trophy cell (slot_cell_recess)");
+                    else if (t.name == "bkg" && t.parent && t.parent.name.StartsWith("TrophyElement", System.StringComparison.Ordinal)) ctx.Role(image, "skip", "vanilla trophy card strip (grid cells only, trophies-a)");
+                    else if (t.name == "icon") ctx.Role(image, "content", "trophy icon");
+                    else if (!image.sprite) ctx.Role(image, "skip", "sprite-less vanilla container image (list area), kept");
+                }
+            }
+            _trophyImages.Clear();
+            for (var i = 0; i < _restyleScratch.Count; i++)
+            {
+                var go = _restyleScratch[i];
+                Restyler.RestyleSubtree(go.transform, _root, ctx);
+                _styledElements.Add(go);
+            }
+            _restyleScratch.Clear();
         }
 
         private Cell MakeCell(Transform parent, string name, bool boss)
@@ -257,10 +333,26 @@ namespace Morgott.UI.InfoScreens
             if (bg && bg.TryGetComponent<Image>(out var img) && !img.raycastTarget) img.raycastTarget = true;
         }
 
+        private void OnEnable() => _layoutDirty = true;
+
         private void LateUpdate()
         {
-            if (!_root.gameObject.activeInHierarchy) return;
-            Layout();
+            if (!_root || !_root.gameObject.activeInHierarchy)
+            {
+                _wasOpen = false;
+                return;
+            }
+            var inv = InventorySkin.Instance;
+            if (!inv || !_canvas) return;
+            var size = _canvas.rect.size;
+            var k = inv.SkinScaleValue;
+            var theme = ThemeTokens.Revision;
+            if (!_wasOpen || _layoutDirty || size != _lastCanvas || !Mathf.Approximately(k, _lastK) ||
+                _grid.Count != _lastGridCount || _bossList.Count != _lastBossCount || theme != _lastTheme)
+            {
+                _wasOpen = true;
+                Layout();
+            }
         }
 
         private void Layout()
@@ -281,6 +373,12 @@ namespace Morgott.UI.InfoScreens
             var countW = ThemeTokens.GetFloat("size.info.count.w", 150f) * k;
             var inner = _page.Layout(k, header);
             if (inner.W <= 0f || inner.H <= 0f) return;
+            _layoutDirty = false;
+            _lastCanvas = _canvas.rect.size;
+            _lastK = k;
+            _lastGridCount = _grid.Count;
+            _lastBossCount = _bossList.Count;
+            _lastTheme = ThemeTokens.Revision;
             // The count right-aligned under the title band (in its aux slot it overlapped the page banner's knotwork ends).
             var countBox = new Box(inner.Right - countW * 1.8f, inner.Y - 28f * k, countW * 1.8f, 24f * k);
             Geo.Place(_canvas, _count.rectTransform, countBox);

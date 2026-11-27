@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 
 namespace Morgott.UI.PlayerHud
 {
@@ -201,9 +202,11 @@ namespace Morgott.UI.PlayerHud
         {
             var c = (int)Math.Ceiling(Math.Max(0f, cur));
             var m = (int)Math.Ceiling(Math.Max(0f, max));
-            var s = tagged ? $"HP {c}/{m}" : $"{c}/{m}";
-            if (gear > 0f && !float.IsInfinity(gear)) s += "  " + Tint($"+{(int)Math.Ceiling(gear)}", gearHex);
-            if (ext > 0f && !float.IsInfinity(ext)) s += "  " + Tint($"+{(int)Math.Ceiling(ext)}", extHex);
+            var cs = c.ToString(CultureInfo.InvariantCulture);
+            var ms = m.ToString(CultureInfo.InvariantCulture);
+            var s = tagged ? "HP " + cs + "/" + ms : cs + "/" + ms;
+            if (gear > 0f && !float.IsInfinity(gear)) s += "  " + Tint("+" + ((int)Math.Ceiling(gear)).ToString(CultureInfo.InvariantCulture), gearHex);
+            if (ext > 0f && !float.IsInfinity(ext)) s += "  " + Tint("+" + ((int)Math.Ceiling(ext)).ToString(CultureInfo.InvariantCulture), extHex);
             return s;
         }
 
@@ -212,8 +215,8 @@ namespace Morgott.UI.PlayerHud
         public static string ShieldText(float shield, float poolMax)
         {
             var s = shield > 0f && !float.IsInfinity(shield) ? (int)Math.Ceiling(shield) : 0;
-            if (poolMax > 0f && !float.IsInfinity(poolMax)) return $"{s}/{(int)Math.Ceiling(poolMax)}";
-            return s > 0 ? s.ToString(System.Globalization.CultureInfo.InvariantCulture) : "";
+            if (poolMax > 0f && !float.IsInfinity(poolMax)) return s.ToString(CultureInfo.InvariantCulture) + "/" + ((int)Math.Ceiling(poolMax)).ToString(CultureInfo.InvariantCulture);
+            return s > 0 ? s.ToString(CultureInfo.InvariantCulture) : "";
         }
 
         // Shield overlay in its OWN scale (user 2026-11-03, corrected spec: each pool shows its own percentage - max HP

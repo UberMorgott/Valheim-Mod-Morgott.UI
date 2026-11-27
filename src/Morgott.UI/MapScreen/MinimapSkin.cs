@@ -453,7 +453,6 @@ namespace Morgott.UI.MapScreen
                 return;
             }
             MinimapSkin.Instance?.ApplyFilters();
-            MinimapSkin.Instance?.MarkLargeDirty();
         }
     }
 }

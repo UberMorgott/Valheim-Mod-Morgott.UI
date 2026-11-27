@@ -1,3 +1,4 @@
+using System.Globalization;
 using UnityEngine;
 
 namespace Morgott.UI.MapScreen
@@ -28,7 +29,7 @@ namespace Morgott.UI.MapScreen
                 _sprites[i] = Sprite.Create(tex, rect, new Vector2(0.5f, 0.5f), 100f);
                 _sprites[i].name = "UI_MapPinIcon_" + CustomPinMath.IconIds[i];
             }
-            Plugin.Log.LogInfo($"[Morgott.UI] custom map pin icons {tex.width}x{tex.height}, {count} sprites");
+            Plugin.Log.LogInfo($"[Morgott.UI] custom map pin icons {tex.width.ToString(CultureInfo.InvariantCulture)}x{tex.height.ToString(CultureInfo.InvariantCulture)}, {count.ToString(CultureInfo.InvariantCulture)} sprites");
             return true;
         }
     }

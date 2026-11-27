@@ -7,7 +7,7 @@ namespace Morgott.UI.Tests
     // FoundIn: OR-merge of sources per creature, biome order, tags, the rendered line.
     public class FoundInTests
     {
-        private static string Line(FoundIn d, string id) => FoundIn.Text(d.ByPrefab[id], t => t.TrimStart('$'), b => b.ToString());
+        private static string Line(FoundIn d, string id) => FoundIn.Text(d.ByPrefab[id], t => t.TrimStart('$'), b => System.Enum.GetName(b));
 
         [Fact]
         public void Merges_sources_and_dedupes_biomes()

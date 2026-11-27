@@ -24,7 +24,7 @@ namespace Morgott.UI.Diagnostics
         public static string[] Scan(string state)
         {
             var rows = new Dictionary<Graphic, KeyValuePair<string, ReportRow>>();
-            foreach (var report in SkinDiagnostics.Reports)
+            foreach (var report in SkinDiagnostics.ReportValues)
                 foreach (var row in report.Rows)
                     if (row.Graphic) rows[row.Graphic] = new KeyValuePair<string, ReportRow>(report.ScreenId, row);
             int visible = 0, styled = 0, explained = 0, own = 0, unstyled = 0, m7 = 0, foreignFont = 0, legacyTheme = 0, legacyForeign = 0;
@@ -44,7 +44,7 @@ namespace Morgott.UI.Diagnostics
                 else if (mark && mark.Outcome == Outcome.Styled && mark.Role != null) { status = "styled"; reason = mark.Role; }
                 else if (hit.Value != null && hit.Value.Result.Outcome == Outcome.Styled) { status = "styled"; reason = hit.Value.Result.Reason; }
                 else if (hit.Value != null && (hit.Value.Result.Outcome == Outcome.Content || hit.Value.Result.Outcome == Outcome.Skipped)) { status = "explained"; reason = hit.Value.Result.Reason; }
-                else if (hit.Value != null) { status = "unstyled"; reason = $"{hit.Value.Result.Outcome}: {hit.Value.Result.Reason}"; }
+                else if (hit.Value != null) { status = "unstyled"; reason = $"{SkinDiagnostics.OutcomeName(hit.Value.Result.Outcome)}: {hit.Value.Result.Reason}"; }
                 else if (g is TMP_SubMeshUI || g is TMP_SelectionCaret) { status = "explained"; reason = "TMP sub-mesh / caret of a text"; }
                 else if (OwnObject(g.transform)) { status = "own"; reason = "RuneSkin object"; }
                 // Families that draw in their own code (messages, crosshair, minimap...) set theme faces / art without a
@@ -71,12 +71,12 @@ namespace Morgott.UI.Diagnostics
                 if (status == "unstyled")
                     lines.Add($"UNSTYLED {SkinDiagnostics.PathOf(g.transform, null)} | {g.GetType().Name} {SkinDiagnostics.Describe(g)} | screen={key} | {reason}");
             }
-            var head = $"coverage state={state} visible={visible} styled={styled} explained={explained} own={own} unstyled={unstyled} m7={m7} before={unstyled + m7} units={ModScreens.ForeignUi.UnitCount} styledForeignFont={foreignFont} legacyThemeFace={legacyTheme} legacyForeignFace={legacyForeign}";
+            var head = $"coverage state={state} visible={visible.ToString()} styled={styled.ToString()} explained={explained.ToString()} own={own.ToString()} unstyled={unstyled.ToString()} m7={m7.ToString()} before={(unstyled + m7).ToString()} units={ModScreens.ForeignUi.UnitCount.ToString()} styledForeignFont={foreignFont.ToString()} legacyThemeFace={legacyTheme.ToString()} legacyForeignFace={legacyForeign.ToString()}";
             var output = new List<string> { head };
             foreach (var p in perScreen)
-                output.Add($"screen {p.Key} styled={p.Value[0]} explained={p.Value[1]} unstyled={p.Value[2]}");
-            foreach (var u in ModScreens.ForeignUi.AllUnits)
-                if (u.Key) output.Add($"unit {u.Value} {SkinDiagnostics.PathOf(u.Key, null)} active={u.Key.gameObject.activeInHierarchy}");
+                output.Add($"screen {p.Key} styled={p.Value[0].ToString()} explained={p.Value[1].ToString()} unstyled={p.Value[2].ToString()}");
+            foreach (var u in ModScreens.ForeignUi.UnitMap)
+                if (u.Key) output.Add($"unit {u.Value} {SkinDiagnostics.PathOf(u.Key, null)} active={u.Key.gameObject.activeInHierarchy.ToString()}");
             output.AddRange(lines.Take(400));
             try
             {

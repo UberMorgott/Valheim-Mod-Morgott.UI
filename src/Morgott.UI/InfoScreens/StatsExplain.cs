@@ -65,12 +65,16 @@ namespace Morgott.UI.InfoScreens
             return _effects;
         }
 
+        private readonly List<ItemDrop.ItemData> _worn = new List<ItemDrop.ItemData>(16);
+
         // Equipped items (weapons, armor, utility).
-        private IEnumerable<ItemDrop.ItemData> Worn()
+        private List<ItemDrop.ItemData> Worn()
         {
+            _worn.Clear();
             var items = _p.GetInventory().GetAllItems();
             for (var i = 0; i < items.Count; i++)
-                if (items[i] != null && items[i].m_equipped) yield return items[i];
+                if (items[i] != null && items[i].m_equipped) _worn.Add(items[i]);
+            return _worn;
         }
 
         // Residual between the game's value and the attributed sum: mods that patch the vanilla method.
@@ -889,7 +893,7 @@ namespace Morgott.UI.InfoScreens
         {
             if (!_skillNames.TryGetValue(skill, out var name))
             {
-                name = Loc("$ui_bd_skill") + " " + Loc("$skill_" + skill.ToString().ToLowerInvariant());
+                name = Loc("$ui_bd_skill") + " " + Loc("$skill_" + SkillsSkin.SkillNameOf(skill).ToLowerInvariant());
                 _skillNames[skill] = name;
             }
             return name;

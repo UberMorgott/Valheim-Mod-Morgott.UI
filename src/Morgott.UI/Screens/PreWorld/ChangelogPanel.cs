@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using Morgott.UI.Classify;
 using Morgott.UI.InfoScreens;
@@ -100,11 +101,97 @@ namespace Morgott.UI.PreWorld
 
         private sealed class ModRow
         {
+            public ChangelogPanel Owner;
             public Button Box, Solo;
             public Image Check, Fill;
             public TMP_Text Label, Count;
             public string Mod;
             public bool Hover;
+
+            public void OnToggleClick()
+            {
+                if (Mod == null) return;
+                if (!Owner._filter.HiddenMods.Remove(Mod)) Owner._filter.HiddenMods.Add(Mod);
+                Owner._scroll = 0;
+                Owner._dirty = true;
+            }
+
+            public void OnSoloClick()
+            {
+                if (Mod == null) return;
+                ChangelogModel.Solo(Owner._filter, Owner._mods, Mod);
+                Owner._scroll = 0;
+                Owner._dirty = true;
+            }
+
+            public void OnHoverSet(bool on)
+            {
+                Hover = on;
+                ApplyHover(this);
+            }
+        }
+
+        private sealed class PresetHandler
+        {
+            private readonly ChangelogPanel _panel;
+            private readonly int _index;
+
+            public PresetHandler(ChangelogPanel panel, int index)
+            {
+                _panel = panel;
+                _index = index;
+            }
+
+            public void OnClick()
+            {
+                _panel._preset = _index;
+                _panel.ApplyPreset();
+            }
+        }
+
+        private sealed class ChipHandler
+        {
+            private readonly ChangelogPanel _panel;
+            private readonly int _index;
+
+            public ChipHandler(ChangelogPanel panel, int index)
+            {
+                _panel = panel;
+                _index = index;
+            }
+
+            public void OnClick()
+            {
+                _panel._filter.Types[_index] = !_panel._filter.Types[_index];
+                _panel._scroll = 0;
+                _panel._dirty = true;
+            }
+        }
+
+        private sealed class DateEndEditHandler
+        {
+            private readonly ChangelogPanel _panel;
+            private readonly TMP_InputField _field;
+            private readonly bool _from;
+
+            public DateEndEditHandler(ChangelogPanel panel, TMP_InputField field, bool from)
+            {
+                _panel = panel;
+                _field = field;
+                _from = from;
+            }
+
+            public void OnEndEdit(string s)
+            {
+                if (ChangelogModel.TryParseDay(s, out var d))
+                {
+                    if (_from) _panel._filter.From = d; else _panel._filter.To = d;
+                    _panel._preset = -1;
+                    _panel._scroll = 0;
+                    _panel._dirty = true;
+                }
+                else SetField(_field, _from ? _panel._filter.From : _panel._filter.To); // invalid: back to the current value
+            }
         }
 
         // Scrollbar: grip (hit area: press / drag / wheel) with a track and a thumb inside.
@@ -313,7 +400,51 @@ namespace Morgott.UI.PreWorld
             _laidOut = true;
             if (!was) _window.gameObject.SetActive(false);
             _dirty = false;
-            Plugin.Log.LogInfo($"[Morgott.UI] changelog: {_all.Count} entries, {_view?.Shown ?? 0} shown, load+layout {sw.Elapsed.TotalMilliseconds:F1} ms at menu build{(_error != null ? ", " + _error : "")}");
+            Plugin.Log.LogInfo($"[Morgott.UI] changelog: {_all.Count.ToString(CultureInfo.InvariantCulture)} entries, {(_view?.Shown ?? 0).ToString(CultureInfo.InvariantCulture)} shown, load+layout {sw.Elapsed.TotalMilliseconds.ToString("F1", CultureInfo.InvariantCulture)} ms at menu build{(_error != null ? ", " + _error : "")}");
+        }
+
+        private void OnModSearchChanged(string s)
+        {
+            _modQuery = s;
+            _modScroll = 0;
+            _dirty = true;
+        }
+
+        private void OnModsAllClick()
+        {
+            ChangelogModel.ShowMods(_filter, _shownMods, true);
+            _scroll = 0;
+            _dirty = true;
+        }
+
+        private void OnModsNoneClick()
+        {
+            ChangelogModel.ShowMods(_filter, _shownMods, false);
+            _scroll = 0;
+            _dirty = true;
+        }
+
+        private void OnModWheel(float d)
+        {
+            _modScroll -= Math.Sign(d);
+            _dirty = true;
+        }
+
+        private bool CanDragModList(PointerEventData _) => !_gameTab && ModMax() > 0;
+        private float ModDragStepSize() => ModRowH;
+
+        private void OnModDragStep(int steps, PointerEventData _)
+        {
+            var next = Mathf.Clamp(_modScroll + steps, 0, ModMax());
+            if (next == _modScroll) return;
+            _modScroll = next;
+            _dirty = true;
+        }
+
+        private void OnModBarDrag(float s)
+        {
+            _modScroll = Mathf.RoundToInt(s * ModMax());
+            _dirty = true;
         }
 
         private void BuildSidebar()
@@ -327,8 +458,7 @@ namespace Morgott.UI.PreWorld
             const float PresetW = (SideW - 20f) / 3f;
             for (var i = 0; i < 3; i++)
             {
-                var n = i;
-                _presets[i] = Btn(p, "Preset" + i, "field", out _presetLabels[i], () => { _preset = n; ApplyPreset(); });
+                _presets[i] = Btn(p, "Preset" + i, "field", out _presetLabels[i], new PresetHandler(this, i).OnClick);
                 _presetRims[i] = Rim(_presets[i].transform);
                 _presetLabels[i].text = L(presetKeys[i]);
                 _presetLabels[i].fontSize = 19f;
@@ -337,10 +467,9 @@ namespace Morgott.UI.PreWorld
             Label(p, "TypeLabel", "$ui_changelog_type", ListY + 132f);
             for (var i = 0; i < 6; i++)
             {
-                var n = i;
                 // Mockup chip (1b / 3a): pill with a rim in the type colour over a dark tint of it, coloured dot, white
                 // label, count in the type colour.
-                _chips[i] = Btn(p, "Type" + i, null, out _chipLabels[i], () => { _filter.Types[n] = !_filter.Types[n]; _scroll = 0; _dirty = true; });
+                _chips[i] = Btn(p, "Type" + i, null, out _chipLabels[i], new ChipHandler(this, i).OnClick);
                 (_chipFills[i], _chipRims[i]) = Pill(_chips[i].transform);
                 _chipLabels[i].alignment = TextAlignmentOptions.Left;
                 _chipLabels[i].text = L("$ui_changelog_type_" + ChangelogModel.Types[i]);
@@ -357,10 +486,10 @@ namespace Morgott.UI.PreWorld
             // Search (substring, case-insensitive) + All / None over the mods it matches.
             _search = InputBox(p, "ModSearch", "", 0f, "$ui_changelog_search");
             _search.characterLimit = 40;
-            _search.onValueChanged.AddListener(s => { _modQuery = s; _modScroll = 0; _dirty = true; });
+            _search.onValueChanged.AddListener(OnModSearchChanged);
             Put(_search, SideX, ListY + 430f, SideW - 216f, 38f);
-            var all = Btn(p, "ModsAll", "field", out var allLabel, () => { ChangelogModel.ShowMods(_filter, _shownMods, true); _scroll = 0; _dirty = true; });
-            var none = Btn(p, "ModsNone", "field", out var noneLabel, () => { ChangelogModel.ShowMods(_filter, _shownMods, false); _scroll = 0; _dirty = true; });
+            var all = Btn(p, "ModsAll", "field", out var allLabel, OnModsAllClick);
+            var none = Btn(p, "ModsNone", "field", out var noneLabel, OnModsNoneClick);
             allLabel.text = L("$ui_changelog_mods_all");
             noneLabel.text = L("$ui_changelog_mods_none");
             allLabel.fontSize = noneLabel.fontSize = 18f;
@@ -368,18 +497,12 @@ namespace Morgott.UI.PreWorld
             Put(none, SideX + SideW - 100f, ListY + 430f, 100f, 38f);
             _modList = NewRect("ModList", p);
             Column(_modList, SideX, ModListW, ModListY, Bottom + FootH + 12f);
-            HitArea(_modList, "ModListHit").Wheel = d => { _modScroll -= Math.Sign(d); _dirty = true; };
+            HitArea(_modList, "ModListHit").Wheel = OnModWheel;
             var modDrag = _modList.gameObject.AddComponent<DragScroll>();
-            modDrag.CanStart = _ => !_gameTab && ModMax() > 0;
-            modDrag.StepSize = () => ModRowH;
-            modDrag.OnStep = (steps, _) =>
-            {
-                var next = Mathf.Clamp(_modScroll + steps, 0, ModMax());
-                if (next == _modScroll) return;
-                _modScroll = next;
-                _dirty = true;
-            };
-            _modBar = NewBar(p, "ModScroll", s => { _modScroll = Mathf.RoundToInt(s * ModMax()); _dirty = true; }, d => { _modScroll -= Math.Sign(d); _dirty = true; });
+            modDrag.CanStart = CanDragModList;
+            modDrag.StepSize = ModDragStepSize;
+            modDrag.OnStep = OnModDragStep;
+            _modBar = NewBar(p, "ModScroll", OnModBarDrag, OnModWheel);
             Column(_modBar.Grip, SideX + ModListW + 2f, 26f, ModListY, Bottom + FootH + 12f);
             _footer = Txt(p, "Footer", "text.muted", TextAlignmentOptions.Center, 20f);
             _footer.richText = true;
@@ -441,7 +564,7 @@ namespace Morgott.UI.PreWorld
             var first = !_laidOut;
             Layout();
             _laidOut = true;
-            if (loaded || first) Plugin.Log.LogInfo($"[Morgott.UI] changelog: {_all.Count} entries, {_view?.Shown ?? 0} shown, {(loaded ? "load+" : "")}layout {sw.Elapsed.TotalMilliseconds:F1} ms{(_error != null ? ", " + _error : "")}");
+            if (loaded || first) Plugin.Log.LogInfo($"[Morgott.UI] changelog: {_all.Count.ToString(CultureInfo.InvariantCulture)} entries, {(_view?.Shown ?? 0).ToString(CultureInfo.InvariantCulture)} shown, {(loaded ? "load+" : "")}layout {sw.Elapsed.TotalMilliseconds.ToString("F1", CultureInfo.InvariantCulture)} ms{(_error != null ? ", " + _error : "")}");
         }
 
         // Frame = the root canvas (canvas units: GuiScaler scale + GUI scale setting applied) minus Margin per side; true
@@ -680,7 +803,7 @@ namespace Morgott.UI.PreWorld
 
         private ModRow NewModRow(int i)
         {
-            var r = new ModRow();
+            var r = new ModRow { Owner = this };
             // Clear hit area over the row; box + check drawn at its left, count at its right, "only" on hover.
             var hit = new GameObject("Mod" + i, typeof(RectTransform)).AddComponent<Image>();
             hit.rectTransform.SetParent(_modList, false);
@@ -690,13 +813,7 @@ namespace Morgott.UI.PreWorld
             r.Box.targetGraphic = hit;
             r.Box.transition = Selectable.Transition.None;
             r.Box.navigation = new Navigation { mode = Navigation.Mode.None };
-            r.Box.onClick.AddListener(() =>
-            {
-                if (r.Mod == null) return;
-                if (!_filter.HiddenMods.Remove(r.Mod)) _filter.HiddenMods.Add(r.Mod);
-                _scroll = 0;
-                _dirty = true;
-            });
+            r.Box.onClick.AddListener(r.OnToggleClick);
             r.Fill = Fill(hit.transform);
             var box = Img(hit.transform, "Box", "toggle.box");
             Put(box, 4f, 8f, 18f, 18f);
@@ -706,20 +823,14 @@ namespace Morgott.UI.PreWorld
             Put(r.Label, 34f, 0f, ModListW - 34f - 70f, ModRowH);
             r.Count = Txt(hit.transform, "Count", "text.body", TextAlignmentOptions.Right, 19f);
             Put(r.Count, ModListW - 66f, 0f, 58f, ModRowH);
-            r.Solo = Btn(hit.transform, "Solo", "field", out var soloLabel, () =>
-            {
-                if (r.Mod == null) return;
-                ChangelogModel.Solo(_filter, _mods, r.Mod);
-                _scroll = 0;
-                _dirty = true;
-            });
+            r.Solo = Btn(hit.transform, "Solo", "field", out var soloLabel, r.OnSoloClick);
             soloLabel.text = L("$ui_changelog_only");
             soloLabel.fontSize = 16f;
             soloLabel.color = Gold;
             SetRim(Rim(r.Solo.transform), Gold);
             Put(r.Solo, ModListW - 66f - 100f, 5f, 92f, 24f);
             r.Solo.gameObject.SetActive(false);
-            hit.gameObject.AddComponent<Hover>().Set = on => { r.Hover = on; ApplyHover(r); };
+            hit.gameObject.AddComponent<Hover>().Set = r.OnHoverSet;
             return r;
         }
 
@@ -973,17 +1084,7 @@ namespace Morgott.UI.PreWorld
             var f = InputBox(parent, name, L(prefixToken), 32f, null);
             Put(f, x, ListY + 40f, w, 36f);
             f.characterLimit = 10;
-            f.onEndEdit.AddListener(s =>
-            {
-                if (ChangelogModel.TryParseDay(s, out var d))
-                {
-                    if (from) _filter.From = d; else _filter.To = d;
-                    _preset = -1;
-                    _scroll = 0;
-                    _dirty = true;
-                }
-                else SetField(f, from ? _filter.From : _filter.To); // invalid: back to the current value
-            });
+            f.onEndEdit.AddListener(new DateEndEditHandler(this, f, from).OnEndEdit);
             return f;
         }
 
@@ -1069,7 +1170,7 @@ namespace Morgott.UI.PreWorld
         }
 
         // role null: clear hit plate (own art drawn inside, e.g. the type pills).
-        private static Button Btn(Transform parent, string name, string role, out TMP_Text label, Action click)
+        private static Button Btn(Transform parent, string name, string role, out TMP_Text label, UnityEngine.Events.UnityAction click)
         {
             var image = role != null ? InfoArt.OwnImage(parent, name, role, "changelog button " + name) : NewRect(name, parent).gameObject.AddComponent<Image>();
             if (role == null)
@@ -1082,7 +1183,7 @@ namespace Morgott.UI.PreWorld
             var b = image.gameObject.AddComponent<Button>();
             b.targetGraphic = image;
             b.navigation = new Navigation { mode = Navigation.Mode.None };
-            b.onClick.AddListener(() => click());
+            b.onClick.AddListener(click);
             // Styled after the Button exists: the role's sprite states go on its targetGraphic (BrowserPanel.Btn).
             if (role != null && image.GetComponent<SkinMark>() is SkinMark m) m.Outcome = Restyler.Apply(image, m, ThemeTokens.Role(role)) ? Outcome.Styled : Outcome.Degraded;
             label = Txt(image.transform, "Label", "text.body", TextAlignmentOptions.Center, 18f);

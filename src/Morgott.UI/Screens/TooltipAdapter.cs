@@ -1,4 +1,3 @@
-using Morgott.UI.Api;
 using HarmonyLib;
 using Morgott.UI.Classify;
 using Morgott.UI.Responsive;
@@ -36,12 +35,28 @@ namespace Morgott.UI.Screens
             Apply(tip);
         }
 
+        private const string OwnedPrefix = "RuneSkinTooltip_";
+
         public static void Apply(GameObject tip)
         {
             var root = tip.transform;
-            var screenId = "Tooltip:" + (tip.name.EndsWith("(Clone)") ? tip.name.Substring(0, tip.name.Length - 7) : tip.name);
-            ScreenRegistry.Register(root, () => Context(root, screenId));
-            ScreenRegistry.Restyle(root);
+            var rawName = tip.name;
+            var owned = rawName.StartsWith(OwnedPrefix, System.StringComparison.Ordinal);
+            var clean = owned ? rawName.Substring(OwnedPrefix.Length) : rawName;
+            var screenId = "Tooltip:" + (clean.EndsWith("(Clone)", System.StringComparison.Ordinal) ? clean.Substring(0, clean.Length - 7) : clean);
+            // Transient tooltip clones are never registered in ScreenRegistry (avoids bumping ScreenRegistry.Version ->
+            // ForeignUi.RebuildBoundary + Cache.Clear on every hover). The RuneSkin* root name marks the ownership
+            // boundary for ForeignUi, and RootMark marks it for Restyler / Coverage.
+            if (!owned)
+            {
+                tip.name = OwnedPrefix + rawName;
+                NameCache.Forget(tip);
+                NameCache.Forget(root);
+            }
+            if (!tip.TryGetComponent<RootMark>(out var rm)) rm = tip.AddComponent<RootMark>();
+            rm.ScreenId = screenId;
+            rm.Owner = OwnershipRegistry.Tooltips;
+            Restyler.RestyleRoot(root, Context(root, screenId));
             ResponsiveContext.ApplyScale(root);
             // Top overlay sort, no raycasts, height cap + wheel scroll, placement above the strip (TooltipPlacer).
             // Root cause of tooltips under the strip: the instance lives under the hovered element's canvas

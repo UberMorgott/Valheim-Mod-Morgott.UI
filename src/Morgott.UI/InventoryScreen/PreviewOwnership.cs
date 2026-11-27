@@ -20,7 +20,22 @@ namespace Morgott.UI.InventoryScreen
         {
             _baseline.Clear();
             _owned.Clear();
-            foreach (var id in ids) _baseline.Add(id);
+            if (ids is int[] arr)
+            {
+                for (var i = 0; i < arr.Length; i++) _baseline.Add(arr[i]);
+            }
+            else if (ids is List<int> list)
+            {
+                for (var i = 0; i < list.Count; i++) _baseline.Add(list[i]);
+            }
+            else if (ids is HashSet<int> set)
+            {
+                foreach (var id in set) _baseline.Add(id);
+            }
+            else
+            {
+                _baseline.UnionWith(ids);
+            }
             HasBaseline = true;
         }
 

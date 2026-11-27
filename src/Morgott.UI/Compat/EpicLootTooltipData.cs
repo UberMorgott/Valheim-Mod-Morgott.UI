@@ -92,10 +92,29 @@ namespace Morgott.UI.Compat
         private static object F(object o, string field) => o == null ? null : AccessTools.Field(o.GetType(), field)?.GetValue(o);
         private static string S(object o, string field) => F(o, field) as string;
         private static int I(object o, string field) => F(o, field) is int i ? i : 0;
-        private static IEnumerable<object> L(object o, string field)
+        private static List<object> L(object o, string field)
         {
-            if (F(o, field) is IEnumerable list)
-                foreach (var x in list) if (x != null) yield return x;
+            var result = new List<object>();
+            var raw = F(o, field);
+            if (raw is IList ilist)
+            {
+                for (var i = 0; i < ilist.Count; i++)
+                    if (ilist[i] != null) result.Add(ilist[i]);
+            }
+            else if (raw is IEnumerable list)
+            {
+                var e = list.GetEnumerator();
+                try
+                {
+                    while (e.MoveNext())
+                        if (e.Current != null) result.Add(e.Current);
+                }
+                finally
+                {
+                    (e as IDisposable)?.Dispose();
+                }
+            }
+            return result;
         }
 
         private static void Resolve()

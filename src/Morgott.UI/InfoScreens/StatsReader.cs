@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Globalization;
 using System.Text;
 using Morgott.UI.Theme;
 using UnityEngine;
@@ -538,7 +539,7 @@ namespace Morgott.UI.InfoScreens
 
         private static readonly System.Comparison<Piece> ComfortOrder = (x, y) =>
         {
-            if (x.m_comfortGroup != y.m_comfortGroup) return x.m_comfortGroup.CompareTo(y.m_comfortGroup);
+            if (x.m_comfortGroup != y.m_comfortGroup) return ((int)x.m_comfortGroup).CompareTo((int)y.m_comfortGroup);
             var a = x.GetComfort();
             var b = y.GetComfort();
             if (a != b) return b.CompareTo(a);
@@ -681,14 +682,14 @@ namespace Morgott.UI.InfoScreens
                 foreach (var pair in _clips)
                     if (pair.Key.IndexOf(anim, System.StringComparison.OrdinalIgnoreCase) >= 0) { len = pair.Value; LastClip = pair.Key; break; }
             _attackLength[anim] = len;
-            Plugin.Log.LogInfo($"[Morgott.UI] stats: attack '{anim}' -> clip '{LastClip}' {len:0.00} s");
+            Plugin.Log.LogInfo($"[Morgott.UI] stats: attack '{anim}' -> clip '{LastClip}' {len.ToString("0.00", CultureInfo.InvariantCulture)} s");
             if (len <= 0f)
             {
                 var sample = new System.Text.StringBuilder(512);
                 foreach (var key in _clips.Keys)
                     if (key.IndexOf("attack", System.StringComparison.OrdinalIgnoreCase) >= 0 || key.IndexOf("swing", System.StringComparison.OrdinalIgnoreCase) >= 0 || key.IndexOf("punch", System.StringComparison.OrdinalIgnoreCase) >= 0)
                         if (sample.Length < 480) sample.Append(key).Append(", ");
-                Plugin.Log.LogInfo($"[Morgott.UI] stats: {_clips.Count} clips, attack-like: {sample}");
+                Plugin.Log.LogInfo($"[Morgott.UI] stats: {_clips.Count.ToString(CultureInfo.InvariantCulture)} clips, attack-like: {sample.ToString()}");
             }
             return len;
         }

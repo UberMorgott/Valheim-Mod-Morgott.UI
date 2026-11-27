@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.IO;
 using System.Threading;
 using HarmonyLib;
@@ -97,13 +98,41 @@ namespace Morgott.UI.MapScreen
 
         private static bool On => (MapConfig.BiomeOverlay?.Value ?? true) || (MapConfig.FogTint?.Value ?? true);
 
+        private sealed class ComposeState
+        {
+            public readonly BiomeOverlay Owner;
+            public readonly Color32[] Palette;
+            public readonly byte Fill, Outline;
+            public readonly Color32 Fog;
+            public readonly System.Collections.BitArray Explored, Others;
+            public readonly byte[] Ids;
+            public readonly int Size;
+            public readonly Unity.Collections.NativeArray<Color32> PxOutline, PxFill;
+
+            public ComposeState(BiomeOverlay owner, Color32[] palette, byte fill, byte outline, Color32 fog,
+                System.Collections.BitArray explored, System.Collections.BitArray others, byte[] ids, int size,
+                Unity.Collections.NativeArray<Color32> pxOutline, Unity.Collections.NativeArray<Color32> pxFill)
+            {
+                Owner = owner;
+                Palette = palette;
+                Fill = fill;
+                Outline = outline;
+                Fog = fog;
+                Explored = explored;
+                Others = others;
+                Ids = ids;
+                Size = size;
+                PxOutline = pxOutline;
+                PxFill = pxFill;
+            }
+        }
+
         // Main thread: palette + explored snapshot; the worker fills both pixel arrays.
         private void StartCompose()
         {
             _full = false;
             _composing = true;
             var palette = Palette();
-            var (fill, outline, fog) = (_fill, _outline, _fog);
             var explored = (System.Collections.BitArray)_map.m_explored.Clone();
             var others = (System.Collections.BitArray)_map.m_exploredOthers.Clone();
             if (!_texOutline)
@@ -113,31 +142,34 @@ namespace Morgott.UI.MapScreen
                 _pxOutline = _texOutline.GetPixelData<Color32>(0);
                 _pxFill = _texFill.GetPixelData<Color32>(0);
             }
-            var (ids, size, pxOutline, pxFill) = (_ids, _size, _pxOutline, _pxFill);
-            ThreadPool.QueueUserWorkItem(_ =>
+            var state = new ComposeState(this, palette, _fill, _outline, _fog, explored, others, _ids, _size, _pxOutline, _pxFill);
+            ThreadPool.QueueUserWorkItem(RunCompose, state);
+        }
+
+        private static void RunCompose(object stateObj)
+        {
+            var s = (ComposeState)stateObj;
+            try
             {
-                try
+                var sw = System.Diagnostics.Stopwatch.StartNew();
+                var fogA = new byte[s.Size * s.Size];
+                MapFilterMath.FogAlphas(s.Explored, s.Others, s.Size, s.Fog.a, fogA);
+                // Small-heap bands (16 rows) streamed into the texture data; Detach waits for this worker.
+                const int band = 16;
+                Color32[] bo = null, bf = null;
+                for (var y0 = 0; y0 < s.Size; y0 += band)
                 {
-                    var sw = System.Diagnostics.Stopwatch.StartNew();
-                    var fogA = new byte[size * size];
-                    MapFilterMath.FogAlphas(explored, others, size, fog.a, fogA);
-                    // Small-heap bands (16 rows) streamed into the texture data; Detach waits for this worker.
-                    const int band = 16;
-                    Color32[] bo = null, bf = null;
-                    for (var y0 = 0; y0 < size; y0 += band)
-                    {
-                        var n = Math.Min(band, size - y0) * size;
-                        if (bo == null || bo.Length != n) { bo = new Color32[n]; bf = new Color32[n]; }
-                        MapFilterMath.Compose(ids, size, explored, others, fogA, palette, fill, outline, fog, y0, bo, bf);
-                        Unity.Collections.NativeArray<Color32>.Copy(bo, 0, pxOutline, y0 * size, n);
-                        Unity.Collections.NativeArray<Color32>.Copy(bf, 0, pxFill, y0 * size, n);
-                    }
-                    Plugin.Log.LogInfo($"[Morgott.UI] biome overlay composed in {sw.ElapsedMilliseconds} ms (worker)");
-                    _composeOk = true;
+                    var n = Math.Min(band, s.Size - y0) * s.Size;
+                    if (bo == null || bo.Length != n) { bo = new Color32[n]; bf = new Color32[n]; }
+                    MapFilterMath.Compose(s.Ids, s.Size, s.Explored, s.Others, fogA, s.Palette, s.Fill, s.Outline, s.Fog, y0, bo, bf);
+                    Unity.Collections.NativeArray<Color32>.Copy(bo, 0, s.PxOutline, y0 * s.Size, n);
+                    Unity.Collections.NativeArray<Color32>.Copy(bf, 0, s.PxFill, y0 * s.Size, n);
                 }
-                catch (Exception e) { Plugin.Log.LogError($"[Morgott.UI] biome overlay compose failed (overlay stays off): {e}"); }
-                _composeDone = true;
-            });
+                Plugin.Log.LogInfo($"[Morgott.UI] biome overlay composed in {sw.ElapsedMilliseconds.ToString(CultureInfo.InvariantCulture)} ms (worker)");
+                s.Owner._composeOk = true;
+            }
+            catch (Exception e) { Plugin.Log.LogError($"[Morgott.UI] biome overlay compose failed (overlay stays off): {e}"); }
+            s.Owner._composeDone = true;
         }
 
         private void FinishCompose()
@@ -175,11 +207,31 @@ namespace Morgott.UI.MapScreen
 
         // ---------------------------------------------------------------- grid
 
+        private sealed class GridState
+        {
+            public readonly BiomeOverlay Owner;
+            public readonly WorldGenerator Wg;
+            public readonly string Path;
+            public readonly float Pixel, Water;
+            public readonly int Size;
+
+            public GridState(BiomeOverlay owner, WorldGenerator wg, string path, float pixel, int size, float water)
+            {
+                Owner = owner;
+                Wg = wg;
+                Path = path;
+                Pixel = pixel;
+                Size = size;
+                Water = water;
+            }
+        }
+
         private string CachePath()
         {
             var world = WorldGenerator.instance?.m_world;
             if (world == null) return null;
-            return Path.Combine(BepInEx.Paths.CachePath, "Morgott.UI", $"biomes-{world.m_seed}-{world.m_worldGenVersion}-{_size}-{_map.m_pixelSize:0.###}.bin");
+            return Path.Combine(BepInEx.Paths.CachePath, "Morgott.UI",
+                $"biomes-{world.m_seed.ToString(CultureInfo.InvariantCulture)}-{world.m_worldGenVersion.ToString(CultureInfo.InvariantCulture)}-{_size.ToString(CultureInfo.InvariantCulture)}-{_map.m_pixelSize.ToString("0.###", CultureInfo.InvariantCulture)}.bin");
         }
 
         private void StartGrid()
@@ -190,36 +242,39 @@ namespace Morgott.UI.MapScreen
             var pixel = _map.m_pixelSize;
             var size = _size;
             var water = ZoneSystem.instance ? ZoneSystem.instance.m_waterLevel : 30f; // ZoneSystem.cs:466 default
-            _worker = new Thread(() =>
+            _worker = new Thread(RunGrid) { IsBackground = true, Name = "Morgott.UI biome grid" };
+            _worker.Start(new GridState(this, wg, path, pixel, size, water));
+        }
+
+        private static void RunGrid(object stateObj)
+        {
+            var s = (GridState)stateObj;
+            try
             {
-                try
+                var ids = ReadCache(s.Path, s.Size);
+                if (ids == null)
                 {
-                    var ids = ReadCache(path, size);
-                    if (ids == null)
+                    var sw = System.Diagnostics.Stopwatch.StartNew();
+                    ids = new byte[s.Size * s.Size];
+                    for (var y = 0; y < s.Size; y++)
                     {
-                        var sw = System.Diagnostics.Stopwatch.StartNew();
-                        ids = new byte[size * size];
-                        for (var y = 0; y < size; y++)
+                        var wy = MapFilterMath.WorldCoord(y, s.Size, s.Pixel);
+                        for (var x = 0; x < s.Size; x++)
                         {
-                            var wy = MapFilterMath.WorldCoord(y, size, pixel);
-                            for (var x = 0; x < size; x++)
-                            {
-                                // Same samples as Minimap.GenerateWorldMap (Minimap.cs:1967-1968): biome, then its height.
-                                var wx = MapFilterMath.WorldCoord(x, size, pixel);
-                                var biome = wg.GetBiome(wx, wy);
-                                ids[y * size + x] = MapFilterMath.GridId(biome, wg.GetBiomeHeight(biome, wx, wy, out _), water);
-                            }
+                            // Same samples as Minimap.GenerateWorldMap (Minimap.cs:1967-1968): biome, then its height.
+                            var wx = MapFilterMath.WorldCoord(x, s.Size, s.Pixel);
+                            var biome = s.Wg.GetBiome(wx, wy);
+                            ids[y * s.Size + x] = MapFilterMath.GridId(biome, s.Wg.GetBiomeHeight(biome, wx, wy, out _), s.Water);
                         }
-                        WriteCache(path, size, ids);
-                        Plugin.Log.LogInfo($"[Morgott.UI] biome overlay grid {size}x{size} built in {sw.ElapsedMilliseconds} ms, cached {path}");
                     }
-                    _ids = ids;
-                    _gridReady = true;
+                    WriteCache(s.Path, s.Size, ids);
+                    var sizeText = s.Size.ToString(CultureInfo.InvariantCulture);
+                    Plugin.Log.LogInfo($"[Morgott.UI] biome overlay grid {sizeText}x{sizeText} built in {sw.ElapsedMilliseconds.ToString(CultureInfo.InvariantCulture)} ms, cached {s.Path}");
                 }
-                catch (Exception e) { Plugin.Log.LogError($"[Morgott.UI] biome overlay grid failed (overlay stays off): {e}"); }
-            })
-            { IsBackground = true, Name = "Morgott.UI biome grid" };
-            _worker.Start();
+                s.Owner._ids = ids;
+                s.Owner._gridReady = true;
+            }
+            catch (Exception e) { Plugin.Log.LogError($"[Morgott.UI] biome overlay grid failed (overlay stays off): {e}"); }
         }
 
         private static byte[] ReadCache(string path, int size)

@@ -26,7 +26,8 @@ namespace Morgott.UI.Tests
             var row = new Box(100f, 50f, 700f, 70f);
             var cells = InfoMath.TabRow(row, 5, 1.3f, 10f);
             Assert.Equal(5, cells.Length);
-            Assert.All(cells, c => Assert.True(c.Inside(row), $"{c} outside {row}"));
+            for (var i = 0; i < cells.Length; i++)
+                Assert.True(cells[i].Inside(row), $"{cells[i]} outside {row}");
             Assert.Equal(91f, cells[0].W, 3);
             var left = cells[0].X - row.X;
             var right = row.Right - cells[4].Right;
@@ -38,7 +39,8 @@ namespace Morgott.UI.Tests
         {
             var row = new Box(0f, 0f, 400f, 70f);
             var cells = InfoMath.TabRow(row, 8, 1.3f, 10f);
-            Assert.All(cells, c => Assert.True(c.Inside(row)));
+            for (var i = 0; i < cells.Length; i++)
+                Assert.True(cells[i].Inside(row));
             Assert.True(cells[1].X >= cells[0].Right + 9.99f);
             Assert.Empty(InfoMath.TabRow(row, 0, 1.3f, 10f));
         }

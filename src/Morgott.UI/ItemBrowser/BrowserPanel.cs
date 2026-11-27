@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using Morgott.Core;
 using Morgott.UI.Classify;
 using Morgott.UI.InfoScreens;
@@ -107,14 +108,45 @@ namespace Morgott.UI.ItemBrowser
             }
         }
 
+        private sealed class IntClick
+        {
+            private readonly Action<int> _fn;
+            private readonly int _arg;
+            public IntClick(Action<int> fn, int arg) { _fn = fn; _arg = arg; }
+            public void Invoke() => _fn(_arg);
+        }
+
         // Pointer relay: click / enter callbacks per slot, the tooltip filled on enter (before UITooltip's own handler).
         private sealed class Hit : MonoBehaviour, IPointerClickHandler, IPointerEnterHandler
         {
             public Action<PointerEventData> Click;
-            public Action Enter;
-            public Func<string> Id; // entry under the pointer (hover keys)
-            public void OnPointerClick(PointerEventData e) { if (!e.dragging) Click?.Invoke(e); }
-            public void OnPointerEnter(PointerEventData e) => Enter?.Invoke();
+            public Action LeftClick;
+            public BrowserPanel Panel;
+            public Slot Slot;
+            public UITooltip Tip;
+            public bool IsPageIcon;
+
+            public string HoveredId => IsPageIcon ? Panel._pageId : Slot?.Id;
+
+            public void OnPointerClick(PointerEventData e)
+            {
+                if (e.dragging) return;
+                if (Slot != null) Panel.OnSlotClick(Slot, e);
+                Click?.Invoke(e);
+                if (e.button == PointerEventData.InputButton.Left) LeftClick?.Invoke();
+            }
+
+            public void OnPointerEnter(PointerEventData e)
+            {
+                if (!Tip || !Panel) return;
+                if (Slot != null && Slot.Store?.Item is ItemDrop.ItemData real) { Tip.Set(real.m_shared.m_name, real.GetTooltip()); return; }
+                var id = IsPageIcon ? Panel._pageId : Slot?.Id;
+                var quality = IsPageIcon ? Panel._quality : (Slot != null ? Slot.Quality : 1);
+                var entry = id is string s && Browser.Index != null && Browser.Index.Entries.TryGetValue(s, out var x) ? x : null;
+                if (entry == null) { Tip.Set("", ""); return; }
+                Browser.Tooltip(entry, quality, out var topic, out var text);
+                Tip.Set(topic, text);
+            }
         }
 
         // Grid scrollbar hit area (the drawn track + thumb are 4-6 units wide, no raycast): press on the thumb grabs it, on
@@ -385,7 +417,7 @@ namespace Morgott.UI.ItemBrowser
                 var go = ray.gameObject;
                 if (!go) continue;
                 var hit = go.GetComponentInParent<Hit>();
-                if (hit && hit.Id != null) return hit.Id();
+                if (hit && (hit.IsPageIcon || hit.Slot != null)) return hit.HoveredId;
                 var grid = go.GetComponentInParent<InventoryGrid>();
                 // EAQS 3.2 parents its slot cells (the doll) to EaqsSlotRoot under InventoryGui.m_player, outside the
                 // grid's transform; they stay player grid elements (m_elements, EquipmentPanel.UpdateInventorySlots).
@@ -428,13 +460,28 @@ namespace Morgott.UI.ItemBrowser
 
         // ---------------------------------------------------------------- build
 
+        private void OnTypeClick(int n)
+        {
+            if (_storage) _cat = -1; // storage mode shows only "All" (Type0) in front of the categories
+            else _type = n;
+            _gridScroll = 0;
+            _dirty = true;
+        }
+
+        private void OnCatClick(int n)
+        {
+            _cat = _cat == n ? -1 : n;
+            _gridScroll = 0;
+            _dirty = true;
+        }
+
         private void Build()
         {
             _gridView = Child("Grid").gameObject;
             var g = _gridView.transform;
             ScrollHit(_gridView);
             var gridDrag = _gridView.AddComponent<DragScroll>();
-            gridDrag.CanStart = e => _chipOpen < 0 && _gridScrollMax > 0 && InScrollBand((RectTransform)g, e, _gridTop, _gridBottom);
+            gridDrag.CanStart = e => _chipOpen < 0 && _gridScrollMax > 0 && InScrollBand((RectTransform)_gridView.transform, e, _gridTop, _gridBottom);
             gridDrag.StepSize = () => (!_storage && !_plainGrid && _listMode ? ListRowH : CellPitchY) * _k;
             gridDrag.OnStep = (steps, _) =>
             {
@@ -447,21 +494,11 @@ namespace Morgott.UI.ItemBrowser
             _searchGlyph = Img(_searchBack.transform, "Glyph", "craft.glyph.search");
             _search = Field(_searchBack);
             for (var i = 0; i < _types.Length; i++)
-            {
-                var n = i;
-                _types[i] = Btn(g, "Type" + i, "ib.square", out _typeLabels[i], () =>
-                {
-                    if (_storage) _cat = -1; // storage mode shows only "All" (Type0) in front of the categories
-                    else _type = n;
-                    _gridScroll = 0;
-                    _dirty = true;
-                });
-            }
+                _types[i] = Btn(g, "Type" + i, "ib.square", out _typeLabels[i], new IntClick(OnTypeClick, i).Invoke);
             _typeStar = Img(_types[5].transform, "Star", "ib.star.type");
             for (var i = 0; i < _cats.Length; i++)
             {
-                var n = i;
-                _cats[i] = Btn(g, "Cat" + i, "ib.square", out _, () => { _cat = _cat == n ? -1 : n; _gridScroll = 0; _dirty = true; });
+                _cats[i] = Btn(g, "Cat" + i, "ib.square", out _, new IntClick(OnCatClick, i).Invoke);
                 _catGlyphs[i] = Img(_cats[i].transform, "Glyph", "ib.cat." + CatKeys[i]);
                 if (i == 0)
                 {
@@ -500,7 +537,7 @@ namespace Morgott.UI.ItemBrowser
             var p = _pageView.transform;
             ScrollHit(_pageView);
             var pageDrag = _pageView.AddComponent<DragScroll>();
-            pageDrag.CanStart = e => _pageScrollMax > 0 && InScrollBand((RectTransform)p, e, _pageTop, _a.H / Mathf.Max(_k, 1e-6f));
+            pageDrag.CanStart = e => _pageScrollMax > 0 && InScrollBand((RectTransform)_pageView.transform, e, _pageTop, _a.H / Mathf.Max(_k, 1e-6f));
             pageDrag.StepSize = () => PageModel.RowH * _k;
             pageDrag.OnStep = (steps, _) =>
             {
@@ -514,7 +551,7 @@ namespace Morgott.UI.ItemBrowser
             _crumb = Txt(p, "Crumb", "text.body", TextAlignmentOptions.Left);
             _pageSocket = Img(p, "IconSocket", "plate.side");
             _pageIcon = Img(p, "Icon", "content", true);
-            Tip(_pageIcon.gameObject, () => _pageId, () => _quality);
+            TipPage(_pageIcon.gameObject);
             _pageIcon.gameObject.GetComponent<Hit>().Click = e => { if (e.button == PointerEventData.InputButton.Right) TakeUI(_pageId, _quality, _variant); };
             _pageName = Txt(p, "Name", "text.ember", TextAlignmentOptions.Left, FontStyles.Bold);
             _fav = Btn(p, "Favorite", "ib.square", out _, () => { Browser.ToggleFavorite(_pageId); _resultsGen = -1; _dirty = true; });
@@ -590,7 +627,7 @@ namespace Morgott.UI.ItemBrowser
         }
 
         // Button with a plate role and a label (arrows: glyph only).
-        private static Button Btn(Transform parent, string name, string role, out TMP_Text label, Action click, string labelRole = "text.body")
+        private static Button Btn(Transform parent, string name, string role, out TMP_Text label, UnityEngine.Events.UnityAction click, string labelRole = "text.body")
         {
             var image = InfoArt.OwnImage(parent, name, role, "item browser button " + name);
             image.preserveAspect = role.StartsWith("craft.arrow", StringComparison.Ordinal);
@@ -598,7 +635,7 @@ namespace Morgott.UI.ItemBrowser
             var b = image.gameObject.AddComponent<Button>();
             b.targetGraphic = image;
             b.navigation = new Navigation { mode = Navigation.Mode.None };
-            b.onClick.AddListener(() => click());
+            if (click != null) b.onClick.AddListener(click);
             // Styled after the Button exists: the role's sprite states go on its targetGraphic (CraftingSkin.StepButton).
             if (image.GetComponent<SkinMark>() is SkinMark m) m.Outcome = Restyler.Apply(image, m, ThemeTokens.Role(role)) ? Outcome.Styled : Outcome.Degraded;
             label = role.StartsWith("craft.arrow", StringComparison.Ordinal) ? null : Txt(image.transform, "Label", labelRole, TextAlignmentOptions.Center);
@@ -629,6 +666,20 @@ namespace Morgott.UI.ItemBrowser
             return f;
         }
 
+        private void OnSlotClick(Slot s, PointerEventData e)
+        {
+            if (s.Id == null) return;
+            if (_storage)
+            {
+                if (e.button == PointerEventData.InputButton.Left) Select(s.Store);
+                else if (e.button == PointerEventData.InputButton.Right) TakeClick(s.Store);
+                return;
+            }
+            if (e.button == PointerEventData.InputButton.Right) TakeUI(s.Id, s.Quality, 0);
+            else if (e.button == PointerEventData.InputButton.Middle) { Browser.ToggleFavorite(s.Id); _resultsGen = -1; _dirty = true; }
+            else OpenPage(s.Id);
+        }
+
         // role null = clear hit area (no CellFit cell: its text children stay where the layout puts them).
         private Slot NewSlot(Transform parent, string name, string role)
         {
@@ -644,20 +695,15 @@ namespace Morgott.UI.ItemBrowser
             s.Rt = s.Back.rectTransform;
             s.Icon = Img(s.Rt, "Icon", "content");
             // Left opens the entry's page, right takes it (at the slot's quality), middle toggles the favorite.
-            Hook(s, e =>
+            var hit = s.Back.gameObject.AddComponent<Hit>();
+            hit.Panel = this;
+            hit.Slot = s;
+            if (_tooltipPrefab)
             {
-                if (s.Id == null) return;
-                if (_storage)
-                {
-                    if (e.button == PointerEventData.InputButton.Left) Select(s.Store);
-                    else if (e.button == PointerEventData.InputButton.Right) TakeClick(s.Store);
-                    return;
-                }
-                if (e.button == PointerEventData.InputButton.Right) TakeUI(s.Id, s.Quality, 0);
-                else if (e.button == PointerEventData.InputButton.Middle) { Browser.ToggleFavorite(s.Id); _resultsGen = -1; _dirty = true; }
-                else OpenPage(s.Id);
-            });
-            Tip(s.Back.gameObject, () => s.Id, () => s.Quality, () => s.Store?.Item);
+                var tip = s.Back.gameObject.AddComponent<UITooltip>();
+                tip.m_tooltipPrefab = _tooltipPrefab;
+                hit.Tip = tip;
+            }
             return s;
         }
 
@@ -668,26 +714,18 @@ namespace Morgott.UI.ItemBrowser
             return s;
         }
 
-        private static void Hook(Slot s, Action<PointerEventData> click) => s.Back.gameObject.AddComponent<Hit>().Click = click;
-
         // Vanilla tooltip (UITooltip + the player grid's tooltip prefab), text filled on enter from the vanilla path.
         // A real item (storage cell) gets the inventory's own tooltip, InventoryGrid.CreateItemTooltip (InventoryGrid.cs:411):
         // its quality, crafter, custom data (Epic Loot magic) show.
-        private void Tip(GameObject go, Func<string> id, Func<int> quality, Func<ItemDrop.ItemData> item = null)
+        private void TipPage(GameObject go)
         {
             var hit = go.GetComponent<Hit>() ?? go.AddComponent<Hit>();
-            hit.Id = id;
+            hit.Panel = this;
+            hit.IsPageIcon = true;
             if (!_tooltipPrefab) return;
             var tip = go.AddComponent<UITooltip>();
             tip.m_tooltipPrefab = _tooltipPrefab;
-            hit.Enter = () =>
-            {
-                if (item?.Invoke() is ItemDrop.ItemData real) { tip.Set(real.m_shared.m_name, real.GetTooltip()); return; }
-                var e = id() is string s && Browser.Index != null && Browser.Index.Entries.TryGetValue(s, out var x) ? x : null;
-                if (e == null) { tip.Set("", ""); return; }
-                Browser.Tooltip(e, quality(), out var topic, out var text);
-                tip.Set(topic, text);
-            };
+            hit.Tip = tip;
         }
 
         // ---------------------------------------------------------------- layout helpers (mockup units)
@@ -865,7 +903,7 @@ namespace Morgott.UI.ItemBrowser
                 else Off(_unknownCheck);
             }
             var what = items && _cat >= 0 ? CatName((ItemCategory)_cat) : store ? L(TypeTokens[0]) : _type == 5 ? L("$ib_type_favorites") : L(TypeTokens[_type]);
-            Fit(_caption, filters ? FilterCaption(what, list.Count) : $"{what} · {list.Count}", 20f);
+            Fit(_caption, filters ? FilterCaption(what, list.Count) : $"{what} · {list.Count.ToString(CultureInfo.InvariantCulture)}", 20f);
 
             var top = capY + 37f;
             if (filters)
@@ -997,8 +1035,8 @@ namespace Morgott.UI.ItemBrowser
         private static string TypeName(Entry e)
         {
             if (e.Type == EntryType.Item && Browser.Prefab(e.Id) is GameObject go && go.TryGetComponent<ItemDrop>(out var d))
-                return $"{CatName(e.Category)} · {L("$ib_itemtype_" + d.m_itemData.m_shared.m_itemType.ToString().ToLowerInvariant())}";
-            return L("$ib_entry_" + e.Type.ToString().ToLowerInvariant());
+                return $"{CatName(e.Category)} · {L("$ib_itemtype_" + StageScan.ItemTypeLower(d.m_itemData.m_shared.m_itemType))}";
+            return L("$ib_entry_" + BrowserIndex.EntryTypeLower(e.Type));
         }
 
         private static string Crumb(Entry e) => e.Type switch
@@ -1087,7 +1125,7 @@ namespace Morgott.UI.ItemBrowser
                 while (_quals.Count < e.MaxQuality)
                 {
                     var n = _quals.Count + 1;
-                    _quals.Add(Btn(_pageView.transform, "Q" + n, "ib.square", out _, () => { _quality = n; _variant = 0; _pageScroll = 0; _dirty = true; }));
+                    _quals.Add(Btn(_pageView.transform, "Q" + n, "ib.square", out _, new IntClick(OnQualClick, n).Invoke));
                 }
                 for (var i = 0; i < _quals.Count; i++)
                 {
@@ -1112,7 +1150,7 @@ namespace Morgott.UI.ItemBrowser
             while (_variants.Count < vLabels.Count)
             {
                 var n = _variants.Count;
-                _variants.Add(Btn(_pageView.transform, "Variant" + n, "ib.square", out _, () => { _variant = n; _dirty = true; }));
+                _variants.Add(Btn(_pageView.transform, "Variant" + n, "ib.square", out _, new IntClick(OnVariantClick, n).Invoke));
             }
             var vy = Mathf.Max(top, 158f) + 8f;
             for (var i = 0; i < _variants.Count; i++)
@@ -1132,7 +1170,7 @@ namespace Morgott.UI.ItemBrowser
             _sockets.Used = _inChips.Used = _titles.Used = _stations.Used = _chances.Used = _rules.Used = _rowQuals.Used = 0;
             // Input chips flow at their rendered widths (a name is never cut while it fits the input span): a row's line
             // count comes from that flow, cached per page / quality / index / scale / view (wheel ticks relayout).
-            var key = $"{e.Id}|{_quality}|{Browser.Generation}|{_k:0.###}|{h - top:0.#}";
+            var key = $"{e.Id}|{_quality.ToString(CultureInfo.InvariantCulture)}|{Browser.Generation.ToString(CultureInfo.InvariantCulture)}|{_k.ToString("0.###", CultureInfo.InvariantCulture)}|{(h - top).ToString("0.#", CultureInfo.InvariantCulture)}";
             if (key != _flowKey)
             {
                 _flowKey = key;
@@ -1153,7 +1191,9 @@ namespace Morgott.UI.ItemBrowser
             _pageScrollMax = PageModel.MaxFirst(heights, h - top);
             if (_jump != PageSection.None)
             {
-                _pageScroll = PageModel.SectionScroll(_jump, blocks.FindIndex(b => b.Kind == 3), _pageScrollMax);
+                var usedHeader = -1;
+                for (var bi = 0; bi < blocks.Count; bi++) if (blocks[bi].Kind == 3) { usedHeader = bi; break; }
+                _pageScroll = PageModel.SectionScroll(_jump, usedHeader, _pageScrollMax);
                 _jump = PageSection.None;
             }
             _pageScroll = Mathf.Clamp(_pageScroll, 0, _pageScrollMax);
@@ -1187,16 +1227,22 @@ namespace Morgott.UI.ItemBrowser
             for (var i = _rowQuals.Used; i < _rowQuals.Items.Count; i++) Off(_rowQuals.Items[i]);
         }
 
+        private void OnQualClick(int n) { _quality = n; _variant = 0; _pageScroll = 0; _dirty = true; }
+        private void OnVariantClick(int n) { _variant = n; _dirty = true; }
+        private void OnRowQualClick(int i) { _quality = _rowQualOf[i]; _variant = 0; _pageScroll = 0; _dirty = true; }
+
+        private Button MakeRowQual(int i)
+        {
+            _rowQualOf.Add(0);
+            return Btn(_pageView.transform, "RowQuality" + i, "ib.square", out _, new IntClick(OnRowQualClick, i).Invoke);
+        }
+
         // Upgrade row: the quality it makes as a numbered square like the page's quality selector, at the socket's
         // bottom-right corner; click selects that quality.
         private void RowQuality(PageRow r, float x, float y)
         {
             var n = _rowQuals.Used;
-            var b = _rowQuals.Next(i =>
-            {
-                _rowQualOf.Add(0);
-                return Btn(_pageView.transform, "RowQuality" + i, "ib.square", out _, () => { _quality = _rowQualOf[i]; _variant = 0; _pageScroll = 0; _dirty = true; });
-            });
+            var b = _rowQuals.Next(MakeRowQual);
             _rowQualOf[n] = r.Quality;
             b.transform.SetAsLastSibling(); // over the socket
             Square(b, false, x, y, 26f, 26f);
@@ -1358,7 +1404,7 @@ namespace Morgott.UI.ItemBrowser
                 var st = _stations.Next(n => Chip("Station" + n, "text.body"));
                 st.Id = r.Right;
                 st.Quality = 1;
-                var label = r.Right == null ? L("$ib_by_hand") : r.R.StationLevel > 1 ? $"{NameOf(r.Right)} {L("$ib_level_short")}{r.R.StationLevel}" : NameOf(r.Right);
+                var label = r.Right == null ? L("$ib_by_hand") : r.R.StationLevel > 1 ? $"{NameOf(r.Right)} {L("$ib_level_short")}{r.R.StationLevel.ToString(CultureInfo.InvariantCulture)}" : NameOf(r.Right);
                 // Output amount / conditions ("any one ingredient", per star) under the station when there are any.
                 var note = Chance(r, used ? r.Icon : _pageId, used, cond);
                 Chip(st, 398f, note.Length > 0 ? y + 2f : y + (h - 42f) / 2f, UnitW - 398f, note.Length > 0 ? 34f : 42f, r.Right == null ? 0f : note.Length > 0 ? 34f : 40f, label, 18f);
@@ -1417,7 +1463,7 @@ namespace Morgott.UI.ItemBrowser
 
         private void Rule(float x, float y, float w, float h) => Put(_rules.Next(n => Img(_pageView.transform, "Rule" + n, "ib.rule")), x, y, w, h);
 
-        private static string Amount(Stack s) => s.Max == 0 ? "?" : s.Min == s.Max ? s.Min.ToString() : $"{s.Min}-{s.Max}"; // 0 = unknown (an altar from an older found-in table)
+        private static string Amount(Stack s) => s.Max == 0 ? "?" : s.Min == s.Max ? s.Min.ToString(CultureInfo.InvariantCulture) : $"{s.Min.ToString(CultureInfo.InvariantCulture)}-{s.Max.ToString(CultureInfo.InvariantCulture)}"; // 0 = unknown (an altar from an older found-in table)
 
         // Source row / creature drop: amount, base chance (weighted tables: no number), conditions.
         private static string Chance(PageRow r, string item, bool used, bool cond = true)
@@ -1427,7 +1473,7 @@ namespace Morgott.UI.ItemBrowser
             var parts = new List<string>();
             if (used && r.R.Kind == RelationKind.Grow) parts.Add(L("$ib_kind_grow")); // the page's creature / sapling grows into the row's
             if (o.Prefab != null && !(o.Min == 1 && o.Max == 1)) parts.Add("x" + Amount(o));
-            var chance = float.IsNaN(o.Chance) ? L("$ib_weighted") : o.Chance < 1f ? $"{L("$ib_chance")} {o.Chance * 100f:0.#}%" : null;
+            var chance = float.IsNaN(o.Chance) ? L("$ib_weighted") : o.Chance < 1f ? $"{L("$ib_chance")} {(o.Chance * 100f).ToString("0.#", CultureInfo.InvariantCulture)}%" : null;
             return PageModel.JoinChance(parts, chance, cond && r.R.Conditions != null ? L(r.R.Conditions) : null);
         }
     }

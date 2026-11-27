@@ -97,7 +97,7 @@ namespace Morgott.UI.Tests
                 new QuestPinInput(Minimap.PinType.Hildir3, "Sealed Tower", new Vector3(2000f, 0f, 0f)),     // completed -> skip
             };
             var rows = new List<QuestRow>();
-            var npc = MapQuestSidebarMath.Build(core, pins, Vector3.zero, "", rows, hasGlobalKey: k => completedKeys.Contains(k));
+            var npc = MapQuestSidebarMath.Build(core, pins, Vector3.zero, "", rows, hasGlobalKey: completedKeys.Contains);
 
             Assert.Equal(2, npc);
             Assert.Equal(new[] { "Brenna (Contract)", "Howling Cavern" }, rows.Select(r => r.Title));

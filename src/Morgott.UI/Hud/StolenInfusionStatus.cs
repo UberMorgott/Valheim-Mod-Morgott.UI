@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Globalization;
 using Morgott.Core;
 using UnityEngine;
 
@@ -34,7 +35,7 @@ namespace Morgott.UI.PlayerHud
                     if (!PerId.TryGetValue(id, out var se) || !se)
                     {
                         se = ScriptableObject.CreateInstance<StatusEffect>();
-                        se.name = $"MT_StolenInfusion_{id}";
+                        se.name = "MT_StolenInfusion_" + id.ToString(CultureInfo.InvariantCulture);
                         se.m_name = nameKey;
                         se.m_icon = sprite;
                         PerId[id] = se;

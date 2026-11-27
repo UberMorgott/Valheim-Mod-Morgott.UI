@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using Morgott.UI.Classify;
 using Morgott.UI.Diagnostics;
 using Morgott.UI.Theme;
@@ -17,6 +18,8 @@ namespace Morgott.UI.Restyle
     public static class Restyler
     {
         private static readonly List<Graphic> Buffer = new List<Graphic>(256);
+        private static readonly ConditionalWeakTable<SkinMark, object> AdaptedMarks = new ConditionalWeakTable<SkinMark, object>();
+        private static readonly object AdaptedTag = new object();
 
         public static ScreenReport RestyleRoot(Transform root, ScreenContext ctx)
         {
@@ -86,7 +89,8 @@ namespace Morgott.UI.Restyle
         public static Classification Style(Graphic g, ScreenContext ctx)
         {
             var mark = g.GetComponent<SkinMark>();
-            if (mark && !mark.IsOwnMark)
+            var ownMark = mark && mark.IsOwnMark;
+            if (mark && !ownMark)
                 mark.BoundInstance = g.gameObject.GetInstanceID(); // clone of a styled template: same originals
             if (mark && mark.Internal)
             {
@@ -97,8 +101,21 @@ namespace Morgott.UI.Restyle
                 }
                 return new Classification { Role = mark.Role, Outcome = mark.Outcome, Reason = mark.Reason };
             }
+            var hasAdapter = ctx.AdapterRoles.TryGetValue(g, out var adapted);
+            if (ownMark && mark.ThemeRevision == ThemeTokens.Revision && mark.Outcome == Outcome.Styled)
+            {
+                if (hasAdapter)
+                {
+                    if (adapted.Outcome == Outcome.Styled && adapted.Role == mark.Role)
+                        return new Classification { Role = mark.Role, Outcome = Outcome.Styled, Reason = mark.Reason };
+                }
+                else if (!AdaptedMarks.TryGetValue(mark, out _))
+                {
+                    return new Classification { Role = mark.Role, Outcome = Outcome.Styled, Reason = mark.Reason };
+                }
+            }
             var original = mark ? mark.OriginalSprite : g is Image img && img.sprite ? img.sprite.name : null;
-            var c = Classifier.Classify(g, original, ctx);
+            var c = hasAdapter ? adapted : Classifier.Classify(g, original, ctx);
             // "!" badges stay content (vanilla art) but move to the corner of their button (run 20261022-230744: a
             // layout hook on styled roles never saw them).
             if (g is Image badge && c.Outcome == Outcome.Content && BadgeDock.IsBadge(badge)) BadgeDock.Ensure(badge);
@@ -120,16 +137,27 @@ namespace Morgott.UI.Restyle
             // Degraded marks are tried again: a font bound late (theme source "loaded") may exist by now.
             else if (mark.Role == c.Role && mark.ThemeRevision == ThemeTokens.Revision && mark.Outcome != Outcome.Degraded)
             {
+                SetAdapted(mark, hasAdapter);
                 if (mark.Outcome == Outcome.Styled) Layout(g, role); // clones of a styled template: their own layout components
                 return new Classification { Role = c.Role, Outcome = mark.Outcome, Reason = mark.Reason };
             }
             mark.Role = c.Role;
             mark.Reason = c.Reason;
             var applied = Apply(g, mark, role);
+            SetAdapted(mark, hasAdapter);
             mark.Outcome = applied ? Outcome.Styled : Outcome.Degraded;
             if (!applied)
                 mark.Reason = $"{c.Reason}; asset missing for '{role.SpriteToken ?? role.FontToken}'";
             return new Classification { Role = c.Role, Outcome = mark.Outcome, Reason = mark.Reason };
+        }
+
+        private static void SetAdapted(SkinMark mark, bool fromAdapter)
+        {
+            if (fromAdapter)
+            {
+                if (!AdaptedMarks.TryGetValue(mark, out _)) AdaptedMarks.Add(mark, AdaptedTag);
+            }
+            else AdaptedMarks.Remove(mark);
         }
 
         // A styled text whose face another mod wrote after our pass (Epic Loot 0.15 VanillaFont on its first OnEnable, its
@@ -385,6 +413,7 @@ namespace Morgott.UI.Restyle
                 }
             }
             mark.ClearJournal();
+            AdaptedMarks.Remove(mark);
         }
 
         private static bool UnderNestedRoot(Transform t, Transform root)

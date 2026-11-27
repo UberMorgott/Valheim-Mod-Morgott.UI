@@ -1,4 +1,3 @@
-using Morgott.UI.Api;
 using System.Collections.Generic;
 using Morgott.UI.GameScreens;
 using Morgott.UI.Restyle;
@@ -38,8 +37,14 @@ namespace Morgott.UI.Screens
 
         public static bool Owns(Transform t) => Live && t && t.IsChildOf(Live.transform);
 
+        private static readonly System.Action<TooltipDecor> PlaceDecor =
+            (System.Action<TooltipDecor>)System.Delegate.CreateDelegate(
+                typeof(System.Action<TooltipDecor>),
+                HarmonyLib.AccessTools.Method(typeof(TooltipDecor), "Place"));
+
         private readonly List<View> _views = new List<View>();
         private readonly List<ScrollRect> _scrollBuf = new List<ScrollRect>();
+        private readonly List<TooltipDecor> _decors = new List<TooltipDecor>(2);
         private readonly Vector3[] _corners = new Vector3[4];
         private TooltipFrame _frame;
         private bool _dirty = true, _overflow, _nested;
@@ -86,7 +91,11 @@ namespace Morgott.UI.Screens
                 if (_dirty) { _dirty = false; Sweep(); }
                 Unmask();
                 TopOverlay.Lift(gameObject);
-                TooltipDecor.Sync(transform); // item tooltip sheet rules / icon / bar follow the settled text
+                for (var i = 0; i < _decors.Count; i++)
+                {
+                    var d = _decors[i];
+                    if (d) PlaceDecor(d);
+                }
                 if (_frame) _frame.Fit();
                 var bounds = Bounds();
                 Scrolls(bounds);
@@ -124,14 +133,16 @@ namespace Morgott.UI.Screens
             foreach (var r in GetComponentsInChildren<GraphicRaycaster>(true)) r.enabled = false;
             foreach (var g in GetComponentsInChildren<Graphic>(true)) g.raycastTarget = false;
             _frame = GetComponentInChildren<TooltipFrame>(true);
+            _decors.Clear();
+            GetComponentsInChildren(true, _decors);
 
             _scrollBuf.Clear();
             GetComponentsInChildren(true, _scrollBuf);
-            _views.RemoveAll(v => !v.Scroll);
-            var added = false;
+            for (var i = _views.Count - 1; i >= 0; i--)
+                if (!_views[i].Scroll) _views.RemoveAt(i);
             foreach (var sr in _scrollBuf)
             {
-                if (!sr.vertical || !sr.content || _views.Exists(v => v.Scroll == sr)) continue;
+                if (!sr.vertical || !sr.content || HasView(sr)) continue;
                 var view = new View
                 {
                     Scroll = sr,
@@ -154,19 +165,29 @@ namespace Morgott.UI.Screens
                 handle.anchorMin = Vector2.zero;
                 handle.anchorMax = new Vector2(1f, 0f);
                 handle.pivot = new Vector2(0.5f, 0f);
-                foreach (var img in new[] { view.Track, view.Handle, view.FadeTop, view.FadeBottom })
-                {
-                    img.raycastTarget = false;
-                    img.transform.SetAsLastSibling();
-                    img.enabled = false;
-                }
-                view.FadeTop.transform.SetAsLastSibling();
-                view.FadeBottom.transform.SetAsLastSibling();
-                view.Track.transform.SetAsLastSibling();
+                InitDecor(view.FadeTop);
+                InitDecor(view.FadeBottom);
+                InitDecor(view.Track);
+                InitDecor(view.Handle);
                 _views.Add(view);
-                added = true;
             }
-            if (added) ScreenRegistry.Restyle(transform); // the new decor gets its theme roles
+        }
+
+        private bool HasView(ScrollRect sr)
+        {
+            for (var i = 0; i < _views.Count; i++)
+                if (_views[i].Scroll == sr) return true;
+            return false;
+        }
+
+        private static void InitDecor(Image img)
+        {
+            if (!img) return;
+            img.raycastTarget = false;
+            img.transform.SetAsLastSibling();
+            img.enabled = false;
+            if (img.TryGetComponent<SkinMark>(out var mark) && mark.ThemeRevision != ThemeTokens.Revision)
+                mark.Outcome = Restyler.Apply(img, mark, ThemeTokens.Role(mark.Role)) ? Outcome.Styled : Outcome.Degraded;
         }
 
         private static void Edge(RectTransform rt, bool top)
@@ -267,15 +288,26 @@ namespace Morgott.UI.Screens
             var inset = ThemeTokens.GetFloat("size.tooltip.scrollbar.inset", 6f) * pxToLocal;
             var fadeH = ThemeTokens.GetFloat("size.tooltip.fade", 24f) * pxToLocal;
             var track = v.Track.rectTransform;
-            track.sizeDelta = new Vector2(w, -2f * inset);
-            track.anchoredPosition = new Vector2(-inset, 0f);
+            SetSizeDelta(track, new Vector2(w, -2f * inset));
+            SetAnchoredPos(track, new Vector2(-inset, 0f));
             // The clip may be taller than the visible box (Epic Loot's fixed-height view): the track spans the clip.
             TooltipMath.Handle(clipH, contentH, n, Mathf.Max(0f, track.rect.height), w * 3f, out var hh, out var hy);
             var handle = v.Handle.rectTransform;
-            handle.sizeDelta = new Vector2(0f, hh);
-            handle.anchoredPosition = new Vector2(0f, hy);
-            v.FadeTop.rectTransform.sizeDelta = new Vector2(0f, fadeH);
-            v.FadeBottom.rectTransform.sizeDelta = new Vector2(0f, fadeH);
+            SetSizeDelta(handle, new Vector2(0f, hh));
+            SetAnchoredPos(handle, new Vector2(0f, hy));
+            var fadeSize = new Vector2(0f, fadeH);
+            SetSizeDelta(v.FadeTop.rectTransform, fadeSize);
+            SetSizeDelta(v.FadeBottom.rectTransform, fadeSize);
+        }
+
+        private static void SetSizeDelta(RectTransform rt, Vector2 v)
+        {
+            if ((rt.sizeDelta - v).sqrMagnitude > 0.0001f) rt.sizeDelta = v;
+        }
+
+        private static void SetAnchoredPos(RectTransform rt, Vector2 v)
+        {
+            if ((rt.anchoredPosition - v).sqrMagnitude > 0.0001f) rt.anchoredPosition = v;
         }
 
         private static void Show(Image img, bool on)

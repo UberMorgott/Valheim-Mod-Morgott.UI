@@ -48,11 +48,23 @@ namespace Morgott.UI.MapScreen
 
         private sealed class PortalRowUi
         {
+            public MinimapSkin Owner;
             public RectTransform Root;
             public Image Back, Star, Swatch, Stone, Icon, Pencil, PencilGlyph;
             public TMP_Text Name, Biome, Distance;
+            public UITooltip PencilTip;
+            public string NameMeasuredText;
+            public float NameMeasuredW;
+            public int NameMeasuredRev = -1;
             public int Look = -1;
             public int Index = -1;
+
+            public void OnEditClick()
+            {
+                if (Index >= 0 && Index < Owner._ppRows.Count) Owner.OpenPortalEditor(Owner._ppRows[Index].Portal.Id);
+            }
+
+            public void OnRowClick(PointerEventData e) => Owner.OnPortalRowClick(this, e);
         }
 
         private struct PortalView
@@ -64,11 +76,17 @@ namespace Morgott.UI.MapScreen
 
         private sealed class QuestRowUi
         {
+            public MinimapSkin Owner;
             public RectTransform Root;
             public Image Back, Accent, BadgeBack;
             public TMP_Text Badge, Title, Subtitle, Distance;
+            public string BadgeMeasuredText;
+            public float BadgeMeasuredFont = -1f, BadgeMeasuredW;
+            public int BadgeMeasuredRev = -1;
             public int Look = -1;
             public int Index = -1;
+
+            public void OnRowClick(PointerEventData e) => Owner.OnQuestRowClick(this, e);
         }
 
         private struct QuestView
@@ -89,12 +107,15 @@ namespace Morgott.UI.MapScreen
 
         private readonly List<PortalRowUi> _ppRowUi = new List<PortalRowUi>();
         private readonly List<PortalInfo> _ppPortals = new List<PortalInfo>();
+        private readonly List<PortalInfo> _ppShownScratch = new List<PortalInfo>();
         private readonly List<PortalRow> _ppRows = new List<PortalRow>();
         private readonly List<PortalView> _ppView = new List<PortalView>();
         private readonly PortalClicks _ppClicks = new PortalClicks();
+        private readonly Vector3[] _ppCorners = new Vector3[4];
 
         private readonly List<QuestRowUi> _qRowUi = new List<QuestRowUi>();
         private readonly List<MapQuest> _qCore = new List<MapQuest>();
+        private readonly List<MapQuest> _qCoreProbe = new List<MapQuest>();
         private readonly List<QuestPinInput> _qPins = new List<QuestPinInput>();
         private readonly List<QuestRow> _qRows = new List<QuestRow>();
         private readonly List<QuestView> _qView = new List<QuestView>();
@@ -108,8 +129,17 @@ namespace Morgott.UI.MapScreen
         private SidebarTab _sidebarNormalTab = SidebarTab.Portals;
         private bool _largeWasOpen;
         private bool _qDirty = true;
-        private int _qPinsVersion = -1;
+        private int _qPinsVersion = -1, _qHildirMask = -1;
         private float _sbNextLiveRefresh;
+        private Vector3 _ppBuiltPos = new Vector3(float.NaN, 0f, 0f), _qBuiltPos = new Vector3(float.NaN, 0f, 0f);
+        private string _ppBuiltLang, _qBuiltLang;
+        private string _sbExpandBase, _sbExpandText;
+        private float _sbExpandW;
+        private int _sbExpandRev = -1;
+        private string _sbTabPortalsBase, _sbTabPortalsText, _sbTabQuestsBase, _sbTabQuestsText;
+        private int _sbTabPortalsCount = -1, _sbTabQuestsCount = -1;
+        private int _sbHintMode = -1;
+        private string _sbHintLang;
         private ZDOID _ppSel = ZDOID.None;
         private string _qSelId;
         private Minimap.PinData _ppRingPin;
@@ -296,7 +326,7 @@ namespace Morgott.UI.MapScreen
 
         private PortalRowUi NewPortalRow()
         {
-            var r = new PortalRowUi { Root = HudArtRect("PortalRow", _ppList) };
+            var r = new PortalRowUi { Owner = this, Root = HudArtRect("PortalRow", _ppList) };
             Top(r.Root);
             r.Back = r.Root.gameObject.AddComponent<Image>();
             r.Back.raycastTarget = true;
@@ -319,24 +349,22 @@ namespace Morgott.UI.MapScreen
             Stretch(r.PencilGlyph.rectTransform);
             r.PencilGlyph.rectTransform.offsetMin = new Vector2(5f, 5f);
             r.PencilGlyph.rectTransform.offsetMax = new Vector2(-5f, -5f);
-            r.Pencil.gameObject.AddComponent<Button>().onClick.AddListener(() =>
-            {
-                if (r.Index >= 0 && r.Index < _ppRows.Count) OpenPortalEditor(_ppRows[r.Index].Portal.Id);
-            });
+            r.Pencil.gameObject.AddComponent<Button>().onClick.AddListener(r.OnEditClick);
             if (_ppTooltip)
             {
                 var tip = r.Pencil.gameObject.AddComponent<UITooltip>();
                 tip.m_tooltipPrefab = _ppTooltip;
                 tip.m_topic = "";
                 tip.m_text = "";
+                r.PencilTip = tip;
             }
-            r.Root.gameObject.AddComponent<PortalHit>().Click = e => OnPortalRowClick(r, e);
+            r.Root.gameObject.AddComponent<PortalHit>().Click = r.OnRowClick;
             return r;
         }
 
         private QuestRowUi NewQuestRow()
         {
-            var r = new QuestRowUi { Root = HudArtRect("QuestRow", _ppList) };
+            var r = new QuestRowUi { Owner = this, Root = HudArtRect("QuestRow", _ppList) };
             Top(r.Root);
             r.Back = r.Root.gameObject.AddComponent<Image>();
             r.Back.raycastTarget = true;
@@ -353,7 +381,7 @@ namespace Morgott.UI.MapScreen
             r.Subtitle.overflowMode = TextOverflowModes.Ellipsis;
             r.Subtitle.textWrappingMode = TextWrappingModes.NoWrap;
             r.Distance = _art.Text("Distance", r.Root, "font.body", "color.text.body", ThemeTokens.GetFloat("size.map.biome.font", 15f), TextAlignmentOptions.Right);
-            r.Root.gameObject.AddComponent<PortalHit>().Click = e => OnQuestRowClick(r, e);
+            r.Root.gameObject.AddComponent<PortalHit>().Click = r.OnRowClick;
             return r;
         }
 
@@ -431,23 +459,20 @@ namespace Morgott.UI.MapScreen
         {
             var map = _map.m_mapImageLarge.rectTransform;
             var cam = UiCamera(map);
-            var m = new Vector3[4];
-            map.GetWorldCorners(m);
-            var bl = RectTransformUtility.WorldToScreenPoint(cam, m[0]);
-            var tr = RectTransformUtility.WorldToScreenPoint(cam, m[2]);
+            map.GetWorldCorners(_ppCorners);
+            var bl = RectTransformUtility.WorldToScreenPoint(cam, _ppCorners[0]);
+            var tr = RectTransformUtility.WorldToScreenPoint(cam, _ppCorners[2]);
             var left = bl.x;
             var right = tr.x;
             if (_pp && _pp.gameObject.activeInHierarchy)
             {
-                var p = new Vector3[4];
-                _pp.GetWorldCorners(p);
-                left = Mathf.Max(left, RectTransformUtility.WorldToScreenPoint(cam, p[2]).x);
+                _pp.GetWorldCorners(_ppCorners);
+                left = Mathf.Max(left, RectTransformUtility.WorldToScreenPoint(cam, _ppCorners[2]).x);
             }
             if (_legend && _legend.gameObject.activeInHierarchy)
             {
-                var l = new Vector3[4];
-                _legend.GetWorldCorners(l);
-                right = Mathf.Min(right, RectTransformUtility.WorldToScreenPoint(cam, l[0]).x);
+                _legend.GetWorldCorners(_ppCorners);
+                right = Mathf.Min(right, RectTransformUtility.WorldToScreenPoint(cam, _ppCorners[0]).x);
             }
             return PortalPickerMath.VisibleCenter(left, right, bl.y, tr.y);
         }
@@ -528,13 +553,19 @@ namespace Morgott.UI.MapScreen
                 return;
             }
 
-            // Periodic refresh for live player distance while map stays open.
+            // Periodic refresh for live player distance / quest changes while map stays open; skip rebuild when unchanged.
             var now = Time.unscaledTime;
             if (now >= _sbNextLiveRefresh)
             {
                 _sbNextLiveRefresh = now + 0.5f;
-                if (!_ppShown) PortalPickerService.Dirty = true;
-                _qDirty = true;
+                var playerPos = Player.m_localPlayer ? Player.m_localPlayer.transform.position : Vector3.zero;
+                var lang = Localization.instance != null ? Localization.instance.GetSelectedLanguage() : null;
+                if (!_ppShown && !PortalPickerService.Dirty
+                    && (float.IsNaN(_ppBuiltPos.x) || (playerPos - _ppBuiltPos).sqrMagnitude > 0.25f || !ReferenceEquals(lang, _ppBuiltLang)))
+                    PortalPickerService.Dirty = true;
+                if (!_qDirty
+                    && (float.IsNaN(_qBuiltPos.x) || (playerPos - _qBuiltPos).sqrMagnitude > 0.25f || !ReferenceEquals(lang, _qBuiltLang) || QuestsChanged()))
+                    _qDirty = true;
             }
             if (_qPinsVersion != PinsVersion)
             {
@@ -553,12 +584,44 @@ namespace Morgott.UI.MapScreen
             else if (_ppRing && _ppRing.gameObject.activeSelf) _ppRing.gameObject.SetActive(false);
         }
 
+        private static int HildirKeysMask()
+        {
+            var zs = ZoneSystem.instance;
+            if (zs == null) return 0;
+            return (zs.GetGlobalKey("hildir1") ? 1 : 0) | (zs.GetGlobalKey("hildir2") ? 2 : 0) | (zs.GetGlobalKey("hildir3") ? 4 : 0);
+        }
+
+        private bool QuestsChanged()
+        {
+            if (HildirKeysMask() != _qHildirMask) return true;
+            MapQuests.GetAll(_qCoreProbe);
+            if (_qCoreProbe.Count != _qCore.Count) return true;
+            for (var i = 0; i < _qCoreProbe.Count; i++)
+            {
+                var a = _qCoreProbe[i];
+                var b = _qCore[i];
+                if (a.Kind != b.Kind || a.Position != b.Position || a.Radius != b.Radius
+                    || !string.Equals(a.Id, b.Id, System.StringComparison.Ordinal)
+                    || !string.Equals(a.Title, b.Title, System.StringComparison.Ordinal)
+                    || !string.Equals(a.Subtitle, b.Subtitle, System.StringComparison.Ordinal))
+                    return true;
+            }
+            return false;
+        }
+
         private void LayoutExpandButton(float inset, float top)
         {
-            var label = "▸ " + Words.Get("$ui_map_sidebar_open");
-            if (_sbExpandLabel.text != label) _sbExpandLabel.text = label;
-            var w = Mathf.Max(118f, _sbExpandLabel.GetPreferredValues(label).x + 28f);
-            Place(_sbExpand, inset + 8f, top + 8f, w, 34f);
+            var baseWord = Words.Get("$ui_map_sidebar_open");
+            var rev = ThemeTokens.Revision;
+            if (_sbExpandText == null || _sbExpandRev != rev || !string.Equals(_sbExpandBase, baseWord, System.StringComparison.Ordinal))
+            {
+                _sbExpandBase = baseWord;
+                _sbExpandRev = rev;
+                _sbExpandText = "▸ " + baseWord;
+                if (_sbExpandLabel.text != _sbExpandText) _sbExpandLabel.text = _sbExpandText;
+                _sbExpandW = Mathf.Max(118f, _sbExpandLabel.GetPreferredValues(_sbExpandText).x + 28f);
+            }
+            Place(_sbExpand, inset + 8f, top + 8f, _sbExpandW, 34f);
         }
 
         private void PortalSession(bool active)
@@ -592,7 +655,7 @@ namespace Morgott.UI.MapScreen
                 _sidebarOpen = false;
                 _pp.gameObject.SetActive(false);
             }
-            Plugin.Log.LogInfo($"[Morgott.UI] portal picker {(active ? "open" : "closed")}: panel={_pp.gameObject.activeSelf} vanillaKeyRow={(_keyRow ? _keyRow.gameObject.activeSelf.ToString() : "none")}");
+            Plugin.Log.LogInfo($"[Morgott.UI] portal picker {(active ? "open" : "closed")}: panel={_pp.gameObject.activeSelf.ToString()} vanillaKeyRow={(_keyRow ? _keyRow.gameObject.activeSelf.ToString() : "none")}");
         }
 
         private void PortalRebuild(IPortalTravel travel, bool travelActive)
@@ -600,12 +663,12 @@ namespace Morgott.UI.MapScreen
             PortalPickerService.Dirty = false;
             _ppPortals.Clear();
             travel?.GetPortals(_ppPortals);
-            var shown = new List<PortalInfo>(_ppPortals.Count);
-            foreach (var p in _ppPortals)
+            _ppShownScratch.Clear();
+            for (var i = 0; i < _ppPortals.Count; i++)
             {
-                var c = p;
-                c.Name = Words.Get(p.Name);
-                shown.Add(c);
+                var c = _ppPortals[i];
+                c.Name = Words.Get(c.Name);
+                _ppShownScratch.Add(c);
             }
             PortalInfo? here = null;
             if (travelActive && travel != null)
@@ -628,8 +691,10 @@ namespace Morgott.UI.MapScreen
                 }
             }
             var playerPos = Player.m_localPlayer ? Player.m_localPlayer.transform.position : Vector3.zero;
+            _ppBuiltPos = playerPos;
+            _ppBuiltLang = Localization.instance != null ? Localization.instance.GetSelectedLanguage() : null;
             var referencePos = here.HasValue ? here.Value.Position : playerPos;
-            _ppFav = PortalPickerMath.Build(shown, here, referencePos, _ppSearch.text, _ppRows);
+            _ppFav = PortalPickerMath.Build(_ppShownScratch, here, referencePos, _ppSearch.text, _ppRows);
             _ppView.Clear();
             foreach (var row in _ppRows)
             {
@@ -664,6 +729,9 @@ namespace Morgott.UI.MapScreen
                 }
             }
             var playerPos = Player.m_localPlayer ? Player.m_localPlayer.transform.position : Vector3.zero;
+            _qBuiltPos = playerPos;
+            _qBuiltLang = Localization.instance != null ? Localization.instance.GetSelectedLanguage() : null;
+            _qHildirMask = HildirKeysMask();
             _qNpcCount = MapQuestSidebarMath.Build(
                 _qCore, _qPins, playerPos, _ppSearch.text, _qRows,
                 k => Words.Get(MapQuestSidebarMath.KindLabelToken(k)),
@@ -731,9 +799,11 @@ namespace Morgott.UI.MapScreen
         private void SidebarLayout(float inset, float top, float band, bool travelActive)
         {
             var w = ThemeTokens.GetFloat("size.map.legend", 300f);
-            _pp.anchorMin = Vector2.zero;
-            _pp.anchorMax = new Vector2(0f, 1f);
-            _pp.pivot = new Vector2(0f, 0.5f);
+            var aMax = new Vector2(0f, 1f);
+            var piv = new Vector2(0f, 0.5f);
+            if (_pp.anchorMin != Vector2.zero) _pp.anchorMin = Vector2.zero;
+            if (_pp.anchorMax != aMax) _pp.anchorMax = aMax;
+            if (_pp.pivot != piv) _pp.pivot = piv;
             var min = new Vector2(inset, inset + band);
             var max = new Vector2(inset + w, -top);
             if (_pp.offsetMin != min) _pp.offsetMin = min;
@@ -758,10 +828,22 @@ namespace Morgott.UI.MapScreen
             var onPortals = _sidebarTab == SidebarTab.Portals;
             StyleTab(_sbTabPortalsImg, _sbTabPortalsLabel, onPortals);
             StyleTab(_sbTabQuestsImg, _sbTabQuestsLabel, !onPortals);
-            var pLabel = _ppRows.Count > 0 ? $"{Words.Get("$ui_portal_title")} ({_ppRows.Count})" : Words.Get("$ui_portal_title");
-            var qLabel = _qRows.Count > 0 ? $"{Words.Get("$ui_map_quests")} ({_qRows.Count})" : Words.Get("$ui_map_quests");
-            if (_sbTabPortalsLabel.text != pLabel) _sbTabPortalsLabel.text = pLabel;
-            if (_sbTabQuestsLabel.text != qLabel) _sbTabQuestsLabel.text = qLabel;
+            var pBase = Words.Get("$ui_portal_title");
+            if (_sbTabPortalsCount != _ppRows.Count || !string.Equals(_sbTabPortalsBase, pBase, System.StringComparison.Ordinal))
+            {
+                _sbTabPortalsBase = pBase;
+                _sbTabPortalsCount = _ppRows.Count;
+                _sbTabPortalsText = _ppRows.Count > 0 ? $"{pBase} ({_ppRows.Count.ToString(System.Globalization.CultureInfo.InvariantCulture)})" : pBase;
+            }
+            var qBase = Words.Get("$ui_map_quests");
+            if (_sbTabQuestsCount != _qRows.Count || !string.Equals(_sbTabQuestsBase, qBase, System.StringComparison.Ordinal))
+            {
+                _sbTabQuestsBase = qBase;
+                _sbTabQuestsCount = _qRows.Count;
+                _sbTabQuestsText = _qRows.Count > 0 ? $"{qBase} ({_qRows.Count.ToString(System.Globalization.CultureInfo.InvariantCulture)})" : qBase;
+            }
+            if (_sbTabPortalsLabel.text != _sbTabPortalsText) _sbTabPortalsLabel.text = _sbTabPortalsText;
+            if (_sbTabQuestsLabel.text != _sbTabQuestsText) _sbTabQuestsLabel.text = _sbTabQuestsText;
 
             var y = pad + tabH + 2f;
             Place(_ppTitleLine.rectTransform, pad, y, rowW, divider);
@@ -772,8 +854,10 @@ namespace Morgott.UI.MapScreen
             var g = searchH * 0.6f;
             Place(_ppSearchGlyph.rectTransform, 8f, (searchH - g) * 0.5f, g, g);
             var area = _ppSearch.textViewport;
-            area.offsetMin = new Vector2(g + 16f, 0f);
-            area.offsetMax = new Vector2(-8f, 0f);
+            var areaMin = new Vector2(g + 16f, 0f);
+            var areaMax = new Vector2(-8f, 0f);
+            if (area.offsetMin != areaMin) area.offsetMin = areaMin;
+            if (area.offsetMax != areaMax) area.offsetMax = areaMax;
             Place(_ppSearchHint.rectTransform, g + 16f, 0f, rowW - g - 24f, searchH);
             var hint = Words.Get("$ui_portal_search");
             if (_ppSearchHint.text != hint) _ppSearchHint.text = hint;
@@ -807,10 +891,7 @@ namespace Morgott.UI.MapScreen
             if (scrolling)
             {
                 Place(_ppTrack.rectTransform, pad + rowW - barW, y, barW, view);
-                var thumb = _ppThumb.rectTransform;
-                thumb.anchorMin = new Vector2(0f, 1f - (_ppScrollPx + view) / content);
-                thumb.anchorMax = new Vector2(1f, 1f - _ppScrollPx / content);
-                thumb.offsetMin = thumb.offsetMax = Vector2.zero;
+                SetThumb(_ppThumb.rectTransform, 1f - (_ppScrollPx + view) / content, 1f - _ppScrollPx / content);
             }
 
             if (onPortals) LayoutPortalsContent(listW, view, headerH, divider);
@@ -821,17 +902,23 @@ namespace Morgott.UI.MapScreen
         {
             var token = active ? "sprite.tab.selected" : "sprite.tab.normal";
             if (img.sprite != ThemeTokens.GetSprite(token)) _art.Restyle(img, token, "color.frame", Image.Type.Sliced);
-            label.color = ThemeTokens.GetColor(active ? "color.text.header" : "color.state.disabled", Color.white);
+            SetColor(label, ThemeTokens.GetColor(active ? "color.text.header" : "color.state.disabled", Color.white));
         }
 
         private void UpdateSidebarHint(bool travelActive, bool onPortals)
         {
             if (!_ppHint) return;
+            var gamepad = travelActive && onPortals && ZInput.IsGamepadActive();
+            var mode = (travelActive ? 1 : 0) | (onPortals ? 2 : 0) | (gamepad ? 4 : 0);
+            var lang = Localization.instance != null ? Localization.instance.GetSelectedLanguage() : null;
+            if (mode == _sbHintMode && ReferenceEquals(lang, _sbHintLang)) return;
+            _sbHintMode = mode;
+            _sbHintLang = lang;
             string text;
             if (travelActive && onPortals)
             {
                 var mouse = KeyLabels.Latin["$button_mouse0"];
-                text = ZInput.IsGamepadActive()
+                text = gamepad
                     ? Localization.instance.Localize("$ui_portal_hint_pad")
                     : Localization.instance.Localize("$ui_portal_hint", mouse, KeyLabels.Latin["$button_mouse1"], "Esc");
             }
@@ -935,7 +1022,7 @@ namespace Morgott.UI.MapScreen
                 r.Back.enabled = true;
             }
             Place(r.Accent.rectTransform, 0f, 2f, 4f, lay.CardHeight - 4f);
-            r.Accent.color = view.Accent;
+            SetColor(r.Accent, view.Accent);
 
             const float padX = 10f;
             var distW = Mathf.Clamp(w * 0.28f, 68f, 100f);
@@ -944,19 +1031,28 @@ namespace Morgott.UI.MapScreen
             if (Mathf.Abs(r.Title.fontSize - lay.TitleFont) > 0.05f) r.Title.fontSize = lay.TitleFont;
             if (Mathf.Abs(r.Subtitle.fontSize - lay.SubFont) > 0.05f) r.Subtitle.fontSize = lay.SubFont;
 
-            var badgeW = Mathf.Clamp(r.Badge.GetPreferredValues(view.Category).x + 14f, 54f, w - padX - distW - 10f);
+            var rev = ThemeTokens.Revision;
+            if (r.BadgeMeasuredRev != rev || Mathf.Abs(r.BadgeMeasuredFont - lay.BadgeFont) > 0.05f
+                || !string.Equals(r.BadgeMeasuredText, view.Category, System.StringComparison.Ordinal))
+            {
+                r.BadgeMeasuredRev = rev;
+                r.BadgeMeasuredFont = lay.BadgeFont;
+                r.BadgeMeasuredText = view.Category;
+                r.BadgeMeasuredW = r.Badge.GetPreferredValues(view.Category).x;
+            }
+            var badgeW = Mathf.Clamp(r.BadgeMeasuredW + 14f, 54f, w - padX - distW - 10f);
             Place(r.BadgeBack.rectTransform, padX, lay.BadgeY, badgeW, lay.BadgeH);
-            r.BadgeBack.color = new Color(view.Accent.r * 0.45f, view.Accent.g * 0.45f, view.Accent.b * 0.45f, 0.85f);
+            SetColor(r.BadgeBack, new Color(view.Accent.r * 0.45f, view.Accent.g * 0.45f, view.Accent.b * 0.45f, 0.85f));
             if (r.Badge.text != view.Category) r.Badge.text = view.Category;
-            r.Badge.color = view.Accent;
+            SetColor(r.Badge, view.Accent);
 
             Place(r.Distance.rectTransform, w - distW - 6f, lay.BadgeY - 1f, distW, lay.BadgeH + 2f);
             if (r.Distance.text != view.Distance) r.Distance.text = view.Distance;
-            r.Distance.color = ThemeTokens.GetColor("color.text.body", Color.white);
+            SetColor(r.Distance, ThemeTokens.GetColor("color.text.body", Color.white));
 
             Place(r.Title.rectTransform, padX, lay.TitleY, w - padX - 8f, lay.TitleH);
             if (r.Title.text != row.Title) r.Title.text = row.Title;
-            r.Title.color = ThemeTokens.GetColor("color.text.header", Color.white);
+            SetColor(r.Title, ThemeTokens.GetColor("color.text.header", Color.white));
 
             Place(r.Subtitle.rectTransform, padX, lay.SubY, w - padX - 8f, lay.SubH);
             if (r.Subtitle.text != view.Subtitle) r.Subtitle.text = view.Subtitle;
@@ -985,15 +1081,15 @@ namespace Morgott.UI.MapScreen
             var pencil = rowH * 0.62f;
             var right = w - pencil - 6f;
             Place(r.Pencil.rectTransform, right + 2f, (rowH - pencil) * 0.5f, pencil, pencil);
-            r.PencilGlyph.color = ThemeTokens.GetColor(view.CanEdit ? "color.text.accent" : "color.state.disabled", Color.white);
-            if (r.Pencil.TryGetComponent<UITooltip>(out var tip) && tip.m_text != view.Denied) tip.m_text = view.Denied;
+            SetColor(r.PencilGlyph, ThemeTokens.GetColor(view.CanEdit ? "color.text.accent" : "color.state.disabled", Color.white));
+            if (r.PencilTip && r.PencilTip.m_text != view.Denied) r.PencilTip.m_text = view.Denied;
             var distW = right * 0.32f;
             var half = (rowH - 2f) * 0.5f;
             Place(r.Name.rectTransform, x, 2f, right - x - distW, half);
             if (r.Name.text != row.Portal.Name) r.Name.text = row.Portal.Name;
             var sw = half * 0.45f;
             Place(r.Swatch.rectTransform, x + 2f, half + (half - sw) * 0.5f, sw, sw);
-            r.Swatch.color = view.BiomeColor;
+            SetColor(r.Swatch, view.BiomeColor);
             Place(r.Biome.rectTransform, x + sw + 8f, half, right - x - sw - 8f - distW, half);
             if (r.Biome.text != view.Biome) r.Biome.text = view.Biome;
             var stone = row.Portal.Stone;
@@ -1001,14 +1097,22 @@ namespace Morgott.UI.MapScreen
             if (stone)
             {
                 var gs = half * 0.7f;
-                var nameW = Mathf.Min(r.Name.GetPreferredValues(r.Name.text).x, right - x - distW - gs - 6f);
+                var rev = ThemeTokens.Revision;
+                if (r.NameMeasuredRev != rev || !string.Equals(r.NameMeasuredText, r.Name.text, System.StringComparison.Ordinal))
+                {
+                    r.NameMeasuredRev = rev;
+                    r.NameMeasuredText = r.Name.text;
+                    r.NameMeasuredW = r.Name.GetPreferredValues(r.Name.text).x;
+                }
+                var nameW = Mathf.Min(r.NameMeasuredW, right - x - distW - gs - 6f);
                 Place(r.Stone.rectTransform, x + nameW + 6f, 2f + (half - gs) * 0.5f, gs, gs);
             }
             Place(r.Distance.rectTransform, right - distW, 0f, distW - 4f, rowH - 2f);
             if (r.Distance.text != view.Distance) r.Distance.text = view.Distance;
             var dim = ThemeTokens.GetColor(row.Here ? "color.state.disabled" : "color.text.body", Color.white);
-            r.Biome.color = r.Distance.color = dim;
-            r.Name.color = row.Here ? dim : row.Portal.CustomColor ? row.Portal.Color : dim;
+            SetColor(r.Biome, dim);
+            SetColor(r.Distance, dim);
+            SetColor(r.Name, row.Here ? dim : row.Portal.CustomColor ? row.Portal.Color : dim);
         }
 
         // Ring on the selected portal's pin marker (a child: follows pan / zoom).

@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"slices"
@@ -73,7 +74,27 @@ type assets struct {
 	clips map[ref]*clip
 }
 
-func field(m any, k string) any { return m.(map[string]any)[k] }
+func field(m any, k string) any {
+	mm, ok := m.(map[string]any)
+	if !ok {
+		panic("not a map: " + k)
+	}
+	return mm[k]
+}
+func strField(m any, k string) string {
+	v, ok := field(m, k).(string)
+	if !ok {
+		panic("not a string: " + k)
+	}
+	return v
+}
+func mapField(m any, k string) map[string]any {
+	v, ok := field(m, k).(map[string]any)
+	if !ok {
+		panic("not a map field: " + k)
+	}
+	return v
+}
 func list(m any, k string) []any {
 	v, _ := field(m, k).([]any)
 	return v
@@ -88,7 +109,13 @@ func num(m any, k string) float64 {
 	}
 	panic("not a number: " + k)
 }
-func integer(m any, k string) int64 { return field(m, k).(int64) }
+func integer(m any, k string) int64 {
+	v, ok := field(m, k).(int64)
+	if !ok {
+		panic("not an int64: " + k)
+	}
+	return v
+}
 func truthy(m any, k string) bool {
 	switch v := field(m, k).(type) {
 	case bool:
@@ -136,7 +163,7 @@ func (a *assets) load(label string, b []byte) {
 			}
 			key := ref{cab, o.pathID}
 			if o.class == classAnimatorController {
-				c := &rawController{name: field(tt, "m_Name").(string), tt: field(tt, "m_Controller").(map[string]any), tos: list(tt, "m_TOS")}
+				c := &rawController{name: strField(tt, "m_Name"), tt: mapField(tt, "m_Controller"), tos: list(tt, "m_TOS")}
 				for _, p := range list(tt, "m_AnimationClips") {
 					c.clips = append(c.clips, pptr(p, f))
 				}
@@ -147,9 +174,9 @@ func (a *assets) load(label string, b []byte) {
 				continue
 			}
 			mc := field(tt, "m_MuscleClip")
-			c := &clip{name: field(tt, "m_Name").(string), length: num(mc, "m_StopTime") - num(mc, "m_StartTime"), source: label}
+			c := &clip{name: strField(tt, "m_Name"), length: num(mc, "m_StopTime") - num(mc, "m_StartTime"), source: label}
 			for _, e := range list(tt, "m_Events") {
-				c.events = append(c.events, clipEvent{round(num(e, "time"), 5), num(e, "floatParameter"), field(e, "functionName").(string)})
+				c.events = append(c.events, clipEvent{round(num(e, "time"), 5), num(e, "floatParameter"), strField(e, "functionName")})
 			}
 			a.clips[key] = c
 		}
@@ -210,7 +237,7 @@ type controller struct {
 func newController(a *assets, c *rawController, remap map[string]*ref) *controller {
 	x := &controller{a: a, tos: map[int64]string{}, hash: map[string]int64{}}
 	for _, e := range c.tos {
-		k, v := integer(e, "first"), field(e, "second").(string)
+		k, v := integer(e, "first"), strField(e, "second")
 		x.tos[k] = v
 		x.hash[v] = k
 	}
@@ -329,7 +356,7 @@ func (c *controller) simulate(tr transition, start float64) (res timing, ok bool
 		}
 		return res, true
 	}
-	for step := 0; step < 6; step++ {
+	for step := range 6 {
 		if dest >= len(states) {
 			return res, false
 		}
@@ -462,6 +489,20 @@ func triggers(a attackData) []string {
 
 func number(v float64) string { return strconv.FormatFloat(v, 'f', -1, 64) }
 
+func readFileScoped(dir, name string) ([]byte, error) {
+	r, err := os.OpenRoot(dir)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = r.Close() }()
+	f, err := r.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = f.Close() }()
+	return io.ReadAll(f)
+}
+
 func bake(game, dumpPath string) (triggerLines, reloadLines []string, err error) {
 	a := &assets{ctrls: map[ref]*rawController{}, clips: map[ref]*clip{}}
 	root := filepath.Join(game, `valheim_Data\StreamingAssets\SoftRef\Bundles`)
@@ -470,12 +511,12 @@ func bake(game, dumpPath string) (triggerLines, reloadLines []string, err error)
 		return nil, nil, err
 	}
 	for _, e := range entries {
-		if b, err := os.ReadFile(filepath.Join(root, e.Name())); err == nil {
+		if b, err := readFileScoped(root, e.Name()); err == nil {
 			a.load(e.Name(), b)
 		}
 	}
 	for _, rel := range pluginDLLs {
-		b, err := os.ReadFile(filepath.Join(game, rel))
+		b, err := readFileScoped(game, rel)
 		if err != nil {
 			continue
 		}
@@ -517,7 +558,7 @@ func bake(game, dumpPath string) (triggerLines, reloadLines []string, err error)
 			swaps[name] = swap{c, "swing_longsword" + strconv.Itoa(j)}
 		}
 	}
-	raw, err := os.ReadFile(dumpPath)
+	raw, err := readFileScoped(filepath.Dir(dumpPath), filepath.Base(dumpPath))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -577,7 +618,10 @@ func bake(game, dumpPath string) (triggerLines, reloadLines []string, err error)
 	return triggerLines, reloadLines, nil
 }
 
-func tableKey(line string) string { return line[:strings.Index(line, "]")] }
+func tableKey(line string) string {
+	key, _, _ := strings.Cut(line, "]")
+	return key
+}
 
 // replaceBody swaps the initializer lines of the dictionary declared on the line containing marker.
 func replaceBody(src, marker string, lines []string) (string, error) {
@@ -615,7 +659,7 @@ func run(game, dump, cs string, write bool) error {
 	if err != nil {
 		return err
 	}
-	raw, err := os.ReadFile(cs)
+	raw, err := readFileScoped(filepath.Dir(cs), filepath.Base(cs))
 	if err != nil {
 		return err
 	}

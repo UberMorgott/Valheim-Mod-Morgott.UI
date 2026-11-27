@@ -224,7 +224,7 @@ func cmdRowMatch() {
 		want, have := mean(mock, my), mean(src, y)
 		for x := sb.Min.X; x < sb.Max.X; x++ {
 			i := src.PixOffset(x, y)
-			for k := 0; k < 3; k++ {
+			for k := range 3 {
 				v := float64(src.Pix[i+k]) - have[k] + want[k]
 				src.Pix[i+k] = uint8(math.Max(0, math.Min(255, v)))
 			}
@@ -278,7 +278,7 @@ func cmdMetalMatch() {
 		bright := clamp01((l - 0.45) / 0.2) // highlights and the glowing runes stay
 		w := (1 - warm) * (1 - bright)
 		c := [3]float64{r, g, b}
-		for k := 0; k < 3; k++ {
+		for k := range 3 {
 			target := l * tint[k] * gain
 			v := c[k] + (target-c[k])*w
 			src.Pix[i+k] = uint8(math.Max(0, math.Min(255, v*255)))
@@ -321,8 +321,8 @@ func cmdPairDiff() {
 		return color.NRGBA{uint8(255 * clamp01(t*2)), uint8(255 * clamp01(t*2-1)), 0, 255}
 	}
 	sumDE := 0.0
-	for y := 0; y < h; y++ {
-		for x := 0; x < w; x++ {
+	for y := range h {
+		for x := range w {
 			L1, a1, b1, _ := lab(a, x, y)
 			L2, a2, b2, _ := lab(b, x, y)
 			de := math.Sqrt((L1-L2)*(L1-L2) + (a1-a2)*(a1-a2) + (b1-b2)*(b1-b2))
@@ -335,8 +335,8 @@ func cmdPairDiff() {
 	for y := 0; y+win <= h; y += win {
 		for x := 0; x+win <= w; x += win {
 			var ma, mb, va, vb, cov float64
-			for j := 0; j < win; j++ {
-				for i := 0; i < win; i++ {
+			for j := range win {
+				for i := range win {
 					_, _, _, ya := lab(a, x+i, y+j)
 					_, _, _, yb := lab(b, x+i, y+j)
 					ma += ya
@@ -345,8 +345,8 @@ func cmdPairDiff() {
 			}
 			ma /= win * win
 			mb /= win * win
-			for j := 0; j < win; j++ {
-				for i := 0; i < win; i++ {
+			for j := range win {
+				for i := range win {
 					_, _, _, ya := lab(a, x+i, y+j)
 					_, _, _, yb := lab(b, x+i, y+j)
 					va += (ya - ma) * (ya - ma)
@@ -361,8 +361,8 @@ func cmdPairDiff() {
 			s := ((2*ma*mb + c1) * (2*cov + c2)) / ((ma*ma + mb*mb + c1) * (va + vb + c2))
 			ssimSum += s
 			n++
-			for j := 0; j < win; j++ {
-				for i := 0; i < win; i++ {
+			for j := range win {
+				for i := range win {
 					out.SetNRGBA(w+8+x+i, y+j, heat(1-s))
 				}
 			}
@@ -387,8 +387,8 @@ func cmdSymCheck() {
 	W, H := b.Dx(), b.Dy()
 	mask := make([]bool, W*H)
 	var cx, cy, n float64
-	for y := 0; y < H; y++ {
-		for x := 0; x < W; x++ {
+	for y := range H {
+		for x := range W {
 			i := img.PixOffset(b.Min.X+x, b.Min.Y+y)
 			l := (0.2126*float64(img.Pix[i]) + 0.7152*float64(img.Pix[i+1]) + 0.0722*float64(img.Pix[i+2])) / 255
 			if l > th {
@@ -404,8 +404,8 @@ func cmdSymCheck() {
 	iou := func(deg float64) float64 {
 		s, c := math.Sincos(deg * math.Pi / 180)
 		inter, union := 0, 0
-		for y := 0; y < H; y++ {
-			for x := 0; x < W; x++ {
+		for y := range H {
+			for x := range W {
 				dx, dy := float64(x)-cx, float64(y)-cy
 				rx, ry := int(math.Round(cx+dx*c-dy*s)), int(math.Round(cy+dx*s+dy*c))
 				r := rx >= 0 && ry >= 0 && rx < W && ry < H && mask[ry*W+rx]
@@ -461,8 +461,8 @@ func cmdEmblem() {
 			if base.Pix[bi+3] == 0 {
 				continue
 			}
-			for k := 0; k < 3; k++ {
-				base.Pix[bi+k] = uint8(min(255, int(base.Pix[bi+k])+int(gs.Pix[si+k])))
+			for k := range 3 {
+				base.Pix[bi+k] = clampU8(int(base.Pix[bi+k]) + int(gs.Pix[si+k]))
 			}
 		}
 	}

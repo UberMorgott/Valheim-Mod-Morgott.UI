@@ -118,9 +118,9 @@ namespace Morgott.UI.Tests
         [Fact]
         public void PickFindsTheSameIdentityInANewStock()
         {
-            var fresh = new[] { new Row { Key = (1, "SwordIron", 2) }, new Row { Key = (2, "Wood", 1) } };
-            Assert.Same(fresh[0], StorageMath.Pick(fresh, (1, "SwordIron", 2), r => r.Key)); // equal key, new object
-            Assert.Null(StorageMath.Pick(fresh, (1, "SwordIron", 3), r => r.Key)); // gone
+            var fresh = new[] { new Row { Key = System.Tuple.Create(1, "SwordIron", 2) }, new Row { Key = System.Tuple.Create(2, "Wood", 1) } };
+            Assert.Same(fresh[0], StorageMath.Pick(fresh, System.Tuple.Create(1, "SwordIron", 2), r => r.Key)); // equal key, new object
+            Assert.Null(StorageMath.Pick(fresh, System.Tuple.Create(1, "SwordIron", 3), r => r.Key)); // gone
             Assert.Null(StorageMath.Pick(fresh, null, r => r.Key)); // nothing selected
         }
 

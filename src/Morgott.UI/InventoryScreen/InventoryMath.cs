@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 
 namespace Morgott.UI.InventoryScreen
 {
@@ -22,7 +23,7 @@ namespace Morgott.UI.InventoryScreen
 
         public bool Inside(Box o) => X >= o.X - 0.01f && Y >= o.Y - 0.01f && Right <= o.Right + 0.01f && Bottom <= o.Bottom + 0.01f;
 
-        public override string ToString() => $"({X:0.#},{Y:0.#},{W:0.#},{H:0.#})";
+        public override string ToString() => $"({X.ToString("0.#", CultureInfo.CurrentCulture)},{Y.ToString("0.#", CultureInfo.CurrentCulture)},{W.ToString("0.#", CultureInfo.CurrentCulture)},{H.ToString("0.#", CultureInfo.CurrentCulture)})";
     }
 
     // Sizes in design units (multiplied by SkinScale). Defaults = default-theme.json.
@@ -64,7 +65,7 @@ namespace Morgott.UI.InventoryScreen
         public bool ScrollV, ScrollH;
         public float ContentW, ContentH;
 
-        public override string ToString() => $"{Columns}x{Rows} pitch {Pitch:0.#} vis {VisibleColumns}x{VisibleRows}{(ScrollV ? " scrollV" : "")}{(ScrollH ? " scrollH" : "")}";
+        public override string ToString() => $"{Columns.ToString(CultureInfo.CurrentCulture)}x{Rows.ToString(CultureInfo.CurrentCulture)} pitch {Pitch.ToString("0.#", CultureInfo.CurrentCulture)} vis {VisibleColumns.ToString(CultureInfo.CurrentCulture)}x{VisibleRows.ToString(CultureInfo.CurrentCulture)}{(ScrollV ? " scrollV" : "")}{(ScrollH ? " scrollH" : "")}";
     }
 
     public static class InventoryMath

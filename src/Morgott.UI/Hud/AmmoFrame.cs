@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Globalization;
 using System.Text;
 using Morgott.UI.Ownership;
 using Morgott.UI.Theme;
@@ -332,19 +333,35 @@ namespace Morgott.UI.PlayerHud
                 var f = Instance;
                 if (!f) return "no ammo plate";
                 var sb = new StringBuilder();
-                sb.Append($"shown={(f._shown ? 1 : 0)} weapon={(f._weapon != null ? f._weapon.m_shared.m_name : "-")} ammo={(f._ammo != null ? f._ammo.m_shared.m_name : "-")}");
-                sb.Append($" name='{f._nameText}' count='{f._countText}' empty={(f._empty ? 1 : 0)} mag={f._loaded}/{f._capacity} mode={AmmoMath.Mode(f._capacity)}");
+                sb.Append("shown=").Append(f._shown ? 1 : 0)
+                    .Append(" weapon=").Append(f._weapon != null ? f._weapon.m_shared.m_name : "-")
+                    .Append(" ammo=").Append(f._ammo != null ? f._ammo.m_shared.m_name : "-")
+                    .Append(" name='").Append(f._nameText)
+                    .Append("' count='").Append(f._countText)
+                    .Append("' empty=").Append(f._empty ? 1 : 0)
+                    .Append(" mag=").Append(f._loaded).Append('/').Append(f._capacity)
+                    .Append(" mode=").Append(ModeName(AmmoMath.Mode(f._capacity)));
                 var on = 0;
                 var filled = 0;
                 var full = ThemeTokens.GetSprite("sprite.hud.pip.full");
                 foreach (var d in f._dots)
                     if (d.gameObject.activeInHierarchy) { on++; if (d.sprite && d.sprite == full) filled++; }
-                sb.Append($" dots={on}({filled}) magText='{(f._mag.gameObject.activeInHierarchy ? f._mag.text : "")}'");
-                sb.Append($" tile={Rect(f, f._socket.rectTransform)} plate={Rect(f, f._plateRt)} platew={f._pw:0.##}");
+                sb.Append(" dots=").Append(on).Append('(').Append(filled).Append(") magText='")
+                    .Append(f._mag.gameObject.activeInHierarchy ? f._mag.text : "").Append('\'')
+                    .Append(" tile=").Append(Rect(f, f._socket.rectTransform))
+                    .Append(" plate=").Append(Rect(f, f._plateRt))
+                    .Append(" platew=").Append(f._pw.ToString("0.##", CultureInfo.InvariantCulture));
                 return sb.ToString();
             }
             finally { thread.CurrentCulture = culture; }
         }
+
+        private static string ModeName(MagazineMode m) => m switch
+        {
+            MagazineMode.Dots => "Dots",
+            MagazineMode.Compact => "Compact",
+            _ => "None",
+        };
 
         private static string Rect(AmmoFrame f, RectTransform rt)
         {
@@ -352,7 +369,7 @@ namespace Morgott.UI.PlayerHud
             var cam = canvas && canvas.rootCanvas.renderMode != RenderMode.ScreenSpaceOverlay ? canvas.rootCanvas.worldCamera : null;
             rt.GetWorldCorners(f._corners);
             Vector2 a = RectTransformUtility.WorldToScreenPoint(cam, f._corners[0]), b = RectTransformUtility.WorldToScreenPoint(cam, f._corners[2]);
-            return $"{a.x:0},{a.y:0},{b.x - a.x:0},{b.y - a.y:0}";
+            return $"{a.x.ToString("0", CultureInfo.InvariantCulture)},{a.y.ToString("0", CultureInfo.InvariantCulture)},{(b.x - a.x).ToString("0", CultureInfo.InvariantCulture)},{(b.y - a.y).ToString("0", CultureInfo.InvariantCulture)}";
         }
     }
 

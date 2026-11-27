@@ -449,7 +449,15 @@ namespace Morgott.UI.PlayerHud
                 topic = has ? cell.ItemName ?? "" : "";
                 text = BeltBridge.Tooltip(kind, index);
                 // a running food first (MT keeps the cell's Player.Food; vanilla CanEat allows one food per name)
-                var food = has && kind == BeltMath.Food && cell.Active ? p.GetFoods().Find(f => f.m_item?.m_shared.m_name == cell.ActiveName) : null;
+                Player.Food food = null;
+                if (has && kind == BeltMath.Food && cell.Active)
+                {
+                    var foods = p.GetFoods();
+                    for (var i = 0; i < foods.Count; i++)
+                    {
+                        if (foods[i].m_item?.m_shared.m_name == cell.ActiveName) { food = foods[i]; break; }
+                    }
+                }
                 if (food != null)
                 {
                     topic = cell.ActiveName;

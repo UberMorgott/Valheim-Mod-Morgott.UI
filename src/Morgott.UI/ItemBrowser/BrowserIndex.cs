@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using Morgott.Core;
 
 namespace Morgott.UI.ItemBrowser
@@ -161,7 +162,7 @@ namespace Morgott.UI.ItemBrowser
             }
             hits.Sort((a, b) =>
             {
-                var c = a.Value.Type.CompareTo(b.Value.Type);
+                var c = ((int)a.Value.Type).CompareTo((int)b.Value.Type);
                 if (c == 0) c = string.Compare(a.Key, b.Key, StringComparison.OrdinalIgnoreCase);
                 return c != 0 ? c : string.CompareOrdinal(a.Value.Id, b.Value.Id);
             });
@@ -213,11 +214,127 @@ namespace Morgott.UI.ItemBrowser
         public static string ChangedKeys(IReadOnlyDictionary<string, int> a, IReadOnlyDictionary<string, int> b, int max)
         {
             var d = new List<string>();
-            foreach (var kv in b) if (!a.TryGetValue(kv.Key, out var h) || h != kv.Value) d.Add(kv.Key);
-            foreach (var k in a.Keys) if (!b.ContainsKey(k)) d.Add(k);
+            var bList = new List<KeyValuePair<string, int>>(b);
+            for (var i = 0; i < bList.Count; i++)
+            {
+                var kv = bList[i];
+                if (!a.TryGetValue(kv.Key, out var h) || h != kv.Value) d.Add(kv.Key);
+            }
+            var aList = new List<KeyValuePair<string, int>>(a);
+            for (var i = 0; i < aList.Count; i++)
+            {
+                var k = aList[i].Key;
+                if (!b.ContainsKey(k)) d.Add(k);
+            }
             d.Sort(StringComparer.Ordinal);
-            return d.Count <= max ? string.Join(", ", d) : string.Join(", ", d.GetRange(0, max)) + $" (+{d.Count - max})";
+            return d.Count <= max ? string.Join(", ", d) : string.Join(", ", d.GetRange(0, max)) + $" (+{(d.Count - max).ToString(CultureInfo.InvariantCulture)})";
         }
+
+        internal static string EntryTypeName(EntryType t) => t switch
+        {
+            EntryType.Item => "Item",
+            EntryType.Piece => "Piece",
+            EntryType.Creature => "Creature",
+            EntryType.Station => "Station",
+            EntryType.Other => "Other",
+            _ => ((int)t).ToString(CultureInfo.InvariantCulture)
+        };
+
+        internal static string EntryTypeLower(EntryType t) => t switch
+        {
+            EntryType.Item => "item",
+            EntryType.Piece => "piece",
+            EntryType.Creature => "creature",
+            EntryType.Station => "station",
+            EntryType.Other => "other",
+            _ => ((int)t).ToString(CultureInfo.InvariantCulture)
+        };
+
+        internal static string CategoryName(ItemCategory c) => c switch
+        {
+            ItemCategory.Weapons => "Weapons",
+            ItemCategory.Armor => "Armor",
+            ItemCategory.Utility => "Utility",
+            ItemCategory.Ammo => "Ammo",
+            ItemCategory.Tools => "Tools",
+            ItemCategory.Food => "Food",
+            ItemCategory.Meads => "Meads",
+            ItemCategory.Materials => "Materials",
+            ItemCategory.Trophies => "Trophies",
+            ItemCategory.Fish => "Fish",
+            ItemCategory.Gems => "Gems",
+            ItemCategory.Misc => "Misc",
+            _ => ((int)c).ToString(CultureInfo.InvariantCulture)
+        };
+
+        internal static string CategoryLower(ItemCategory c) => c switch
+        {
+            ItemCategory.Weapons => "weapons",
+            ItemCategory.Armor => "armor",
+            ItemCategory.Utility => "utility",
+            ItemCategory.Ammo => "ammo",
+            ItemCategory.Tools => "tools",
+            ItemCategory.Food => "food",
+            ItemCategory.Meads => "meads",
+            ItemCategory.Materials => "materials",
+            ItemCategory.Trophies => "trophies",
+            ItemCategory.Fish => "fish",
+            ItemCategory.Gems => "gems",
+            ItemCategory.Misc => "misc",
+            _ => ((int)c).ToString(CultureInfo.InvariantCulture)
+        };
+
+        internal static string KindName(RelationKind k) => k switch
+        {
+            RelationKind.Craft => "Craft",
+            RelationKind.Upgrade => "Upgrade",
+            RelationKind.Conversion => "Conversion",
+            RelationKind.Build => "Build",
+            RelationKind.CreatureDrop => "CreatureDrop",
+            RelationKind.KillDrop => "KillDrop",
+            RelationKind.LootTable => "LootTable",
+            RelationKind.Trader => "Trader",
+            RelationKind.Pickable => "Pickable",
+            RelationKind.Destroy => "Destroy",
+            RelationKind.Mine => "Mine",
+            RelationKind.Tree => "Tree",
+            RelationKind.Container => "Container",
+            RelationKind.Grow => "Grow",
+            RelationKind.Spawn => "Spawn",
+            RelationKind.Other => "Other",
+            _ => ((int)k).ToString(CultureInfo.InvariantCulture)
+        };
+
+        internal static string KindLower(RelationKind k) => k switch
+        {
+            RelationKind.Craft => "craft",
+            RelationKind.Upgrade => "upgrade",
+            RelationKind.Conversion => "conversion",
+            RelationKind.Build => "build",
+            RelationKind.CreatureDrop => "creaturedrop",
+            RelationKind.KillDrop => "killdrop",
+            RelationKind.LootTable => "loottable",
+            RelationKind.Trader => "trader",
+            RelationKind.Pickable => "pickable",
+            RelationKind.Destroy => "destroy",
+            RelationKind.Mine => "mine",
+            RelationKind.Tree => "tree",
+            RelationKind.Container => "container",
+            RelationKind.Grow => "grow",
+            RelationKind.Spawn => "spawn",
+            RelationKind.Other => "other",
+            _ => ((int)k).ToString(CultureInfo.InvariantCulture)
+        };
+
+        internal static string StageViaName(StageVia v) => v switch
+        {
+            StageVia.Unknown => "Unknown",
+            StageVia.Derived => "Derived",
+            StageVia.Incidental => "Incidental",
+            StageVia.Authored => "Authored",
+            StageVia.Magic => "Magic",
+            _ => ((int)v).ToString(CultureInfo.InvariantCulture)
+        };
     }
 
     // Back / forward history of item pages (mouse buttons + arrow hotkeys).

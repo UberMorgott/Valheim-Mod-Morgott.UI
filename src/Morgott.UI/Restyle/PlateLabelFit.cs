@@ -20,6 +20,12 @@ namespace Morgott.UI.Restyle
         private TMP_Text _text;
         private string _measured;
         private int _next;
+        // Cached wrap decision: avoids the double auto-size/fontSize/wrap toggle + GetPreferredValues when unchanged.
+        private bool _fitValid;
+        private TMP_FontAsset _fitFont;
+        private float _fitMin, _fitAreaW, _fitFull;
+        private int _fitObstacleHash, _fitRev;
+        private TextWrappingModes _fitMode;
         // Lead glyph (craft button anvil, 0.25.1): an icon the screen places at a fixed spot left of the label. The
         // text area starts _leadGap x button height after its drawn right edge (no cap inset on that side) and it is no
         // obstacle of the generic scan, which reads an icon's side from the drawn text bounds (a text already under the
@@ -36,6 +42,7 @@ namespace Morgott.UI.Restyle
             _button = button;
             Inset = inset;
             _dirty = true;
+            _fitValid = false;
             // Sibling plated buttons of one size share one label size (TextSizeGroup).
             if (_text && button && button.parent) TextSizeGroup.Join(_text, button.parent, button);
             Apply();
@@ -51,6 +58,7 @@ namespace Morgott.UI.Restyle
             _edge = edge;
             _single = singleLine;
             _dirty = true;
+            _fitValid = false;
         }
 
         private void OnEnable() => _dirty = true;
@@ -86,7 +94,7 @@ namespace Morgott.UI.Restyle
             // Free span (batch G): a glyph beside the label inside the plate narrows it; the label is centred in what
             // is left, the cap inset kept on both sides of that span. A lead glyph bounds the left side by itself + gap.
             var lead = LeadActive();
-            var span = Span(br, lmin, lmax, lead);
+            var span = Span(br, lmin, lmax, lead, out var obstacleHash);
             var right = _edge >= 0f ? _edge * br.height : inset;
             var leftPad = inset;
             if (lead)
@@ -94,6 +102,7 @@ namespace Morgott.UI.Restyle
                 var start = Mathf.Max(span.Min, LabelFit.LeadStart(TextInset.Drawn(_lead, _button).xMax, _leadGap * br.height, br.xMin));
                 span = new LayoutMath.Span(start, Mathf.Max(start, span.Max));
                 leftPad = 0f;
+                obstacleHash = unchecked(obstacleHash * 31 + Mathf.RoundToInt(start * 100f));
             }
             var m = new Vector4(LabelFit.Margin(leftPad, lmin.x - span.Min), LabelFit.Margin(v, br.yMax - lmax.y),
                 LabelFit.Margin(right, span.Max - lmax.x), LabelFit.Margin(v, lmin.y - br.yMin));
@@ -117,22 +126,44 @@ namespace Morgott.UI.Restyle
                 _text.enableAutoSizing = true;
             }
             var full = TextSizeGroup.FullOf(_text);
-            // Measured at the full size with auto-size off (the auto-sized current size depends on the last wrap mode).
-            var auto = _text.enableAutoSizing;
-            var cur = _text.fontSize;
-            var curWrap = _text.textWrappingMode;
-            _text.enableAutoSizing = false;
-            _text.fontSize = full;
-            _text.textWrappingMode = TextWrappingModes.NoWrap; // preferred width = the one-line width
-            _measured = _text.text;
-            var w = _text.GetPreferredValues(_measured, float.PositiveInfinity, float.PositiveInfinity).x;
-            _text.textWrappingMode = curWrap;
-            _text.fontSize = cur;
-            _text.enableAutoSizing = auto;
-            var one = LabelFit.OneLineSize(areaW, w, full);
-            var wrap = one < Mathf.Max(_text.fontSizeMin, full * ThemeTokens.GetFloat("share.text.fit.oneline", 0.72f));
-            var mode = wrap ? TextWrappingModes.Normal : TextWrappingModes.NoWrap;
-            if (_text.textWrappingMode != mode) _text.textWrappingMode = mode;
+            var curText = _text.text;
+            var curFont = _text.font;
+            var curMin = _text.fontSizeMin;
+            var rev = ThemeTokens.Revision;
+            if (!_fitValid ||
+                !string.Equals(curText, _measured, System.StringComparison.Ordinal) ||
+                curFont != _fitFont ||
+                !Mathf.Approximately(curMin, _fitMin) ||
+                !Mathf.Approximately(areaW, _fitAreaW) ||
+                !Mathf.Approximately(full, _fitFull) ||
+                obstacleHash != _fitObstacleHash ||
+                rev != _fitRev)
+            {
+                // Measured at the full size with auto-size off (the auto-sized current size depends on the last wrap mode).
+                var auto = _text.enableAutoSizing;
+                var cur = _text.fontSize;
+                var curWrap = _text.textWrappingMode;
+                _text.enableAutoSizing = false;
+                _text.fontSize = full;
+                _text.textWrappingMode = TextWrappingModes.NoWrap; // preferred width = the one-line width
+                _measured = curText;
+                var w = _text.GetPreferredValues(_measured, float.PositiveInfinity, float.PositiveInfinity).x;
+                _text.textWrappingMode = curWrap;
+                _text.fontSize = cur;
+                _text.enableAutoSizing = auto;
+                var one = LabelFit.OneLineSize(areaW, w, full);
+                var wrap = one < Mathf.Max(curMin, full * ThemeTokens.GetFloat("share.text.fit.oneline", 0.72f));
+                _fitMode = wrap ? TextWrappingModes.Normal : TextWrappingModes.NoWrap;
+                _fitFont = curFont;
+                _fitMin = curMin;
+                _fitAreaW = areaW;
+                _fitFull = full;
+                _fitObstacleHash = obstacleHash;
+                _fitRev = rev;
+                _fitValid = true;
+            }
+            else _measured = curText;
+            if (_text.textWrappingMode != _fitMode) _text.textWrappingMode = _fitMode;
             if (m == _text.margin) return;
             _text.margin = _set = m;
         }
@@ -143,7 +174,7 @@ namespace Morgott.UI.Restyle
         // Plate minus the glyphs beside the drawn label (images inside the button, not the plate, not the label's own).
         private bool LeadActive() => _lead && _lead.enabled && _lead.sprite && _lead.gameObject.activeInHierarchy && _lead.transform.IsChildOf(_button);
 
-        private LayoutMath.Span Span(Rect br, Vector3 lmin, Vector3 lmax, bool lead)
+        private LayoutMath.Span Span(Rect br, Vector3 lmin, Vector3 lmax, bool lead, out int obstacleHash)
         {
             var tmin = lmin.x;
             var tmax = lmax.x;
@@ -158,6 +189,7 @@ namespace Morgott.UI.Restyle
             Obstacles.Clear();
             Images.Clear();
             _button.GetComponentsInChildren(false, Images);
+            var h = 17;
             foreach (var img in Images)
             {
                 if (!img || img == plate || !img.enabled || !img.sprite || img.type == Image.Type.Filled) continue;
@@ -170,8 +202,14 @@ namespace Morgott.UI.Restyle
                 // changelog label sat 7.5 units left of centre (run 20261029-105944, 1280x720, gaps 120 / 135).
                 if (!br.Contains(r.center) || r.width >= br.width * 0.6f || r.yMax < lmin.y || r.yMin > lmax.y) continue;
                 Obstacles.Add(new LayoutMath.Span(r.xMin, r.xMax));
+                unchecked
+                {
+                    h = h * 31 + Mathf.RoundToInt(r.xMin * 100f);
+                    h = h * 31 + Mathf.RoundToInt(r.xMax * 100f);
+                }
             }
             Images.Clear();
+            obstacleHash = h;
             return LayoutMath.FreeSpan(br.xMin, br.xMax, tmin, tmax, Obstacles);
         }
 

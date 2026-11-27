@@ -57,6 +57,17 @@ namespace Morgott.UI.Tests
             return i;
         }
 
+        private static void AssertInOrder(string text, params string[] parts)
+        {
+            var prev = -1;
+            for (var i = 0; i < parts.Length; i++)
+            {
+                var cur = At(text, parts[i]);
+                Assert.True(cur >= prev, $"out of order: {parts[i]} ({cur} < {prev})");
+                prev = cur;
+            }
+        }
+
         [Fact]
         public void BackpackContentsWeightIsARow()
         {
@@ -85,13 +96,10 @@ namespace Morgott.UI.Tests
         {
             var r = TooltipSheet.Compose(Axe, Data(), S);
             Assert.True(TooltipSheet.IsSheet(r));
-            var order = new[]
-            {
+            AssertInOrder(r,
                 "mui:icon:0", "$item_axe_bronze", "$ui_tip_type_onehandedweapon", "$ui_tip_quality 3", "mui:hdr",
                 "$inventory_slash", "$item_staminause", "$item_blockarmor", "$item_repairlevel",
-                "em><i><color=#" + S.Description + ">$item_axe_bronze_description", "mui:bar:750", "150/200", "$ui_tip_weight 2.0", "$ui_tip_upgrade 3/4",
-            }.Select(p => At(r, p)).ToList();
-            Assert.Equal(order.OrderBy(i => i), order);
+                "em><i><color=#" + S.Description + ">$item_axe_bronze_description", "mui:bar:750", "150/200", "$ui_tip_weight 2.0", "$ui_tip_upgrade 3/4");
             // Meta lines shown from data, not twice; values without the game's orange / yellow.
             foreach (var gone in new[] { "$item_weight:", "$item_quality:", "$item_durability:", "$item_onehanded", "orange", "yellow" })
                 Assert.DoesNotContain(gone, r);
@@ -135,12 +143,9 @@ namespace Morgott.UI.Tests
             var r = TooltipSheet.Compose(raw, d, S);
             foreach (var gone in new[] { "$mod_epicloot_itemtooltip_rarity", "$mod_epicloot_set:", "●", "$mod_epicloot_legendaryset", "#808080ff" })
                 Assert.DoesNotContain(gone, r);
-            var order = new[]
-            {
+            AssertInOrder(r,
                 "Blood axe", "$inventory_slash", "$item_fulladrenaline", "$ui_tip_magic", "+12% fire", "$ui_tip_sockets 1/2",
-                "$ui_tip_set Jarl", "<b>2/4</b>", "Helm", "<color=#" + S.Dim + ">  Legs", "<color=#" + S.Dim + ">(4)  Rage", "$item_desc",
-            }.Select(p => At(r, p)).ToList();
-            Assert.Equal(order.OrderBy(i => i), order);
+                "$ui_tip_set Jarl", "<b>2/4</b>", "Helm", "<color=#" + S.Dim + ">  Legs", "<color=#" + S.Dim + ">(4)  Rage", "$item_desc");
         }
 
         [Fact]
@@ -238,9 +243,7 @@ namespace Morgott.UI.Tests
             var d = new TooltipSheet.SheetData { Name = "$n", Description = "$d" };
             d.Blocks.Add(new TooltipSheet.EffectBlock { Label = TooltipSheet.FullAdrenalineLabel, Printed = "$item_fulladrenaline: " + se, Text = se });
             var r = TooltipSheet.Compose(raw, d, S);
-            var order = new[] { "$item_maxadrenaline", "$ui_tip_full_adrenaline", "$se_x_description", "$se_health_upfront", "$ui_adr_title", "$ui_adr_full" }
-                .Select(p => At(r, p)).ToList();
-            Assert.Equal(order.OrderBy(i => i), order);
+            AssertInOrder(r, "$item_maxadrenaline", "$ui_tip_full_adrenaline", "$se_x_description", "$se_health_upfront", "$ui_adr_title", "$ui_adr_full");
             Assert.DoesNotContain("$item_fulladrenaline", r);
             Assert.DoesNotContain("orange", r);
         }

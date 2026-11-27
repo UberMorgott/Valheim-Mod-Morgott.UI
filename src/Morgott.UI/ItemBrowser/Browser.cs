@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using BepInEx.Configuration;
 using Morgott.Core;
 using UnityEngine;
@@ -44,7 +45,8 @@ namespace Morgott.UI.ItemBrowser
         public static bool Down(KeyboardShortcut k)
         {
             if (k.MainKey == KeyCode.None || !ZInput.GetKeyDown(k.MainKey, false)) return false;
-            foreach (var m in k.Modifiers) if (!ZInput.GetKey(m, false)) return false;
+            var mods = k.Modifiers as IList<KeyCode> ?? new List<KeyCode>(k.Modifiers);
+            for (var i = 0; i < mods.Count; i++) if (!ZInput.GetKey(mods[i], false)) return false;
             return true;
         }
 
@@ -67,12 +69,17 @@ namespace Morgott.UI.ItemBrowser
             var mods = new Dictionary<string, string>(StringComparer.Ordinal);
             try
             {
-                foreach (var p in Jotunn.Utils.ModQuery.GetPrefabs())
+                var modPrefabs = Jotunn.Utils.ModQuery.GetPrefabs();
+                var list = modPrefabs as IList<Jotunn.Utils.IModPrefab> ?? new List<Jotunn.Utils.IModPrefab>(modPrefabs);
+                for (var i = 0; i < list.Count; i++)
+                {
+                    var p = list[i];
                     if (p?.Prefab && p.SourceMod != null && !mods.ContainsKey(p.Prefab.name)) mods[p.Prefab.name] = p.SourceMod.GUID;
+                }
             }
             catch (Exception e) { Plugin.Log.LogWarning($"[Morgott.UI] item browser: ModQuery failed, mods unknown: {e.Message}"); }
             var ix = new BrowserIndex();
-            VanillaScan.Run(ix, id => mods.TryGetValue(id, out var g) ? g : null);
+            VanillaScan.Run(ix, new ModLookup(mods).Get);
             foreach (var r in ItemSources.Collect()) ix.Add(r);
             ix.HideNpcOnlyGear();
             _mods = mods;
@@ -81,9 +88,16 @@ namespace Morgott.UI.ItemBrowser
             Generation++;
             _tips.Clear();
             BuildMs = sw.Elapsed.TotalMilliseconds;
-            Plugin.Log.LogInfo($"[Morgott.UI] item browser index #{Generation}: {ix.Entries.Count} entries, {ix.Relations.Count} relations, {BuildMs:F1} ms ({why})" +
+            Plugin.Log.LogInfo($"[Morgott.UI] item browser index #{Generation.ToString(CultureInfo.InvariantCulture)}: {ix.Entries.Count.ToString(CultureInfo.InvariantCulture)} entries, {ix.Relations.Count.ToString(CultureInfo.InvariantCulture)} relations, {BuildMs.ToString("F1", CultureInfo.InvariantCulture)} ms ({why})" +
                 (ItemSources.Errors.Count > 0 ? $", provider errors: {string.Join("; ", ItemSources.Errors)}" : ""));
             return Generation;
+        }
+
+        private sealed class ModLookup
+        {
+            private readonly Dictionary<string, string> _map;
+            public ModLookup(Dictionary<string, string> map) => _map = map;
+            public string Get(string id) => _map.TryGetValue(id, out var g) ? g : null;
         }
 
         // World session + prefab / item counts + recipe content (in-place edits keep counts) + provider revision.
@@ -101,9 +115,9 @@ namespace Morgott.UI.ItemBrowser
         {
             var d = new List<string>();
             if (a.World != b.World) d.Add("world");
-            if (a.Prefabs != b.Prefabs) d.Add($"prefabs {a.Prefabs}->{b.Prefabs}");
-            if (a.Items != b.Items) d.Add($"items {a.Items}->{b.Items}");
-            if (a.Sources != b.Sources) d.Add($"source revision {a.Sources}->{b.Sources}");
+            if (a.Prefabs != b.Prefabs) d.Add($"prefabs {a.Prefabs.ToString(CultureInfo.InvariantCulture)}->{b.Prefabs.ToString(CultureInfo.InvariantCulture)}");
+            if (a.Items != b.Items) d.Add($"items {a.Items.ToString(CultureInfo.InvariantCulture)}->{b.Items.ToString(CultureInfo.InvariantCulture)}");
+            if (a.Sources != b.Sources) d.Add($"source revision {a.Sources.ToString(CultureInfo.InvariantCulture)}->{b.Sources.ToString(CultureInfo.InvariantCulture)}");
             if (a.Recipes != b.Recipes)
                 d.Add(recipesA != null && recipesB != null ? $"recipe content: {BrowserIndex.ChangedKeys(recipesA, recipesB, 8)}" : "recipe content");
             return "changed: " + string.Join(", ", d);
@@ -434,25 +448,33 @@ namespace Morgott.UI.ItemBrowser
             {
                 var ins = new List<string>();
                 foreach (var s in r.Inputs) ins.Add(s.Prefab);
-                src.Add($"{r.Kind}|{r.Source}|{r.Station}|{string.Join(",", ins)}");
+                src.Add($"{BrowserIndex.KindName(r.Kind)}|{r.Source}|{r.Station}|{string.Join(",", ins)}");
             }
             return new Probe
             {
                 Indexed = true,
                 Active = e.Hidden == null,
                 Hidden = e.Hidden,
-                Type = e.Type.ToString(),
-                Category = e.Category.ToString(),
+                Type = BrowserIndex.EntryTypeName(e.Type),
+                Category = BrowserIndex.CategoryName(e.Category),
                 Name = Localize(e.Name),
                 Desc = Localize(e.Desc),
                 Mod = e.Mod,
-                Icon = icon.ToString(),
+                Icon = IconStateName(icon),
                 MaxQuality = e.MaxQuality,
                 Known = Known(e),
                 Favorite = Favorites().Contains(prefab),
                 Sources = src.ToArray()
             };
         }
+
+        private static string IconStateName(IconState s) => s switch
+        {
+            IconState.Ready => "Ready",
+            IconState.Pending => "Pending",
+            IconState.Missing => "Missing",
+            _ => ((int)s).ToString(CultureInfo.InvariantCulture)
+        };
 
         /// <summary>Stages + facets of the current generation are solved.</summary>
         public static bool StageReady => StageScan.Done && StageScan.Data != null;

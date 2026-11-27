@@ -48,15 +48,20 @@ namespace Morgott.UI.Compat
                         harmony.Patch(m, transpiler: transpiler);
                         patched++;
                     }
-            Plugin.Log.LogInfo($"[Compat] {asm.GetName().Name}: texts translated in {patched} methods");
+            Plugin.Log.LogInfo($"[Compat] {asm.GetName().Name}: texts translated in {patched.ToString()} methods");
         }
 
         private static bool HasText(MethodBase m)
         {
             try
             {
-                foreach (var op in PatchProcessor.ReadMethodBody(m))
+                var body = PatchProcessor.ReadMethodBody(m);
+                var ops = body as IList<KeyValuePair<OpCode, object>> ?? new List<KeyValuePair<OpCode, object>>(body);
+                for (var i = 0; i < ops.Count; i++)
+                {
+                    var op = ops[i];
                     if (op.Key == OpCodes.Ldstr && op.Value is string s && ModWords.Texts.ContainsKey(s)) return true;
+                }
             }
             catch (Exception e)
             {
@@ -91,8 +96,21 @@ namespace Morgott.UI.Compat
         private static void PlantEverythingWords()
         {
             var loc = Localization.instance;
-            foreach (var w in Plugin.Texts.GetTranslations(loc.GetSelectedLanguage()))
-                if (w.Key.StartsWith("pe", StringComparison.Ordinal)) loc.AddWord(w.Key, w.Value);
+            var translations = Plugin.Texts.GetTranslations(loc.GetSelectedLanguage());
+            if (translations is Dictionary<string, string> dict)
+            {
+                foreach (var w in dict)
+                    if (w.Key.StartsWith("pe", StringComparison.Ordinal)) loc.AddWord(w.Key, w.Value);
+            }
+            else if (translations != null)
+            {
+                var pairs = new List<KeyValuePair<string, string>>(translations);
+                for (var i = 0; i < pairs.Count; i++)
+                {
+                    var w = pairs[i];
+                    if (w.Key.StartsWith("pe", StringComparison.Ordinal)) loc.AddWord(w.Key, w.Value);
+                }
+            }
         }
     }
 }

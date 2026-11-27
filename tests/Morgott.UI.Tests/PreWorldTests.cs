@@ -64,7 +64,11 @@ namespace Morgott.UI.Tests
             Assert.NotNull(stream);
             using var reader = new System.IO.StreamReader(stream);
             var theme = Morgott.UI.Theme.ThemeJson.Parse(reader.ReadToEnd());
-            var rule = System.Array.Find(theme.roles, r => r.role == role);
+            Morgott.UI.Theme.RoleRule rule = null;
+            for (var i = 0; i < theme.roles.Length; i++)
+            {
+                if (theme.roles[i].role == role) { rule = theme.roles[i]; break; }
+            }
             Assert.NotNull(rule);
             if (sprite != null) Assert.Equal(sprite, rule.sprite);
             if (textColor != null) Assert.Equal(textColor, rule.textColor);

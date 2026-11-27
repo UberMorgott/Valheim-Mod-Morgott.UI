@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using Morgott.UI.PlayerHud;
 
 namespace Morgott.UI.InventoryScreen
@@ -46,7 +47,7 @@ namespace Morgott.UI.InventoryScreen
             ContentH = Rows * Pitch
         };
 
-        public override string ToString() => $"{Columns}x{Rows} cell {Cell:0.#} pitch {Pitch:0.##} vis {VisibleColumns}x{VisibleRows}{(ScrollH ? " scrollH" : "")}{(ScrollV ? " scrollV" : "")}";
+        public override string ToString() => $"{Columns.ToString(CultureInfo.CurrentCulture)}x{Rows.ToString(CultureInfo.CurrentCulture)} cell {Cell.ToString("0.#", CultureInfo.CurrentCulture)} pitch {Pitch.ToString("0.##", CultureInfo.CurrentCulture)} vis {VisibleColumns.ToString(CultureInfo.CurrentCulture)}x{VisibleRows.ToString(CultureInfo.CurrentCulture)}{(ScrollH ? " scrollH" : "")}{(ScrollV ? " scrollV" : "")}";
     }
 
     public sealed class WindowsInput

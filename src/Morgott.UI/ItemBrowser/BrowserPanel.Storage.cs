@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using Morgott.Core;
 using TMPro;
@@ -78,12 +79,20 @@ namespace Morgott.UI.ItemBrowser
 
         private static string PrefabOf(StorageEntry s) => s.Item.m_dropPrefab ? s.Item.m_dropPrefab.name : null;
 
+        private string[] _storeWords;
+        private int _storeCat;
+
+        private bool ShownCurrent(StorageEntry s) => Shown(s, _storeWords, _storeCat);
+        private static string StoreItemName(StorageEntry s) => L(s.Item.m_shared.m_name);
+        private static int StoreItemQuality(StorageEntry s) => s.Item.m_quality;
+
         // Storage rows straight from the stock: every stored item is shown, also ones the item index hides or lacks; search
         // and category read the item itself (localized name, prefab, mod), a cell's Entry is built from it.
         private List<Entry> StoreResults(int cat)
         {
-            var words = BrowserIndex.Words(_query);
-            _rows = StorageMath.Rows(_stock, s => Shown(s, words, cat), s => L(s.Item.m_shared.m_name), s => s.Item.m_quality);
+            _storeWords = BrowserIndex.Words(_query);
+            _storeCat = cat;
+            _rows = StorageMath.Rows(_stock, ShownCurrent, StoreItemName, StoreItemQuality);
             var list = new List<Entry>(_rows.Count);
             foreach (var s in _rows) list.Add(new Entry { Id = PrefabOf(s) ?? s.Item.m_shared.m_name, Name = s.Item.m_shared.m_name, Type = EntryType.Item });
             return list;
@@ -144,7 +153,7 @@ namespace Morgott.UI.ItemBrowser
         private void NetLine()
         {
             Put(_netLine, 0f, 0f, UnitW, 28f);
-            Fit(_netLine, string.Format(L("$ib_store_net"), _chests, L("$ib_store_chest_" + StorageMath.Form(_chests, Lang)), _netStations, L("$ib_store_station_" + StorageMath.Form(_netStations, Lang))), 20f);
+            Fit(_netLine, string.Format(L("$ib_store_net"), _chests.ToString(CultureInfo.InvariantCulture), L("$ib_store_chest_" + StorageMath.Form(_chests, Lang).ToString(CultureInfo.InvariantCulture)), _netStations.ToString(CultureInfo.InvariantCulture), L("$ib_store_station_" + StorageMath.Form(_netStations, Lang).ToString(CultureInfo.InvariantCulture))), 20f);
         }
 
         // Inventory room for the item in units: free slots + partial stacks it would really join (quality included, which
@@ -188,7 +197,7 @@ namespace Morgott.UI.ItemBrowser
             }
             else { Off(_barIcon); Off(_barName); }
             Put(_barFree, 330f, top + 10f, UnitW - 330f, 28f);
-            Fit(_barFree, string.Format(L("$ib_store_free"), free, L("$ib_store_slot_" + StorageMath.Form(free, Lang))), 18f);
+            Fit(_barFree, string.Format(L("$ib_store_free"), free.ToString(CultureInfo.InvariantCulture), L("$ib_store_slot_" + StorageMath.Form(free, Lang).ToString(CultureInfo.InvariantCulture))), 18f);
             // Grid take keys: fixed mouse button + modifiers (no binding to read), labels Latin (memory key-hints-english).
             Put(_barKeys, 4f, top + 38f, UnitW - 4f, 22f);
             Fit(_barKeys, string.Format(L("$ib_store_keys"), "RMB", "Shift+RMB", "Ctrl+RMB"), 16f);
@@ -202,7 +211,7 @@ namespace Morgott.UI.ItemBrowser
                 foreach (var c in new Component[] { _bStack, _bMinus, _amountBack, _bPlus, _bAll }) Off(c);
                 return top - 4f;
             }
-            StoreBtn(_bStack, _stackLabel, string.Format(L("$ib_store_stack"), _barStack), live, 10f, y, 113f);
+            StoreBtn(_bStack, _stackLabel, string.Format(L("$ib_store_stack"), _barStack.ToString(CultureInfo.InvariantCulture)), live, 10f, y, 113f);
             StoreBtn(_bMinus, _minusLabel, "−", live && _amount > 1, 144f, y, 36f);
             Put(_amountBack, 191f, y, 85f, BarBtnH);
             PlateFit(_amountBack, 1.6f);

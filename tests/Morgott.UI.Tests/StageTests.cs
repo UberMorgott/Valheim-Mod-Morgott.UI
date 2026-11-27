@@ -177,10 +177,15 @@ namespace Morgott.UI.Tests
             Outputs = new[] { new Stack(output) }
         };
 
+        internal static void Drain<T>(IEnumerable<T> seq)
+        {
+            if (seq != null) _ = new List<T>(seq);
+        }
+
         private static StageSolver Solve(BrowserIndex ix, StageWorld w, IEnumerable<ItemFact> facts = null)
         {
             var s = new StageSolver();
-            foreach (var _ in StageGraph.Build(ix, w, facts, s)) { }
+            Drain(StageGraph.Build(ix, w, facts, s));
             s.Solve();
             return s;
         }
@@ -343,7 +348,7 @@ namespace Morgott.UI.Tests
         private static StageSolver Solve(BrowserIndex ix, FoundIn d)
         {
             var s = new StageSolver();
-            foreach (var _ in StageGraph.Build(ix, d.World, Facts, s)) { }
+            StageGraphTests.Drain(StageGraph.Build(ix, d.World, Facts, s));
             s.Solve();
             return s;
         }
@@ -474,6 +479,27 @@ namespace Morgott.UI.Tests
             Assert.False(b.ContainsKey("Weapon"));
         }
 
+        private sealed class StringMap
+        {
+            private readonly Dictionary<string, string> _data;
+            public StringMap(Dictionary<string, string> data) => _data = data;
+            public string OrNull(string key) => _data.TryGetValue(key, out var v) ? v : null;
+        }
+
+        private sealed class StageNumMap
+        {
+            private readonly Dictionary<string, int> _data;
+            public StageNumMap(Dictionary<string, int> data) => _data = data;
+            public StageInfo Get(string key) => new StageInfo { Stage = _data[key] };
+        }
+
+        private sealed class StageInfoMap
+        {
+            private readonly Dictionary<string, StageInfo> _data;
+            public StageInfoMap(Dictionary<string, StageInfo> data) => _data = data;
+            public StageInfo Get(string key) => _data[key];
+        }
+
         [Fact]
         public void Armour_outside_a_line_joins_the_line_of_its_vanilla_set()
         {
@@ -484,7 +510,7 @@ namespace Morgott.UI.Tests
                 new ItemFact { Prefab = "SwordIron", Biome = 2 },
             };
             var set = new Dictionary<string, string> { ["ArmorTrollLeatherChest"] = "troll", ["HelmetTrollLeather"] = "troll", ["SwordIron"] = "" };
-            var d = StageRules.LinesBySet(facts, p => set.TryGetValue(p, out var s) ? s : null);
+            var d = StageRules.LinesBySet(facts, new StringMap(set).OrNull);
             Assert.Equal("shadow", d["troll"].LineId); // CapeTrollHide (set "troll", no line fact) lists under shadow
             Assert.Single(d);
         }
@@ -500,7 +526,7 @@ namespace Morgott.UI.Tests
             s.Solve();
             var facts = new[] { new ItemFact { Prefab = "ArmorTrollLeatherChest", LineId = "shadow", LineTier = 0 } };
             var set = new Dictionary<string, string> { ["ArmorTrollLeatherChest"] = "troll", ["CapeTrollHide"] = "troll" };
-            var m = StageRules.SetMembers(facts, new[] { "ArmorTrollLeatherChest", "CapeTrollHide", "SwordIron" }, p => set.TryGetValue(p, out var n) ? n : null);
+            var m = StageRules.SetMembers(facts, new[] { "ArmorTrollLeatherChest", "CapeTrollHide", "SwordIron" }, new StringMap(set).OrNull);
             Assert.Equal("shadow", m["CapeTrollHide"].LineId);
             Assert.False(m.ContainsKey("SwordIron"));
             var b = StageRules.SetBiomes(m, s.Result);
@@ -524,7 +550,7 @@ namespace Morgott.UI.Tests
             var stage = new Dictionary<string, int> { ["HelmetX"] = 2, ["ChestX"] = 6, ["LegsX"] = -1, ["Lined"] = 2, ["Solo"] = 4 };
             var name = new Dictionary<string, string> { ["HelmetX"] = "x", ["ChestX"] = "x", ["LegsX"] = "x", ["Lined"] = "x" };
             var sets = new Dictionary<string, int> { ["Lined"] = 1 };
-            StageRules.AddNameSets(sets, stage.Keys, p => name.TryGetValue(p, out var n) ? n : null, p => new StageInfo { Stage = stage[p] });
+            StageRules.AddNameSets(sets, stage.Keys, new StringMap(name).OrNull, new StageNumMap(stage).Get);
             Assert.Equal(3, sets["HelmetX"]);
             Assert.Equal(3, sets["LegsX"]); // an unsolved piece still lists with its set
             Assert.Equal(1, sets["Lined"]); // a line set keeps its own biome
@@ -604,14 +630,15 @@ namespace Morgott.UI.Tests
                 ["d"] = new StageInfo { Stage = 2, Via = StageVia.Derived },
                 ["e"] = new StageInfo { Stage = -1, Via = StageVia.Magic },
             };
+            var map = new StageInfoMap(info);
             var list = info.Keys.Select(k => new Entry { Id = k }).ToList();
-            var ordered = ListBlocks.Order(list, k => info[k]);
+            var ordered = ListBlocks.Order(list, map.Get);
             Assert.Equal("bdcea", string.Concat(ordered.Select(e => e.Id)));
-            var rows = ListBlocks.Build(ordered, k => info[k], 1);
+            var rows = ListBlocks.Build(ordered, map.Get, 1);
             Assert.Equal(9, rows.Count); // 4 headers + 5 rows
             Assert.True(rows[0].Header);
             Assert.Equal(-2, rows[0].Count);
-            var grid = ListBlocks.Build(ordered, k => info[k], 6);
+            var grid = ListBlocks.Build(ordered, map.Get, 6);
             Assert.Equal(2, grid[1].Count);
             Assert.Equal(8, grid.Count);
         }
@@ -630,7 +657,7 @@ namespace Morgott.UI.Tests
             ix.Add(new Relation { Kind = RelationKind.CreatureDrop, Source = "Bonemass", Outputs = new[] { new Stack("Wishbone") } });
             ix.Add(new Relation { Kind = RelationKind.Pickable, Source = "ChestOnlyInLocation", Outputs = new[] { new Stack("Thing") } });
             var s = new StageSolver();
-            foreach (var _ in StageGraph.Build(ix, d.World, new[] { new ItemFact { Prefab = "Thing", Biome = 2 } }, s)) { }
+            StageGraphTests.Drain(StageGraph.Build(ix, d.World, new[] { new ItemFact { Prefab = "Thing", Biome = 2 } }, s));
             s.Solve();
             Assert.Equal(-1, s.Result("Wishbone").Stage);
             Assert.Equal(StageVia.Authored, s.Result("Thing").Via);
@@ -667,12 +694,12 @@ namespace Morgott.UI.Tests
             w.Anchor("piece_sapcollector", Heightmap.Biome.Meadows, true);
             w.Tapped.Add(("Sap", "piece_sapcollector", "YggdrasilRoot"));
             var s = new StageSolver();
-            foreach (var _ in StageGraph.Build(ix, w, null, s)) { }
+            StageGraphTests.Drain(StageGraph.Build(ix, w, null, s));
             s.Solve();
             Assert.Equal(-1, s.Result("Sap").Stage);
             w.Anchor("YggdrasilRoot", Heightmap.Biome.Mistlands, false);
             s = new StageSolver();
-            foreach (var _ in StageGraph.Build(ix, w, null, s)) { }
+            StageGraphTests.Drain(StageGraph.Build(ix, w, null, s));
             s.Solve();
             Assert.Equal(10, s.Result("Sap").Stage);
         }

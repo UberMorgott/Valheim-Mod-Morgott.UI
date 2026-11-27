@@ -16,31 +16,49 @@ import (
 //
 //	go -C art/tools run . compare-inv LAYOUT.json MOCKUP.png OUT.png
 
-type ibox struct{ X, Y, W, H float64 }
+type ibox struct {
+	X float64 `json:"X"`
+	Y float64 `json:"Y"`
+	W float64 `json:"W"`
+	H float64 `json:"H"`
+}
 
 type icontainer struct {
-	Box, View, Actions, Header ibox
-	Cells                      []ibox
-	ScrollH                    bool
-	Columns, VisibleColumns    int
+	Box            ibox   `json:"Box"`
+	View           ibox   `json:"View"`
+	Actions        ibox   `json:"Actions"`
+	Header         ibox   `json:"Header"`
+	Cells          []ibox `json:"Cells"`
+	ScrollH        bool   `json:"ScrollH"`
+	Columns        int    `json:"Columns"`
+	VisibleColumns int    `json:"VisibleColumns"`
 }
 
 type invLayout struct {
-	Inventory, InventoryHeader                ibox
-	Player, Plates                            []ibox
-	Doll, DollHeader, DollFigure, DollPreview ibox
-	DollCells                                 []struct {
-		Glyph string
-		Box   ibox
-	}
-	Backpack, Chest icontainer
-	Crafting        ibox
-	Strip           []struct {
-		Name string
-		Box  ibox
-	}
-	Hotbar, Potions, Foods []ibox
-	Ability, Bars          ibox
+	Inventory       ibox   `json:"Inventory"`
+	InventoryHeader ibox   `json:"InventoryHeader"`
+	Player          []ibox `json:"Player"`
+	Plates          []ibox `json:"Plates"`
+	Doll            ibox   `json:"Doll"`
+	DollHeader      ibox   `json:"DollHeader"`
+	DollFigure      ibox   `json:"DollFigure"`
+	DollPreview     ibox   `json:"DollPreview"`
+	DollCells       []struct {
+		Glyph string `json:"Glyph"`
+		Box   ibox   `json:"Box"`
+	} `json:"DollCells"`
+	Backpack icontainer `json:"Backpack"`
+	Chest    icontainer `json:"Chest"`
+	Crafting ibox       `json:"Crafting"`
+	Strip    []struct {
+		Name string `json:"Name"`
+		Box  ibox   `json:"Box"`
+	} `json:"Strip"`
+	Hotbar  []ibox `json:"Hotbar"`
+	Potions []ibox `json:"Potions"`
+	Foods   []ibox `json:"Foods"`
+	Ability ibox   `json:"Ability"`
+	Bars    ibox   `json:"Bars"`
 }
 
 // mockup A cell centres (measured on inv-layout-A.png): source of the item icons copied into our cells

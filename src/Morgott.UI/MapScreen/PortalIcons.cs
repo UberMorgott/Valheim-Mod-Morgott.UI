@@ -1,3 +1,4 @@
+using System.Globalization;
 using Morgott.Core;
 using UnityEngine;
 
@@ -43,7 +44,7 @@ namespace Morgott.UI.MapScreen
                 _sprites[i] = Sprite.Create(_atlas, rect, new Vector2(0.5f, 0.5f), 100f);
                 _sprites[i].name = "UI_PortalIcon_" + PortalStyle.Icons[i + 1];
             }
-            Plugin.Log.LogInfo($"[Morgott.UI] portal icons {_atlas.width}x{_atlas.height}, {count} sprites");
+            Plugin.Log.LogInfo($"[Morgott.UI] portal icons {_atlas.width.ToString(CultureInfo.InvariantCulture)}x{_atlas.height.ToString(CultureInfo.InvariantCulture)}, {count.ToString(CultureInfo.InvariantCulture)} sprites");
             return true;
         }
     }

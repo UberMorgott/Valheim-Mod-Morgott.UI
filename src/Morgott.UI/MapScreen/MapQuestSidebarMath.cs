@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using Morgott.Core;
 using UnityEngine;
 
@@ -141,7 +142,7 @@ namespace Morgott.UI.MapScreen
                 if (!Matches(title, sub, cat, query)) continue;
                 into.Add(new QuestRow
                 {
-                    Id = string.IsNullOrEmpty(q.Id) ? $"core:{(int)q.Kind}:{i}" : q.Id,
+                    Id = string.IsNullOrEmpty(q.Id) ? $"core:{((int)q.Kind).ToString(CultureInfo.InvariantCulture)}:{i.ToString(CultureInfo.InvariantCulture)}" : q.Id,
                     Kind = q.Kind,
                     Title = title,
                     Subtitle = sub,
@@ -179,7 +180,7 @@ namespace Morgott.UI.MapScreen
 
                     into.Add(new QuestRow
                     {
-                        Id = $"pin:{(int)pin.Type}:{Math.Round(pin.Position.x)}:{Math.Round(pin.Position.z)}",
+                        Id = $"pin:{((int)pin.Type).ToString(CultureInfo.InvariantCulture)}:{Math.Round(pin.Position.x).ToString(CultureInfo.InvariantCulture)}:{Math.Round(pin.Position.z).ToString(CultureInfo.InvariantCulture)}",
                         Kind = kind,
                         Title = title,
                         Subtitle = sub,
@@ -194,7 +195,7 @@ namespace Morgott.UI.MapScreen
             into.Sort((a, b) =>
             {
                 if (a.IsBossGroup != b.IsBossGroup) return a.IsBossGroup ? 1 : -1;
-                if (!a.IsBossGroup && a.Kind != b.Kind) return a.Kind.CompareTo(b.Kind);
+                if (!a.IsBossGroup && a.Kind != b.Kind) return ((int)a.Kind).CompareTo((int)b.Kind);
                 var dc = a.Distance.CompareTo(b.Distance);
                 return dc != 0 ? dc : string.Compare(a.Title, b.Title, StringComparison.OrdinalIgnoreCase);
             });

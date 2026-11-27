@@ -27,11 +27,11 @@ namespace Morgott.UI.PreWorld
                 c.hideFlags = HideFlags.HideInInspector;
             }
             c._fejd = fejd;
-            if (!c._button) c._button = Build(fejd, window);
+            if (!c._button) c._button = c.Build(window);
             return c;
         }
 
-        private static GameObject Build(FejdStartup fejd, RectTransform window)
+        private GameObject Build(RectTransform window)
         {
             var go = new GameObject(ButtonName, typeof(RectTransform));
             var rt = (RectTransform)go.transform;
@@ -50,7 +50,7 @@ namespace Morgott.UI.PreWorld
             img.type = Image.Type.Sliced;
             var button = go.AddComponent<Button>();
             button.targetGraphic = img;
-            button.onClick.AddListener(() => { if (fejd && fejd.m_changeLog && fejd.m_changeLog.activeInHierarchy) fejd.OnButtonShowChangelog(); });
+            button.onClick.AddListener(OnCloseClick);
             var label = new GameObject("Label", typeof(RectTransform));
             var lr = (RectTransform)label.transform;
             lr.SetParent(rt, false);
@@ -65,6 +65,11 @@ namespace Morgott.UI.PreWorld
             text.textWrappingMode = TextWrappingModes.NoWrap;
             text.raycastTarget = false;
             return go;
+        }
+
+        private void OnCloseClick()
+        {
+            if (_fejd && _fejd.m_changeLog && _fejd.m_changeLog.activeInHierarchy) _fejd.OnButtonShowChangelog();
         }
 
         private void Update()

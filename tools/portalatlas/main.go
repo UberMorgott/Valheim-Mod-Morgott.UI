@@ -73,8 +73,8 @@ func main() {
 func alpha(img image.Image) []float64 {
 	b := img.Bounds()
 	a := make([]float64, cell*cell)
-	for y := 0; y < cell; y++ {
-		for x := 0; x < cell; x++ {
+	for y := range cell {
+		for x := range cell {
 			_, _, _, al := img.At(b.Min.X+x, b.Min.Y+y).RGBA()
 			a[y*cell+x] = float64(al) / 0xffff
 		}
@@ -85,8 +85,8 @@ func alpha(img image.Image) []float64 {
 // Distance in px from the cell edge to the nearest pixel with alpha >= 0.1.
 func edgeMargin(a []float64) int {
 	m := cell
-	for y := 0; y < cell; y++ {
-		for x := 0; x < cell; x++ {
+	for y := range cell {
+		for x := range cell {
 			if a[y*cell+x] >= 0.1 {
 				m = min(m, x, y, cell-1-x, cell-1-y)
 			}
@@ -98,8 +98,8 @@ func edgeMargin(a []float64) int {
 func haloOf(a []float64, r int) *image.NRGBA {
 	g := r / 2 // grow less, blur wider: soft outer edge
 	d := make([]float64, len(a))
-	for y := 0; y < cell; y++ {
-		for x := 0; x < cell; x++ {
+	for y := range cell {
+		for x := range cell {
 			v := 0.0
 			for dy := -g; dy <= g; dy++ {
 				for dx := -g; dx <= g; dx++ {
@@ -125,8 +125,8 @@ func haloOf(a []float64, r int) *image.NRGBA {
 
 func blur(a []float64, r, sx, sy int) []float64 {
 	o := make([]float64, len(a))
-	for y := 0; y < cell; y++ {
-		for x := 0; x < cell; x++ {
+	for y := range cell {
+		for x := range cell {
 			s := 0.0
 			for k := -r; k <= r; k++ {
 				s += at(a, x+k*sx, y+k*sy)
@@ -145,7 +145,10 @@ func at(a []float64, x, y int) float64 {
 }
 
 func load(path string) image.Image {
-	r, err := os.Open(path)
+	root, err := os.OpenRoot(filepath.Dir(path))
+	check(err)
+	defer func() { _ = root.Close() }()
+	r, err := root.Open(filepath.Base(path))
 	check(err)
 	defer func() { _ = r.Close() }() // read-only
 	img, err := png.Decode(r)

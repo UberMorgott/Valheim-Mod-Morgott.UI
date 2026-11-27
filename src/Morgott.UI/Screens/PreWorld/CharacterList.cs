@@ -24,11 +24,19 @@ namespace Morgott.UI.PreWorld
 
         private sealed class Row
         {
+            public FejdStartup Fejd;
             public RectTransform Root;
             public Image Back, Selected, Socket;
             public TMP_Text Initial, Name, Sub;
             public Button Button;
             public int Index;
+
+            public void OnClick()
+            {
+                if (!Fejd || Fejd.m_profiles == null || Index >= Fejd.m_profiles.Count) return;
+                Fejd.m_profileIndex = Index;
+                Fejd.UpdateCharacterList();
+            }
         }
 
         public static void Build(FejdStartup fejd)
@@ -134,7 +142,7 @@ namespace Morgott.UI.PreWorld
         private static Row NewRow(FejdStartup fejd, int index)
         {
             var h = ThemeTokens.GetFloat("size.charlist.row", 84f);
-            var r = new Row { Index = index, Root = Rect("Row", _content) };
+            var r = new Row { Fejd = fejd, Index = index, Root = Rect("Row", _content) };
             r.Root.gameObject.AddComponent<LayoutElement>().preferredHeight = h;
             r.Back = Graphic(r.Root, "Back", "craft.row");
             Stretch(r.Back.rectTransform, 0f);
@@ -167,12 +175,7 @@ namespace Morgott.UI.PreWorld
             r.Sub.overflowMode = TextOverflowModes.Overflow;
             r.Button = r.Root.gameObject.AddComponent<Button>();
             r.Button.targetGraphic = r.Back;
-            r.Button.onClick.AddListener(() =>
-            {
-                if (!fejd || fejd.m_profiles == null || r.Index >= fejd.m_profiles.Count) return;
-                fejd.m_profileIndex = r.Index;
-                fejd.UpdateCharacterList();
-            });
+            r.Button.onClick.AddListener(r.OnClick);
             ApplyRoles(r.Root);
             return r;
         }

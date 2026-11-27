@@ -138,12 +138,16 @@ namespace Morgott.UI.ItemBrowser
         public static void AddNameSets(Dictionary<string, int> setBiomes, IEnumerable<string> prefabs, Func<string, string> setName, Func<string, StageInfo> info)
         {
             var sets = new Dictionary<string, List<string>>(StringComparer.Ordinal);
-            foreach (var p in prefabs)
+            var list = prefabs as IList<string> ?? new List<string>(prefabs);
+            for (var i = 0; i < list.Count; i++)
+            {
+                var p = list[i];
                 if (!setBiomes.ContainsKey(p) && setName(p) is string s && s.Length > 0)
                 {
                     if (!sets.TryGetValue(s, out var pieces)) sets[s] = pieces = new List<string>();
                     pieces.Add(p);
                 }
+            }
             foreach (var pieces in sets.Values)
             {
                 var max = -1;
@@ -162,8 +166,12 @@ namespace Morgott.UI.ItemBrowser
         public static Dictionary<string, ItemFact> LinesBySet(IEnumerable<ItemFact> facts, Func<string, string> setName)
         {
             var d = new Dictionary<string, ItemFact>(StringComparer.Ordinal);
-            foreach (var f in facts)
+            var list = facts as IList<ItemFact> ?? new List<ItemFact>(facts);
+            for (var i = 0; i < list.Count; i++)
+            {
+                var f = list[i];
                 if (f.LineId != null && setName(f.Prefab) is string s && s.Length > 0 && !d.ContainsKey(s)) d[s] = f;
+            }
             return d;
         }
 
@@ -173,9 +181,14 @@ namespace Morgott.UI.ItemBrowser
         {
             var bySet = LinesBySet(facts, setName);
             var d = new Dictionary<string, ItemFact>(StringComparer.Ordinal);
-            foreach (var f in facts) if (f.LineId != null) d[f.Prefab] = f;
-            foreach (var p in prefabs)
+            var factList = facts as IList<ItemFact> ?? new List<ItemFact>(facts);
+            for (var i = 0; i < factList.Count; i++) if (factList[i].LineId != null) d[factList[i].Prefab] = factList[i];
+            var prefabList = prefabs as IList<string> ?? new List<string>(prefabs);
+            for (var i = 0; i < prefabList.Count; i++)
+            {
+                var p = prefabList[i];
                 if (!d.ContainsKey(p) && setName(p) is string s && s.Length > 0 && bySet.TryGetValue(s, out var f)) d[p] = f;
+            }
             return d;
         }
 
@@ -188,7 +201,7 @@ namespace Morgott.UI.ItemBrowser
             {
                 case RelationKind.Upgrade: return null; // never a first source
                 case RelationKind.KillDrop: return "creaturedrop";
-                default: return k.ToString().ToLowerInvariant();
+                default: return BrowserIndex.KindLower(k);
             }
         }
     }
@@ -283,10 +296,13 @@ namespace Morgott.UI.ItemBrowser
                 if (r.Source == e.Id && (r.Kind == RelationKind.CreatureDrop || r.Kind == RelationKind.KillDrop))
                     foreach (var o in r.Outputs)
                         if (ix.Entries.TryGetValue(o.Prefab, out var item) && item.Type == EntryType.Item)
-                            Add("loot", e.Id, item.Category.ToString().ToLowerInvariant(), "$ib_cat_" + CatKey(item.Category));
+                            Add("loot", e.Id, BrowserIndex.CategoryLower(item.Category), "$ib_cat_" + CatKey(item.Category));
         }
 
-        public static string CatKey(ItemCategory c) => c == ItemCategory.Utility ? "utility" : c.ToString().ToLowerInvariant();
+        public static string CatKey(ItemCategory c) => BrowserIndex.CategoryLower(c);
+
+        private static readonly Comparison<PopItem> ByKey = (a, b) => string.CompareOrdinal(a.Key, b.Key);
+        private static readonly Comparison<PopItem> ByLabel = (a, b) => StringComparer.CurrentCultureIgnoreCase.Compare(a.Label, b.Label);
 
         public string ValueLabel(string facet, string key, Func<string, string> localize)
         {
@@ -302,15 +318,16 @@ namespace Morgott.UI.ItemBrowser
             {
                 if (!Facets.TryGetValue(id, out var f)) continue;
                 var counts = new Dictionary<string, int>(StringComparer.Ordinal);
-                foreach (var e in scoped)
+                for (var si = 0; si < scoped.Count; si++)
                 {
+                    var e = scoped[si];
                     if (!f.ByEntry.TryGetValue(e.Id, out var keys)) { counts.TryGetValue(Facet.NoneKey, out var c0); counts[Facet.NoneKey] = c0 + 1; continue; }
                     foreach (var k in keys) { counts.TryGetValue(k, out var c); counts[k] = c + 1; }
                 }
                 var rows = new List<PopItem>(counts.Count);
                 foreach (var kv in counts)
                     if (kv.Key != Facet.NoneKey) rows.Add(new PopItem { Facet = id, Key = kv.Key, Label = ValueLabel(id, kv.Key, localize), Count = kv.Value });
-                rows.Sort((a, b) => id == "duration" || id == "tier" || id == "level" ? string.CompareOrdinal(a.Key, b.Key) : StringComparer.CurrentCultureIgnoreCase.Compare(a.Label, b.Label));
+                rows.Sort(id == "duration" || id == "tier" || id == "level" ? ByKey : ByLabel);
                 if (rows.Count == 0) continue;
                 if (id != chip.Facets[0]) items.Add(new PopItem { Header = true, Label = localize("$ib_f_" + id) }); // the chip names its own first facet
                 items.AddRange(rows);

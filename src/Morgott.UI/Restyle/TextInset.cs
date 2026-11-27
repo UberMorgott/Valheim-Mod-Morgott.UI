@@ -107,17 +107,19 @@ namespace Morgott.UI.Restyle
 
         // Height of one line of the field's value / placeholder (current size and faces, fallback glyphs included), in
         // the viewport parent's units.
-        private static float FieldLine(TMP_InputField input, Transform space)
+        private static float FieldLine(TMP_InputField input, Transform space) =>
+            Mathf.Max(FieldLineHeight(input.textComponent, space), FieldLineHeight(input.placeholder as TMP_Text, space));
+
+        private static float FieldLineHeight(TMP_Text t, Transform space)
         {
-            var h = 0f;
-            foreach (var t in new[] { input.textComponent, input.placeholder as TMP_Text })
-            {
-                if (!t) continue;
-                var line = t.GetPreferredValues((t.text ?? "") + "Hg", float.PositiveInfinity, float.PositiveInfinity).y + t.margin.y + t.margin.w;
-                var k = Mathf.Abs(space.InverseTransformVector(t.rectTransform.TransformVector(Vector3.up)).y);
-                h = Mathf.Max(h, line * (k > 0.0001f ? k : 1f));
-            }
-            return h;
+            if (!t) return 0f;
+            var pref = t.GetPreferredValues("Hg", float.PositiveInfinity, float.PositiveInfinity).y;
+            var cur = t.text;
+            if (!string.IsNullOrEmpty(cur))
+                pref = Mathf.Max(pref, t.GetPreferredValues(cur, float.PositiveInfinity, float.PositiveInfinity).y);
+            var line = pref + t.margin.y + t.margin.w;
+            var k = Mathf.Abs(space.InverseTransformVector(t.rectTransform.TransformVector(Vector3.up)).y);
+            return line * (k > 0.0001f ? k : 1f);
         }
 
         // ------------------------------------------------------------------ modes

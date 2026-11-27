@@ -114,15 +114,23 @@ namespace Morgott.UI.PlayerHud
             _slots = new Action[3];
             for (var n = 0; n < 3; n++)
             {
-                var index = n;
+                var slot = new AbilitySlotBinder(n);
                 _slots[n] = Providers.AddAbility(Owner, new AbilitySlotDescriptor
                 {
-                    Id = "epicloot.ability." + index,
-                    Order = 100 + index,
-                    GetState = p => State(p, index),
-                    Activate = p => Activate(p, index)
+                    Id = "epicloot.ability." + n.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    Order = 100 + n,
+                    GetState = slot.GetState,
+                    Activate = slot.Activate
                 });
             }
+        }
+
+        private sealed class AbilitySlotBinder
+        {
+            private readonly int _index;
+            public AbilitySlotBinder(int index) => _index = index;
+            public AbilitySlotState GetState(Player p) => State(p, _index);
+            public void Activate(Player p) => EpicLootBridge.Activate(p, _index);
         }
 
         private static object Current(Player p, int index)

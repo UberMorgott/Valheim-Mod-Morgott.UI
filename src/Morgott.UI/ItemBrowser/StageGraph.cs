@@ -121,17 +121,28 @@ namespace Morgott.UI.ItemBrowser
         /// <summary>Adds everything to a new solver; yields so the caller can spread the work over frames.</summary>
         public static IEnumerable<object> Build(BrowserIndex ix, StageWorld w, IEnumerable<ItemFact> facts, StageSolver s, int chunk = 500)
         {
-            foreach (var y in Derived(ix, w, s, chunk)) yield return y;
+            var steps = BuildSteps(ix, w, facts, s, chunk);
+            while (steps.MoveNext()) yield return steps.Current;
+        }
+
+        internal static System.Collections.IEnumerator BuildSteps(BrowserIndex ix, StageWorld w, IEnumerable<ItemFact> facts, StageSolver s, int chunk = 500)
+        {
+            var derived = Derived(ix, w, s, chunk);
+            while (derived.MoveNext()) yield return derived.Current;
             s.Cap(w.StaleCap(out var why), why);
             if (facts != null)
-                foreach (var f in facts)
+            {
+                var list = facts as IList<ItemFact> ?? new List<ItemFact>(facts);
+                for (var i = 0; i < list.Count; i++)
                 {
+                    var f = list[i];
                     if (f.Magic) s.SetMagic(f.Prefab);
                     else if (f.Biome >= 0) s.SetAuthored(f.Prefab, f.Biome);
                 }
+            }
         }
 
-        private static IEnumerable<object> Derived(BrowserIndex ix, StageWorld w, StageSolver s, int chunk)
+        private static System.Collections.IEnumerator Derived(BrowserIndex ix, StageWorld w, StageSolver s, int chunk)
         {
             var tiers = new HashSet<string>(StringComparer.Ordinal);
             var n = 0;
@@ -185,7 +196,7 @@ namespace Morgott.UI.ItemBrowser
 
         private static StagePath Path(Relation r, BrowserIndex ix, StageWorld w, HashSet<string> tiers)
         {
-            var p = new StagePath { Kind = r.Kind.ToString().ToLowerInvariant(), Incidental = r.Incidental };
+            var p = new StagePath { Kind = BrowserIndex.KindLower(r.Kind), Incidental = r.Incidental };
             if (r.AnyInput && r.Inputs.Length > 0)
             {
                 var any = new string[r.Inputs.Length];

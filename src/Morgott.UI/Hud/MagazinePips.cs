@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Globalization;
 using Morgott.UI.Restyle;
 using Morgott.UI.Theme;
 using TMPro;
@@ -199,7 +200,14 @@ namespace Morgott.UI.PlayerHud
                 on++;
                 if (d.sprite && d.sprite == ThemeTokens.GetSprite("sprite.hud.pip.full")) filled++;
             }
-            return $"{p._loaded}/{p._capacity} {AmmoMath.Mode(p._capacity)} dots={on}({filled}) text='{(p._text && p._text.gameObject.activeSelf ? p._text.text : "")}'";
+            return $"{p._loaded.ToString(CultureInfo.InvariantCulture)}/{p._capacity.ToString(CultureInfo.InvariantCulture)} {ModeName(AmmoMath.Mode(p._capacity))} dots={on.ToString(CultureInfo.InvariantCulture)}({filled.ToString(CultureInfo.InvariantCulture)}) text='{(p._text && p._text.gameObject.activeSelf ? p._text.text : "")}'";
         }
+
+        private static string ModeName(MagazineMode m) => m switch
+        {
+            MagazineMode.Dots => "Dots",
+            MagazineMode.Compact => "Compact",
+            _ => "None",
+        };
     }
 }

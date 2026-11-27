@@ -1,6 +1,7 @@
 using Morgott.Core;
 using Morgott.UI.Api;
 using System.Collections.Generic;
+using System.Globalization;
 using Morgott.UI.Diagnostics;
 using Morgott.UI.Responsive;
 using Morgott.UI.Restyle;
@@ -763,8 +764,8 @@ namespace Morgott.UI.PlayerHud
             _stripRightPx = left + l.DrawnRight * _pxPerUnit;
             _clearGapPx = ThemeTokens.GetFloat("size.hud.strip.clear.gap", 12f) * s;
             _clear.SetStrip(_stripTopPx, _stripLeftPx, _stripRightPx, _clearGapPx);
-            Plugin.Log.LogInfo($"[Morgott.UI] HUD strip layout: width {widthPx:0}px origin ({left:0.##},{bottom:0.##})px slot {slotPx:0.#}px scale {_pxPerUnit:0.####} height {l.Height:0} units = {l.Height * _pxPerUnit:0} px " +
-                               $"({100f * l.Height * _pxPerUnit / Mathf.Max(1f, Screen.height):0.0} % of {Screen.height}), food {l.FoodShown}/{_hudStrip.FoodCount} potions {l.PotionShown}/{_hudStrip.PotionCount} (wing fits {l.FoodMax}) abilities {_hudStrip.AbilityCount}{(l.Fits ? "" : " (tight)")}");
+            Plugin.Log.LogInfo($"[Morgott.UI] HUD strip layout: width {widthPx.ToString("0", CultureInfo.InvariantCulture)}px origin ({left.ToString("0.##", CultureInfo.InvariantCulture)},{bottom.ToString("0.##", CultureInfo.InvariantCulture)})px slot {slotPx.ToString("0.#", CultureInfo.InvariantCulture)}px scale {_pxPerUnit.ToString("0.####", CultureInfo.InvariantCulture)} height {l.Height.ToString("0", CultureInfo.InvariantCulture)} units = {(l.Height * _pxPerUnit).ToString("0", CultureInfo.InvariantCulture)} px " +
+                               $"({(100f * l.Height * _pxPerUnit / Mathf.Max(1f, Screen.height)).ToString("0.0", CultureInfo.InvariantCulture)} % of {Screen.height.ToString(CultureInfo.InvariantCulture)}), food {l.FoodShown.ToString(CultureInfo.InvariantCulture)}/{_hudStrip.FoodCount.ToString(CultureInfo.InvariantCulture)} potions {l.PotionShown.ToString(CultureInfo.InvariantCulture)}/{_hudStrip.PotionCount.ToString(CultureInfo.InvariantCulture)} (wing fits {l.FoodMax.ToString(CultureInfo.InvariantCulture)}) abilities {_hudStrip.AbilityCount.ToString(CultureInfo.InvariantCulture)}{(l.Fits ? "" : " (tight)")}");
         }
 
         private float _statusBase;
@@ -894,7 +895,7 @@ namespace Morgott.UI.PlayerHud
                 g.rectTransform.GetWorldCorners(_corners);
                 low = Mathf.Min(low, RectTransformUtility.WorldToScreenPoint(chatCam, _corners[0]).y);
             }
-            Plugin.Log.LogInfo($"[Morgott.UI] chat box at {want.y - _chatHome.y:0.#} units above home (strip top {top.y:0} px, screen {Screen.width}x{Screen.height}) lowest graphic {low:0} px");
+            Plugin.Log.LogInfo($"[Morgott.UI] chat box at {(want.y - _chatHome.y).ToString("0.#", CultureInfo.InvariantCulture)} units above home (strip top {top.y.ToString("0", CultureInfo.InvariantCulture)} px, screen {Screen.width.ToString(CultureInfo.InvariantCulture)}x{Screen.height.ToString(CultureInfo.InvariantCulture)}) lowest graphic {low.ToString("0", CultureInfo.InvariantCulture)} px");
         }
         // Status groups above the strip (user call 2026-10-22): buffs on one side, debuffs on the other (Hud.BuffSide),
         // Hud.StatusPerRow cells a row, rows growing upward (Hud.StatusRows, then "+N"); hidden while the inventory is open

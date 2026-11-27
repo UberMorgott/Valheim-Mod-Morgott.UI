@@ -29,10 +29,13 @@ namespace Morgott.UI.InfoScreens
 
         private sealed class Tab
         {
+            public InfoTabs Owner;
             public Button Source;
             public Button Button;
             public Image Back, Icon;
             public bool Own;
+
+            public void OnClick() => Owner.Click(this);
         }
 
         public InfoTabs(InventoryGui gui, RectTransform parent, string openMethod, Action close)
@@ -102,12 +105,11 @@ namespace Morgott.UI.InfoScreens
             var go = new GameObject(Prefix + index, typeof(RectTransform));
             var rt = (RectTransform)go.transform;
             rt.SetParent(_parent, false);
-            var t = new Tab { Back = go.AddComponent<Image>() };
+            var t = new Tab { Owner = this, Back = go.AddComponent<Image>() };
             t.Button = go.AddComponent<Button>();
             t.Button.targetGraphic = t.Back;
             t.Button.navigation = new Navigation { mode = Navigation.Mode.Automatic }; // gamepad walks the row (InfoPage focus group)
-            var tab = t;
-            t.Button.onClick.AddListener(() => Click(tab));
+            t.Button.onClick.AddListener(t.OnClick);
             var mark = DollCell.Mark(t.Back, "info.tab", "info panel tab (mirror of an InventoryGui.m_info button)");
             mark.Outcome = Restyler.Apply(t.Back, mark, ThemeTokens.Role(mark.Role)) ? Outcome.Styled : Outcome.Degraded;
             t.Icon = new GameObject("Icon", typeof(RectTransform)).AddComponent<Image>();
@@ -132,11 +134,15 @@ namespace Morgott.UI.InfoScreens
             Collect();
             while (_tabs.Count < _sources.Count) _tabs.Add(Make(_tabs.Count));
             var n = _sources.Count;
-            var cells = InfoMath.TabRow(row, n, ThemeTokens.GetFloat("share.info.tab.aspect", 1.3f), gap >= 0f ? gap : ThemeTokens.GetFloat("size.info.tab.gap", 10f) * k);
+            var aspect = ThemeTokens.GetFloat("share.info.tab.aspect", 1.3f);
+            var g = gap >= 0f ? gap : ThemeTokens.GetFloat("size.info.tab.gap", 10f) * k;
+            var w = n > 0 && row.W > 0f && row.H > 0f ? Mathf.Min(row.H * aspect, (row.W - (n - 1) * g) / n) : 0f;
+            var x0 = w > 0f ? row.X + (row.W - (n * w + (n - 1) * g)) / 2f : 0f;
             for (var i = 0; i < _tabs.Count; i++)
             {
                 var t = _tabs[i];
-                var on = i < n && !cells[i].IsEmpty;
+                var b = i < n && w > 0f ? new Box(x0 + i * (w + g), row.Y, w, row.H) : default;
+                var on = !b.IsEmpty;
                 if (t.Back.gameObject.activeSelf != on) t.Back.gameObject.SetActive(on);
                 if (!on) continue;
                 var src = _sources[i];
@@ -156,7 +162,6 @@ namespace Morgott.UI.InfoScreens
                 if (t.Icon.enabled != (bool)sprite) t.Icon.enabled = sprite;
                 var tint = ThemeTokens.GetColor("color.info.tab.icon", Color.white); // mockup 02: copper icons
                 if (t.Icon.color != tint) t.Icon.color = tint;
-                var b = cells[i];
                 Geo.Place(canvas, t.Back.rectTransform, b);
                 var side = Mathf.Min(b.W, b.H) * (1f - 2f * ThemeTokens.GetFloat("share.inv.tab.icon.inset", 0.16f));
                 Geo.Place(canvas, t.Icon.rectTransform, new Box(b.X + (b.W - side) / 2f, b.Y + (b.H - side) / 2f, side, side));

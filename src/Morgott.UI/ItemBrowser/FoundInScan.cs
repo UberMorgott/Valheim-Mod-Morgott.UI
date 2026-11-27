@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Security.Cryptography;
 using Morgott.Core;
@@ -66,7 +67,7 @@ namespace Morgott.UI.ItemBrowser
             _unloadPending = false;
             var sw = System.Diagnostics.Stopwatch.StartNew();
             _ = Resources.UnloadUnusedAssets(); // completes on its own; nothing waits for it
-            Plugin.Log.LogInfo(FormattableString.Invariant($"[Morgott.UI] item browser found-in: Resources.UnloadUnusedAssets after the fallback scan ({sw.Elapsed.TotalMilliseconds:F0} ms to start)"));
+            Plugin.Log.LogInfo($"[Morgott.UI] item browser found-in: Resources.UnloadUnusedAssets after the fallback scan ({sw.Elapsed.TotalMilliseconds.ToString("F0", CultureInfo.InvariantCulture)} ms to start)");
         }
 
         /// <summary>Autotest: the next <see cref="Ensure"/> scans again.</summary>
@@ -96,60 +97,76 @@ namespace Morgott.UI.ItemBrowser
 
         private static bool Over => _slice.Elapsed.TotalMilliseconds > BudgetMs;
 
+        private sealed class ScanRun
+        {
+            public readonly Dictionary<string, Scanned> Table, Cache;
+            public double Worst;
+            public string WorstAt = "", At = "quick";
+            public int Loads;
+            public bool CacheDirty, NewAltars;
+            public Scanned Result, LazyResult;
+
+            public ScanRun(Dictionary<string, Scanned> table, Dictionary<string, Scanned> cache)
+            {
+                Table = table;
+                Cache = cache;
+            }
+
+            // Called right before every yield of this scan: the slice that ends there counts (restarted after it).
+            public void Tick()
+            {
+                if (_slice.Elapsed.TotalMilliseconds > Worst) { Worst = _slice.Elapsed.TotalMilliseconds; WorstAt = At; }
+            }
+        }
+
+        // One scan per prefab key: from the table (vanilla, this build), the cache, or a lazy load.
+        private static IEnumerator Lookup(ScanRun run, string key, SoftReference<GameObject> r, string owner)
+        {
+            Scanned s = null;
+            if (owner == null) run.Table?.TryGetValue(key, out s);
+            var ckey = CacheKey(key, owner);
+            if (s == null && run.Table != null && owner == null) _staleTable.Add(key); // a vanilla prefab the table lacks: rebuild it
+            if (s == null && run.Cache.TryGetValue(ckey, out var c) && c.Objects != null) s = c; // a line without objects (old cache) is reread once
+            if (s == null)
+            {
+                run.At = key;
+                run.Loads++;
+                run.LazyResult = null;
+                var lazy = Lazy(r, run);
+                while (lazy.MoveNext()) yield return lazy.Current;
+                s = run.LazyResult;
+                if (s == null)
+                {
+                    _failed.Add(key);
+                    run.Result = new Scanned(); // no objects column: Place marks it stale, only stages above its biome stay unknown
+                    yield break;
+                }
+                run.Cache[ckey] = s;
+                run.CacheDirty = true;
+                run.NewAltars |= s.Summons.Count > 0 && !ForceLazy; // the index built before this line existed
+                if (owner == null) _vanilla[key] = s;
+            }
+            run.Result = s;
+        }
+
         private static IEnumerator Run(BrowserIndex ix, int generation)
         {
             var d = new FoundIn();
             var zs = ZoneSystem.instance;
             var wall = System.Diagnostics.Stopwatch.StartNew();
-            var worst = 0.0;
-            var worstAt = "";
-            var loads = 0;
-            var at = "quick";
+            var table = ForceLazy ? null : Table();
+            var cache = ForceLazy ? new Dictionary<string, Scanned>(StringComparer.Ordinal) : Cache();
+            var run = new ScanRun(table, cache);
             _slice.Restart();
-            // Called right before every yield of this scan: the slice that ends there counts (restarted after it).
-            void Tick()
-            {
-                if (_slice.Elapsed.TotalMilliseconds > worst) { worst = _slice.Elapsed.TotalMilliseconds; worstAt = at; }
-            }
 
-            foreach (var _ in Quick(ix, d, zs)) { Tick(); yield return null; _slice.Restart(); }
+            var quick = Quick(ix, d, zs);
+            while (quick.MoveNext()) { run.Tick(); yield return null; _slice.Restart(); }
             if (generation != _gen) yield break;
             Publish(d);
 
-            var table = ForceLazy ? null : Table();
-            var cache = ForceLazy ? new Dictionary<string, Scanned>(StringComparer.Ordinal) : Cache();
-            var cacheDirty = false;
-            var newAltars = false;
             if (ForceLazy) _vanilla.Clear();
             _staleTable.Clear();
             _failed.Clear();
-
-            // One scan per prefab key: from the table (vanilla, this build), the cache, or a lazy load.
-            IEnumerable<object> Lookup(string key, SoftReference<GameObject> r, string owner, Action<Scanned> got)
-            {
-                Scanned s = null;
-                if (owner == null) table?.TryGetValue(key, out s);
-                var ckey = CacheKey(key, owner);
-                if (s == null && table != null && owner == null) _staleTable.Add(key); // a vanilla prefab the table lacks: rebuild it
-                if (s == null && cache.TryGetValue(ckey, out var c) && c.Objects != null) s = c; // a line without objects (old cache) is reread once
-                if (s == null)
-                {
-                    at = key;
-                    loads++;
-                    foreach (var y in Lazy(r, x => s = x)) yield return y;
-                    if (s == null)
-                    {
-                        _failed.Add(key);
-                        got(new Scanned()); // no objects column: Place marks it stale, only stages above its biome stay unknown
-                        yield break;
-                    }
-                    cache[ckey] = s;
-                    cacheDirty = true;
-                    newAltars |= s.Summons.Count > 0 && !ForceLazy; // the index built before this line existed
-                    if (owner == null) _vanilla[key] = s;
-                }
-                got(s);
-            }
 
             // Locations, one prefab each (duplicate entries of one prefab merged, biomes OR-ed).
             var locs = new Dictionary<string, (ZoneSystem.ZoneLocation Loc, Heightmap.Biome Biome)>(StringComparer.Ordinal);
@@ -165,15 +182,14 @@ namespace Morgott.UI.ItemBrowser
             {
                 if (generation != _gen) yield break;
                 var (loc, biome) = pair.Value;
-                foreach (var _ in Lookup("L:" + pair.Key, loc.m_prefab, Owner(pair.Key), s =>
-                         {
-                             var plain = s.Interior ? Origin.Dungeon : Origin.Location;
-                             foreach (var (c, k) in s.Creatures) d.Add(c, biome, k == Origin.World ? plain : k);
-                             d.Place(s, biome, "L:" + pair.Key);
-                             if (s.Themes != 0) themes.Add(((Room.Theme)s.Themes, biome, s.Interior));
-                         }))
-                { Tick(); yield return null; _slice.Restart(); }
-                if (Over) { Tick(); yield return null; _slice.Restart(); }
+                var step = Lookup(run, "L:" + pair.Key, loc.m_prefab, Owner(pair.Key));
+                while (step.MoveNext()) { run.Tick(); yield return null; _slice.Restart(); }
+                var s = run.Result;
+                var plain = s.Interior ? Origin.Dungeon : Origin.Location;
+                foreach (var (c, k) in s.Creatures) d.Add(c, biome, k == Origin.World ? plain : k);
+                d.Place(s, biome, "L:" + pair.Key);
+                if (s.Themes != 0) themes.Add(((Room.Theme)s.Themes, biome, s.Interior));
+                if (Over) { run.Tick(); yield return null; _slice.Restart(); }
             }
             Publish(d);
 
@@ -193,29 +209,28 @@ namespace Morgott.UI.ItemBrowser
                 string name;
                 try { name = room.m_prefab.name; } catch (Exception) { continue; }
                 // shortcut: rooms are keyed by game build only (no owner lookup); a mod changing its rooms keeps the old cache entry until the game updates.
-                foreach (var _ in Lookup("R:" + name, room.m_prefab, null, s =>
-                         {
-                             foreach (var (c, k) in s.Creatures)
-                             {
-                                 if (inside != Heightmap.Biome.None) d.Add(c, inside, k == Origin.World ? Origin.Dungeon : k);
-                                 if (outside != Heightmap.Biome.None) d.Add(c, outside, k == Origin.World ? Origin.Location : k);
-                             }
-                             d.Place(s, inside | outside, "R:" + name);
-                         }))
-                { Tick(); yield return null; _slice.Restart(); }
-                if (Over) { Tick(); yield return null; _slice.Restart(); }
+                var step = Lookup(run, "R:" + name, room.m_prefab, null);
+                while (step.MoveNext()) { run.Tick(); yield return null; _slice.Restart(); }
+                var s = run.Result;
+                foreach (var (c, k) in s.Creatures)
+                {
+                    if (inside != Heightmap.Biome.None) d.Add(c, inside, k == Origin.World ? Origin.Dungeon : k);
+                    if (outside != Heightmap.Biome.None) d.Add(c, outside, k == Origin.World ? Origin.Location : k);
+                }
+                d.Place(s, inside | outside, "R:" + name);
+                if (Over) { run.Tick(); yield return null; _slice.Restart(); }
             }
             if (generation != _gen) yield break;
             Publish(d);
-            if (cacheDirty) SaveCache(cache); // a forced scan rewrites the cache whole
-            if (newAltars) OfferingRevision++;
+            if (run.CacheDirty) SaveCache(cache); // a forced scan rewrites the cache whole
+            if (run.NewAltars) OfferingRevision++;
             DataReady = true;
 
             var none = new List<string>();
             foreach (var e in ix.Entries.Values)
                 if (e.Type == EntryType.Creature && e.Hidden == null && !d.ByPrefab.ContainsKey(e.Id)) none.Add(e.Id);
             none.Sort(StringComparer.Ordinal);
-            if (loads > 50) _unloadPending = true; // a fallback scan (stale table): free the orphaned prefab objects once, at a safe moment
+            if (run.Loads > 50) _unloadPending = true; // a fallback scan (stale table): free the orphaned prefab objects once, at a safe moment
             for (var t0 = Time.realtimeSinceStartup; Time.realtimeSinceStartup - t0 < 2f;)
             {
                 if (generation != _gen) yield break;
@@ -224,17 +239,17 @@ namespace Morgott.UI.ItemBrowser
             StillLoaded = 0;
             foreach (var lr in _loadedRefs) if (lr.IsLoaded) StillLoaded++;
             _loadedRefs.Clear();
-            WorstMs = worst;
-            Loaded = loads;
-            Stats = FormattableString.Invariant($"{wall.Elapsed.TotalSeconds:F1} s, worst slice {worst:F1} ms ({worstAt}), loaded {loads} (still loaded {StillLoaded}), table {(table != null ? "current" : "off")}, stale {_staleTable.Count + _failed.Count}");
+            WorstMs = run.Worst;
+            Loaded = run.Loads;
+            Stats = $"{wall.Elapsed.TotalSeconds.ToString("F1", CultureInfo.InvariantCulture)} s, worst slice {run.Worst.ToString("F1", CultureInfo.InvariantCulture)} ms ({run.WorstAt}), loaded {run.Loads.ToString(CultureInfo.InvariantCulture)} (still loaded {StillLoaded.ToString(CultureInfo.InvariantCulture)}), table {(table != null ? "current" : "off")}, stale {(_staleTable.Count + _failed.Count).ToString(CultureInfo.InvariantCulture)}";
             Done = true;
-            Plugin.Log.LogInfo($"[Morgott.UI] item browser found-in: {d.ByPrefab.Count} prefabs, {locs.Count} locations, {Stats}; " +
-                               $"creatures without a source ({none.Count}): {string.Join(", ", none)}");
+            Plugin.Log.LogInfo($"[Morgott.UI] item browser found-in: {d.ByPrefab.Count.ToString(CultureInfo.InvariantCulture)} prefabs, {locs.Count.ToString(CultureInfo.InvariantCulture)} locations, {Stats}; " +
+                               $"creatures without a source ({none.Count.ToString(CultureInfo.InvariantCulture)}): {string.Join(", ", none)}");
         }
 
 
         // Async load, time-sliced walk of every transform, release (also when the scan is abandoned: finally).
-        private static IEnumerable<object> Lazy(SoftReference<GameObject> r, Action<Scanned> done)
+        private static IEnumerator Lazy(SoftReference<GameObject> r, ScanRun run)
         {
             _loadedRefs.Add(r);
             try { r.LoadAsync(); } // holds a reference (AssetBundleLoader.LoadAsync -> HoldReference)
@@ -261,7 +276,7 @@ namespace Morgott.UI.ItemBrowser
                     for (var i = 0; i < t.childCount; i++) stack.Push(t.GetChild(i));
                     if (Over) yield return null;
                 }
-                done(s);
+                run.LazyResult = s;
             }
             finally { r.Release(); }
         }
@@ -303,7 +318,8 @@ namespace Morgott.UI.ItemBrowser
                 if (Vector3.Distance(at, st.transform.position) > bowl.m_itemstandMaxRange || !st.gameObject.name.StartsWith(bowl.m_itemStandPrefix, StringComparison.Ordinal)) continue;
                 var alts = string.Join("|", Attachable(st));
                 if (alts.Length == 0) alts = FoundInTable.AnyItem; // takes any item: still a stand to fill
-                var i = list.FindIndex(g => g.Item == alts);
+                var i = -1;
+                for (var j = 0; j < list.Count; j++) if (list[j].Item == alts) { i = j; break; }
                 if (i < 0) list.Add((alts, 1));
                 else list[i] = (alts, list[i].Count + 1);
             }
@@ -397,7 +413,7 @@ namespace Morgott.UI.ItemBrowser
         }
 
         // Everything already in memory: spawn lists, events, vegetation, index relations, summons. Yields when over budget.
-        private static IEnumerable<object> Quick(BrowserIndex ix, FoundIn d, ZoneSystem zs)
+        private static IEnumerator Quick(BrowserIndex ix, FoundIn d, ZoneSystem zs)
         {
             var lists = new HashSet<SpawnSystemList>();
             foreach (var s in SpawnSystem.m_instances) if (s) lists.UnionWith(s.m_spawnLists);

@@ -188,8 +188,8 @@ func draw9s(dst *image.NRGBA, name string, r image.Rectangle, bs float64, tint c
 		sy := []int{0, t, H - b, H}
 		dx := []int{0, int(math.Round(L)), r.Dx() - int(math.Round(RR)), r.Dx()}
 		dy := []int{0, int(math.Round(T)), r.Dy() - int(math.Round(B)), r.Dy()}
-		for i := 0; i < 3; i++ {
-			for j := 0; j < 3; j++ {
+		for i := range 3 {
+			for j := range 3 {
 				sr := image.Rect(sx[j], sy[i], sx[j+1], sy[i+1])
 				dr := image.Rect(dx[j], dy[i], dx[j+1], dy[i+1])
 				if sr.Empty() || dr.Empty() {
@@ -391,7 +391,7 @@ func renderHud4(opt hud4Opts) (*image.NRGBA, image.Rectangle, float64) {
 		over(img, resize(p, r.Dx(), r.Dy()), r.Min)
 	}
 	rims := []string{"#E8C04A", "#E8A030", "#3FA9F5", "#B05CF0", "", "", "#E03A3A", ""}
-	for n := 0; n < 8; n++ {
+	for n := range 8 {
 		x := l.HotX + float64(n)*(in.Cell+in.Gap)
 		draw9s(img, "strip5_cell", R(x, l.CellsY, in.Cell, in.CellH), cellArt, frame, false)
 		if rims[n] != "" {
@@ -413,15 +413,16 @@ func renderHud4(opt hud4Opts) (*image.NRGBA, image.Rectangle, float64) {
 		mx := 1267 + float64(n)*89
 		mockIcon(mx+6, 768, 66, 80, x+6, l.CellsY+(in.CellH-80)/2, 66, 80)
 	}
-	for n := 0; n < 4; n++ {
+	foodCX := []float64{162, 255, 345}
+	for n := range 4 {
 		x := l.FoodX + float64(n)*l.FoodStep
 		draw9s(img, "strip5_socket_round", R(x, l.FoodY, l.FoodCell, l.FoodCell), cellArt, tcol("color.hud.strip.bowl", "#B4BABDFF"), false)
-		if n < 3 {
-			cx := []float64{162, 255, 345}[n]
+		if n < len(foodCX) {
+			cx := foodCX[n]
 			mockIcon(cx-40, 893, 80, 80, x+l.FoodCell/2-40*l.FoodCell/84, l.FoodY, 80*l.FoodCell/84, 80*l.FoodCell/84)
 		}
 	}
-	for n := 0; n < 4; n++ {
+	for n := range 4 {
 		x := l.PotX + float64(n)*l.PotStep
 		draw9s(img, "strip5_socket_square", R(x, l.PotY, l.PotCell, l.PotH), cellArt, frame, false)
 		mx := []float64{1475, 1559, 1643, 1727}[n]
@@ -483,14 +484,14 @@ func hud4Metrics(a, b *image.NRGBA) (float64, float64, *image.NRGBA) {
 	cnt := 0
 	// HUD pixels only: ours differs from the flat render background (24, 27, 25)
 	hud := make([]bool, W*H)
-	for y := 0; y < H; y++ {
-		for x := 0; x < W; x++ {
+	for y := range H {
+		for x := range W {
 			pb := b.NRGBAAt(x, y)
 			hud[y*W+x] = absI(int(pb.R)-24)+absI(int(pb.G)-27)+absI(int(pb.B)-25) > 9
 		}
 	}
-	for y := 0; y < H; y++ {
-		for x := 0; x < W; x++ {
+	for y := range H {
+		for x := range W {
 			pa, pb := a.NRGBAAt(x, y), b.NRGBAAt(x, y)
 			la[y*W+x] = 0.299*float64(pa.R) + 0.587*float64(pa.G) + 0.114*float64(pa.B)
 			lb[y*W+x] = 0.299*float64(pb.R) + 0.587*float64(pb.G) + 0.114*float64(pb.B)
@@ -514,8 +515,8 @@ func hud4Metrics(a, b *image.NRGBA) (float64, float64, *image.NRGBA) {
 		for x := 0; x+8 <= W; x += 4 {
 			var ma, mb, va, vb, cov float64
 			in := 0
-			for j := 0; j < 8; j++ {
-				for i := 0; i < 8; i++ {
+			for j := range 8 {
+				for i := range 8 {
 					if hud[(y+j)*W+x+i] {
 						in++
 					}
@@ -524,16 +525,16 @@ func hud4Metrics(a, b *image.NRGBA) (float64, float64, *image.NRGBA) {
 			if in < 48 {
 				continue
 			}
-			for j := 0; j < 8; j++ {
-				for i := 0; i < 8; i++ {
+			for j := range 8 {
+				for i := range 8 {
 					ma += la[(y+j)*W+x+i]
 					mb += lb[(y+j)*W+x+i]
 				}
 			}
 			ma /= 64
 			mb /= 64
-			for j := 0; j < 8; j++ {
-				for i := 0; i < 8; i++ {
+			for j := range 8 {
+				for i := range 8 {
 					da, db := la[(y+j)*W+x+i]-ma, lb[(y+j)*W+x+i]-mb
 					va += da * da
 					vb += db * db
@@ -606,8 +607,8 @@ func hud4AlignTo(a, b *image.NRGBA) *image.NRGBA {
 	}
 	out := image.NewNRGBA(b.Bounds())
 	fill(out, out.Bounds(), color.NRGBA{24, 27, 25, 255})
-	for y := 0; y < H; y++ {
-		for x := 0; x < W; x++ {
+	for y := range H {
+		for x := range W {
 			if image.Pt(x+bx, y+by).In(b.Bounds()) {
 				out.SetNRGBA(x, y, b.NRGBAAt(x+bx, y+by))
 			}
@@ -637,9 +638,9 @@ func renderGauges(r, s float64, staggered bool) *image.NRGBA {
 					continue
 				}
 				// Image.color multiplies the sprite as in game (CenterGauges tint tokens)
-				t.Pix[i] = uint8(int(t.Pix[i]) * int(tint.R) / 255)
-				t.Pix[i+1] = uint8(int(t.Pix[i+1]) * int(tint.G) / 255)
-				t.Pix[i+2] = uint8(int(t.Pix[i+2]) * int(tint.B) / 255)
+				t.Pix[i] = clampU8(int(t.Pix[i]) * int(tint.R) / 255)
+				t.Pix[i+1] = clampU8(int(t.Pix[i+1]) * int(tint.G) / 255)
+				t.Pix[i+2] = clampU8(int(t.Pix[i+2]) * int(tint.B) / 255)
 				t.Pix[i+3] = uint8(float64(t.Pix[i+3]) * a * float64(tint.A) / 255)
 			}
 		}

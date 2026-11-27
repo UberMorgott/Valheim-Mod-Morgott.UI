@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Globalization;
 using Morgott.UI.Theme;
 using TMPro;
 using UnityEngine;
@@ -124,7 +125,7 @@ namespace Morgott.UI.PlayerHud
             Object.Destroy(probe.gameObject);
             _cellSize = HudMath.StatusCell(ThemeTokens.GetFloat("size.hud.status.cell", 42f), IconShare, size.x, size.y, ThemeTokens.GetFloat("size.hud.status.text.pad", 3f));
             _cellRevision = ThemeTokens.Revision;
-            Plugin.Log.LogInfo($"[Morgott.UI] status cell {_cellSize:0} ref px ('{WorstText}' {size.x:0.0}x{size.y:0.0} at {font})");
+            Plugin.Log.LogInfo($"[Morgott.UI] status cell {_cellSize.ToString("0", CultureInfo.InvariantCulture)} ref px ('{WorstText}' {size.x.ToString("0.0", CultureInfo.InvariantCulture)}x{size.y.ToString("0.0", CultureInfo.InvariantCulture)} at {font.ToString(CultureInfo.InvariantCulture)})");
         }
 
         public StatusStrip(HudArt art, Transform parent, bool harmful, string name)

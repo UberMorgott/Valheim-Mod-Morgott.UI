@@ -151,6 +151,22 @@ namespace Morgott.UI.Tests
             Assert.Throws<System.FormatException>(() => ThemeJson.Parse("{ \"schema\": 1 /* open"));
         }
 
+        private static ColorEntry FindColor(ThemeFile t, string token)
+        {
+            for (var i = 0; i < t.colors.Length; i++)
+                if (t.colors[i].token == token) return t.colors[i];
+            Assert.Fail("Missing color token: " + token);
+            return null;
+        }
+
+        private static FloatEntry FindFloat(ThemeFile t, string token)
+        {
+            for (var i = 0; i < t.floats.Length; i++)
+                if (t.floats[i].token == token) return t.floats[i];
+            Assert.Fail("Missing float token: " + token);
+            return null;
+        }
+
         [Fact]
         public void PartialOverrideMergesOverTheShippedTheme()
         {
@@ -162,7 +178,7 @@ namespace Morgott.UI.Tests
             Assert.Empty(ThemeSchema.Validate(merged));
             Assert.Equal(baseFile.name, merged.name);
             Assert.Equal(baseFile.colors.Length + 1, merged.colors.Length);
-            Assert.Equal("#010203", merged.colors.First(c => c.token == color.token).value);
+            Assert.Equal("#010203", FindColor(merged, color.token).value);
             Assert.Equal(color.token, merged.colors[0].token); // replaced in place
             Assert.Equal("color.perf.new", merged.colors[merged.colors.Length - 1].token);
             Assert.Equal(baseFile.floats.Length + 1, merged.floats.Length);
@@ -207,7 +223,7 @@ namespace Morgott.UI.Tests
             var t = baseFile.floats[0].token;
             var layer = ThemeJson.Parse("{ \"floats\": [ { \"token\": \"" + t + "\", \"value\": 1 }, { \"token\": \"" + t + "\", \"value\": 2 } ] }");
             var merged = ThemeMerge.Merge(baseFile, layer);
-            Assert.Equal(2f, merged.floats.First(f => f.token == t).value);
+            Assert.Equal(2f, FindFloat(merged, t).value);
             Assert.Equal(baseFile.floats.Length, merged.floats.Length);
         }
 

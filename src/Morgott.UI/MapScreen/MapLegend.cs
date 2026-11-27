@@ -25,12 +25,14 @@ namespace Morgott.UI.MapScreen
     {
         private sealed class PinRow
         {
+            public MinimapSkin Owner;
             public RectTransform Root;
             public Image Socket, Glyph, Box, Check;
             public TMP_Text Name;
             public Button Toggle;
             public Button Icon;
             public FilterRow Row;
+            public void OnToggleClick() => Owner.OnToggle(this);
         }
 
         private sealed class Entry
@@ -60,17 +62,32 @@ namespace Morgott.UI.MapScreen
 
         private sealed class CustomPinCellUi
         {
+            public MinimapSkin Owner;
             public RectTransform Root;
             public Image Socket, Glyph;
             public Button Button;
             public UITooltip Tooltip;
             public string IconId;
             public int Look = -1;
+            public string TipIconId, TipLang;
+            public int TipCount = -1;
+            public bool TipHidden;
+
+            public void OnClick()
+            {
+                var es = EventSystem.current;
+                if (es && Button && es.currentSelectedGameObject == Button.gameObject) es.SetSelectedGameObject(null);
+                if (!string.IsNullOrEmpty(IconId)) Owner.ToggleCustomIconFilter(IconId);
+            }
         }
 
         internal static bool LegendHover => Instance && (Instance._scroll && Instance._scroll.Over || PortalHover || Instance.CustomPinModalShown || Instance.PortalEditorShown) && Instance._large && Instance._large.gameObject.activeInHierarchy;
 
-        private RectTransform _rows, _footer;
+        private RectTransform _rows, _footer, _zoomMinus, _zoomPlus;
+        private Transform[] _legendPanelTrs;
+        private RectTransform[] _togglePanelTrs;
+        private string _customHeaderBase, _customHeaderTitle;
+        private bool _customHeaderExpanded;
         private readonly List<PinRow> _pinRows = new List<PinRow>();
         private readonly List<Entry> _entries = new List<Entry>();
         private readonly List<PinRow> _playerRows = new List<PinRow>();
@@ -187,9 +204,10 @@ namespace Morgott.UI.MapScreen
             BuildZoom();
             BuildHints(); // the vanilla key hint row, moved into the band under the map (MapHints.cs)
             // Vanilla panel hint graphics (mouse glyphs next to the icons) give way to the hint row under the map.
-            foreach (var panel in LegendPanels)
+            _legendPanelTrs = new Transform[LegendPanels.Length];
+            for (var p = 0; p < LegendPanels.Length; p++)
             {
-                var t = _legend.Find(panel);
+                var t = _legendPanelTrs[p] = _legend.Find(LegendPanels[p]);
                 if (!t) continue;
                 foreach (var group in t.GetComponents<LayoutGroup>()) group.enabled = false;
                 if (t.TryGetComponent<ContentSizeFitter>(out var fitter)) fitter.enabled = false;
@@ -204,6 +222,8 @@ namespace Morgott.UI.MapScreen
                     _art.Suppressed(c, "vanilla legend hint graphic (RuneSkin key hint line under the map replaces it)");
                 }
             }
+            _togglePanelTrs = new RectTransform[TogglePanels.Length];
+            for (var p = 0; p < TogglePanels.Length; p++) _togglePanelTrs[p] = _legend.Find(TogglePanels[p]) as RectTransform;
         }
 
         private void BuildZoom()
@@ -238,11 +258,20 @@ namespace Morgott.UI.MapScreen
                 if (_zoomWrite || !_map) return;
                 _map.LargeZoom = MinimapMath.SliderToZoom(v, _map.m_minZoom, _map.m_maxZoom);
             });
-            ZoomButton("Minus", "sprite.glyph.minus", -1);
-            ZoomButton("Plus", "sprite.glyph.plus", +1);
+            _zoomMinus = ZoomButton("Minus", "sprite.glyph.minus", OnZoomMinus);
+            _zoomPlus = ZoomButton("Plus", "sprite.glyph.plus", OnZoomPlus);
         }
 
-        private void ZoomButton(string name, string glyph, int dir)
+        private void OnZoomMinus() => StepZoom(-1);
+        private void OnZoomPlus() => StepZoom(1);
+
+        private void StepZoom(int dir)
+        {
+            if (!_zoom) return;
+            _zoom.value = Mathf.Clamp01(_zoom.value + dir * ThemeTokens.GetFloat("ratio.map.zoom.step", 0.125f));
+        }
+
+        private RectTransform ZoomButton(string name, string glyph, UnityEngine.Events.UnityAction onClick)
         {
             var b = _art.Image("Zoom" + name, _rows, "sprite.button.round", "color.frame", Image.Type.Simple, raycast: true);
             b.preserveAspect = true;
@@ -254,11 +283,8 @@ namespace Morgott.UI.MapScreen
             g.rectTransform.offsetMax = new Vector2(-inset, -inset);
             var button = b.gameObject.AddComponent<Button>();
             button.targetGraphic = b;
-            button.onClick.AddListener(() =>
-            {
-                if (!_zoom) return;
-                _zoom.value = Mathf.Clamp01(_zoom.value + dir * ThemeTokens.GetFloat("ratio.map.zoom.step", 0.125f));
-            });
+            button.onClick.AddListener(onClick);
+            return b.rectTransform;
         }
 
         private static void Top(RectTransform rt)
@@ -332,12 +358,12 @@ namespace Morgott.UI.MapScreen
 
         private bool ApplyModFilters(bool[] visible)
         {
-            if (!_legend) return false;
+            if (!_legend || _legendPanelTrs == null) return false;
             var types = Types();
             var changed = false;
-            foreach (var panel in LegendPanels)
+            for (var p = 0; p < _legendPanelTrs.Length; p++)
             {
-                var t = _legend.Find(panel);
+                var t = _legendPanelTrs[p];
                 if (!t || !t.gameObject.activeSelf) continue;
                 t.GetComponentsInChildren(false, ModButtonScratch);
                 foreach (var b in ModButtonScratch)
@@ -449,7 +475,7 @@ namespace Morgott.UI.MapScreen
                         if (treasure != null) _elFilters.Add((treasure, "$mod_epicloot_merchant_treasuremaps", MapConfig.TreasureMapsKey));
                     }
                 }
-                Plugin.Log.LogInfo($"[Morgott.UI] map legend: Epic Loot pin filter fields {_elFilters.Count} [{string.Join(",", _elFilters.ConvertAll(f => f.Field.DeclaringType?.Name + "." + f.Field.Name + (f.Field.IsStatic ? " static" : "")))}]");
+                Plugin.Log.LogInfo($"[Morgott.UI] map legend: Epic Loot pin filter fields {_elFilters.Count.ToString(System.Globalization.CultureInfo.InvariantCulture)} [{string.Join(",", _elFilters.ConvertAll(f => f.Field.DeclaringType?.Name + "." + f.Field.Name + (f.Field.IsStatic ? " static" : "")))}]");
             }
             foreach (var (field, token, configKey) in _elFilters)
             {
@@ -493,7 +519,7 @@ namespace Morgott.UI.MapScreen
 
         private PinRow NewRow(string name = "PinRow")
         {
-            var r = new PinRow { Root = HudArtRect(name, _rows) };
+            var r = new PinRow { Owner = this, Root = HudArtRect(name, _rows) };
             Top(r.Root);
             r.Socket = _art.Image("Socket", r.Root, "sprite.slot.recess", "color.frame", Image.Type.Sliced);
             r.Glyph = _art.Image("Glyph", r.Socket.transform, null, "color.text.body", Image.Type.Simple);
@@ -509,7 +535,7 @@ namespace Morgott.UI.MapScreen
             r.Toggle = r.Box.gameObject.AddComponent<Button>();
             r.Toggle.targetGraphic = r.Box;
             r.Toggle.navigation = new Navigation { mode = Navigation.Mode.None };
-            r.Toggle.onClick.AddListener(() => OnToggle(r));
+            r.Toggle.onClick.AddListener(r.OnToggleClick);
             return r;
         }
 
@@ -572,22 +598,20 @@ namespace Morgott.UI.MapScreen
         private void CollectEntries()
         {
             _iconButtons.Clear();
-            foreach (var panel in LegendPanels)
+            if (_legendPanelTrs != null)
             {
-                var t = _legend.Find(panel);
-                if (!t || !t.gameObject.activeSelf) continue;
-                t.GetComponentsInChildren(false, ButtonScratch);
-                _iconButtons.AddRange(ButtonScratch);
-                ButtonScratch.Clear();
+                for (var p = 0; p < _legendPanelTrs.Length; p++)
+                {
+                    var t = _legendPanelTrs[p];
+                    if (!t || !t.gameObject.activeSelf) continue;
+                    t.GetComponentsInChildren(false, ButtonScratch);
+                    _iconButtons.AddRange(ButtonScratch);
+                    ButtonScratch.Clear();
+                }
             }
             var types = Types();
             var visible = _map.m_visibleIconTypes;
             var n = 0;
-            Entry Next()
-            {
-                if (n == _entries.Count) _entries.Add(new Entry());
-                return _entries[n++];
-            }
             foreach (var row in MapFilterMath.Rows)
             {
                 if (!MapFilterMath.Present(visible, row)) continue;
@@ -595,7 +619,8 @@ namespace Morgott.UI.MapScreen
                 foreach (var b in _iconButtons)
                     if (types.TryGetValue(b.gameObject, out var ty) && System.Array.IndexOf(row.Types, ty) >= 0) { icon = b; break; }
                 if (!icon && !_map.GetSprite(row.Types[0])) continue; // nothing to show it with
-                var e = Next();
+                if (n == _entries.Count) _entries.Add(new Entry());
+                var e = _entries[n++];
                 e.Row = row;
                 e.Icon = icon;
             }
@@ -604,11 +629,12 @@ namespace Morgott.UI.MapScreen
             foreach (var b in _iconButtons)
             {
                 if (types.TryGetValue(b.gameObject, out var ty) && Covered(ty)) continue;
-                var e = Next();
+                if (n == _entries.Count) _entries.Add(new Entry());
+                var e = _entries[n++];
                 e.Row = null;
                 e.Icon = b;
             }
-            _entries.RemoveRange(n, _entries.Count - n);
+            if (n < _entries.Count) _entries.RemoveRange(n, _entries.Count - n);
             if (_iconButtons.Count != _loggedButtons)
             {
                 _loggedButtons = _iconButtons.Count;
@@ -639,10 +665,13 @@ namespace Morgott.UI.MapScreen
             // Fixed blocks, bottom up: zoom, Public toggle, СЛОИ (layer row + biome key), ИГРОКИ.
             var zoomTop = h - pad - zoomH;
             var toggles = 0f;
-            foreach (var panel in TogglePanels)
+            if (_togglePanelTrs != null)
             {
-                var t = _legend.Find(panel) as RectTransform;
-                if (t && t.gameObject.activeSelf) toggles += t.rect.height + 6f;
+                for (var p = 0; p < _togglePanelTrs.Length; p++)
+                {
+                    var t = _togglePanelTrs[p];
+                    if (t && t.gameObject.activeSelf) toggles += t.rect.height + 6f;
+                }
             }
             var barW2 = ThemeTokens.GetFloat("size.map.legend.scroll", 8f);
             var keyRows = (MapFilterMath.Biomes.Length + 1) / 2;
@@ -666,7 +695,8 @@ namespace Morgott.UI.MapScreen
             // МЕТКИ.
             Place(_pinsHeader.rectTransform, pad, pad, rowW, headerH);
             HeaderFace(_pinsHeader);
-            _pinsHeader.text = Words.Get("$ui_map_pins");
+            var pinsTitle = Words.Get("$ui_map_pins");
+            if (_pinsHeader.text != pinsTitle) _pinsHeader.text = pinsTitle;
             Place(_pinsDivider.rectTransform, pad, pad + headerH, rowW, divider);
             var avail = customLay.PinsAvailHeight;
             var rowH = MinimapMath.RowHeight(avail, _entries.Count, rowPref, rowMin);
@@ -716,7 +746,7 @@ namespace Morgott.UI.MapScreen
                 if (r.Glyph.enabled != (bool)sprite) r.Glyph.enabled = sprite;
                 var visible = Visible(r);
                 if (r.Check.enabled != visible) r.Check.enabled = visible;
-                r.Name.color = ThemeTokens.GetColor(visible ? "color.text.body" : "color.state.disabled", Color.white);
+                SetColor(r.Name, ThemeTokens.GetColor(visible ? "color.text.body" : "color.state.disabled", Color.white));
                 y += rowH;
             }
             if (_scrollTrack.gameObject.activeSelf != scrolling) _scrollTrack.gameObject.SetActive(scrolling);
@@ -724,10 +754,7 @@ namespace Morgott.UI.MapScreen
             {
                 var trackH = window * rowH;
                 Place(_scrollTrack.rectTransform, pad + rowW - barW, listTop, barW, trackH);
-                var thumb = _scrollThumb.rectTransform;
-                thumb.anchorMin = new Vector2(0f, 1f - (float)(_firstRow + window) / _entries.Count);
-                thumb.anchorMax = new Vector2(1f, 1f - (float)_firstRow / _entries.Count);
-                thumb.offsetMin = thumb.offsetMax = Vector2.zero;
+                SetThumb(_scrollThumb.rectTransform, 1f - (float)(_firstRow + window) / _entries.Count, 1f - (float)_firstRow / _entries.Count);
             }
 
             // СВОИ МЕТКИ (collapsible 5-column custom icon grid; hidden when world has no custom pins).
@@ -746,10 +773,7 @@ namespace Morgott.UI.MapScreen
             if (playerScroll)
             {
                 Place(_playerTrack.rectTransform, pad + rowW - barW2, y, barW2, playersShown * playerRow);
-                var thumb = _playerThumb.rectTransform;
-                thumb.anchorMin = new Vector2(0f, 1f - (float)(_firstPlayer + playersShown) / playerCount);
-                thumb.anchorMax = new Vector2(1f, 1f - (float)_firstPlayer / playerCount);
-                thumb.offsetMin = thumb.offsetMax = Vector2.zero;
+                SetThumb(_playerThumb.rectTransform, 1f - (float)(_firstPlayer + playersShown) / playerCount, 1f - (float)_firstPlayer / playerCount);
             }
             for (var i = 0; i < _playerRows.Count; i++)
             {
@@ -765,7 +789,7 @@ namespace Morgott.UI.MapScreen
                 if (r.Name.text != p.m_name) r.Name.text = p.m_name;
                 var hidden = _hiddenPlayers.Contains(p.m_name);
                 if (r.Check.enabled == hidden) r.Check.enabled = !hidden;
-                r.Name.color = ThemeTokens.GetColor(!hidden && (me || p.m_publicPosition) ? "color.text.body" : "color.state.disabled", Color.white);
+                SetColor(r.Name, ThemeTokens.GetColor(!hidden && (me || p.m_publicPosition) ? "color.text.body" : "color.state.disabled", Color.white));
                 y += playerRow;
             }
 
@@ -775,10 +799,12 @@ namespace Morgott.UI.MapScreen
             y += 6f;
             y = Section(_layersHeader, _layersDivider, "$ui_map_layers", pad, y, rowW, headerH, divider);
             LayRow(_biomeRow, pad, y, rowW, playerRow, k);
-            _biomeRow.Name.text = Words.Get("$ui_map_biomes");
+            var biomesTitle = Words.Get("$ui_map_biomes");
+            if (_biomeRow.Name.text != biomesTitle) _biomeRow.Name.text = biomesTitle;
             var overlay = MapConfig.BiomeOverlay?.Value ?? true;
             if (_biomeRow.Check.enabled != overlay) _biomeRow.Check.enabled = overlay;
-            _biomeRow.Name.color = ThemeTokens.GetColor(overlay ? "color.text.body" : "color.state.disabled", Color.white);
+            var overlayColor = ThemeTokens.GetColor(overlay ? "color.text.body" : "color.state.disabled", Color.white);
+            SetColor(_biomeRow.Name, overlayColor);
             y += playerRow;
             var colW = rowW * 0.5f;
             var sw = keyRow * 0.6f;
@@ -788,36 +814,39 @@ namespace Morgott.UI.MapScreen
                 var x = pad + (i % 2) * colW + 6f;
                 var ky = y + (i / 2) * keyRow;
                 Place(swatch.rectTransform, x, ky + (keyRow - sw) * 0.5f, sw, sw);
-                swatch.color = BiomeOverlay.BiomeColor(MapFilterMath.Biomes[i]);
+                SetColor(swatch, BiomeOverlay.BiomeColor(MapFilterMath.Biomes[i]));
                 Place(name.rectTransform, x + sw + 6f, ky, colW - sw - 18f, keyRow);
                 var label = Words.Get(MapFilterMath.NameKey(MapFilterMath.Biomes[i]));
                 if (name.text != label) name.text = label;
-                name.color = ThemeTokens.GetColor(overlay ? "color.text.body" : "color.state.disabled", Color.white);
+                SetColor(name, overlayColor);
             }
             y += keyRows * keyRow;
             LayRow(_othersRow, pad, y, rowW, playerRow, k);
-            _othersRow.Name.text = Words.Get("$ui_map_others_layer");
+            var othersTitle = Words.Get("$ui_map_others_layer");
+            if (_othersRow.Name.text != othersTitle) _othersRow.Name.text = othersTitle;
             var layered = MapConfig.OthersLayer?.Value ?? false;
             if (_othersRow.Check.enabled != layered) _othersRow.Check.enabled = layered;
-            _othersRow.Name.color = ThemeTokens.GetColor(layered ? "color.text.body" : "color.state.disabled", Color.white);
+            SetColor(_othersRow.Name, ThemeTokens.GetColor(layered ? "color.text.body" : "color.state.disabled", Color.white));
             y += playerRow + 6f;
 
             // Public toggle panel (vanilla toggle + label).
-            foreach (var panel in TogglePanels)
+            if (_togglePanelTrs != null)
             {
-                var t = _legend.Find(panel) as RectTransform;
-                if (!t || !t.gameObject.activeSelf) continue;
-                MinimapSkin.Place(t, new Vector2(0f, -y));
-                y += t.rect.height + 6f;
+                for (var p = 0; p < _togglePanelTrs.Length; p++)
+                {
+                    var t = _togglePanelTrs[p];
+                    if (!t || !t.gameObject.activeSelf) continue;
+                    MinimapSkin.Place(t, new Vector2(0f, -y));
+                    y += t.rect.height + 6f;
+                }
             }
 
             // Zoom row pinned to the bottom: label above, minus | slider | plus.
             Place(_zoomLabel.rectTransform, pad, zoomTop - labelH, rowW, labelH);
-            _zoomLabel.text = Words.Get("$ui_map_zoom");
-            var minus = _rows.Find("ZoomMinus") as RectTransform;
-            var plus = _rows.Find("ZoomPlus") as RectTransform;
-            if (minus) Place(minus, pad, zoomTop, zoomH, zoomH);
-            if (plus) Place(plus, w - pad - zoomH, zoomTop, zoomH, zoomH);
+            var zoomText = Words.Get("$ui_map_zoom");
+            if (_zoomLabel.text != zoomText) _zoomLabel.text = zoomText;
+            if (_zoomMinus) Place(_zoomMinus, pad, zoomTop, zoomH, zoomH);
+            if (_zoomPlus) Place(_zoomPlus, w - pad - zoomH, zoomTop, zoomH, zoomH);
             var trackH2 = ThemeTokens.GetFloat("size.map.zoom.track", 12f);
             var zr = (RectTransform)_zoom.transform;
             Place(zr, pad + zoomH + 10f, zoomTop + (zoomH - trackH2) * 0.5f, w - 2f * pad - 2f * zoomH - 20f, trackH2);
@@ -862,13 +891,8 @@ namespace Morgott.UI.MapScreen
             var btn = root.gameObject.AddComponent<Button>();
             btn.targetGraphic = socket;
             btn.navigation = new Navigation { mode = Navigation.Mode.None };
-            var cell = new CustomPinCellUi { Root = root, Socket = socket, Glyph = glyph, Button = btn };
-            btn.onClick.AddListener(() =>
-            {
-                var es = EventSystem.current;
-                if (es && es.currentSelectedGameObject == btn.gameObject) es.SetSelectedGameObject(null);
-                if (!string.IsNullOrEmpty(cell.IconId)) ToggleCustomIconFilter(cell.IconId);
-            });
+            var cell = new CustomPinCellUi { Owner = this, Root = root, Socket = socket, Glyph = glyph, Button = btn };
+            btn.onClick.AddListener(cell.OnClick);
             if (_ppTooltip)
             {
                 var tip = root.gameObject.AddComponent<UITooltip>();
@@ -895,9 +919,14 @@ namespace Morgott.UI.MapScreen
 
             Place((RectTransform)_customHeaderBtn.transform, pad, y, rowW, headerH);
             HeaderFace(_customHeader);
-            var arrow = _customPinsExpanded ? " ▾" : " ▸";
-            var title = Words.Get("$ui_map_custom_pins") + arrow;
-            if (_customHeader.text != title) _customHeader.text = title;
+            var baseTitle = Words.Get("$ui_map_custom_pins");
+            if (_customHeaderTitle == null || _customHeaderExpanded != _customPinsExpanded || !string.Equals(_customHeaderBase, baseTitle, System.StringComparison.Ordinal))
+            {
+                _customHeaderBase = baseTitle;
+                _customHeaderExpanded = _customPinsExpanded;
+                _customHeaderTitle = baseTitle + (_customPinsExpanded ? " ▾" : " ▸");
+            }
+            if (_customHeader.text != _customHeaderTitle) _customHeader.text = _customHeaderTitle;
             Place(_customDivider.rectTransform, pad, y + headerH, rowW, divider);
             y += headerH + divider + 4f;
 
@@ -914,6 +943,7 @@ namespace Morgott.UI.MapScreen
             var startX = pad + (contentW - gridW) * 0.5f;
             var firstItem = _firstCustomRow * cols;
             var lastItem = (_firstCustomRow + lay.VisibleRows) * cols;
+            var lang = Localization.instance != null ? Localization.instance.GetSelectedLanguage() : null;
 
             for (var i = 0; i < _customCells.Count; i++)
             {
@@ -928,18 +958,22 @@ namespace Morgott.UI.MapScreen
                 Place(c.Root, startX + col * (cellSize + gap), y + visRow * (cellSize + gap), cellSize, cellSize);
                 var sprite = CustomPinIcons.Get(item.IconIndex);
                 if (c.Glyph.sprite != sprite) c.Glyph.sprite = sprite;
-                c.Glyph.enabled = sprite;
+                if (c.Glyph.enabled != (bool)sprite) c.Glyph.enabled = sprite;
                 var look = item.Hidden ? 0 : 1;
                 if (c.Look != look)
                 {
                     c.Look = look;
                     _art.Restyle(c.Socket, item.Hidden ? "sprite.slot.recess" : "sprite.slot.cell", "color.frame", Image.Type.Sliced);
                 }
-                c.Socket.color = item.Hidden ? new Color(0.55f, 0.55f, 0.55f, 0.65f) : Color.white;
+                SetColor(c.Socket, item.Hidden ? new Color(0.55f, 0.55f, 0.55f, 0.65f) : Color.white);
                 var activeTint = item.HasColor ? CustomPinMath.ToColor(item.R, item.G, item.B) : Color.white;
-                c.Glyph.color = item.Hidden ? new Color(0.45f, 0.45f, 0.45f, 0.45f) : activeTint;
-                if (c.Tooltip)
+                SetColor(c.Glyph, item.Hidden ? new Color(0.45f, 0.45f, 0.45f, 0.45f) : activeTint);
+                if (c.Tooltip && (c.TipIconId != item.IconId || c.TipCount != item.Count || c.TipHidden != item.Hidden || !ReferenceEquals(c.TipLang, lang)))
                 {
+                    c.TipIconId = item.IconId;
+                    c.TipCount = item.Count;
+                    c.TipHidden = item.Hidden;
+                    c.TipLang = lang;
                     var iconName = Words.Get(CustomPinMath.IconNameToken(item.IconId));
                     if (c.Tooltip.m_topic != iconName) c.Tooltip.m_topic = iconName;
                     var tipText = Localization.instance.Localize(
@@ -954,10 +988,7 @@ namespace Morgott.UI.MapScreen
             {
                 var trackH = lay.VisibleRows * cellSize + (lay.VisibleRows - 1) * gap;
                 Place(_customTrack.rectTransform, pad + rowW - barW, y, barW, trackH);
-                var thumb = _customThumb.rectTransform;
-                thumb.anchorMin = new Vector2(0f, 1f - (float)(_firstCustomRow + lay.VisibleRows) / lay.TotalRows);
-                thumb.anchorMax = new Vector2(1f, 1f - (float)_firstCustomRow / lay.TotalRows);
-                thumb.offsetMin = thumb.offsetMax = Vector2.zero;
+                SetThumb(_customThumb.rectTransform, 1f - (float)(_firstCustomRow + lay.VisibleRows) / lay.TotalRows, 1f - (float)_firstCustomRow / lay.TotalRows);
             }
 
             if (showCells) y += lay.GridHeight;
@@ -1006,7 +1037,10 @@ namespace Morgott.UI.MapScreen
             if (Mathf.Abs(r.Name.fontSize - font) > 0.05f) r.Name.fontSize = font;
             if (!r.Icon) return;
             var icon = (RectTransform)r.Icon.transform;
-            icon.anchorMin = icon.anchorMax = icon.pivot = new Vector2(0.5f, 0.5f);
+            var mid = new Vector2(0.5f, 0.5f);
+            if (icon.anchorMin != mid) icon.anchorMin = mid;
+            if (icon.anchorMax != mid) icon.anchorMax = mid;
+            if (icon.pivot != mid) icon.pivot = mid;
             var parentK = icon.parent ? icon.parent.lossyScale.x : 1f;
             var s = (cell - ThemeTokens.GetFloat("size.map.legend.icon.inset", 8f)) * (parentK > 0f ? k / parentK : 1f);
             if (Mathf.Abs(icon.sizeDelta.x - s) > 0.1f || Mathf.Abs(icon.sizeDelta.y - s) > 0.1f) icon.sizeDelta = new Vector2(s, s);
@@ -1071,6 +1105,21 @@ namespace Morgott.UI.MapScreen
             if ((rt.anchoredPosition - p).sqrMagnitude > 0.01f) rt.anchoredPosition = p;
             var s = new Vector2(w, h);
             if ((rt.sizeDelta - s).sqrMagnitude > 0.01f) rt.sizeDelta = s;
+        }
+
+        private static void SetThumb(RectTransform thumb, float minY, float maxY)
+        {
+            var aMin = new Vector2(0f, minY);
+            var aMax = new Vector2(1f, maxY);
+            if ((thumb.anchorMin - aMin).sqrMagnitude > 1e-6f) thumb.anchorMin = aMin;
+            if ((thumb.anchorMax - aMax).sqrMagnitude > 1e-6f) thumb.anchorMax = aMax;
+            if (thumb.offsetMin != Vector2.zero) thumb.offsetMin = Vector2.zero;
+            if (thumb.offsetMax != Vector2.zero) thumb.offsetMax = Vector2.zero;
+        }
+
+        private static void SetColor(Graphic g, Color c)
+        {
+            if (g.color != c) g.color = c;
         }
     }
 

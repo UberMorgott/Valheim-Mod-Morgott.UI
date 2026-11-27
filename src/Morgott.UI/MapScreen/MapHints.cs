@@ -21,7 +21,9 @@ namespace Morgott.UI.MapScreen
         private readonly List<Image> _hintIcons = new List<Image>();
         private readonly List<TMP_Text> _hintLabels = new List<TMP_Text>();
         private float[] _hintIconW = new float[0], _hintLabelW = new float[0];
-        private string _hintKey;
+        private string[] _hintTexts = new string[0];
+        private float _hintWidth = -1f, _hintBandCached = -1f;
+        private int _hintThemeRev = -1;
 
         private void BuildHints()
         {
@@ -67,15 +69,18 @@ namespace Morgott.UI.MapScreen
             }
             _hintIconW = new float[_hintItems.Count];
             _hintLabelW = new float[_hintItems.Count];
+            _hintTexts = new string[_hintItems.Count];
         }
 
         private void LayoutHints(float inset)
         {
             if (!_footer) return;
             var band = HintBand();
-            _footer.anchorMin = Vector2.zero;
-            _footer.anchorMax = new Vector2(1f, 0f);
-            _footer.pivot = new Vector2(0.5f, 0f);
+            if (_footer.anchorMin != Vector2.zero) _footer.anchorMin = Vector2.zero;
+            var maxAnchor = new Vector2(1f, 0f);
+            if (_footer.anchorMax != maxAnchor) _footer.anchorMax = maxAnchor;
+            var piv = new Vector2(0.5f, 0f);
+            if (_footer.pivot != piv) _footer.pivot = piv;
             var right = _map.m_mapImageLarge.rectTransform.offsetMax.x;
             var min = new Vector2(inset, inset);
             var max = new Vector2(right, inset + band);
@@ -83,17 +88,32 @@ namespace Morgott.UI.MapScreen
             if (_footer.offsetMax != max) _footer.offsetMax = max;
             if (_footer.localScale != Vector3.one) _footer.localScale = Vector3.one;
             if (!_keyRow || _hintItems.Count == 0 || band <= 0f) return;
-            Stretch(_keyRow);
+            if (_keyRow.anchorMin != Vector2.zero || _keyRow.anchorMax != Vector2.one || _keyRow.offsetMin != Vector2.zero || _keyRow.offsetMax != Vector2.zero)
+                Stretch(_keyRow);
 
             var zoomText = Words.Get("$ui_map_zoom");
             var zoomLabel = _hintLabels[_hintLabels.Count - 1];
             if (_hintItems[_hintItems.Count - 1].name == "RuneSkin_Zoom" && zoomLabel.text != zoomText) zoomLabel.text = zoomText;
 
             var width = _footer.rect.width;
-            var key = width.ToString("0.#") + "|" + band.ToString("0.#");
-            for (var i = 0; i < _hintLabels.Count; i++) key += "|" + _hintLabels[i].text;
-            if (key == _hintKey) return;
-            _hintKey = key;
+            var rev = ThemeTokens.Revision;
+            var same = Mathf.Abs(width - _hintWidth) < 0.05f && Mathf.Abs(band - _hintBandCached) < 0.05f && rev == _hintThemeRev;
+            if (same)
+            {
+                for (var i = 0; i < _hintLabels.Count; i++)
+                {
+                    if (!string.Equals(_hintTexts[i], _hintLabels[i].text, System.StringComparison.Ordinal))
+                    {
+                        same = false;
+                        break;
+                    }
+                }
+                if (same) return;
+            }
+            _hintWidth = width;
+            _hintBandCached = band;
+            _hintThemeRev = rev;
+            for (var i = 0; i < _hintLabels.Count; i++) _hintTexts[i] = _hintLabels[i].text;
 
             var font = ThemeTokens.GetFloat("size.map.hint.font", 18f);
             var minFont = ThemeTokens.GetFloat("size.map.hint.font.min", 13f);

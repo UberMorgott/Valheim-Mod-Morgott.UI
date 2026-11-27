@@ -31,10 +31,10 @@ namespace Morgott.UI.Ownership
             if (Frozen) return;
             Frozen = true;
             Known = new List<string>(requested.Keys).ToArray();
-            foreach (var pair in requested)
+            for (var i = 0; i < Known.Length; i++)
             {
-                var family = pair.Key;
-                if (!pair.Value)
+                var family = Known[i];
+                if (!requested[family])
                 {
                     Plugin.Log.LogInfo($"[Morgott.UI] ownership {family}: not requested (config)");
                     continue;

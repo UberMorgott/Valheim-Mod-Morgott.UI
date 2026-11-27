@@ -24,12 +24,62 @@ namespace Morgott.UI.GameScreens
     {
         public static bool Owned(string family) => OwnershipRegistry.IsOwned(family);
 
+        private sealed class FormContext
+        {
+            private readonly Transform _root;
+            private readonly string _id, _family;
+            private readonly Action<ScreenContext, Transform> _roles;
+
+            public FormContext(Transform root, string id, string family, Action<ScreenContext, Transform> roles)
+            {
+                _root = root;
+                _id = id;
+                _family = family;
+                _roles = roles;
+            }
+
+            public ScreenContext Build() => Context(_root, _id, _family, _roles);
+        }
+
+        private sealed class FormContext<T>
+        {
+            private readonly Transform _root;
+            private readonly string _id, _family;
+            private readonly T _state;
+            private readonly Action<ScreenContext, Transform, T> _roles;
+
+            public FormContext(Transform root, string id, string family, T state, Action<ScreenContext, Transform, T> roles)
+            {
+                _root = root;
+                _id = id;
+                _family = family;
+                _state = state;
+                _roles = roles;
+            }
+
+            public ScreenContext Build()
+            {
+                var ctx = new ScreenContext(_id, _family);
+                _roles?.Invoke(ctx, _root, _state);
+                PreWorldKit.Common(ctx, _root);
+                return ctx;
+            }
+        }
+
         // Registers a vanilla root (or row / bubble template) with the role pass and restyles it once.
         public static void Form(Transform root, string id, string family, Action<ScreenContext, Transform> roles = null, bool panels = true, string pad = "size.panel.pad")
         {
             if (!root) return;
             if (panels) PreWorldKit.Panels(root, pad);
-            ScreenRegistry.Register(root, () => Context(root, id, family, roles));
+            ScreenRegistry.Register(root, new FormContext(root, id, family, roles).Build);
+            ScreenRegistry.Restyle(root);
+        }
+
+        internal static void Form<T>(Transform root, string id, string family, T state, Action<ScreenContext, Transform, T> roles, bool panels = true, string pad = "size.panel.pad")
+        {
+            if (!root) return;
+            if (panels) PreWorldKit.Panels(root, pad);
+            ScreenRegistry.Register(root, new FormContext<T>(root, id, family, state, roles).Build);
             ScreenRegistry.Restyle(root);
         }
 
@@ -258,7 +308,7 @@ namespace Morgott.UI.GameScreens
             Respawn(hud);
             Sleep(hud);
             Teleport(hud);
-            GameScreenKit.Form(root, ScreenId, OwnershipRegistry.LoadScreen, (ctx, r) => Roles(ctx, hud), panels: false);
+            GameScreenKit.Form(root, ScreenId, OwnershipRegistry.LoadScreen, hud, Roles, panels: false);
             Plugin.Log.LogInfo("[Morgott.UI] load screen attached");
         }
 
@@ -303,7 +353,7 @@ namespace Morgott.UI.GameScreens
             // LoadingIndicator re-tints the spinner from the colour it cached in Awake (UpdateGUIVisibility): the cache
             // takes the rune glow, so its fades keep the theme colour.
             var glow = ThemeTokens.GetColor("color.minimap.rune", spinner.color);
-            AccessTools.Field(typeof(LoadingIndicator), "m_spinnerOriginalColor")?.SetValue(ind, glow);
+            if (ind) ind.m_spinnerOriginalColor = glow;
             // The vanilla spinner image turns (its animation): off; the RuneSkin rune spinner (fixed runes, chasing
             // glow, 0.10.2) takes its place and fades with it (AlphaFollow reads the vanilla colour fade).
             if (sr.parent.Find("RuneSkin_RespawnSpinner")) return;
@@ -349,7 +399,7 @@ namespace Morgott.UI.GameScreens
             swirl.gameObject.AddComponent<SwirlSpin>().DegPerSecond = ThemeTokens.GetFloat("speed.load.swirl", 40f);
         }
 
-        private static void Roles(ScreenContext ctx, Hud hud)
+        private static void Roles(ScreenContext ctx, Transform _, Hud hud)
         {
             var root = hud.m_loadingScreen.transform;
             ctx.Role(hud.m_loadingImage, "content", "loading picture (Hud.m_loadingImage)");
@@ -384,7 +434,7 @@ namespace Morgott.UI.GameScreens
         {
             // The chat window (Terminal.m_chatWindow) is not under the Chat object (its children are the bubble
             // templates, run 20261022-122034): registered on its own.
-            if (chat.m_chatWindow) GameScreenKit.Form(chat.m_chatWindow, ScreenId, OwnershipRegistry.Chat, (ctx, r) => Roles(ctx, chat), panels: false);
+            if (chat.m_chatWindow) GameScreenKit.Form(chat.m_chatWindow, ScreenId, OwnershipRegistry.Chat, chat, Roles, panels: false);
             // The log sat on the popup's left rim (run 20261022-122327): inset inside the frame.
             if (chat.m_output)
             {
@@ -402,7 +452,7 @@ namespace Morgott.UI.GameScreens
             Plugin.Log.LogInfo("[Morgott.UI] chat attached");
         }
 
-        private static void Roles(ScreenContext ctx, Chat chat)
+        private static void Roles(ScreenContext ctx, Transform _, Chat chat)
         {
             var window = chat.m_chatWindow;
             if (window)
@@ -451,22 +501,26 @@ namespace Morgott.UI.GameScreens
         public static void Achievement(AchievementUnlockPopup p)
         {
             var root = p.m_root ? p.m_root : p.transform;
-            GameScreenKit.Form(root, ScreenId + ".Achievement", OwnershipRegistry.Popups, (ctx, r) =>
-            {
-                ctx.Role(p.m_achIcon, "content", "achievement icon");
-                ctx.Role(p.m_achName, "text.display", "achievement name (display serif)");
-                Backdrops(ctx, r);
-            });
+            GameScreenKit.Form(root, ScreenId + ".Achievement", OwnershipRegistry.Popups, p, AchievementRoles);
+        }
+
+        private static void AchievementRoles(ScreenContext ctx, Transform r, AchievementUnlockPopup p)
+        {
+            ctx.Role(p.m_achIcon, "content", "achievement icon");
+            ctx.Role(p.m_achName, "text.display", "achievement name (display serif)");
+            Backdrops(ctx, r);
         }
 
         public static void JoinCode(JoinCode j)
         {
             var root = j.m_root ? j.m_root.transform : j.transform;
-            GameScreenKit.Form(root, ScreenId + ".JoinCode", OwnershipRegistry.Popups, (ctx, r) =>
-            {
-                ctx.Role(j.m_text, "text.body", "join code text");
-                Backdrops(ctx, r);
-            });
+            GameScreenKit.Form(root, ScreenId + ".JoinCode", OwnershipRegistry.Popups, j, JoinCodeRoles);
+        }
+
+        private static void JoinCodeRoles(ScreenContext ctx, Transform r, JoinCode j)
+        {
+            ctx.Role(j.m_text, "text.body", "join code text");
+            Backdrops(ctx, r);
         }
 
         public static void PlayerList(Valheim.UI.SessionPlayerList list) =>
@@ -508,15 +562,15 @@ namespace Morgott.UI.GameScreens
     // serif topic, body sans text, close hint in a button plate; raven = panel + big caps topic.
     public static class TextDialogSkin
     {
-        public static void Input(TextInput input)
+        public static void Input(TextInput input) =>
+            GameScreenKit.Form(input.transform, "TextDialogs.Input", OwnershipRegistry.TextDialogs, input, InputRoles);
+
+        private static void InputRoles(ScreenContext ctx, Transform r, TextInput input)
         {
-            GameScreenKit.Form(input.transform, "TextDialogs.Input", OwnershipRegistry.TextDialogs, (ctx, r) =>
-            {
-                ctx.Role(input.m_topic, "text.header", "text input title (TextInput.m_topic)");
-                foreach (var b in r.GetComponentsInChildren<Button>(true))
-                    if (IsConfirm(b)) GameScreenKit.Primary(ctx, b, "text input OK (button_selected)");
-                PopupSkin.Backdrops(ctx, r);
-            });
+            ctx.Role(input.m_topic, "text.header", "text input title (TextInput.m_topic)");
+            foreach (var b in r.GetComponentsInChildren<Button>(true))
+                if (IsConfirm(b)) GameScreenKit.Primary(ctx, b, "text input OK (button_selected)");
+            PopupSkin.Backdrops(ctx, r);
         }
 
         // The confirm button by its vanilla wiring (OnEnter / OnInput listeners) or name.
@@ -539,21 +593,7 @@ namespace Morgott.UI.GameScreens
             TintKeep.Ensure(v.m_topic, "color.text.header");
             var reveal = RuneReveal.Attach(v);
             if (v.m_ravenTopic) v.m_ravenTopic.fontStyle |= FontStyles.UpperCase;
-            GameScreenKit.Form(v.transform, "TextDialogs.Viewer", OwnershipRegistry.TextDialogs, (ctx, r) =>
-            {
-                ctx.Role(v.m_topic, "text.header", "rune topic (serif)");
-                ctx.Role(v.m_text, "text.display", "rune text (readable runic display face; RuneReveal decodes it from the carved runes)");
-                ctx.Role(v.m_runeText, "content", "runic transliteration (vanilla rune font: the runes are the content)");
-                // Run 20261108-003433: unclassified, the role pass gave the reveal's rune layer the display face.
-                if (reveal) ctx.Role(reveal.RuneLayer, "content", "rune reveal layer (vanilla rune font: the runes are the content)");
-                ctx.Role(v.m_introTopic, "text.header", "intro saga topic");
-                ctx.Role(v.m_introText, "text.body", "intro saga text");
-                ctx.Role(v.m_ravenTopic, "text.header", "raven topic (big caps)");
-                ctx.Role(v.m_ravenText, "text.body", "raven text");
-                if (v.m_closeText)
-                    foreach (var t in v.m_closeText.GetComponentsInChildren<TMP_Text>(true)) ctx.Role(t, "text.muted", "close hint");
-                PopupSkin.Backdrops(ctx, r);
-            });
+            GameScreenKit.Form(v.transform, "TextDialogs.Viewer", OwnershipRegistry.TextDialogs, (v, reveal), ViewerRoles);
             // Panel stacks fade with the vanilla backdrop they replace (its colour stays Animator-driven while off).
             foreach (var swap in v.GetComponentsInChildren<PanelSwap>(true))
                 if (swap.transform.Find(PanelDecor.ChildName) is Transform decor && swap.TryGetComponent<Image>(out var bg))
@@ -561,6 +601,24 @@ namespace Morgott.UI.GameScreens
                     AlphaFollow.Ensure(decor.gameObject, bg);
                     if (swap.transform.Find(PanelDecor.CapsName) is Transform caps) AlphaFollow.Ensure(caps.gameObject, bg);
                 }
+        }
+
+        private static void ViewerRoles(ScreenContext ctx, Transform r, (TextViewer V, RuneReveal Reveal) state)
+        {
+            var v = state.V;
+            var reveal = state.Reveal;
+            ctx.Role(v.m_topic, "text.header", "rune topic (serif)");
+            ctx.Role(v.m_text, "text.display", "rune text (readable runic display face; RuneReveal decodes it from the carved runes)");
+            ctx.Role(v.m_runeText, "content", "runic transliteration (vanilla rune font: the runes are the content)");
+            // Run 20261108-003433: unclassified, the role pass gave the reveal's rune layer the display face.
+            if (reveal) ctx.Role(reveal.RuneLayer, "content", "rune reveal layer (vanilla rune font: the runes are the content)");
+            ctx.Role(v.m_introTopic, "text.header", "intro saga topic");
+            ctx.Role(v.m_introText, "text.body", "intro saga text");
+            ctx.Role(v.m_ravenTopic, "text.header", "raven topic (big caps)");
+            ctx.Role(v.m_ravenText, "text.body", "raven text");
+            if (v.m_closeText)
+                foreach (var t in v.m_closeText.GetComponentsInChildren<TMP_Text>(true)) ctx.Role(t, "text.muted", "close hint");
+            PopupSkin.Backdrops(ctx, r);
         }
 
         // Runic bands (art: band_runes) on the panel itself (textroot/bkg), stretch-anchored to its top and bottom edges
@@ -606,54 +664,96 @@ namespace Morgott.UI.GameScreens
     {
         public const string ScreenId = "Compendium";
 
+        private sealed class CompendiumLayout
+        {
+            private readonly TextsDialog _dialog;
+            private readonly RectTransform _frame;
+            private readonly InfoScreens.InfoPage _page;
+
+            public CompendiumLayout(TextsDialog dialog, RectTransform frame, InfoScreens.InfoPage page)
+            {
+                _dialog = dialog;
+                _frame = frame;
+                _page = page;
+            }
+
+            public void Invoke(float k) => Layout(_dialog, _frame, _page, k);
+        }
+
         public static void Attach(TextsDialog d)
         {
-            GameScreenKit.Form(d.transform, ScreenId, OwnershipRegistry.Compendium, (ctx, r) =>
-            {
-                foreach (var t in r.GetComponentsInChildren<Transform>(true))
-                {
-                    if (t.name == ActiveEffectsPage.RootName) ctx.Exclude(t, "active effects list (own registration Compendium.ActiveEffects)");
-                }
-                // Search field focus glow (button_glow under searchField): vanilla highlight art, kept.
-                foreach (var img in r.GetComponentsInChildren<Image>(true))
-                    if (img.name == "glow" && img.sprite && img.sprite.name.StartsWith("button_glow", StringComparison.Ordinal)) ctx.Role(img, "content", "search field focus glow (vanilla)");
-                // The topic list content (m_listRoot, sprite-less full-stretch Image) is a transparent hit area, not a
-                // screen dim: as scrim it painted a dark plate that ShowText's FocusOnCurrentLevel -> SnapTo
-                // (TextsDialog.cs:87-99,199) shifts and the left ScrollRect clamps back on every topic switch (blink).
-                if (d.m_listRoot && d.m_listRoot.TryGetComponent<Image>(out var listHit))
-                    ctx.Role(listHit, "skip", "topic list content hit area (vanilla, transparent; not a screen dim)");
-                var row = d.m_elementPrefab ? d.m_elementPrefab.transform : null;
-                foreach (var b in r.GetComponentsInChildren<Button>(true))
-                {
-                    if (!row || !(b.transform == row || b.name == row.name || b.name == row.name + "(Clone)")) continue;
-                    // Mockup 2026-11-04/02: framed topic keys (480 x 65), the selected one with the cyan glow (info tab art).
-                    if (b.targetGraphic is Image bg) ctx.Role(bg, "info.tab", "compendium topic row (framed key, mockup 02)");
-                    if (b.transform.Find("selected") is Transform sel && sel.TryGetComponent<Image>(out var si)) ctx.Role(si, "info.tab.selected", "compendium topic selected (cyan glow, mockup 02)");
-                    foreach (var t in b.GetComponentsInChildren<TMP_Text>(true)) ctx.Role(t, "text.body", "compendium topic name");
-                }
-                ctx.Role(d.m_textAreaTopic, "text.header", "reading pane topic (serif)");
-                ctx.Role(d.m_textArea, "text.body", "reading pane text");
-                ctx.Role(d.m_totalSkillText, "text.muted", "compendium footer text");
-                PopupSkin.Backdrops(ctx, r);
-            });
+            GameScreenKit.Form(d.transform, ScreenId, OwnershipRegistry.Compendium, d, Roles);
             // A full-screen info page (InfoPage, mockup 2026-11-04/02): Texts_frame fills the screen, tab row + Esc on top,
             // the window header as the centred page title ("topic" mirrored), topic list left, reading pane right.
             if (d.transform.Find("Texts_frame") is RectTransform frame)
             {
+                _dirty = true;
                 var page = InfoScreens.InfoPage.Ensure((RectTransform)d.transform, frame, "OnOpenTexts", d.OnClose);
-                page.OnLayout = k => Layout(d, frame, page, k);
+                page.OnLayout = new CompendiumLayout(d, frame, page).Invoke;
             }
         }
+
+        private static void Roles(ScreenContext ctx, Transform r, TextsDialog d)
+        {
+            foreach (var t in r.GetComponentsInChildren<Transform>(true))
+            {
+                if (t.name == ActiveEffectsPage.RootName) ctx.Exclude(t, "active effects list (own registration Compendium.ActiveEffects)");
+            }
+            // Search field focus glow (button_glow under searchField): vanilla highlight art, kept.
+            foreach (var img in r.GetComponentsInChildren<Image>(true))
+                if (img.name == "glow" && img.sprite && img.sprite.name.StartsWith("button_glow", StringComparison.Ordinal)) ctx.Role(img, "content", "search field focus glow (vanilla)");
+            // The topic list content (m_listRoot, sprite-less full-stretch Image) is a transparent hit area, not a
+            // screen dim: as scrim it painted a dark plate that ShowText's FocusOnCurrentLevel -> SnapTo
+            // (TextsDialog.cs:87-99,199) shifts and the left ScrollRect clamps back on every topic switch (blink).
+            if (d.m_listRoot && d.m_listRoot.TryGetComponent<Image>(out var listHit))
+                ctx.Role(listHit, "skip", "topic list content hit area (vanilla, transparent; not a screen dim)");
+            var row = d.m_elementPrefab ? d.m_elementPrefab.transform : null;
+            foreach (var b in r.GetComponentsInChildren<Button>(true))
+            {
+                if (!row || !(b.transform == row || b.name == row.name || b.name == row.name + "(Clone)")) continue;
+                // Mockup 2026-11-04/02: framed topic keys (480 x 65), the selected one with the cyan glow (info tab art).
+                if (b.targetGraphic is Image bg) ctx.Role(bg, "info.tab", "compendium topic row (framed key, mockup 02)");
+                if (b.transform.Find("selected") is Transform sel && sel.TryGetComponent<Image>(out var si)) ctx.Role(si, "info.tab.selected", "compendium topic selected (cyan glow, mockup 02)");
+                foreach (var t in b.GetComponentsInChildren<TMP_Text>(true)) ctx.Role(t, "text.body", "compendium topic name");
+            }
+            ctx.Role(d.m_textAreaTopic, "text.header", "reading pane topic (serif)");
+            ctx.Role(d.m_textArea, "text.body", "reading pane text");
+            ctx.Role(d.m_totalSkillText, "text.muted", "compendium footer text");
+            PopupSkin.Backdrops(ctx, r);
+        }
+
+        private static bool _dirty = true;
+        private static TextsDialog _lastDialog;
+        private static Vector2 _lastCanvas;
+        private static float _lastK = -1f;
+        private static int _lastTexts = -1, _lastTheme = -1, _lastOpen = -1;
+
+        internal static void MarkDirty() => _dirty = true;
 
         private static void Layout(TextsDialog d, RectTransform frame, InfoScreens.InfoPage page, float k)
         {
             var canvas = page.Canvas;
+            if (!canvas) return;
+            var size = canvas.rect.size;
+            var texts = d.m_texts != null ? d.m_texts.Count : 0;
+            var theme = ThemeTokens.Revision;
+            var open = page.OpenCount;
+            if (!_dirty && _lastDialog == d && size == _lastCanvas && Mathf.Approximately(k, _lastK) &&
+                texts == _lastTexts && theme == _lastTheme && open == _lastOpen)
+                return;
             var header = RuneWindowHeader.Ensure(frame, WindowMove.Compendium);
-            if (!header || !canvas) return;
+            if (!header) return;
             if (frame.Find("topic") is Transform topic && topic.TryGetComponent<TMP_Text>(out var title)) header.Adopt(title, "$ui_win_texts");
             if (frame.Find("Closebutton") is RectTransform close) InventoryScreen.Geo.SetScale(close, 0f); // Esc / the own tab close (mockup: no close button)
             var c = page.Layout(k, header);
             if (c.W <= 0f || c.H <= 0f) return;
+            _dirty = false;
+            _lastDialog = d;
+            _lastCanvas = size;
+            _lastK = k;
+            _lastTexts = texts;
+            _lastTheme = theme;
+            _lastOpen = open;
             // Mockup 02 columns (px at 1080): topic keys 480 x 65 every 75 from (61, 240), list scrollbar to x 580; the
             // framed reading pane from x 612 to the content's right edge, inner text 24 px in.
             var u = canvas.rect.height / 1080f;
@@ -669,12 +769,12 @@ namespace Morgott.UI.GameScreens
             if (paneFrame && paneFrame.fillCenter) paneFrame.fillCenter = false; // outline only; the flat teal fill under it
             var text = new InventoryScreen.Box(pane.X + 24f * u, pane.Y + 16f * u, Mathf.Max(0f, pane.W - 36f * u), Mathf.Max(0f, pane.H - 28f * u));
             // The reading pane: vanilla TextArea and Epic Loot's clone of it (EpicLootMagicTextArea, a sibling it shows instead).
-            foreach (Transform child in frame)
+            foreach (var child in Children.Of(frame))
                 if (child.name.EndsWith("TextArea", StringComparison.Ordinal) && child is RectTransform area) InventoryScreen.Geo.Place(canvas, area, text);
             Reading(d, u);
             // Vanilla column backdrops (TextBackdrop, restyled as popup glass) are not in mockup 02: the list sits on the page,
             // the pane on its flat teal fill (run 20261104-222221: pane read #0B1417 instead of #02171B).
-            foreach (Transform child in frame)
+            foreach (var child in Children.Of(frame))
                 if (child.name == "TextList" || child.name.EndsWith("TextArea", StringComparison.Ordinal)) InfoScreens.InfoArt.Unpaint(child);
             if (frame.Find("TextList/SkillList") is Transform skillList) InfoScreens.InfoArt.Unpaint(skillList);
             // The active effects list copied the text scroll's rect once (ActiveEffectsList.Create): keep it on it.
@@ -821,23 +921,25 @@ namespace Morgott.UI.GameScreens
 
         public static void Attach(SplitDialog s)
         {
-            GameScreenKit.Form(s.transform, ScreenId, OwnershipRegistry.SplitDialog, (ctx, r) =>
-            {
-                var icon = GameScreenKit.Field<Image>(s, "m_splitIcon");
-                ctx.Role(icon, "content", "split item icon");
-                if (icon && icon.transform.parent && icon.transform.parent.TryGetComponent<Image>(out var socket) && socket != icon && !socket.GetComponent<PanelSwap>())
-                    ctx.Role(socket, "slot.recess", "split item socket (slot_cell_recess)");
-                ctx.Role(GameScreenKit.Field<TMP_Text>(s, "m_splitIconName"), "text.display", "split item name (display serif)");
-                ctx.Role(GameScreenKit.Field<TMP_Text>(s, "m_splitAmount"), "text.body", "split amount");
-                GameScreenKit.Primary(ctx, GameScreenKit.Field<Button>(s, "m_splitOkButton"), "split OK (button_selected)");
-                PopupSkin.Backdrops(ctx, r);
-            });
+            GameScreenKit.Form(s.transform, ScreenId, OwnershipRegistry.SplitDialog, s, Roles);
             SplitAnchor.Ensure(s);
             // User 2026-11-10: the dialog drew under the inventory windows (later siblings in the GUI canvas, and
             // CoverCull gated it as covered) and the strip's raycast layer (StripHits, GUI order + 1) took clicks over it.
             // Vanilla's full-screen CloseButton is the modal blocker; on the modal band (own canvas + raycaster, above
             // GUI / StripHits, below the drag icon and tooltips) it is drawn and hit before every inventory window.
             ModalLayer.Ensure(s.transform);
+        }
+
+        private static void Roles(ScreenContext ctx, Transform r, SplitDialog s)
+        {
+            var icon = GameScreenKit.Field<Image>(s, "m_splitIcon");
+            ctx.Role(icon, "content", "split item icon");
+            if (icon && icon.transform.parent && icon.transform.parent.TryGetComponent<Image>(out var socket) && socket != icon && !socket.GetComponent<PanelSwap>())
+                ctx.Role(socket, "slot.recess", "split item socket (slot_cell_recess)");
+            ctx.Role(GameScreenKit.Field<TMP_Text>(s, "m_splitIconName"), "text.display", "split item name (display serif)");
+            ctx.Role(GameScreenKit.Field<TMP_Text>(s, "m_splitAmount"), "text.body", "split amount");
+            GameScreenKit.Primary(ctx, GameScreenKit.Field<Button>(s, "m_splitOkButton"), "split OK (button_selected)");
+            PopupSkin.Backdrops(ctx, r);
         }
     }
 
@@ -943,23 +1045,56 @@ namespace Morgott.UI.GameScreens
             catch (Exception e) { Plugin.Log.LogError($"[Morgott.UI] {what} restyle failed (vanilla look stays): {e}"); }
         }
 
+        private static void Try<T>(string what, string family, T arg, Action<T> attach)
+        {
+            if (!GameScreenKit.Owned(family)) return;
+            try { attach(arg); }
+            catch (Exception e) { Plugin.Log.LogError($"[Morgott.UI] {what} restyle failed (vanilla look stays): {e}"); }
+        }
+
+        private static void Try<T1, T2>(string what, string family, T1 a1, T2 a2, Action<T1, T2> attach)
+        {
+            if (!GameScreenKit.Owned(family)) return;
+            try { attach(a1, a2); }
+            catch (Exception e) { Plugin.Log.LogError($"[Morgott.UI] {what} restyle failed (vanilla look stays): {e}"); }
+        }
+
+        private static void Try<T1, T2, T3>(string what, string family, T1 a1, T2 a2, T3 a3, Action<T1, T2, T3> attach)
+        {
+            if (!GameScreenKit.Owned(family)) return;
+            try { attach(a1, a2, a3); }
+            catch (Exception e) { Plugin.Log.LogError($"[Morgott.UI] {what} restyle failed (vanilla look stays): {e}"); }
+        }
+
+        private static void RefreshCompendium(TextsDialog d)
+        {
+            CompendiumSkin.MarkDirty();
+            GameScreenKit.Restyle(d);
+        }
+
+        private static void ShowCompendiumText(TextsDialog d, TextsDialog.TextInfo text)
+        {
+            CompendiumSkin.MarkDirty();
+            ActiveEffectsPage.Shown(d, text);
+        }
+
         [HarmonyPatch(typeof(Hud), nameof(Hud.Awake))]
         [HarmonyPostfix]
         [HarmonyPriority(PatchOrder.HudGameScreens)]
-        private static void Hud_Postfix(Hud __instance) => Try("load screen", OwnershipRegistry.LoadScreen, () => LoadScreenSkin.Attach(__instance));
+        private static void Hud_Postfix(Hud __instance) => Try("load screen", OwnershipRegistry.LoadScreen, __instance, LoadScreenSkin.Attach);
 
         [HarmonyPatch(typeof(Chat), nameof(Chat.Awake))]
         [HarmonyPostfix]
         [HarmonyPriority(Priority.Last)]
-        private static void Chat_Postfix(Chat __instance) => Try("chat", OwnershipRegistry.Chat, () => ChatSkin.Attach(__instance));
+        private static void Chat_Postfix(Chat __instance) => Try("chat", OwnershipRegistry.Chat, __instance, ChatSkin.Attach);
 
         [HarmonyPatch(typeof(TextInput), nameof(TextInput.Awake))]
         [HarmonyPostfix]
-        private static void TextInput_Postfix(TextInput __instance) => Try("text input", OwnershipRegistry.TextDialogs, () => TextDialogSkin.Input(__instance));
+        private static void TextInput_Postfix(TextInput __instance) => Try("text input", OwnershipRegistry.TextDialogs, __instance, TextDialogSkin.Input);
 
         [HarmonyPatch(typeof(TextViewer), nameof(TextViewer.Awake))]
         [HarmonyPostfix]
-        private static void TextViewer_Postfix(TextViewer __instance) => Try("text viewer", OwnershipRegistry.TextDialogs, () => TextDialogSkin.Viewer(__instance));
+        private static void TextViewer_Postfix(TextViewer __instance) => Try("text viewer", OwnershipRegistry.TextDialogs, __instance, TextDialogSkin.Viewer);
 
         // Rune stones only (RuneStone.cs:74/82); intro and raven keep their own texts.
         [HarmonyPatch(typeof(TextViewer), nameof(TextViewer.ShowText))]
@@ -975,8 +1110,8 @@ namespace Morgott.UI.GameScreens
         [HarmonyPriority(PatchOrder.InventoryGameScreens)]
         private static void InventoryGui_Postfix(InventoryGui __instance)
         {
-            if (__instance.m_textsDialog) Try("compendium", OwnershipRegistry.Compendium, () => CompendiumSkin.Attach(__instance.m_textsDialog));
-            if (__instance.m_splitDialog) Try("split dialog", OwnershipRegistry.SplitDialog, () => SplitSkin.Attach(__instance.m_splitDialog));
+            if (__instance.m_textsDialog) Try("compendium", OwnershipRegistry.Compendium, __instance.m_textsDialog, CompendiumSkin.Attach);
+            if (__instance.m_splitDialog) Try("split dialog", OwnershipRegistry.SplitDialog, __instance.m_splitDialog, SplitSkin.Attach);
         }
 
         // ShowSplitDialog(item, fromInventory) (InventoryGui.cs:2273, from OnSelectedItem :990): the panel opens beside
@@ -984,24 +1119,24 @@ namespace Morgott.UI.GameScreens
         [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.ShowSplitDialog))]
         [HarmonyPostfix]
         private static void ShowSplit_Postfix(InventoryGui __instance, ItemDrop.ItemData item, Inventory __1) => // __1: the inventory (vanilla misspells the parameter name)
-            Try("split anchor", OwnershipRegistry.SplitDialog, () => SplitAnchor.Near(__instance.m_splitDialog, item, __1));
+            Try("split anchor", OwnershipRegistry.SplitDialog, __instance.m_splitDialog, item, __1, SplitAnchor.Near);
 
         // Topic rows are cloned per Setup and mods (Epic Loot pages) add parts there: restyle after it.
         [HarmonyPatch(typeof(TextsDialog), nameof(TextsDialog.Setup))]
         [HarmonyPostfix]
         [HarmonyPriority(Priority.Last)]
-        private static void TextsSetup_Postfix(TextsDialog __instance) => Try("compendium refresh", OwnershipRegistry.Compendium, () => GameScreenKit.Restyle(__instance));
+        private static void TextsSetup_Postfix(TextsDialog __instance) => Try("compendium refresh", OwnershipRegistry.Compendium, __instance, RefreshCompendium);
 
         // Active effects page (ActiveEffectsPage): the TextInfo vanilla inserts, the list swap on ShowText (after Epic
         // Loot's postfix, which turns the text area back on), hidden on close.
         [HarmonyPatch(typeof(TextsDialog), nameof(TextsDialog.AddActiveEffects))]
         [HarmonyPostfix]
-        private static void AddActiveEffects_Postfix(TextsDialog __instance) => Try("active effects", OwnershipRegistry.Compendium, () => ActiveEffectsPage.Added(__instance));
+        private static void AddActiveEffects_Postfix(TextsDialog __instance) => Try("active effects", OwnershipRegistry.Compendium, __instance, ActiveEffectsPage.Added);
 
         [HarmonyPatch(typeof(TextsDialog), nameof(TextsDialog.ShowText), typeof(TextsDialog.TextInfo))]
         [HarmonyPostfix]
         [HarmonyAfter(ModCompat.EpicLootGuid)]
-        private static void ShowText_Postfix(TextsDialog __instance, TextsDialog.TextInfo text) => Try("active effects page", OwnershipRegistry.Compendium, () => ActiveEffectsPage.Shown(__instance, text));
+        private static void ShowText_Postfix(TextsDialog __instance, TextsDialog.TextInfo text) => Try("active effects page", OwnershipRegistry.Compendium, __instance, text, ShowCompendiumText);
 
         [HarmonyPatch(typeof(TextsDialog), nameof(TextsDialog.OnClose))]
         [HarmonyPostfix]
@@ -1009,18 +1144,18 @@ namespace Morgott.UI.GameScreens
 
         [HarmonyPatch(typeof(AchievementUnlockPopup), nameof(AchievementUnlockPopup.Start))]
         [HarmonyPostfix]
-        private static void Achievement_Postfix(AchievementUnlockPopup __instance) => Try("achievement popup", OwnershipRegistry.Popups, () => PopupSkin.Achievement(__instance));
+        private static void Achievement_Postfix(AchievementUnlockPopup __instance) => Try("achievement popup", OwnershipRegistry.Popups, __instance, PopupSkin.Achievement);
 
         [HarmonyPatch(typeof(JoinCode), nameof(JoinCode.Start))]
         [HarmonyPostfix]
-        private static void JoinCode_Postfix(JoinCode __instance) => Try("join code", OwnershipRegistry.Popups, () => PopupSkin.JoinCode(__instance));
+        private static void JoinCode_Postfix(JoinCode __instance) => Try("join code", OwnershipRegistry.Popups, __instance, PopupSkin.JoinCode);
 
         [HarmonyPatch(typeof(Valheim.UI.SessionPlayerList), nameof(Valheim.UI.SessionPlayerList.Awake))]
         [HarmonyPostfix]
-        private static void PlayerList_Postfix(Valheim.UI.SessionPlayerList __instance) => Try("player list", OwnershipRegistry.Popups, () => PopupSkin.PlayerList(__instance));
+        private static void PlayerList_Postfix(Valheim.UI.SessionPlayerList __instance) => Try("player list", OwnershipRegistry.Popups, __instance, PopupSkin.PlayerList);
 
         [HarmonyPatch(typeof(ClosedCaptions), nameof(ClosedCaptions.Awake))]
         [HarmonyPostfix]
-        private static void Captions_Postfix(ClosedCaptions __instance) => Try("closed captions", OwnershipRegistry.Popups, () => PopupSkin.Captions(__instance));
+        private static void Captions_Postfix(ClosedCaptions __instance) => Try("closed captions", OwnershipRegistry.Popups, __instance, PopupSkin.Captions);
     }
 }

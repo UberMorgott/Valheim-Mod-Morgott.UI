@@ -441,7 +441,11 @@ namespace Morgott.UI.Tests
             Assert.Equal(300f, o.Detail.W, 1);
             Assert.Equal(536.9f, o.Detail.H, 1);
             Assert.Equal(1, o.RequirementRows);
-            Assert.All(o.RequirementCells, c => Assert.True(c.H >= t.ReqMinH - 0.01f && c.H * CraftingMath.AmountBand >= 16f * CraftingMath.LineEm - 0.01f, $"cell {c}"));
+            for (var i = 0; i < o.RequirementCells.Length; i++)
+            {
+                var c = o.RequirementCells[i];
+                Assert.True(c.H >= t.ReqMinH - 0.01f && c.H * CraftingMath.AmountBand >= 16f * CraftingMath.LineEm - 0.01f, $"cell {c}");
+            }
             Assert.True(o.Icon.H >= t.IconMinH - 0.01f, o.ToString());
             Assert.True(o.Description.H >= t.DescriptionMinH - 0.01f, o.ToString());
             Assert.Equal(7 * t.StatRowH, o.Stats.H, 3);

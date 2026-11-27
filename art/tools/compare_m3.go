@@ -104,7 +104,7 @@ func compareM3Mock1() (*image.NRGBA, *image.NRGBA) {
 	c.sprite("frame_inset", 1328, 268, 314, 345)
 	c.icon(mock, 1336, 276, 52, 60)
 	c.text("СЫРОЙ ЛУГОВОЙ ШАШЛЫЧОК", serif, 18, palette["text_item_title"], 1400, 294, 0)
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		n := "pip_quality_full"
 		if i > 0 {
 			n = "pip_quality_empty"
@@ -182,7 +182,7 @@ func compareM3A2() (*image.NRGBA, *image.NRGBA) {
 	c.sprite("scroll_handle_normal", 1552, 330, 10, 160)
 	c.sprite("frame_inset", 1571, 294, 318, 375)
 	c.text("СЫРОЙ ЛУГОВОЙ ШАШЛЫЧОК", serif, 20, palette["text_item_title"], 1586, 322, 0)
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		n := "pip_quality_full"
 		if i > 0 {
 			n = "pip_quality_empty"
@@ -245,7 +245,7 @@ func variantsM3() *image.NRGBA {
 	c.sprite("socket_req_upgrade", 20, 240, 120, 150)
 	c.sprite("plaque_arrow", 150, 290, 90, 60)
 	c.sprite("socket_req_upgrade", 250, 240, 120, 150)
-	for k := 0; k < 4; k++ {
+	for k := range 4 {
 		n := "pip_quality_full"
 		if k == 3 {
 			n = "pip_quality_empty"
@@ -265,7 +265,7 @@ func variantsM3() *image.NRGBA {
 		c.text(t, sans, 26, col, x+60, 368, 1)
 	}
 	// stars + level badge
-	for k := 0; k < 5; k++ {
+	for k := range 5 {
 		g := "glyph_star_full"
 		if k > 2 {
 			g = "glyph_star_empty"

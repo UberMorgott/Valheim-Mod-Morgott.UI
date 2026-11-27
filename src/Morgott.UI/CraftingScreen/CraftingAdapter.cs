@@ -127,11 +127,23 @@ namespace Morgott.UI.CraftingScreen
 
         [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.DoCrafting))]
         [HarmonyPrefix]
-        private static void DoCrafting_Prefix(Player player) => Queue(s => s.CraftPrefix(player));
+        private static void DoCrafting_Prefix(Player player)
+        {
+            var skin = CraftingSkin.Instance;
+            if (!skin) return;
+            try { skin.CraftPrefix(player); }
+            catch (System.Exception e) { Fault(e); }
+        }
 
         [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.DoCrafting))]
         [HarmonyPostfix]
-        private static void DoCrafting_Postfix(Player player) => Queue(s => s.CraftPostfix(player));
+        private static void DoCrafting_Postfix(Player player)
+        {
+            var skin = CraftingSkin.Instance;
+            if (!skin) return;
+            try { skin.CraftPostfix(player); }
+            catch (System.Exception e) { Fault(e); }
+        }
 
         [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.UpdateRecipe))]
         [HarmonyPostfix]

@@ -17,7 +17,31 @@ namespace Morgott.UI.Tests
             return ThemeJson.Parse(r.ReadToEnd());
         }
 
-        private static float Float(ThemeFile t, string token) => t.floats.Single(f => f.token == token).value;
+        private static float Float(ThemeFile t, string token)
+        {
+            FloatEntry match = null;
+            for (var i = 0; i < t.floats.Length; i++)
+            {
+                if (t.floats[i].token != token) continue;
+                Assert.Null(match);
+                match = t.floats[i];
+            }
+            Assert.NotNull(match);
+            return match.value;
+        }
+
+        private static string Sprite(ThemeFile t, string token)
+        {
+            AssetEntry match = null;
+            for (var i = 0; i < t.sprites.Length; i++)
+            {
+                if (t.sprites[i].token != token) continue;
+                Assert.Null(match);
+                match = t.sprites[i];
+            }
+            Assert.NotNull(match);
+            return match.asset;
+        }
 
         // enemy-b.png (1672 x 941 = a 16:9 screen), the 1x NORMAL thumbnail: window 131 x 13 px.
         // Canvas units at any 16:9 resolution = 1920 x 1080 (GuiScaler), so the token must be the same screen share.
@@ -101,11 +125,11 @@ namespace Morgott.UI.Tests
             var t = Default();
             for (var i = 0; i < 4; i++)
             {
-                Assert.Equal("fx_stagger_" + i, t.sprites.Single(s => s.token == "sprite.fx.stagger." + i).asset);
-                Assert.Equal("fx_gas_" + i, t.sprites.Single(s => s.token == "sprite.fx.gas." + i).asset);
+                Assert.Equal("fx_stagger_" + i, Sprite(t, "sprite.fx.stagger." + i));
+                Assert.Equal("fx_gas_" + i, Sprite(t, "sprite.fx.gas." + i));
             }
-            Assert.Equal("bar_boss_fill_c", t.sprites.Single(s => s.token == "sprite.bar.boss.fill.c").asset);
-            Assert.Equal("bar_boss_trough_c", t.sprites.Single(s => s.token == "sprite.bar.boss.trough.c").asset);
+            Assert.Equal("bar_boss_fill_c", Sprite(t, "sprite.bar.boss.fill.c"));
+            Assert.Equal("bar_boss_trough_c", Sprite(t, "sprite.bar.boss.trough.c"));
         }
 
         [Fact]

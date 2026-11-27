@@ -1,3 +1,4 @@
+using System.Globalization;
 using Morgott.UI.Theme;
 using TMPro;
 using UnityEngine;
@@ -819,7 +820,7 @@ namespace Morgott.UI.PlayerHud
             _fxLoggedOn = on;
             _fxLoggedI = intensity;
             Plugin.Log.LogInfo($"[Morgott.UI] bar fx {Root.name}: shader={(shown.shader ? shown.shader.name : "none")} " +
-                $"{(shown == _fxMat ? "base" : "stencil copy")} pool={pool:0} on={on:0.##} intensity={intensity:0.##}");
+                $"{(shown == _fxMat ? "base" : "stencil copy")} pool={pool.ToString("0", CultureInfo.InvariantCulture)} on={on.ToString("0.##", CultureInfo.InvariantCulture)} intensity={intensity.ToString("0.##", CultureInfo.InvariantCulture)}");
         }
 
         // The HUD was hidden (dead, menu, cutscene) or the player changed: forget the last samples, so the values seen on

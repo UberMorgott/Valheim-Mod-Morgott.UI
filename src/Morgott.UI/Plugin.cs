@@ -131,7 +131,7 @@ namespace Morgott.UI
             Log = Logger;
             if (CoreApi.ApiMajor != 1)
             {
-                Log.LogError($"[Morgott.UI] inactive: Morgott.Core API {CoreApi.ApiMajor}, needs 1");
+                Log.LogError($"[Morgott.UI] inactive: Morgott.Core API {CoreApi.ApiMajor.ToString()}, needs 1");
                 return;
             }
             Texts = Translations.Load(typeof(Plugin).Assembly, "Morgott.UI.Translations.");
@@ -276,7 +276,7 @@ namespace Morgott.UI
             _harmony.PatchAll(typeof(Plugin).Assembly);
             if (OwnershipRegistry.IsOwned(OwnershipRegistry.Cursor)) CursorSkin.Apply();
             var ms = (Stopwatch.GetTimestamp() - patchStart) * 1000.0 / Stopwatch.Frequency;
-            Log.LogInfo($"[Morgott.UI] {Version} ready; init {(patchStart - _initStart) * 1000.0 / Stopwatch.Frequency:0} ms theme + ownership, {ms:0} ms patches");
+            Log.LogInfo($"[Morgott.UI] {Version} ready; init {((patchStart - _initStart) * 1000.0 / Stopwatch.Frequency).ToString("0")} ms theme + ownership, {ms.ToString("0")} ms patches");
         }
 
         // After every plugin's Awake: Warfare, Epic Loot and CurrencyPocket may load after us.
@@ -372,14 +372,14 @@ namespace Morgott.UI
             _ = new Terminal.ConsoleCommand("ui_diag", "[screen] Morgott.UI diagnostics dump to BepInEx\\Morgott.UI\\diag", args =>
             {
                 var paths = Plugin.DiagDump(args.Length > 1 ? args[1] : null);
-                args.Context?.AddString($"Morgott.UI: {paths.Length} dump(s) in {SkinDiagnostics.DumpDir}");
+                args.Context?.AddString($"Morgott.UI: {paths.Length.ToString()} dump(s) in {SkinDiagnostics.DumpDir}");
             });
             _ = new Terminal.ConsoleCommand("ui_reload", "reload the Morgott.UI theme (override BepInEx\\config\\Morgott.UI\\theme.json)", args =>
             {
                 try
                 {
                     Plugin.ReloadTheme();
-                    args.Context?.AddString($"Morgott.UI: theme '{ThemeTokens.ThemeName}' rev {ThemeTokens.Revision} from {ThemeTokens.Source}");
+                    args.Context?.AddString($"Morgott.UI: theme '{ThemeTokens.ThemeName}' rev {ThemeTokens.Revision.ToString()} from {ThemeTokens.Source}");
                 }
                 catch (Exception e)
                 {

@@ -68,7 +68,7 @@ namespace Morgott.UI.Icons
                 }
             }
 
-            if (patched > 0) Plugin.Log.LogInfo($"[Compat] mod status icons: {patched} effect builders patched.");
+            if (patched > 0) Plugin.Log.LogInfo($"[Compat] mod status icons: {patched.ToString()} effect builders patched.");
         }
 
         // Puts Epic Loot's EL_Paralyze prototype into ObjectDB.m_StatusEffects. Vanilla sends a status over the wire as its
@@ -115,7 +115,7 @@ namespace Morgott.UI.Icons
                 sprites[i] = Sprite.Create(tex, rect, new Vector2(0.5f, 0.5f), 100f);
                 sprites[i].name = "UI_StatusIcon_" + ModStatusIconMap.Cells[i];
             }
-            Plugin.Log.LogInfo($"[Compat] status icons {tex.width}x{tex.height}, {count} sprites");
+            Plugin.Log.LogInfo($"[Compat] status icons {tex.width.ToString()}x{tex.height.ToString()}, {count.ToString()} sprites");
             return sprites;
         }
 

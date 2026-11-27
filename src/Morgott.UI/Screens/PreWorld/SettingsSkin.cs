@@ -1,5 +1,6 @@
 using Morgott.UI.Api;
 using System;
+using System.Collections.Generic;
 using HarmonyLib;
 using Morgott.UI.Classify;
 using Morgott.UI.Ownership;
@@ -21,9 +22,18 @@ namespace Morgott.UI.PreWorld
     {
         public const string ScreenId = "Settings";
 
+        private sealed class SettingsContextFactory
+        {
+            private readonly Settings _settings;
+            public SettingsContextFactory(Settings settings) => _settings = settings;
+            public ScreenContext Create() => Context(_settings);
+        }
+
         public static void Attach(Settings settings)
         {
             var root = settings.transform;
+            if (!settings.TryGetComponent<SettingsCleanup>(out _))
+                settings.gameObject.AddComponent<SettingsCleanup>().hideFlags = HideFlags.HideInInspector;
             // The window = root/Panel (title, tabs, pages, Ok / Back); its vanilla wood image becomes the panel stack.
             var panel = root.Find("Panel") as RectTransform;
             PreWorldKit.Panels(root, "size.panel.pad");
@@ -31,7 +41,7 @@ namespace Morgott.UI.PreWorld
             Column(settings, panel);
             if (panel && !panel.GetComponent<ScreenFit>()) panel.gameObject.AddComponent<ScreenFit>();
             GamepadInset(settings);
-            ScreenRegistry.Register(root, () => Context(settings));
+            ScreenRegistry.Register(root, new SettingsContextFactory(settings).Create);
             ScreenRegistry.Restyle(root);
             PreWorldKit.ReadableFloor(root);
         }
@@ -192,6 +202,45 @@ namespace Morgott.UI.PreWorld
         public float Shift;
     }
 
+    // Unity never invokes OnDestroy on never-activated children (the 6 unopened Settings tabs), so their texts stay
+    // pinned in Localization's cache, TextSizeGroup, ReadableSweep, ScreenRegistry and ForeignUi. Attached on the
+    // active Settings root so OnDestroy always fires and purges the entire subtree (includeInactive: true).
+    internal sealed class SettingsCleanup : MonoBehaviour
+    {
+        private static readonly List<Graphic> Buffer = new List<Graphic>(256);
+
+        private void OnDestroy()
+        {
+            var loc = Localization.m_instance;
+            Buffer.Clear();
+            GetComponentsInChildren(true, Buffer);
+            for (var i = 0; i < Buffer.Count; i++)
+            {
+                var g = Buffer[i];
+                if (ReferenceEquals(g, null)) continue;
+                if (g is TMP_Text tmp)
+                {
+                    loc?.RemoveTextFromCache(tmp);
+                    ReadableSweep.Forget(tmp);
+                }
+                else if (g is Text legacy)
+                {
+                    loc?.RemoveTextFromCache(legacy);
+                }
+                ModScreens.ForeignUi.Forget(g);
+                NameCache.Forget(g);
+                if (g)
+                {
+                    NameCache.Forget(g.gameObject);
+                    NameCache.Forget(g.transform);
+                }
+            }
+            Buffer.Clear();
+            TextSizeGroup.ReleaseSubtree(transform);
+            ScreenRegistry.Unregister(transform);
+        }
+    }
+
     [HarmonyPatch]
     public static class SettingsAdapter
     {
@@ -218,6 +267,25 @@ namespace Morgott.UI.PreWorld
         {
             Dialog(net.m_passwordDialog, "Password", false);
             Dialog(net.m_connectingDialog, "Connecting", true);
+        }
+
+        private sealed class ConnectionContextFactory
+        {
+            private readonly RectTransform _dialog;
+            private readonly string _id;
+
+            public ConnectionContextFactory(RectTransform dialog, string id)
+            {
+                _dialog = dialog;
+                _id = id;
+            }
+
+            public ScreenContext Create()
+            {
+                var ctx = new ScreenContext("Connection." + _id, OwnershipRegistry.Connection);
+                PreWorldKit.Common(ctx, _dialog);
+                return ctx;
+            }
         }
 
         private static void Dialog(RectTransform dialog, string id, bool spinner)
@@ -255,12 +323,7 @@ namespace Morgott.UI.PreWorld
                 }
                 host.localScale = new Vector3(1.2f, 1.2f, 1f);
             }
-            ScreenRegistry.Register(dialog, () =>
-            {
-                var ctx = new ScreenContext("Connection." + id, OwnershipRegistry.Connection);
-                PreWorldKit.Common(ctx, dialog);
-                return ctx;
-            });
+            ScreenRegistry.Register(dialog, new ConnectionContextFactory(dialog, id).Create);
             ScreenRegistry.Restyle(dialog);
         }
     }

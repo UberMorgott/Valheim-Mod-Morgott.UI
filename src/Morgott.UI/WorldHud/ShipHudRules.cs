@@ -132,7 +132,7 @@ namespace Morgott.UI.WorldHud
                 var pct = ThrustPercent(windAngleFactor);
                 var tpl = string.IsNullOrEmpty(thrustTemplate) ? "Sail thrust {0}%" : thrustTemplate;
                 return tpl.IndexOf("{0}", StringComparison.Ordinal) >= 0
-                    ? string.Format(CultureInfo.InvariantCulture, tpl, pct)
+                    ? string.Format(CultureInfo.InvariantCulture, tpl, pct.ToString(CultureInfo.InvariantCulture))
                     : tpl + " " + pct.ToString(CultureInfo.InvariantCulture) + "%";
             }
             if (speedSetting == 1 || speedSetting == 2) return oarsText ?? "Oars";

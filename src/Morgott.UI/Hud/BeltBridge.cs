@@ -16,7 +16,15 @@ namespace Morgott.UI.PlayerHud
         public static bool Bound => Api != null;
 
         // Belt hooked ([Belt] Enabled): the wings show belt cells. False = draw nothing belt-related.
-        public static bool On => Guard("Enabled", b => b.Enabled);
+        public static bool On
+        {
+            get
+            {
+                if (Api is not { } b) return false;
+                try { return b.Enabled; }
+                catch (Exception e) { return Fail(b, "Enabled", e); }
+            }
+        }
 
         // Change counter: layout / content / binding / config changes (timers do not bump it).
         public static int Version => Api is { } b ? b.Version : 0;
@@ -36,23 +44,46 @@ namespace Morgott.UI.PlayerHud
         public static string Tooltip(int kind, int index) => Api is { } b ? b.Tooltip((BeltKind)kind, index) ?? "" : "";
 
         // Mouse press on a cell: button 0 = LMB, 1 = RMB; Power reads the modifiers itself (Shift / Ctrl / LeftAlt).
-        public static bool Click(int kind, int index, int button) => Guard("HandleClick", b => b.HandleClick((BeltKind)kind, index, button));
-
-        public static bool ToggleAuto(int kind, int index) => Guard("ToggleAuto", b => b.ToggleAuto((BeltKind)kind, index));
-
-        public static bool UseNow(int kind, int index) => Guard("UseNow", b => b.UseNow((BeltKind)kind, index));
-
-        public static bool DropDragged(int kind, int index) => Guard("DropDragged", b => b.DropDragged((BeltKind)kind, index));
-
-        public static bool MoveToInventory(int kind, int index) => Guard("MoveToInventory", b => b.MoveToInventory((BeltKind)kind, index));
-
-        public static bool BeginDrag(int kind, int index, int amount) => Guard("BeginDrag", b => b.BeginDrag((BeltKind)kind, index, amount));
-
-        private static bool Guard(string what, Func<IBeltApi, bool> call)
+        public static bool Click(int kind, int index, int button)
         {
             if (Api is not { } b) return false;
-            try { return call(b); }
-            catch (Exception e) { return Fail(b, what, e); }
+            try { return b.HandleClick((BeltKind)kind, index, button); }
+            catch (Exception e) { return Fail(b, "HandleClick", e); }
+        }
+
+        public static bool ToggleAuto(int kind, int index)
+        {
+            if (Api is not { } b) return false;
+            try { return b.ToggleAuto((BeltKind)kind, index); }
+            catch (Exception e) { return Fail(b, "ToggleAuto", e); }
+        }
+
+        public static bool UseNow(int kind, int index)
+        {
+            if (Api is not { } b) return false;
+            try { return b.UseNow((BeltKind)kind, index); }
+            catch (Exception e) { return Fail(b, "UseNow", e); }
+        }
+
+        public static bool DropDragged(int kind, int index)
+        {
+            if (Api is not { } b) return false;
+            try { return b.DropDragged((BeltKind)kind, index); }
+            catch (Exception e) { return Fail(b, "DropDragged", e); }
+        }
+
+        public static bool MoveToInventory(int kind, int index)
+        {
+            if (Api is not { } b) return false;
+            try { return b.MoveToInventory((BeltKind)kind, index); }
+            catch (Exception e) { return Fail(b, "MoveToInventory", e); }
+        }
+
+        public static bool BeginDrag(int kind, int index, int amount)
+        {
+            if (Api is not { } b) return false;
+            try { return b.BeginDrag((BeltKind)kind, index, amount); }
+            catch (Exception e) { return Fail(b, "BeginDrag", e); }
         }
 
         // A throwing provider member switches the whole row off (logged once) instead of throwing every frame.

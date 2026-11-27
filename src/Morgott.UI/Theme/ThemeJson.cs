@@ -81,6 +81,9 @@ namespace Morgott.UI.Theme
 
         private sealed class Reader
         {
+            private static readonly object BoxedTrue = Convert.ChangeType("true", typeof(bool), CultureInfo.InvariantCulture);
+            private static readonly object BoxedFalse = Convert.ChangeType("false", typeof(bool), CultureInfo.InvariantCulture);
+
             private readonly string _s;
             private int _i;
 
@@ -101,8 +104,8 @@ namespace Morgott.UI.Theme
                     case '{': return Obj();
                     case '[': return List();
                     case '"': return Text();
-                    case 't': Word("true"); return true;
-                    case 'f': Word("false"); return false;
+                    case 't': Word("true"); return BoxedTrue;
+                    case 'f': Word("false"); return BoxedFalse;
                     case 'n': Word("null"); return null;
                     default: return Number();
                 }
@@ -168,21 +171,25 @@ namespace Morgott.UI.Theme
                             sb.Append((char)int.Parse(_s.Substring(_i, 4), NumberStyles.HexNumber, CultureInfo.InvariantCulture));
                             _i += 4;
                             break;
-                        default: Fail($"bad escape \\{e}"); break;
+                        default: Fail($"bad escape \\{e.ToString()}"); break;
                     }
                 }
                 Expect('"');
                 return sb.ToString();
             }
 
-            private double Number()
+            private object Number()
             {
                 var start = _i;
                 while (_i < _s.Length && NumberChar(_s[_i])) _i++;
-                if (start != _i && double.TryParse(_s.Substring(start, _i - start), NumberStyles.Float, CultureInfo.InvariantCulture, out var d))
-                    return d;
+                if (start != _i)
+                {
+                    var token = _s.Substring(start, _i - start);
+                    if (double.TryParse(token, NumberStyles.Float, CultureInfo.InvariantCulture, out _))
+                        return Convert.ChangeType(token, typeof(double), CultureInfo.InvariantCulture);
+                }
                 Fail("bad value");
-                return 0d;
+                return null;
             }
 
             private static bool NumberChar(char c) => (c >= '0' && c <= '9') || c == '+' || c == '-' || c == '.' || c == 'e' || c == 'E';
@@ -217,14 +224,14 @@ namespace Morgott.UI.Theme
 
             private void Expect(char c)
             {
-                if (!Peek(c)) Fail($"expected '{c}'");
+                if (!Peek(c)) Fail($"expected '{c.ToString()}'");
                 _i++;
             }
 
             private void Fail(string what)
             {
                 var line = 1 + _s.Take(Math.Min(_i, _s.Length)).Count(ch => ch == '\n');
-                throw new FormatException($"{what} at line {line}");
+                throw new FormatException($"{what} at line {line.ToString()}");
             }
         }
     }

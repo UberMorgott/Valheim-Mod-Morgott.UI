@@ -1,6 +1,7 @@
 using Morgott.Core;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using UnityEngine;
 
 namespace Morgott.UI.InventoryScreen
@@ -17,6 +18,11 @@ namespace Morgott.UI.InventoryScreen
             public PanelActionDescriptor D;
             public int Faults;
             public bool Dead => Faults >= MaxFaults;
+
+            internal void Remove()
+            {
+                if (Actions.Remove(this)) Revision++;
+            }
         }
 
         public struct OverlayKey : IEquatable<OverlayKey>
@@ -36,6 +42,16 @@ namespace Morgott.UI.InventoryScreen
         public sealed class Overlay
         {
             public string Token;
+            internal OverlayKey Key;
+
+            internal void Remove()
+            {
+                if (Overlays.TryGetValue(Key, out var cur) && ReferenceEquals(cur, this))
+                {
+                    Overlays.Remove(Key);
+                    OverlayRevision++;
+                }
+            }
         }
 
         // Value = the registration object (identity), so disposing an older handle never removes a newer one.
@@ -45,31 +61,33 @@ namespace Morgott.UI.InventoryScreen
         public static int Revision { get; private set; }
         public static int OverlayRevision { get; private set; }
 
+        private static string PanelKindName(PanelKind panel) => panel switch
+        {
+            PanelKind.Player => nameof(PanelKind.Player),
+            PanelKind.Container => nameof(PanelKind.Container),
+            PanelKind.Backpack => nameof(PanelKind.Backpack),
+            _ => ((int)panel).ToString(CultureInfo.InvariantCulture)
+        };
+
         public static System.Action AddAction(string owner, PanelActionDescriptor d)
         {
             var key = owner + ":" + d.Id;
-            Actions.RemoveAll(a => a.Key == key && a.D.Panel == d.Panel);
+            for (var i = Actions.Count - 1; i >= 0; i--)
+                if (Actions[i].Key == key && Actions[i].D.Panel == d.Panel) Actions.RemoveAt(i);
             var entry = new Action { Key = key, Owner = owner, D = d };
             Actions.Add(entry);
             Revision++;
-            Plugin.Log.LogInfo($"[Morgott.UI] panel action '{key}' on {d.Panel}");
-            return () => { if (Actions.Remove(entry)) Revision++; };
+            Plugin.Log.LogInfo($"[Morgott.UI] panel action '{key}' on {PanelKindName(d.Panel)}");
+            return entry.Remove;
         }
 
         public static System.Action SetOverlay(string owner, Inventory inventory, int x, int y, string token)
         {
             var key = new OverlayKey { Owner = owner, Inventory = inventory, X = x, Y = y };
-            var entry = new Overlay { Token = token };
+            var entry = new Overlay { Token = token, Key = key };
             Overlays[key] = entry;
             OverlayRevision++;
-            return () =>
-            {
-                if (Overlays.TryGetValue(key, out var cur) && ReferenceEquals(cur, entry))
-                {
-                    Overlays.Remove(key);
-                    OverlayRevision++;
-                }
-            };
+            return entry.Remove;
         }
 
         // Overlay token of a cell for any owner (last one wins when two owners mark the same cell).
@@ -99,10 +117,21 @@ namespace Morgott.UI.InventoryScreen
             catch (Exception e) { Fault(ref a.Faults, a.Key, e); return fallback; }
         }
 
+        internal static void GuardInvoke(Action a, Inventory inv)
+        {
+            if (a.Dead) return;
+            try
+            {
+                if (a.D.OnInvokeFor != null) a.D.OnInvokeFor(inv);
+                else a.D.OnInvoke?.Invoke();
+            }
+            catch (Exception e) { Fault(ref a.Faults, a.Key, e); }
+        }
+
         private static void Fault(ref int faults, string key, Exception e)
         {
             faults++;
-            Plugin.Log.LogError($"[Morgott.UI] callback of '{key}' failed ({faults}/{MaxFaults}){(faults >= MaxFaults ? ", disabled" : "")}: {e}");
+            Plugin.Log.LogError($"[Morgott.UI] callback of '{key}' failed ({faults.ToString(CultureInfo.InvariantCulture)}/{MaxFaults.ToString(CultureInfo.InvariantCulture)}){(faults >= MaxFaults ? ", disabled" : "")}: {e}");
             Revision++;
         }
     }

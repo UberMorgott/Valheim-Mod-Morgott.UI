@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using HarmonyLib;
 using Morgott.Core;
 using Morgott.UI.Classify;
@@ -67,8 +68,8 @@ namespace Morgott.UI.StationQueue
                 panel.GetWorldCorners(corners);
                 var a = RectTransformUtility.WorldToScreenPoint(cam, corners[0]);
                 var b = RectTransformUtility.WorldToScreenPoint(cam, corners[2]);
-                if (b.x - a.x < 50f || b.y - a.y < 50f) return $"panel {b.x - a.x:0}x{b.y - a.y:0} px";
-                if (a.x < -1f || a.y < -1f || b.x > Screen.width + 1f || b.y > Screen.height + 1f) return $"panel off screen ({a}..{b})";
+                if (b.x - a.x < 50f || b.y - a.y < 50f) return $"panel {(b.x - a.x).ToString("0", CultureInfo.InvariantCulture)}x{(b.y - a.y).ToString("0", CultureInfo.InvariantCulture)} px";
+                if (a.x < -1f || a.y < -1f || b.x > Screen.width + 1f || b.y > Screen.height + 1f) return $"panel off screen ({a.ToString()}..{b.ToString()})";
                 return "";
             }
         }
@@ -110,15 +111,47 @@ namespace Morgott.UI.StationQueue
 
         private sealed class InputRow
         {
+            public StationQueueWindow Owner;
             public RectTransform Rt;
             public CanvasGroup Group;
             public Image Icon;
             public TMP_Text Badge, Name, Count;
             public string Item;
+
+            public bool BeginDrag(PointerEventData e)
+            {
+                if (Item == null) return false;
+                Owner._dragItem = Item;
+                Owner._ghost.sprite = Icon.sprite;
+                Owner._ghost.transform.SetAsLastSibling();
+                Owner._ghost.gameObject.SetActive(Owner._ghost.sprite);
+                return true;
+            }
+
+            public void MoveDrag(PointerEventData e)
+            {
+                if (RectTransformUtility.ScreenPointToLocalPointInRectangle(Owner._root, e.position, e.pressEventCamera, out var lp))
+                    Owner._ghost.rectTransform.anchoredPosition = lp - Owner._root.rect.center;
+            }
+
+            public void EndDrag(PointerEventData e)
+            {
+                var item = Owner._dragItem;
+                Owner._dragItem = null;
+                Owner._ghost.gameObject.SetActive(false);
+                if (item == null || !RectTransformUtility.RectangleContainsScreenPoint(Owner._cardsRt, e.position, e.pressEventCamera)) return;
+                Owner.EditorOpen(-1, item);
+            }
+
+            public void OnAddClick()
+            {
+                if (Item != null) Owner.EditorOpen(-1, Item);
+            }
         }
 
         private sealed class Card
         {
+            public StationQueueWindow Owner;
             public RectTransform Rt;
             public Image[] Rim;
             public Image Icon, Fill;
@@ -127,6 +160,74 @@ namespace Morgott.UI.StationQueue
             public Image[] ChipRim, StatusRim;
             public Image ChipIcon;
             public int Index;
+
+            public void OnClick() => Owner.EditorOpen(Index, null);
+
+            public bool BeginDrag(PointerEventData e)
+            {
+                Owner._dragCard = Index;
+                Rt.SetAsLastSibling();
+                return true;
+            }
+
+            public void MoveDrag(PointerEventData e)
+            {
+                if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(Owner._cardsRt, e.position, e.pressEventCamera, out var lp)) return;
+                var y = Owner._cardsRt.rect.yMax - lp.y - CardH / 2f;
+                Put(Rt, 0f, Mathf.Clamp(y, 0f, (CardRows - 1) * CardStep), CardW, CardH);
+            }
+
+            public void EndDrag(PointerEventData e)
+            {
+                var from = Owner._dragCard;
+                Owner._dragCard = -1;
+                var list = Owner.Entries();
+                if (RectTransformUtility.ScreenPointToLocalPointInRectangle(Owner._cardsRt, e.position, e.pressEventCamera, out var lp) &&
+                    StationQueueMath.MoveTo(list, from, StationQueueMath.SlotAt(Owner._cardsRt.rect.yMax - lp.y, CardStep, Owner._cardScroll)))
+                    Owner.Commit(list, Owner._state.Paused);
+                else Owner.RefreshAll();
+            }
+
+            public void OnHover(bool on)
+            {
+                if (on) Owner._hoverCard = Index;
+                else if (Owner._hoverCard == Index) Owner._hoverCard = -1;
+            }
+
+            public void OnUp() => Owner.Reorder(Index, -1);
+            public void OnDown() => Owner.Reorder(Index, 1);
+
+            public void OnRemove()
+            {
+                var list = Owner.Entries();
+                if (Index < list.Count) list.RemoveAt(Index);
+                Owner.Commit(list, Owner._state.Paused);
+            }
+        }
+
+        private sealed class IntClick
+        {
+            private readonly Action<int> _fn;
+            private readonly int _arg;
+            public IntClick(Action<int> fn, int arg) { _fn = fn; _arg = arg; }
+            public void Invoke() => _fn(_arg);
+        }
+
+        private sealed class BoolClick
+        {
+            private readonly Action<bool> _fn;
+            private readonly bool _arg;
+            public BoolClick(Action<bool> fn, bool arg) { _fn = fn; _arg = arg; }
+            public void Invoke() => _fn(_arg);
+        }
+
+        private sealed class ChipClick
+        {
+            private readonly Action<int> _set;
+            private readonly Func<int> _all;
+            private readonly int _v;
+            public ChipClick(Action<int> set, Func<int> all, int v) { _set = set; _all = all; _v = v; }
+            public void Invoke() => _set(StationQueueMath.Clamp(_v > 0 ? _v : (_all != null ? _all() : 1)));
         }
 
         private sealed class TabBar
@@ -171,11 +272,25 @@ namespace Morgott.UI.StationQueue
         private int _pScroll;
         private Action<string> _pPick;
 
+        private RectTransform _sCondBtn, _eCondBtn;
+        private int _singleEditInt;
+        private bool _singleEditBool;
+        private string _singleEditStr;
+
         private sealed class Stepper
         {
             public TMP_InputField Field;
             public Func<int> Get;
             public Action<int> Set;
+
+            public void StepMinus() => Set(StationQueueMath.Step(Get(), -1, Shift()));
+            public void StepPlus() => Set(StationQueueMath.Step(Get(), 1, Shift()));
+
+            public void OnEndEdit(string text)
+            {
+                if (int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var v)) Set(StationQueueMath.Clamp(v));
+                else SetField(this, Get());
+            }
         }
 
         // LMB drag (Begin false = not draggable now); RMB drags forward to the parent list's DragScroll.
@@ -280,7 +395,7 @@ namespace Morgott.UI.StationQueue
             if (!IsOpen) return;
             var p = Player.m_localPlayer;
             var why = !_station ? "station gone" : !p ? "no player" : p.IsDead() ? "player dead" :
-                !StationQueueMath.KeepsOpen(Surface(p, _station), p.m_maxInteractDistance) ? $"out of reach: surface {Surface(p, _station):0.0} m > {p.m_maxInteractDistance + StationQueueMath.ReachMargin:0.0} m" :
+                !StationQueueMath.KeepsOpen(Surface(p, _station), p.m_maxInteractDistance) ? $"out of reach: surface {Surface(p, _station).ToString("0.0", CultureInfo.InvariantCulture)} m > {(p.m_maxInteractDistance + StationQueueMath.ReachMargin).ToString("0.0", CultureInfo.InvariantCulture)} m" :
                 InventoryGui.IsVisible() ? "inventory open" : Minimap.IsOpen() ? "map open" : Menu.IsVisible() ? "menu open" : null;
             if (why != null)
             {
@@ -447,7 +562,7 @@ namespace Morgott.UI.StationQueue
         private string OutputName(string item) => IsFuel(item) ? W("fuel") : Name(OutputOf(item));
 
         private string NetworkPart() => _state.InNetwork
-            ? StationQueueMath.Format(W("network"), _state.Chests, StationQueueMath.Plural(_state.Chests, W("chest_one"), W("chest_few"), W("chest_many")))
+            ? StationQueueMath.Format(W("network"), _state.Chests.ToString(CultureInfo.InvariantCulture), StationQueueMath.Plural(_state.Chests, W("chest_one"), W("chest_few"), W("chest_many")))
             : W("no_network");
 
         // ---------------------------------------------------------------- refresh
@@ -899,7 +1014,7 @@ namespace Morgott.UI.StationQueue
             _headers.Clear();
             _serif.Clear();
             _root = NewRect(RootName, host);
-            Plugin.Log.LogInfo($"[StationQueue] window built under {Path(host)} (layer {host.gameObject.layer})");
+            Plugin.Log.LogInfo($"[StationQueue] window built under {Path(host)} (layer {host.gameObject.layer.ToString(CultureInfo.InvariantCulture)})");
             _root.SetAsLastSibling();
             Stretch(_root, 0f, 0f, 0f, 0f);
             _root.gameObject.SetActive(false);
@@ -916,7 +1031,7 @@ namespace Morgott.UI.StationQueue
         private RuneWindowHeader Header(RectTransform panel) => _headers[panel];
 
         // Centred panel: panel stack, header band (title, drag, close cap), key hints under it.
-        private RectTransform Panel(Transform parent, string name, float w, float h, string moveId, Action close, string hints)
+        private RectTransform Panel(Transform parent, string name, float w, float h, string moveId, UnityEngine.Events.UnityAction close, string hints)
         {
             var p = NewRect(name, parent);
             p.anchorMin = p.anchorMax = p.pivot = new Vector2(0.5f, 0.5f);
@@ -1043,7 +1158,7 @@ namespace Morgott.UI.StationQueue
 
         private InputRow NewInputRow(RectTransform parent, int i)
         {
-            var row = new InputRow { Rt = NewRect("Row" + i, parent) };
+            var row = new InputRow { Owner = this, Rt = NewRect("Row" + i, parent) };
             Put(row.Rt, 0f, i * 84f, 400f, 80f);
             var hit = row.Rt.gameObject.AddComponent<Image>(); // drag source (LMB onto the queue appends)
             hit.color = Color.clear;
@@ -1051,28 +1166,9 @@ namespace Morgott.UI.StationQueue
             DollCell.Mark(hit, "content", "station queue input row drag area");
             var drag = row.Rt.gameObject.AddComponent<DragHandle>();
             drag.RightScroll = _rowsDrag;
-            drag.Begin = e =>
-            {
-                if (row.Item == null) return false;
-                _dragItem = row.Item;
-                _ghost.sprite = row.Icon.sprite;
-                _ghost.transform.SetAsLastSibling();
-                _ghost.gameObject.SetActive(_ghost.sprite);
-                return true;
-            };
-            drag.Move = e =>
-            {
-                if (RectTransformUtility.ScreenPointToLocalPointInRectangle(_root, e.position, e.pressEventCamera, out var lp))
-                    _ghost.rectTransform.anchoredPosition = lp - _root.rect.center;
-            };
-            drag.End = e =>
-            {
-                var item = _dragItem;
-                _dragItem = null;
-                _ghost.gameObject.SetActive(false);
-                if (item == null || !RectTransformUtility.RectangleContainsScreenPoint(_cardsRt, e.position, e.pressEventCamera)) return;
-                EditorOpen(-1, item);
-            };
+            drag.Begin = row.BeginDrag;
+            drag.Move = row.MoveDrag;
+            drag.End = row.EndDrag;
             row.Group = row.Rt.gameObject.AddComponent<CanvasGroup>();
             row.Icon = SlotIcon(row.Rt, 0f, 6f, 68f, out row.Badge);
             row.Name = Txt(row.Rt, "Name", "text.body", TextAlignmentOptions.Left, 21f);
@@ -1080,10 +1176,7 @@ namespace Morgott.UI.StationQueue
             Put(row.Name, 84f, 0f, 200f, 80f);
             row.Count = Txt(row.Rt, "Count", "text.body", TextAlignmentOptions.Right, 21f);
             Put(row.Count, 284f, 0f, 60f, 80f);
-            var plus = Btn(row.Rt, "Add", "button.icon", out var pl, () =>
-            {
-                if (row.Item != null) EditorOpen(-1, row.Item);
-            });
+            var plus = Btn(row.Rt, "Add", "button.icon", out var pl, row.OnAddClick);
             pl.text = "+";
             pl.fontSize = 26f;
             Put(plus, 354f, 20f, 40f, 40f);
@@ -1093,8 +1186,8 @@ namespace Morgott.UI.StationQueue
 
         private Card NewCard(RectTransform parent, int i)
         {
-            var card = new Card();
-            var plate = Btn(parent, "Card" + i, "field", out var unused, () => EditorOpen(card.Index, null));
+            var card = new Card { Owner = this };
+            var plate = Btn(parent, "Card" + i, "field", out var unused, card.OnClick);
             Destroy(unused.gameObject);
             card.Rt = (RectTransform)plate.transform;
             Put(card.Rt, 0f, i * CardStep, CardW, CardH);
@@ -1106,33 +1199,10 @@ namespace Morgott.UI.StationQueue
             for (var d = 0; d < 6; d++) Put(Rule(grip.transform, "Dot" + d, Muted), 7f + d % 2 * 8f, CardH / 2f - 11f + d / 2 * 8f, 4f, 4f);
             var gd = grip.gameObject.AddComponent<DragHandle>();
             gd.RightScroll = _cardsDrag;
-            gd.Begin = e =>
-            {
-                _dragCard = card.Index;
-                card.Rt.SetAsLastSibling();
-                return true;
-            };
-            gd.Move = e =>
-            {
-                if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(_cardsRt, e.position, e.pressEventCamera, out var lp)) return;
-                var y = _cardsRt.rect.yMax - lp.y - CardH / 2f;
-                Put(card.Rt, 0f, Mathf.Clamp(y, 0f, (CardRows - 1) * CardStep), CardW, CardH);
-            };
-            gd.End = e =>
-            {
-                var from = _dragCard;
-                _dragCard = -1;
-                var list = Entries();
-                if (RectTransformUtility.ScreenPointToLocalPointInRectangle(_cardsRt, e.position, e.pressEventCamera, out var lp) &&
-                    StationQueueMath.MoveTo(list, from, StationQueueMath.SlotAt(_cardsRt.rect.yMax - lp.y, CardStep, _cardScroll)))
-                    Commit(list, _state.Paused);
-                else RefreshAll();
-            };
-            card.Rt.gameObject.AddComponent<Hover>().Set = on =>
-            {
-                if (on) _hoverCard = card.Index;
-                else if (_hoverCard == card.Index) _hoverCard = -1;
-            };
+            gd.Begin = card.BeginDrag;
+            gd.Move = card.MoveDrag;
+            gd.End = card.EndDrag;
+            card.Rt.gameObject.AddComponent<Hover>().Set = card.OnHover;
             card.Num = Txt(card.Rt, "Num", "text.body", TextAlignmentOptions.Center, 22f);
             Put(card.Num, 28f, 0f, 28f, CardH);
             card.Icon = SlotIcon(card.Rt, 60f, (CardH - 58f) / 2f, 58f, out var badge);
@@ -1167,18 +1237,13 @@ namespace Morgott.UI.StationQueue
             card.Status.fontSizeMin = 12f;
             card.Status.fontSizeMax = 15f;
             Stretch(card.Status.rectTransform, 4f, 0f, 4f, 0f);
-            Arrow(card, "Up", "▲", 474f, () => Reorder(card.Index, -1));
-            Arrow(card, "Down", "▼", 516f, () => Reorder(card.Index, 1));
-            Arrow(card, "Remove", "×", 558f, () =>
-            {
-                var list = Entries();
-                if (card.Index < list.Count) list.RemoveAt(card.Index);
-                Commit(list, _state.Paused);
-            });
+            Arrow(card, "Up", "▲", 474f, card.OnUp);
+            Arrow(card, "Down", "▼", 516f, card.OnDown);
+            Arrow(card, "Remove", "×", 558f, card.OnRemove);
             return card;
         }
 
-        private void Arrow(Card card, string name, string glyph, float x, Action click)
+        private void Arrow(Card card, string name, string glyph, float x, UnityEngine.Events.UnityAction click)
         {
             var b = Btn(card.Rt, name, "button.icon", out var l, click);
             l.text = glyph;
@@ -1200,8 +1265,7 @@ namespace Morgott.UI.StationQueue
             string[] keys = { "tab_make", "tab_keep", "tab_until", "tab_infinite" };
             for (var i = 0; i < StationQueueMath.TabCount; i++)
             {
-                var tab = i;
-                bar.Buttons[i] = Btn(parent, "Mode" + i, "field", out bar.Labels[i], () => onSelect(tab));
+                bar.Buttons[i] = Btn(parent, "Mode" + i, "field", out bar.Labels[i], new IntClick(onSelect, i).Invoke);
                 bar.Labels[i].text = W(keys[i]);
                 bar.Labels[i].fontSize = font;
                 bar.Labels[i].enableAutoSizing = true;
@@ -1226,12 +1290,12 @@ namespace Morgott.UI.StationQueue
         private RepeatToggle BuildRepeatToggle(Transform parent, float x, float y, float w, float h, Action<bool> onSelect)
         {
             var t = new RepeatToggle();
-            var rep = Btn(parent, "Repeat", "field", out t.RepeatLabel, () => onSelect(true));
+            var rep = Btn(parent, "Repeat", "field", out t.RepeatLabel, new BoolClick(onSelect, true).Invoke);
             t.RepeatLabel.text = W("repeat");
             t.RepeatLabel.fontSize = 17f;
             t.RepeatRim = Rim(rep.transform);
             Put(rep, x, y, w, h);
-            var one = Btn(parent, "OneShot", "field", out t.OneShotLabel, () => onSelect(false));
+            var one = Btn(parent, "OneShot", "field", out t.OneShotLabel, new BoolClick(onSelect, false).Invoke);
             t.OneShotLabel.text = W("oneshot");
             t.OneShotLabel.fontSize = 17f;
             t.OneShotRim = Rim(one.transform);
@@ -1246,6 +1310,21 @@ namespace Morgott.UI.StationQueue
             t.RepeatLabel.color = repeat ? Gold : Sub;
             t.OneShotLabel.color = !repeat ? Gold : Sub;
         }
+
+        private void ApplyTarget(StationQueueEntry e) => e.Target = _singleEditInt;
+        private void ApplyKeep(StationQueueEntry e) => e.Keep = _singleEditBool;
+        private void ApplyThreshold(StationQueueEntry e) => e.Threshold = _singleEditInt;
+        private void ApplyCondition(StationQueueEntry e) => e.Condition = _singleEditStr;
+        private static void ApplyCompareLess(StationQueueEntry e) => e.Compare = StationQueueCompare.Less;
+        private static void ApplyCompareAtLeast(StationQueueEntry e) => e.Compare = StationQueueCompare.AtLeast;
+
+        private void SetSingleTarget(int v) { _singleEditInt = v; SingleEdit(ApplyTarget); }
+        private void SetSingleKeep(bool keep) { _singleEditBool = keep; SingleEdit(ApplyKeep); }
+        private void SetSingleThreshold(int v) { _singleEditInt = v; SingleEdit(ApplyThreshold); }
+        private void SetSingleCondition(string id) { _singleEditStr = id; SingleEdit(ApplyCondition); }
+        private void OnSingleCondClick() => OpenPicker(_sCondBtn, SetSingleCondition);
+        private void OnSingleLess() => SingleEdit(ApplyCompareLess);
+        private void OnSingleAtLeast() => SingleEdit(ApplyCompareAtLeast);
 
         private void BuildSingle()
         {
@@ -1280,16 +1359,16 @@ namespace Morgott.UI.StationQueue
             _sMakeBox = NewRect("Make", box.transform);
             Stretch(_sMakeBox, 0f, 0f, 0f, 0f);
             Label(_sMakeBox, W("count_label"), 20f, 12f);
-            _sCount = NewStepper(_sMakeBox, 20f, 48f, () => CurrentSingle()?.Target ?? 0, v => SingleEdit(e => e.Target = v));
-            Chips(_sMakeBox, 330f, 48f, MakeChips, v => SingleEdit(e => e.Target = v), () => _state.Inputs.Count > 0 ? _state.Inputs[0].Network : 0);
+            _sCount = NewStepper(_sMakeBox, 20f, 48f, () => CurrentSingle()?.Target ?? 0, SetSingleTarget);
+            Chips(_sMakeBox, 330f, 48f, MakeChips, SetSingleTarget, () => _state.Inputs.Count > 0 ? _state.Inputs[0].Network : 0);
             _sFed = Txt(_sMakeBox, "Fed", "text.body", TextAlignmentOptions.Left, 20f);
             Put(_sFed, 20f, 110f, 624f, 30f);
 
             _sKeepBox = NewRect("Keep", box.transform);
             Stretch(_sKeepBox, 0f, 0f, 0f, 0f);
             _sKeepLabel = Label(_sKeepBox, W("keep_net_label"), 20f, 12f);
-            _sKeepTarget = NewStepper(_sKeepBox, 20f, 48f, () => CurrentSingle()?.Target ?? 0, v => SingleEdit(e => e.Target = v));
-            Chips(_sKeepBox, 330f, 48f, KeepChips, v => SingleEdit(e => e.Target = v));
+            _sKeepTarget = NewStepper(_sKeepBox, 20f, 48f, () => CurrentSingle()?.Target ?? 0, SetSingleTarget);
+            Chips(_sKeepBox, 330f, 48f, KeepChips, SetSingleTarget);
             _sKeepNow = Txt(_sKeepBox, "KeepNow", "text.body", TextAlignmentOptions.Left, 20f);
             Put(_sKeepNow, 20f, 104f, 624f, 28f);
             _sKeepStock = Txt(_sKeepBox, "KeepStock", "text.body", TextAlignmentOptions.Left, 18f);
@@ -1306,26 +1385,27 @@ namespace Morgott.UI.StationQueue
             _sUntilBox = NewRect("Until", box.transform);
             Stretch(_sUntilBox, 0f, 0f, 0f, 0f);
             Label(_sUntilBox, W("until_net"), 20f, 10f);
-            _sRepeat = BuildRepeatToggle(_sUntilBox, 376f, 8f, 130f, 30f, keep => SingleEdit(e => e.Keep = keep));
+            _sRepeat = BuildRepeatToggle(_sUntilBox, 376f, 8f, 130f, 30f, SetSingleKeep);
             var condBtn = Btn(_sUntilBox, "Condition", "slot.cell", out var cl, null);
             Destroy(cl.gameObject);
             Put(condBtn, 20f, 46f, 56f, 56f);
             _sCond = IconIn(condBtn.transform, 6f);
-            condBtn.onClick.AddListener(() => OpenPicker((RectTransform)condBtn.transform, id => SingleEdit(e => e.Condition = id)));
+            _sCondBtn = (RectTransform)condBtn.transform;
+            condBtn.onClick.AddListener(OnSingleCondClick);
             _sCondName = Txt(_sUntilBox, "CondName", "text.body", TextAlignmentOptions.Left, 19f);
             _sCondName.textWrappingMode = TextWrappingModes.Normal;
             Put(_sCondName, 84f, 46f, 150f, 56f);
-            var sLess = Btn(_sUntilBox, "Less", "button.icon", out var sll, () => SingleEdit(e => e.Compare = StationQueueCompare.Less));
+            var sLess = Btn(_sUntilBox, "Less", "button.icon", out var sll, OnSingleLess);
             sll.text = "<";
             sll.fontSize = 22f;
             _sLessRim = Rim(sLess.transform);
             Put(sLess, 242f, 54f, 38f, 40f);
-            var sAtLeast = Btn(_sUntilBox, "AtLeast", "button.icon", out var sal, () => SingleEdit(e => e.Compare = StationQueueCompare.AtLeast));
+            var sAtLeast = Btn(_sUntilBox, "AtLeast", "button.icon", out var sal, OnSingleAtLeast);
             sal.text = "≥";
             sal.fontSize = 22f;
             _sAtLeastRim = Rim(sAtLeast.transform);
             Put(sAtLeast, 284f, 54f, 38f, 40f);
-            _sThreshold = NewStepper(_sUntilBox, 332f, 54f, () => CurrentSingle()?.Threshold ?? 0, v => SingleEdit(e => e.Threshold = v));
+            _sThreshold = NewStepper(_sUntilBox, 332f, 54f, () => CurrentSingle()?.Threshold ?? 0, SetSingleThreshold);
             var inNet = Txt(_sUntilBox, "InNet", "text.body", TextAlignmentOptions.Left, 19f);
             inNet.text = W("in_network");
             Put(inNet, 532f, 54f, 118f, 40f);
@@ -1402,8 +1482,8 @@ namespace Morgott.UI.StationQueue
             for (var i = 0; i < values.Length; i++)
             {
                 var v = values[i];
-                var b = PlainBtn(parent, "Chip" + i, out var l, () => set(StationQueueMath.Clamp(v > 0 ? v : (all != null ? all() : 1))), Light);
-                l.text = v > 0 ? v.ToString(System.Globalization.CultureInfo.InvariantCulture) : W("all");
+                var b = PlainBtn(parent, "Chip" + i, out var l, new ChipClick(set, all, v).Invoke, Light);
+                l.text = v > 0 ? v.ToString(CultureInfo.InvariantCulture) : W("all");
                 l.fontSize = 20f;
                 Put(b, x + i * 70f, y, 62f, 40f);
             }
@@ -1412,7 +1492,7 @@ namespace Morgott.UI.StationQueue
         private Stepper NewStepper(Transform parent, float x, float y, Func<int> get, Action<int> set)
         {
             var s = new Stepper { Get = get, Set = set };
-            var minus = Btn(parent, "Minus", "craft.amount.step", out var ml, () => s.Set(StationQueueMath.Step(s.Get(), -1, Shift())));
+            var minus = Btn(parent, "Minus", "craft.amount.step", out var ml, s.StepMinus);
             ml.text = "−";
             ml.fontSize = 22f;
             Put(minus, x, y, 40f, 40f);
@@ -1420,13 +1500,9 @@ namespace Morgott.UI.StationQueue
             s.Field.contentType = TMP_InputField.ContentType.IntegerNumber;
             s.Field.characterLimit = 5;
             s.Field.textComponent.alignment = TextAlignmentOptions.Center;
-            s.Field.onEndEdit.AddListener(text =>
-            {
-                if (int.TryParse(text, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var v)) s.Set(StationQueueMath.Clamp(v));
-                else SetField(s, s.Get());
-            });
+            s.Field.onEndEdit.AddListener(s.OnEndEdit);
             Put(s.Field, x + 46f, y, 100f, 40f);
-            var plus = Btn(parent, "Plus", "craft.amount.step", out var pl, () => s.Set(StationQueueMath.Step(s.Get(), 1, Shift())));
+            var plus = Btn(parent, "Plus", "craft.amount.step", out var pl, s.StepPlus);
             pl.text = "+";
             pl.fontSize = 22f;
             Put(plus, x + 152f, y, 40f, 40f);
@@ -1511,7 +1587,8 @@ namespace Morgott.UI.StationQueue
             var arrow = Txt(drop.transform, "Arrow", "text.body", TextAlignmentOptions.Center, 16f);
             arrow.text = "▼";
             Put(arrow, 180f, 0f, 30f, 42f);
-            drop.onClick.AddListener(() => OpenPicker((RectTransform)drop.transform, id => { _draft.Condition = id; RefreshEditor(); }));
+            _eCondBtn = (RectTransform)drop.transform;
+            drop.onClick.AddListener(OnEditorCondClick);
             var less = Btn(_eUntilBox, "Less", "button.icon", out var ll, () => { _draft.Compare = StationQueueCompare.Less; RefreshEditor(); });
             ll.text = "<";
             ll.fontSize = 22f;
@@ -1555,8 +1632,11 @@ namespace Morgott.UI.StationQueue
             Put(save, 420f, 462f, 160f, 44f);
         }
 
+        private void OnEditorCondClick() => OpenPicker(_eCondBtn, SetEditorCondition);
+        private void SetEditorCondition(string id) { _draft.Condition = id; RefreshEditor(); }
+
         // Plain rimmed plate (mockups: footer / dialog buttons are flat rectangles with a coloured rim, no knotwork).
-        private static Button PlainBtn(Transform parent, string name, out TMP_Text label, Action click, Color rim)
+        private static Button PlainBtn(Transform parent, string name, out TMP_Text label, UnityEngine.Events.UnityAction click, Color rim)
         {
             var b = Btn(parent, name, "field", out label, click);
             SetRim(Rim(b.transform), rim);
@@ -1583,8 +1663,7 @@ namespace Morgott.UI.StationQueue
             _pSearch.onValueChanged.AddListener(_ => { _pScroll = 0; PickerFill(); });
             for (var i = 0; i < PickerRows; i++)
             {
-                var n = i;
-                var b = Btn(_picker, "Row" + i, "dropdown.item", out var label, () => PickerChoose(n));
+                var b = Btn(_picker, "Row" + i, "dropdown.item", out var label, new IntClick(PickerChoose, i).Invoke);
                 label.alignment = TextAlignmentOptions.Left;
                 Stretch(label.rectTransform, 44f, 0f, 6f, 0f);
                 var icon = IconIn(b.transform, 0f);
@@ -1610,8 +1689,8 @@ namespace Morgott.UI.StationQueue
                 if (i.Item) set.Add(i.Item.name);
                 if (i.Output) set.Add(i.Output.name);
                 if (i.Ingredients != null)
-                    foreach (var ing in i.Ingredients)
-                        if (ing.Item) set.Add(ing.Item.name);
+                    for (var j = 0; j < i.Ingredients.Count; j++)
+                        if (i.Ingredients[j].Item) set.Add(i.Ingredients[j].Item.name);
             }
             if (_state.Fuel) set.Add(_state.Fuel.name);
             _pAll.Clear();
@@ -1773,7 +1852,7 @@ namespace Morgott.UI.StationQueue
             return t;
         }
 
-        private static Button Btn(Transform parent, string name, string role, out TMP_Text label, Action click)
+        private static Button Btn(Transform parent, string name, string role, out TMP_Text label, UnityEngine.Events.UnityAction click)
         {
             var image = InfoArt.OwnImage(parent, name, role, "station queue button " + name);
             image.preserveAspect = false;
@@ -1781,7 +1860,7 @@ namespace Morgott.UI.StationQueue
             var b = image.gameObject.AddComponent<Button>();
             b.targetGraphic = image;
             b.navigation = new Navigation { mode = Navigation.Mode.None };
-            if (click != null) b.onClick.AddListener(() => click());
+            if (click != null) b.onClick.AddListener(click);
             if (image.GetComponent<SkinMark>() is SkinMark m) m.Outcome = Restyler.Apply(image, m, ThemeTokens.Role(role)) ? Outcome.Styled : Outcome.Degraded;
             label = Txt(image.transform, "Label", "text.body", TextAlignmentOptions.Center, 18f);
             Stretch(label.rectTransform, 4f, 0f, 4f, 0f);

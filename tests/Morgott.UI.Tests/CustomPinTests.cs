@@ -135,7 +135,7 @@ namespace Morgott.UI.Tests
                 MapFilterMath.Portal, MapFilterMath.Pet,
             })
             {
-                Assert.False(CustomPinMath.IsEditablePin(true, 0L, t), t.ToString());
+                Assert.False(CustomPinMath.IsEditablePin(true, 0L, t), $"PinType {(int)t}");
             }
         }
 
@@ -323,17 +323,24 @@ namespace Morgott.UI.Tests
         {
             using var s = typeof(CustomPinTests).Assembly.GetManifestResourceStream($"Morgott.UI.Translations.{language}.json");
             var words = JsonSerializer.Deserialize<Dictionary<string, string>>(s!)!;
-            var keys = CustomPinMath.IconIds.Select(id => CustomPinMath.IconNameToken(id).TrimStart('$'))
-                .Concat(new[]
-                {
-                    "ui_map_sidebar_open", "ui_map_quests", "ui_map_quests_active", "ui_map_quests_bosses",
-                    "ui_map_quests_empty", "ui_map_quests_hint", "ui_map_quest_bounty", "ui_map_quest_hildir",
-                    "ui_map_quest_treasure", "ui_map_quest_boss", "ui_portal_hint_browse", "ui_portal_empty",
-                    "ui_map_custom_pins", "ui_mpin_title_new", "ui_mpin_title_edit", "ui_mpin_name_hint",
-                    "ui_mpin_place", "ui_mpin_delete", "ui_mpin_legend_count", "ui_mpin_legend_count_hidden",
-                });
-            foreach (var key in keys)
+            var extraKeys = new[]
+            {
+                "ui_map_sidebar_open", "ui_map_quests", "ui_map_quests_active", "ui_map_quests_bosses",
+                "ui_map_quests_empty", "ui_map_quests_hint", "ui_map_quest_bounty", "ui_map_quest_hildir",
+                "ui_map_quest_treasure", "ui_map_quest_boss", "ui_portal_hint_browse", "ui_portal_empty",
+                "ui_map_custom_pins", "ui_mpin_title_new", "ui_mpin_title_edit", "ui_mpin_name_hint",
+                "ui_mpin_place", "ui_mpin_delete", "ui_mpin_legend_count", "ui_mpin_legend_count_hidden",
+            };
+            for (var i = 0; i < CustomPinMath.IconIds.Length; i++)
+            {
+                var key = CustomPinMath.IconNameToken(CustomPinMath.IconIds[i]).TrimStart('$');
                 Assert.True(words.TryGetValue(key, out var v) && !string.IsNullOrWhiteSpace(v), $"{language} misses {key}");
+            }
+            for (var i = 0; i < extraKeys.Length; i++)
+            {
+                var key = extraKeys[i];
+                Assert.True(words.TryGetValue(key, out var v) && !string.IsNullOrWhiteSpace(v), $"{language} misses {key}");
+            }
         }
     }
 }

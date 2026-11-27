@@ -41,8 +41,8 @@ func loadStatsTokens() {
 			Value string `json:"value"`
 		} `json:"colors"`
 		Floats []struct {
-			Token string      `json:"token"`
-			Value interface{} `json:"value"`
+			Token string `json:"token"`
+			Value any    `json:"value"`
 		} `json:"floats"`
 	}
 	must(json.Unmarshal(b, &t))
@@ -403,7 +403,7 @@ func cmdCompareStats() {
 		k := "size.stats.piece." + p.name
 		c.spr(p.sprite, st(k+".x", p.x), st(k+".y", p.y), st(k+".w", p.w), st(k+".h", p.h))
 	}
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		statsCard(c, i, sample[i], mock)
 	}
 	c.textBox("Характеристики", serif, st("size.stats.font.title", 52), 30, colHead, st("size.stats.title.x", 760), st("size.stats.title.y", 34), st("size.stats.title.w", 522), st("size.stats.title.h", 62), 1, st("size.stats.title.spacing", 6), true)
@@ -598,8 +598,8 @@ func statsRow(c *canvas, r stRow, x, y, w, h float64, mock *image.NRGBA) {
 		if scol == "" {
 			scol = colSub
 		}
-		sy, sh := y+lineH-6, 0.0
-		sh = y + h - sy
+		sy := y + lineH - 6
+		sh := y + h - sy
 		if r.kind == "tallsub" {
 			sy, sh = y+h*0.56, h*0.32
 		}

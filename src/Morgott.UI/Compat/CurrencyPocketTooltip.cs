@@ -94,8 +94,10 @@ namespace Morgott.UI.Compat
         private static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
         {
             var replaced = 0;
-            foreach (var instruction in instructions)
+            var list = instructions as IList<CodeInstruction> ?? new List<CodeInstruction>(instructions);
+            for (var i = 0; i < list.Count; i++)
             {
+                var instruction = list[i];
                 if (instruction.opcode == OpCodes.Ldstr && instruction.operand is string text && Tokens.TryGetValue(text, out var token))
                 {
                     instruction.operand = token;
@@ -104,7 +106,7 @@ namespace Morgott.UI.Compat
                 yield return instruction;
             }
             if (replaced != Tokens.Count)
-                Plugin.Log.LogWarning($"[Compat] CurrencyPocket tooltip: replaced {replaced} of {Tokens.Count} strings; the mod's text changed.");
+                Plugin.Log.LogWarning($"[Compat] CurrencyPocket tooltip: replaced {replaced.ToString()} of {Tokens.Count.ToString()} strings; the mod's text changed.");
         }
     }
 }

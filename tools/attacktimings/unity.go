@@ -234,7 +234,7 @@ func parseTree(raw, strs []byte, count int) *typeNode {
 	}
 	var root *typeNode
 	var parents []*typeNode
-	for i := 0; i < count; i++ {
+	for i := range count {
 		e := raw[i*32:]
 		level := int(e[2])
 		n := &typeNode{
@@ -263,19 +263,31 @@ func readObject(f *serializedFile, o serializedObject) (v map[string]any, err er
 		}
 	}()
 	r := &reader{b: f.data, pos: int(o.start), order: binary.LittleEndian}
-	return r.value(o.tree).(map[string]any), nil
+	m, ok := r.value(o.tree).(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("object %d is not a map", o.pathID)
+	}
+	return m, nil
 }
 
 func (r *reader) primitive(n *typeNode) any {
 	switch n.typ {
 	case "SInt8":
-		return int64(int8(r.u8()))
+		b := int64(r.u8())
+		if b >= 0x80 {
+			b -= 0x100
+		}
+		return b
 	case "UInt8", "char":
 		return int64(r.u8())
 	case "bool":
 		return r.u8() != 0
 	case "short", "SInt16":
-		return int64(int16(r.u16()))
+		v := int64(r.u16())
+		if v >= 0x8000 {
+			v -= 0x10000
+		}
+		return v
 	case "unsigned short", "UInt16":
 		return int64(r.u16())
 	case "int", "SInt32":
@@ -285,7 +297,7 @@ func (r *reader) primitive(n *typeNode) any {
 	case "float":
 		return float64(math.Float32frombits(r.u32()))
 	case "double":
-		return math.Float64frombits(uint64(r.i64()))
+		return math.Float64frombits(r.u64())
 	}
 	return r.i64()
 }
@@ -346,7 +358,7 @@ func (r *reader) valueArray(n *typeNode, size int) any {
 		}
 		v = out
 	case n.typ == "TypelessData":
-		for i := 0; i < size; i++ {
+		for range size {
 			r.bytes(int(r.i32()))
 		}
 	case n.typ == "pair":
@@ -430,8 +442,29 @@ func (r *reader) bytes(n int) []byte {
 func (r *reader) u8() byte    { return r.bytes(1)[0] }
 func (r *reader) u16() uint16 { return r.order.Uint16(r.bytes(2)) }
 func (r *reader) u32() uint32 { return r.order.Uint32(r.bytes(4)) }
-func (r *reader) i32() int32  { return int32(r.u32()) }
-func (r *reader) i64() int64  { return int64(r.order.Uint64(r.bytes(8))) }
+func (r *reader) u64() uint64 { return r.order.Uint64(r.bytes(8)) }
+func (r *reader) i32() int32 {
+	u := r.u32()
+	if u <= math.MaxInt32 {
+		return int32(u)
+	}
+	v := ^u
+	if v <= math.MaxInt32 {
+		return -int32(v) - 1
+	}
+	return 0
+}
+func (r *reader) i64() int64 {
+	u := r.u64()
+	if u <= math.MaxInt64 {
+		return int64(u)
+	}
+	v := ^u
+	if v <= math.MaxInt64 {
+		return -int64(v) - 1
+	}
+	return 0
+}
 func (r *reader) align(n int) { r.pos = (r.pos + n - 1) / n * n }
 func (r *reader) cstring() string {
 	end := bytes.IndexByte(r.b[r.pos:], 0)

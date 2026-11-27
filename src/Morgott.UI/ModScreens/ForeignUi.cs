@@ -71,6 +71,7 @@ namespace Morgott.UI.ModScreens
         public static bool Active => _on;
         public static int UnitCount => Units.Count;
         public static IEnumerable<KeyValuePair<Transform, string>> AllUnits => Units;
+        internal static Dictionary<Transform, string> UnitMap => Units;
 
         // Plugin.Awake: on when the generic family or any precise mod family is RuneSkin's.
         public static void Init(GameObject host, Harmony harmony, string optOut)
@@ -82,7 +83,7 @@ namespace Morgott.UI.ModScreens
             _instance = host.AddComponent<ForeignUi>();
             var tmpEnable = AccessTools.DeclaredMethod(typeof(TextMeshProUGUI), "OnEnable");
             if (tmpEnable != null) harmony.Patch(tmpEnable, postfix: new HarmonyMethod(typeof(ForeignUiPatches), nameof(ForeignUiPatches.Enable_Postfix)));
-            Plugin.Log.LogInfo($"[Morgott.UI] fallback restyler on (generic={_generic}, opt-out [{string.Join(",", _optOut)}])");
+            Plugin.Log.LogInfo($"[Morgott.UI] fallback restyler on (generic={_generic.ToString()}, opt-out [{string.Join(",", _optOut)}])");
         }
 
         // A destroyed graphic (TextCacheRelease) leaves the per-graphic tables at once; their prune stays as backstop.
@@ -226,7 +227,7 @@ namespace Morgott.UI.ModScreens
             Mark(DamageText.instance);
             Mark(Settings.instance);
             Mark(KeyHints.instance);
-            foreach (var root in ScreenRegistry.All)
+            foreach (var root in ScreenRegistry.AllRoots)
                 if (root && !Units.ContainsKey(root)) Mark(root);
         }
 
@@ -318,6 +319,13 @@ namespace Morgott.UI.ModScreens
 
         // ---------------------------------------------------------------- unit restyle
 
+        private sealed class RolesCallback
+        {
+            private readonly string _family;
+            public RolesCallback(string family) => _family = family;
+            public void Apply(ScreenContext ctx, Transform root) => Roles(ctx, root, _family);
+        }
+
         private static void Restyle(Transform unit, string family)
         {
             if (Units.ContainsKey(unit))
@@ -340,7 +348,7 @@ namespace Morgott.UI.ModScreens
                 // content area and gets no panel stack (corner caps, gems) and so no move band of its own.
                 PreWorldKit.Panels(unit, "size.panel.pad", ForeignRoles.OwnerHidden);
             }
-            GameScreenKit.Form(unit, id, family, (ctx, r) => Roles(ctx, r, family), panels: false);
+            GameScreenKit.Form(unit, id, family, new RolesCallback(family).Apply, panels: false);
             ForeignRoles.After(unit, family);
             if (!hud) ForeignRoles.Movable(unit, id);
             SkinDiagnostics_Note(id, unit);

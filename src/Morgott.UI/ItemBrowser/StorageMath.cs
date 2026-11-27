@@ -34,7 +34,7 @@ namespace Morgott.UI.ItemBrowser
 
         /// <summary>Take bar chest count, "в 5 сундуках" / "in 5 chests"; <paramref name="localize"/> resolves $tokens.</summary>
         public static string InChests(int n, string language, Func<string, string> localize) =>
-            string.Format(localize("$ib_store_in"), n, localize("$ib_store_in_chest_" + Form(n, language)));
+            string.Format(localize("$ib_store_in"), n.ToString(System.Globalization.CultureInfo.InvariantCulture), localize("$ib_store_in_chest_" + Form(n, language)));
 
         /// <summary>Word form of <paramref name="n"/> in the game language: Russian rules for Russian, else English ones
         /// (1 = _1, anything else = _5; languages without own words fall back to the English ones).</summary>
@@ -51,9 +51,18 @@ namespace Morgott.UI.ItemBrowser
         {
             if (a.Count != b.Count) return false;
             var map = new Dictionary<object, long>(a.Count);
-            foreach (var e in a) map[key(e) ?? Nil] = sig(e);
-            foreach (var e in b)
+            var listA = a as IList<T> ?? new List<T>(a);
+            for (var i = 0; i < listA.Count; i++)
+            {
+                var e = listA[i];
+                map[key(e) ?? Nil] = sig(e);
+            }
+            var listB = b as IList<T> ?? new List<T>(b);
+            for (var i = 0; i < listB.Count; i++)
+            {
+                var e = listB[i];
                 if (!map.TryGetValue(key(e) ?? Nil, out var v) || v != sig(e)) return false;
+            }
             return true;
         }
 
@@ -69,14 +78,24 @@ namespace Morgott.UI.ItemBrowser
         {
             maxStack = Math.Max(1, maxStack);
             var room = freeSlots * maxStack;
-            foreach (var h in held)
+            var list = held as IList<(string Name, int Quality, int WorldLevel, int Stack)> ?? new List<(string Name, int Quality, int WorldLevel, int Stack)>(held);
+            for (var i = 0; i < list.Count; i++)
+            {
+                var h = list[i];
                 if (h.Name == name && h.Quality == quality && h.WorldLevel == worldLevel && h.Stack < maxStack) room += maxStack - h.Stack;
+            }
             return room;
         }
 
         /// <summary>Entry of <paramref name="stock"/> with identity <paramref name="key"/> (Equals), null when gone.</summary>
-        public static T Pick<T>(IEnumerable<T> stock, object key, Func<T, object> keyOf) where T : class =>
-            key == null ? null : stock.FirstOrDefault(e => Equals(keyOf(e), key));
+        public static T Pick<T>(IEnumerable<T> stock, object key, Func<T, object> keyOf) where T : class
+        {
+            if (key == null) return null;
+            var list = stock as IList<T> ?? new List<T>(stock);
+            for (var i = 0; i < list.Count; i++)
+                if (Equals(keyOf(list[i]), key)) return list[i];
+            return null;
+        }
 
         /// <summary>A single item (Count 1): the take bar shows only "Take", no stack / amount / all.</summary>
         public static bool IsSingleItem(int count) => count <= 1;

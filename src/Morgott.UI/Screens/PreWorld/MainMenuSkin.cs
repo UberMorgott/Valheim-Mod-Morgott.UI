@@ -31,13 +31,70 @@ namespace Morgott.UI.PreWorld
     {
         public const string ScreenId = "MainMenu";
 
+        private sealed class PanelSkipFilter
+        {
+            private readonly Transform _menuList, _root;
+
+            public PanelSkipFilter(Transform menuList, Transform root)
+            {
+                _menuList = menuList;
+                _root = root;
+            }
+
+            public bool ShouldSkip(Image img) => (_menuList && img.transform.IsChildOf(_menuList)) || VanillaCorner(img.transform, _root);
+        }
+
+        private sealed class MenuContextFactory
+        {
+            private readonly FejdStartup _fejd;
+            private readonly Transform _template;
+            private readonly string _id;
+
+            public MenuContextFactory(FejdStartup fejd) => _fejd = fejd;
+
+            public MenuContextFactory(FejdStartup fejd, Transform template, string id)
+            {
+                _fejd = fejd;
+                _template = template;
+                _id = id;
+            }
+
+            public ScreenContext Create() => _id != null ? Context(_fejd, _template, _id) : Context(_fejd);
+        }
+
+        private sealed class TabHandlerSource
+        {
+            private readonly TabHandler _handler;
+            public TabHandlerSource(TabHandler handler) => _handler = handler;
+
+            public void Fill(List<RectTransform> list)
+            {
+                if (!_handler) return;
+                foreach (var tab in _handler.m_tabs)
+                    if (tab != null && tab.m_button) list.Add((RectTransform)tab.m_button.transform);
+            }
+        }
+
+        private sealed class LargestPanelTarget
+        {
+            private readonly Transform _scope, _exclude;
+
+            public LargestPanelTarget(Transform scope, Transform exclude)
+            {
+                _scope = scope;
+                _exclude = exclude;
+            }
+
+            public RectTransform[] Get() => new[] { LargestPanel(_scope, _exclude) };
+        }
+
         public static void Attach(FejdStartup fejd)
         {
             var root = fejd.transform;
             Plates(fejd);
             Layout(fejd);
             var menuList = fejd.m_menuList ? fejd.m_menuList.transform : null;
-            PreWorldKit.Panels(root, "size.panel.pad", img => (menuList && img.transform.IsChildOf(menuList)) || VanillaCorner(img.transform, root));
+            PreWorldKit.Panels(root, "size.panel.pad", new PanelSkipFilter(menuList, root).ShouldSkip);
             Changelog(fejd);
             SidePanels(fejd);
             TabSelected(root);
@@ -60,7 +117,7 @@ namespace Morgott.UI.PreWorld
             Spinner(fejd.m_loading);
             Spinner(fejd.m_pleaseWait);
             CharacterList.Build(fejd);
-            ScreenRegistry.Register(root, () => Context(fejd));
+            ScreenRegistry.Register(root, new MenuContextFactory(fejd).Create);
             ScreenRegistry.Restyle(root);
             WorldRow(fejd);
             // Start-game mode tabs (Начать игру / Присоединиться): taller plates, larger labels (Codex M5 r3).
@@ -130,7 +187,7 @@ namespace Morgott.UI.PreWorld
             if (cm && cm.TryGetComponent<TMP_Text>(out var cmText) && cmText.text == "Mods settings") cmText.text = loc.Localize("$ui_menu_modsettings");
             var info = fejd.m_versionLabel ? fejd.m_versionLabel.transform.parent.Find("BepInEx Version") : null;
             if (info && info.TryGetComponent<Text>(out var infoText))
-                infoText.text = string.Format(loc.Localize("$ui_menu_bepinex"), typeof(BepInEx.BaseUnityPlugin).Assembly.GetName().Version, BepInEx.Bootstrap.Chainloader.PluginInfos.Count)
+                infoText.text = string.Format(loc.Localize("$ui_menu_bepinex"), typeof(BepInEx.BaseUnityPlugin).Assembly.GetName().Version, BepInEx.Bootstrap.Chainloader.PluginInfos.Count.ToString(System.Globalization.CultureInfo.InvariantCulture))
                     + (global::Console.instance != null && global::Console.instance.IsConsoleEnabled() ? "\n" + loc.Localize("$ui_menu_console") : "");
         }
 
@@ -174,12 +231,7 @@ namespace Morgott.UI.PreWorld
                 var shrink = new List<RectTransform>();
                 foreach (var n in new[] { "ServerList", "ServerListScroll" })
                     if (join.Find(n) is RectTransform s) shrink.Add(s);
-                HeaderBand.Ensure(join, joinDivider, list =>
-                {
-                    if (!handler) return;
-                    foreach (var tab in handler.m_tabs)
-                        if (tab != null && tab.m_button) list.Add((RectTransform)tab.m_button.transform);
-                }, null, null, shrink.ToArray());
+                HeaderBand.Ensure(join, joinDivider, new TabHandlerSource(handler).Fill, null, null, shrink.ToArray());
             }
         }
 
@@ -269,7 +321,7 @@ namespace Morgott.UI.PreWorld
             if (options && options.m_toolTipPanel)
             {
                 var tip = options.m_toolTipPanel;
-                SidePanel.Ensure(tip, () => new[] { LargestPanel(options.transform, tip) });
+                SidePanel.Ensure(tip, new LargestPanelTarget(options.transform, tip).Get);
             }
             // Modifier rows: the slider names / values and the checkbox labels each read at one size per column (same
             // object name, same control kind, same box width) instead of one auto-size per label (TextSizeGroup).
@@ -287,13 +339,13 @@ namespace Morgott.UI.PreWorld
             {
                 var info = (RectTransform)fejd.m_worldSourceInfoPanel.transform;
                 // Not on top: the world modifiers modal opens over the start-game panel and must cover this notice.
-                SidePanel.Ensure(info, () => new[] { LargestPanel(fejd.m_startGamePanel.transform, info) }, onTop: false);
+                SidePanel.Ensure(info, new LargestPanelTarget(fejd.m_startGamePanel.transform, info).Get, onTop: false);
             }
             // Online-play notice of the server browser (prefab-only JoinPanel/"Server help": TextBackdrop box, topic +
             // $menu_server_info, no FejdStartup field, shown with JoinPanel): vanilla box sat on the window's right rail.
             var servers = fejd.m_startGamePanel ? fejd.m_startGamePanel.GetComponentInChildren<ServerListGui>(true) : null;
             if (servers && servers.transform.Find("Server help") is RectTransform help)
-                SidePanel.Ensure(help, () => new[] { LargestPanel(fejd.m_startGamePanel.transform, help) }, onTop: false);
+                SidePanel.Ensure(help, new LargestPanelTarget(fejd.m_startGamePanel.transform, help).Get, onTop: false);
         }
 
 
@@ -319,7 +371,7 @@ namespace Morgott.UI.PreWorld
         {
             if (!template) return;
             PreWorldKit.Panels(template, "size.panel.pad.small");
-            ScreenRegistry.Register(template, () => Context(fejd, template, ScreenId + "." + template.name.Replace("(Clone)", "")));
+            ScreenRegistry.Register(template, new MenuContextFactory(fejd, template, ScreenId + "." + template.name.Replace("(Clone)", "")).Create);
             ScreenRegistry.Restyle(template);
         }
 
@@ -1009,6 +1061,19 @@ namespace Morgott.UI.PreWorld
             catch (Exception e) { Plugin.Log.LogError($"[Morgott.UI] server row restyle failed: {e}"); }
         }
 
+        private sealed class PopupContextFactory
+        {
+            private readonly Transform _root;
+            public PopupContextFactory(Transform root) => _root = root;
+
+            public ScreenContext Create()
+            {
+                var ctx = new ScreenContext("UnifiedPopup", OwnershipRegistry.MainMenu);
+                PreWorldKit.Common(ctx, _root);
+                return ctx;
+            }
+        }
+
         // The scene's UnifiedPopup (vanilla notices / warnings, UnifiedPopup.cs:78-97) restyled once in its Awake.
         [HarmonyPatch(typeof(UnifiedPopup), nameof(UnifiedPopup.Awake))]
         [HarmonyPostfix]
@@ -1018,12 +1083,7 @@ namespace Morgott.UI.PreWorld
             {
                 var root = __instance.transform;
                 PreWorldKit.Panels(root, "size.panel.pad");
-                ScreenRegistry.Register(root, () =>
-                {
-                    var ctx = new ScreenContext("UnifiedPopup", OwnershipRegistry.MainMenu);
-                    PreWorldKit.Common(ctx, root);
-                    return ctx;
-                });
+                ScreenRegistry.Register(root, new PopupContextFactory(root).Create);
                 ScreenRegistry.Restyle(root);
             }
             catch (Exception e) { Plugin.Log.LogError($"[Morgott.UI] popup restyle failed: {e}"); }

@@ -65,8 +65,8 @@ func compareM6Build() (*image.NRGBA, *image.NRGBA) {
 		c.sprite(n, x, 603, 127, 38)
 		c.text(t, serif, 20, col, x+63, 621, 1)
 	}
-	for r := 0; r < 4; r++ {
-		for k := 0; k < 10; k++ {
+	for r := range 4 {
+		for k := range 10 {
 			x, y := 528+float64(k)*88.4, 657+float64(r)*67
 			n := "slot_cell_recess"
 			if r == 0 && k == 2 {
@@ -348,7 +348,7 @@ func compareM6Dialogs() (*image.NRGBA, *image.NRGBA) {
 	c.header(1270, 462, 380, 54, "", "ВНЕШНОСТЬ")
 	for k, t := range []string{"Волосы", "Борода"} {
 		c.text(t, sans, 22, body, 1172, 541+float64(k)*137, 0)
-		for i := 0; i < 4; i++ {
+		for i := range 4 {
 			x, y := 1237+float64(i)*116.5, 562+float64(k)*134
 			n := "slot_cell_recess"
 			if i == 0 {

@@ -137,7 +137,7 @@ namespace Morgott.UI.Api
             if (_web && (!_web.shader || !_web.shader.isSupported || !_web.mainTexture)) _web = null;
             _overlay = bundle.LoadAsset<Material>("Overlay");
             if (_overlay && (!_overlay.shader || !_overlay.shader.isSupported)) _overlay = null;
-            Plugin.Log.LogInfo($"[Morgott.UI] {BundleFile}: shell {(bool)_shell}, telegraph {(bool)_telegraph}, boss fx {(bool)_bossFx}, bar {(bool)_bar}, grey {(bool)_grey}, particle {(bool)_particle}, web {(bool)_web}, overlay {(bool)_overlay}, snow {(bool)_snow}, snow mask {(bool)_snowMask}");
+            Plugin.Log.LogInfo($"[Morgott.UI] {BundleFile}: shell {((bool)_shell).ToString()}, telegraph {((bool)_telegraph).ToString()}, boss fx {((bool)_bossFx).ToString()}, bar {((bool)_bar).ToString()}, grey {((bool)_grey).ToString()}, particle {((bool)_particle).ToString()}, web {((bool)_web).ToString()}, overlay {((bool)_overlay).ToString()}, snow {((bool)_snow).ToString()}, snow mask {((bool)_snowMask).ToString()}");
             return this;
         }
     }

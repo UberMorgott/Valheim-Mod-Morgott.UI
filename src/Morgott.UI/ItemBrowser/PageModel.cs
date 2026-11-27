@@ -142,21 +142,29 @@ namespace Morgott.UI.ItemBrowser
 
         // Source rows: prefabs with one name and the same yield of this item (Bjorn + Bjorn_sleeping) are one row; one name
         // with different yields keeps every row, each tagged with its readable prefab name.
+        private static string NameKey(BrowserIndex ix, PageRow r) =>
+            ((int)r.R.Kind).ToString(System.Globalization.CultureInfo.InvariantCulture) + "|" + (ix.Entries.TryGetValue(r.R.Source, out var e) ? e.Name : r.R.Source);
+
         private static void Dedupe(BrowserIndex ix, string id, List<PageRow> rows)
         {
-            string NameKey(PageRow r) => (int)r.R.Kind + "|" + (ix.Entries.TryGetValue(r.R.Source, out var e) ? e.Name : r.R.Source);
             var seen = new HashSet<string>(StringComparer.Ordinal);
             var names = new Dictionary<string, int>(StringComparer.Ordinal);
-            rows.RemoveAll(r =>
+            var w = 0;
+            for (var i = 0; i < rows.Count; i++)
             {
-                if (r.Recipe) return false;
-                var sb = new System.Text.StringBuilder(NameKey(r)).Append('|').Append(r.R.Conditions);
-                foreach (var s in r.R.Outputs)
-                    if (s.Prefab == id) sb.Append('|').Append(s.Min).Append('-').Append(s.Max).Append('@').Append(s.Chance.ToString("R", System.Globalization.CultureInfo.InvariantCulture));
-                return !seen.Add(sb.ToString());
-            });
-            foreach (var r in rows) if (!r.Recipe) names[NameKey(r)] = names.TryGetValue(NameKey(r), out var n) ? n + 1 : 1;
-            foreach (var r in rows) if (!r.Recipe && names[NameKey(r)] > 1) r.Tag = SourceNames.Readable(r.R.Source);
+                var r = rows[i];
+                if (!r.Recipe)
+                {
+                    var sb = new System.Text.StringBuilder(NameKey(ix, r)).Append('|').Append(r.R.Conditions);
+                    foreach (var s in r.R.Outputs)
+                        if (s.Prefab == id) sb.Append('|').Append(s.Min).Append('-').Append(s.Max).Append('@').Append(s.Chance.ToString("R", System.Globalization.CultureInfo.InvariantCulture));
+                    if (!seen.Add(sb.ToString())) continue;
+                }
+                rows[w++] = r;
+            }
+            if (w < rows.Count) rows.RemoveRange(w, rows.Count - w);
+            foreach (var r in rows) if (!r.Recipe) { var nk = NameKey(ix, r); names[nk] = names.TryGetValue(nk, out var n) ? n + 1 : 1; }
+            foreach (var r in rows) if (!r.Recipe && names[NameKey(ix, r)] > 1) r.Tag = SourceNames.Readable(r.R.Source);
         }
 
         /// <summary>"Used in": a row for every relation the entry takes part in, its own upgrades first (all qualities), then
@@ -315,8 +323,8 @@ namespace Morgott.UI.ItemBrowser
             for (var i = 0; i < variants.Count; i++)
             {
                 var r = variants[i];
-                var s = r.Station == null ? byHand : r.StationLevel > 0 ? $"{name(r.Station)} {level}{r.StationLevel}" : name(r.Station);
-                labels.Add(labels.Contains(s) ? $"{variant} {i + 1}" : s);
+                var s = r.Station == null ? byHand : r.StationLevel > 0 ? $"{name(r.Station)} {level}{r.StationLevel.ToString(System.Globalization.CultureInfo.InvariantCulture)}" : name(r.Station);
+                labels.Add(labels.Contains(s) ? $"{variant} {(i + 1).ToString(System.Globalization.CultureInfo.InvariantCulture)}" : s);
             }
             return labels;
         }

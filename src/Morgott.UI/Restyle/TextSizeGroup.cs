@@ -99,6 +99,19 @@ namespace Morgott.UI.Restyle
             _key = null;
         }
 
+        private static readonly List<TextSizeGroup> ReleaseBuffer = new List<TextSizeGroup>(32);
+
+        // Purges all members under root (including never-activated children whose own OnDestroy never fires).
+        internal static void ReleaseSubtree(Transform root)
+        {
+            if (!root) return;
+            ReleaseBuffer.Clear();
+            root.GetComponentsInChildren(true, ReleaseBuffer);
+            for (var i = 0; i < ReleaseBuffer.Count; i++)
+                if (ReleaseBuffer[i]) ReleaseBuffer[i].Leave();
+            ReleaseBuffer.Clear();
+        }
+
         private void OnDestroy() => Leave();
 
         private void LateUpdate()

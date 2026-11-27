@@ -40,6 +40,7 @@ namespace Morgott.UI.Api
         public static bool IsRoot(Transform t) => t && Roots.ContainsKey(t);
 
         public static IEnumerable<Transform> All => Roots.Keys;
+        internal static Dictionary<Transform, Func<ScreenContext>>.KeyCollection AllRoots => Roots.Keys;
 
         public static bool Restyle(Transform root)
         {

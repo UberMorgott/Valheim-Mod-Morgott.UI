@@ -86,8 +86,8 @@ namespace Morgott.UI.ItemBrowser
         internal static string KeyHint(BepInEx.Configuration.KeyboardShortcut recipe, BepInEx.Configuration.KeyboardShortcut used)
         {
             var parts = new System.Collections.Generic.List<string>(2);
-            if (recipe.MainKey != KeyCode.None) parts.Add($"[{recipe}] {Browser.Localize("$ib_obtained_from")}");
-            if (used.MainKey != KeyCode.None) parts.Add($"[{used}] {Browser.Localize("$ib_used_in")}");
+            if (recipe.MainKey != KeyCode.None) parts.Add($"[{recipe.ToString()}] {Browser.Localize("$ib_obtained_from")}");
+            if (used.MainKey != KeyCode.None) parts.Add($"[{used.ToString()}] {Browser.Localize("$ib_used_in")}");
             return parts.Count == 0 ? "" : $"\n\n<color={GameScreens.ActiveEffectsPage.Hex("color.text.muted", new Color(0.62f, 0.58f, 0.5f))}>{string.Join("   ", parts)}</color>";
         }
 

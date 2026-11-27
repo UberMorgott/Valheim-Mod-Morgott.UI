@@ -47,6 +47,100 @@ namespace Morgott.UI.MapScreen
 
         public void PortalEditorSave() => EdSave();
 
+        private sealed class EdSwatchHandler
+        {
+            private readonly MinimapSkin _skin;
+            private readonly int _rgb;
+
+            public EdSwatchHandler(MinimapSkin skin, int rgb)
+            {
+                _skin = skin;
+                _rgb = rgb;
+            }
+
+            public void OnClick()
+            {
+                _skin._edColor = _rgb;
+                _skin.EdRefresh();
+            }
+        }
+
+        private sealed class EdIconHandler
+        {
+            private readonly MinimapSkin _skin;
+            private readonly int _icon;
+
+            public EdIconHandler(MinimapSkin skin, int icon)
+            {
+                _skin = skin;
+                _icon = icon;
+            }
+
+            public void OnClick()
+            {
+                _skin._edIcon = _icon;
+                _skin.EdRefresh();
+            }
+        }
+
+        private sealed class EdSaveCall
+        {
+            private readonly MinimapSkin _skin;
+            private readonly IPortalTravel _travel;
+            private readonly int _token;
+            private string _failure;
+
+            public EdSaveCall(MinimapSkin skin, IPortalTravel travel, int token)
+            {
+                _skin = skin;
+                _travel = travel;
+                _token = token;
+            }
+
+            public void Begin()
+            {
+                _skin._edSave.interactable = false;
+                _skin.EdStatus(Words.Get("$ui_portal_edit_saving"), "color.state.disabled");
+            }
+
+            public bool Submit() => _travel.TryStyle(_skin._edId, _skin._edName.text, _skin._edColor, _skin._edIcon, OnDone, out _failure);
+
+            public void Fail()
+            {
+                _skin._edSave.interactable = true;
+                _skin.EdStatus(_failure, "color.text.missing");
+            }
+
+            private void OnDone(string reason) => _skin.EdDone(_token, reason);
+        }
+
+        private void OnEdNameChanged(string _) => EdRefresh();
+        private void OnEdCustomColorClick() => _edHex.ActivateInputField();
+
+        private void OnEdHexChanged(string text)
+        {
+            if (_edWrite || !PortalStyle.TryParseHex(text, out var rgb)) return;
+            _edColor = rgb;
+            EdRefresh();
+        }
+
+        private void OnEdHueChanged(float v)
+        {
+            if (_edWrite) return;
+            Color.RGBToHSV(ToColor(EdShownRgb()), out _, out var s, out var b);
+            if (s < 0.05f) { s = 0.75f; b = Mathf.Max(b, 0.6f); } // grey has no hue: start from a saturated one
+            _edColor = ToRgb(Color.HSVToRGB(v, s, b));
+            EdRefresh();
+        }
+
+        private void OnEdResetClick()
+        {
+            _edName.text = _edOriginal;
+            _edColor = PortalStyle.DefaultColor;
+            _edIcon = PortalStyle.NoIcon;
+            EdRefresh();
+        }
+
         private void BuildPortalEditor()
         {
             _ed = HudArtRect("RuneSkin_PortalEditor", _large);
@@ -76,7 +170,7 @@ namespace Morgott.UI.MapScreen
             _edName = Field(nameBack, PortalStyle.MaxName); // vanilla tag limit (TeleportWorld.Interact, TeleportWorld.cs:84)
             _edName.textViewport.offsetMin = new Vector2(12f, 0f);
             _edName.textViewport.offsetMax = new Vector2(-70f, 0f);
-            _edName.onValueChanged.AddListener(_ => EdRefresh());
+            _edName.onValueChanged.AddListener(OnEdNameChanged);
             _edCount = _art.Text("Count", nameBack.transform, "font.body", "color.state.disabled", font, TextAlignmentOptions.Right);
             Place(_edCount.rectTransform, w - x - pad - 70f, 0f, 58f, 40f);
 
@@ -92,7 +186,7 @@ namespace Morgott.UI.MapScreen
                 fill.rectTransform.offsetMin = new Vector2(6f, 6f);
                 fill.rectTransform.offsetMax = new Vector2(-6f, -6f);
                 fill.color = ToColor(rgb);
-                frame.gameObject.AddComponent<Button>().onClick.AddListener(() => { _edColor = rgb; EdRefresh(); });
+                frame.gameObject.AddComponent<Button>().onClick.AddListener(new EdSwatchHandler(this, rgb).OnClick);
                 _edSwatchFrames.Add(frame);
             }
             // Last swatch = custom colour (rainbow "+"): focuses the hex entry below; selected while no preset matches.
@@ -104,7 +198,7 @@ namespace Morgott.UI.MapScreen
             rainbow.rectTransform.offsetMax = new Vector2(-6f, -6f);
             rainbow.sprite = MapIcons.CustomColor;
             rainbow.color = Color.white;
-            custom.gameObject.AddComponent<Button>().onClick.AddListener(() => _edHex.ActivateInputField());
+            custom.gameObject.AddComponent<Button>().onClick.AddListener(OnEdCustomColorClick);
             _edSwatchFrames.Add(custom);
 
             y += 56f;
@@ -115,30 +209,17 @@ namespace Morgott.UI.MapScreen
             Place(hexBack.rectTransform, x + 28f, y, 120f, 36f);
             _edHex = Field(hexBack, 6);
             _edHex.textViewport.offsetMin = new Vector2(10f, 0f);
-            _edHex.onValueChanged.AddListener(text =>
-            {
-                if (_edWrite || !PortalStyle.TryParseHex(text, out var rgb)) return;
-                _edColor = rgb;
-                EdRefresh();
-            });
+            _edHex.onValueChanged.AddListener(OnEdHexChanged);
             _edColorPreview = _art.Image("ColorPreview", panel, null, "color.frame", Image.Type.Simple);
             Place(_edColorPreview.rectTransform, x + 160f, y, 36f, 36f);
             _edHue = EdSlider(panel, x + 212f, y + 10f, w - x - 212f - pad, 16f);
-            _edHue.onValueChanged.AddListener(v =>
-            {
-                if (_edWrite) return;
-                Color.RGBToHSV(ToColor(EdShownRgb()), out _, out var s, out var b);
-                if (s < 0.05f) { s = 0.75f; b = Mathf.Max(b, 0.6f); } // grey has no hue: start from a saturated one
-                _edColor = ToRgb(Color.HSVToRGB(v, s, b));
-                EdRefresh();
-            });
+            _edHue.onValueChanged.AddListener(OnEdHueChanged);
 
             y += 54f;
             EdLabel(panel, "$ui_portal_edit_icon", pad, y, label, 40f, font);
             var cell = ThemeTokens.GetFloat("size.map.portal.editor.cell", 64f);
             for (var id = 0; id < PortalStyle.Icons.Length; id++)
             {
-                var icon = id;
                 var c = _art.Image("Icon" + id, panel, "sprite.slot.cell", "color.frame", Image.Type.Sliced, raycast: true);
                 Place(c.rectTransform, x + id % EdColumns * (cell + 8f), y + id / EdColumns * (cell + 8f), cell, cell);
                 if (id == PortalStyle.NoIcon)
@@ -156,7 +237,7 @@ namespace Morgott.UI.MapScreen
                     g.sprite = PortalIcons.Instance.Get(id);
                     g.preserveAspect = true;
                 }
-                c.gameObject.AddComponent<Button>().onClick.AddListener(() => { _edIcon = icon; EdRefresh(); });
+                c.gameObject.AddComponent<Button>().onClick.AddListener(new EdIconHandler(this, id).OnClick);
                 _edIconCells.Add(c);
             }
 
@@ -174,13 +255,7 @@ namespace Morgott.UI.MapScreen
             var bw = 140f;
             _edSave = EdButton(panel, "Save", "$ui_portal_edit_save", "sprite.button.selected", w - pad - bw, bottom + 6f, bw, font, EdSave);
             EdButton(panel, "Cancel", "$ui_portal_edit_cancel", "sprite.button.normal", w - pad - 2f * bw - 12f, bottom + 6f, bw, font, ClosePortalEditor);
-            EdButton(panel, "Reset", "$ui_portal_edit_reset", "sprite.button.normal", w - pad - 3f * bw - 24f, bottom + 6f, bw, font, () =>
-            {
-                _edName.text = _edOriginal;
-                _edColor = PortalStyle.DefaultColor;
-                _edIcon = PortalStyle.NoIcon;
-                EdRefresh();
-            });
+            EdButton(panel, "Reset", "$ui_portal_edit_reset", "sprite.button.normal", w - pad - 3f * bw - 24f, bottom + 6f, bw, font, OnEdResetClick);
             _ed.gameObject.SetActive(false);
         }
 
@@ -278,20 +353,8 @@ namespace Morgott.UI.MapScreen
         {
             var travel = PortalPickerService.AnyTravel();
             if (travel == null || _edId == ZDOID.None) return;
-            var token = ++_edToken;
-            string failure = null;
-            PortalPickerMath.Send(
-                () =>
-                {
-                    _edSave.interactable = false;
-                    EdStatus(Words.Get("$ui_portal_edit_saving"), "color.state.disabled");
-                },
-                () => travel.TryStyle(_edId, _edName.text, _edColor, _edIcon, reason => EdDone(token, reason), out failure),
-                () =>
-                {
-                    _edSave.interactable = true;
-                    EdStatus(failure, "color.text.missing");
-                });
+            var call = new EdSaveCall(this, travel, ++_edToken);
+            PortalPickerMath.Send(call.Begin, call.Submit, call.Fail);
         }
 
         private void EdDone(int token, string reason)
@@ -326,7 +389,7 @@ namespace Morgott.UI.MapScreen
         private void EdRefresh()
         {
             if (!_ed) return;
-            _edCount.text = $"{_edName.text.Length}/{PortalStyle.MaxName}";
+            _edCount.text = $"{_edName.text.Length.ToString(System.Globalization.CultureInfo.InvariantCulture)}/{PortalStyle.MaxName.ToString(System.Globalization.CultureInfo.InvariantCulture)}";
             for (var i = 0; i < _edSwatchFrames.Count; i++)
                 EdSelect(_edSwatchFrames[i], i < EdPresets.Length
                     ? EdPresets[i] == _edColor

@@ -241,8 +241,10 @@ namespace Morgott.UI.Classify
         {
             if (sprite.EndsWith("(Clone)", StringComparison.Ordinal))
                 sprite = sprite.Substring(0, sprite.Length - 7);
-            foreach (var entry in ThemeTokens.SpriteRoles)
+            var roles = ThemeTokens.SpriteRoles;
+            for (var i = 0; i < roles.Count; i++)
             {
+                var entry = roles[i];
                 if (entry.Context != null && entry.Context != family) continue;
                 var hit = entry.Prefix ? sprite.StartsWith(entry.Match, StringComparison.Ordinal) : sprite == entry.Match;
                 if (hit) return entry.Role;

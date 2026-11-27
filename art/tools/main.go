@@ -150,7 +150,7 @@ func chdirRepoRoot() {
 
 func parseInts(s string) []int {
 	var out []int
-	for _, p := range strings.Split(s, ",") {
+	for p := range strings.SplitSeq(s, ",") {
 		v, err := strconv.Atoi(strings.TrimSpace(p))
 		must(err)
 		out = append(out, v)

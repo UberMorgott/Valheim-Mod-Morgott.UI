@@ -36,7 +36,7 @@ namespace Morgott.UI.InfoScreens
             _elTotal = Make<Func<Player, string, float, ItemDrop.ItemData, float>>("EpicLoot.PlayerExtensions", "GetTotalActiveMagicEffectValue");
             ElResistance = Make<Action<Character, HitData>>("EpicLoot.MagicItemEffects.ModifyResistance", "ModifyIncoming");
             ElNight = Make<Action<Character, HitData>>("EpicLoot.MagicItemEffects.Shards.DamageReductionAtNight", "ModifyIncoming");
-            Plugin.Log.LogInfo($"[Morgott.UI] stats sources: EpicLoot={EpicLoot} resist={ElResistance != null} night={ElNight != null}");
+            Plugin.Log.LogInfo($"[Morgott.UI] stats sources: EpicLoot={EpicLoot.ToString()} resist={(ElResistance != null).ToString()} night={(ElNight != null).ToString()}");
         }
 
         // Epic Loot effect total of the local player (EffectValue sum x scale), 0 without Epic Loot.
@@ -58,7 +58,10 @@ namespace Morgott.UI.InfoScreens
             var type = Morgott.Core.TypeLookup.ByFullName(typeName);
             if (type == null) return null;
             // The delegate's signature (its Invoke method), found by scanning: no literal-name lookup on the generic T.
-            var invoke = Array.Find(typeof(T).GetMethods(), m => m.Name == nameof(Action.Invoke));
+            MethodInfo invoke = null;
+            var methods = typeof(T).GetMethods();
+            for (var i = 0; i < methods.Length; i++)
+                if (methods[i].Name == nameof(Action.Invoke)) { invoke = methods[i]; break; }
             var pars = invoke.GetParameters();
             var types = new Type[pars.Length];
             for (var i = 0; i < pars.Length; i++) types[i] = pars[i].ParameterType;

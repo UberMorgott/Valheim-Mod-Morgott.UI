@@ -49,19 +49,26 @@ namespace Morgott.UI.GameScreens
         {
             foreach (var t in tabs) t.Clear();
             if (available != null)
-                foreach (var c in available)
-                    if (c?.Prefab != null) tabs[0].Add(Row(c, HildirChip.Open, bosses));
-            if (active != null)
-                foreach (var c in active)
+                for (var i = 0; i < available.Count; i++)
                 {
+                    var c = available[i];
+                    if (c?.Prefab != null) tabs[0].Add(Row(c, HildirChip.Open, bosses));
+                }
+            if (active != null)
+                for (var i = 0; i < active.Count; i++)
+                {
+                    var c = active[i];
                     if (c?.Prefab == null) continue;
                     if (c.State == HildirContractState.InProgress) tabs[1].Add(Row(c, HildirChip.Taken, bosses));
                     else if (c.State == HildirContractState.Complete) tabs[2].Add(Row(c, HildirChip.Done, bosses));
                 }
             if (bosses == null) return;
-            foreach (var b in bosses)
+            for (var i = 0; i < bosses.Count; i++)
+            {
+                var b = bosses[i];
                 if (b?.Prefab != null && !string.IsNullOrEmpty(b.UnlockKey) && (keySet == null || !keySet(b.UnlockKey)) && !Listed(tabs, b.Prefab))
                     tabs[0].Add(new HildirRow { Prefab = b.Prefab, NameToken = b.NameToken, UnlockKey = b.UnlockKey, Biome = b.Biome, Chip = HildirChip.Locked });
+            }
         }
 
         private static HildirRow Row(HildirContract c, HildirChip chip, IReadOnlyList<UniqueBoss> bosses) => new HildirRow
@@ -79,8 +86,11 @@ namespace Morgott.UI.GameScreens
         private static UniqueBoss Boss(IReadOnlyList<UniqueBoss> bosses, string prefab)
         {
             if (bosses == null) return null;
-            foreach (var b in bosses)
+            for (var i = 0; i < bosses.Count; i++)
+            {
+                var b = bosses[i];
                 if (b != null && b.Prefab == prefab) return b;
+            }
             return null;
         }
 

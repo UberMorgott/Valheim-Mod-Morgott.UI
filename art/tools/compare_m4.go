@@ -47,7 +47,7 @@ func (c *canvas) masked(mock *image.NRGBA, x, y, w, h float64, mask string) {
 	p := resize(crop(mock, image.Rect(int(x), int(y), int(x+w), int(y+h))), r.Dx(), r.Dy())
 	m := resize(sprites[mask].img, r.Dx(), r.Dy())
 	for i := 3; i < len(p.Pix); i += 4 {
-		p.Pix[i] = uint8(int(p.Pix[i]) * int(m.Pix[i]) / 255)
+		p.Pix[i] = clampU8(int(p.Pix[i]) * int(m.Pix[i]) / 255)
 	}
 	over(c.img, p, r.Min)
 }

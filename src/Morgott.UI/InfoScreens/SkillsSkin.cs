@@ -1,5 +1,6 @@
 using Morgott.UI.Api;
 using System.Collections.Generic;
+using System.Globalization;
 using Morgott.UI.Classify;
 using Morgott.UI.InventoryScreen;
 using Morgott.UI.Ownership;
@@ -37,11 +38,19 @@ namespace Morgott.UI.InfoScreens
         private InfoPage _page;
         private readonly SortToggle[] _sorts = new SortToggle[2];
         private int _rowsSeen = -1;
+        private bool _wasOpen, _layoutDirty = true;
+        private Vector2 _lastCanvas;
+        private float _lastK = -1f;
+        private int _lastSort = -1, _lastCount = -1, _lastTheme = -1;
+        private readonly List<Image> _barImages = new List<Image>(8);
 
         private sealed class SortToggle
         {
+            public SkillsSkin Owner;
             public Image Back, Glyph;
             public int Mode;
+
+            public void OnClick() => Owner.SetSort(Mode);
         }
 
         public static void Attach(InventoryGui gui)
@@ -79,14 +88,14 @@ namespace Morgott.UI.InfoScreens
 
         private SortToggle MakeSort(int mode)
         {
-            var s = new SortToggle { Mode = mode };
+            var s = new SortToggle { Owner = this, Mode = mode };
             var go = new GameObject("RuneSkinSkillsSort" + mode, typeof(RectTransform));
             go.transform.SetParent(_frame, false);
             s.Back = go.AddComponent<Image>();
             var button = go.AddComponent<Button>();
             button.targetGraphic = s.Back;
             button.navigation = new Navigation { mode = Navigation.Mode.None };
-            button.onClick.AddListener(() => SetSort(mode));
+            button.onClick.AddListener(s.OnClick);
             var mark = DollCell.Mark(s.Back, "info.tab", "skills sort toggle");
             mark.Outcome = Restyler.Apply(s.Back, mark, ThemeTokens.Role(mark.Role)) ? Outcome.Styled : Outcome.Degraded;
             s.Glyph = InfoArt.OwnImage(go.transform, "Glyph", mode == 1 ? "info.glyph.sort.level" : "info.glyph.sort.name", "sort glyph (glyph_sort_*)");
@@ -167,8 +176,10 @@ namespace Morgott.UI.InfoScreens
             var n = Mathf.Min(skills.Count, rows.Count);
             for (var i = 0; i < n; i++)
             {
-                var pct = InfoArt.RowText(rows[i].transform, "RuneSkinSkillPercent", "text.body", TextAlignmentOptions.MidlineRight);
+                var rt = rows[i].transform;
+                var pct = InfoArt.RowText(rt, "RuneSkinSkillPercent", "text.body", TextAlignmentOptions.MidlineRight);
                 pct.SetText("{0}%", Mathf.FloorToInt(skills[i].GetLevelPercentage() * 100f));
+                HideRowBars(rt);
             }
             Sort(player, skills, n);
             // Summary: skill loss on death (Skills.OnDeath: m_DeathLowerFactor x world skill reduction rate) and the total.
@@ -179,8 +190,59 @@ namespace Morgott.UI.InfoScreens
                 var t = Utils.FindChild(_root, child);
                 if (t && !t.gameObject.activeSelf && t.TryGetComponent<TMP_Text>(out var tt) && !string.IsNullOrEmpty(tt.text)) t.gameObject.SetActive(true);
             }
+            _layoutDirty = true;
             Layout();
         }
+
+        // One bar (skills-a): the total-level bars stop drawing; their objects stay (Setup writes them, and the level
+        // texts may live inside them). Run once in AfterSetup instead of per frame in Row().
+        private void HideRowBars(Transform row)
+        {
+            foreach (var c in Children.Of(row))
+            {
+                var childName = c.name;
+                if (childName == "levelbar" || childName == "levelbar_total")
+                {
+                    _barImages.Clear();
+                    c.GetComponentsInChildren(true, _barImages);
+                    for (var j = 0; j < _barImages.Count; j++)
+                        if (_barImages[j].enabled) _barImages[j].enabled = false;
+                    _barImages.Clear();
+                }
+                else if (childName == "description" && c.gameObject.activeSelf) c.gameObject.SetActive(false); // the description is the row tooltip
+            }
+        }
+
+        internal static string SkillNameOf(Skills.SkillType skill) => skill switch
+        {
+            Skills.SkillType.None => nameof(Skills.SkillType.None),
+            Skills.SkillType.Swords => nameof(Skills.SkillType.Swords),
+            Skills.SkillType.Knives => nameof(Skills.SkillType.Knives),
+            Skills.SkillType.Clubs => nameof(Skills.SkillType.Clubs),
+            Skills.SkillType.Polearms => nameof(Skills.SkillType.Polearms),
+            Skills.SkillType.Spears => nameof(Skills.SkillType.Spears),
+            Skills.SkillType.Blocking => nameof(Skills.SkillType.Blocking),
+            Skills.SkillType.Axes => nameof(Skills.SkillType.Axes),
+            Skills.SkillType.Bows => nameof(Skills.SkillType.Bows),
+            Skills.SkillType.ElementalMagic => nameof(Skills.SkillType.ElementalMagic),
+            Skills.SkillType.BloodMagic => nameof(Skills.SkillType.BloodMagic),
+            Skills.SkillType.Unarmed => nameof(Skills.SkillType.Unarmed),
+            Skills.SkillType.Pickaxes => nameof(Skills.SkillType.Pickaxes),
+            Skills.SkillType.WoodCutting => nameof(Skills.SkillType.WoodCutting),
+            Skills.SkillType.Crossbows => nameof(Skills.SkillType.Crossbows),
+            Skills.SkillType.Jump => nameof(Skills.SkillType.Jump),
+            Skills.SkillType.Sneak => nameof(Skills.SkillType.Sneak),
+            Skills.SkillType.Run => nameof(Skills.SkillType.Run),
+            Skills.SkillType.Swim => nameof(Skills.SkillType.Swim),
+            Skills.SkillType.Fishing => nameof(Skills.SkillType.Fishing),
+            Skills.SkillType.Cooking => nameof(Skills.SkillType.Cooking),
+            Skills.SkillType.Farming => nameof(Skills.SkillType.Farming),
+            Skills.SkillType.Crafting => nameof(Skills.SkillType.Crafting),
+            Skills.SkillType.Dodge => nameof(Skills.SkillType.Dodge),
+            Skills.SkillType.Ride => nameof(Skills.SkillType.Ride),
+            Skills.SkillType.All => nameof(Skills.SkillType.All),
+            _ => ((int)skill).ToString(CultureInfo.InvariantCulture)
+        };
 
         // Permutes rows 0..n-1 (row j holds skill j after Setup) into the sort order: list position, m_elements index
         // (gamepad selection walks it) and the tooltip offset (Setup derives it from the row position, :127).
@@ -194,7 +256,7 @@ namespace Morgott.UI.InfoScreens
             for (var i = 0; i < n; i++)
             {
                 var nt = Utils.FindChild(rows[i].transform, "name");
-                names[i] = nt && nt.TryGetComponent<TMP_Text>(out var tt) ? tt.text : skills[i].m_info.m_skill.ToString();
+                names[i] = nt && nt.TryGetComponent<TMP_Text>(out var tt) ? tt.text : SkillNameOf(skills[i].m_info.m_skill);
                 levels[i] = sk.GetSkillLevel(skills[i].m_info.m_skill);
             }
             var order = InfoMath.SkillOrder(levels, names, _sort, System.StringComparer.CurrentCulture);
@@ -212,10 +274,27 @@ namespace Morgott.UI.InfoScreens
             }
         }
 
+        private void OnEnable() => _layoutDirty = true;
+
         private void LateUpdate()
         {
-            if (!_root.gameObject.activeInHierarchy) return;
-            Layout();
+            if (!_root || !_root.gameObject.activeInHierarchy)
+            {
+                _wasOpen = false;
+                return;
+            }
+            var inv = InventorySkin.Instance;
+            if (!inv || !_canvas) return;
+            var size = _canvas.rect.size;
+            var k = inv.SkinScaleValue;
+            var count = _dialog.m_elements.Count;
+            var theme = ThemeTokens.Revision;
+            if (!_wasOpen || _layoutDirty || size != _lastCanvas || !Mathf.Approximately(k, _lastK) ||
+                _sort != _lastSort || count != _lastCount || theme != _lastTheme)
+            {
+                _wasOpen = true;
+                Layout();
+            }
         }
 
         private void Layout()
@@ -236,6 +315,12 @@ namespace Morgott.UI.InfoScreens
             }
             var inner = _page.Layout(k, header);
             if (inner.W <= 0f || inner.H <= 0f) return;
+            _layoutDirty = false;
+            _lastCanvas = _canvas.rect.size;
+            _lastK = k;
+            _lastSort = _sort;
+            _lastCount = _dialog.m_elements.Count;
+            _lastTheme = ThemeTokens.Revision;
             if (_knotL) Geo.SetScale(_knotL.rectTransform, 0f);
             if (_knotR) Geo.SetScale(_knotR.rectTransform, 0f);
             var y = inner.Y;
@@ -364,15 +449,6 @@ namespace Morgott.UI.InfoScreens
                             var back = rt.Find("bkg") as RectTransform;
                             if (back) { back.anchorMin = Vector2.zero; back.anchorMax = Vector2.one; back.offsetMin = back.offsetMax = Vector2.zero; }
                         }
-                        break;
-                    case "levelbar":
-                    case "levelbar_total":
-                        // One bar (skills-a): the total-level bars stop drawing; their objects stay (Setup writes them,
-                        // and the level texts may live inside them).
-                        foreach (var img in c.GetComponentsInChildren<Image>(true)) if (img.enabled) img.enabled = false;
-                        break;
-                    case "description":
-                        if (c.gameObject.activeSelf) c.gameObject.SetActive(false); // the description is the row tooltip
                         break;
                 }
             }

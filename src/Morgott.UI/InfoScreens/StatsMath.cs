@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.Text;
 using Morgott.UI.InventoryScreen;
 
@@ -44,7 +45,7 @@ namespace Morgott.UI.InfoScreens
         public static string FoodTooltipPerSecond(string tooltip, float foodRegen, bool comma, string perSecond)
         {
             if (string.IsNullOrEmpty(tooltip) || foodRegen <= 0f) return tooltip;
-            var tick = string.Format("<color=orange>{0} hp/tick</color>", foodRegen);
+            var tick = "<color=orange>" + foodRegen.ToString(CultureInfo.CurrentCulture) + " hp/tick</color>";
             var i = tooltip.IndexOf(tick, StringComparison.Ordinal);
             if (i < 0) return tooltip;
             var sb = new StringBuilder(tooltip.Length + 16).Append(tooltip, 0, i).Append("<color=orange>");

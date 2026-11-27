@@ -1,5 +1,6 @@
 using Morgott.UI.Api;
 using System;
+using System.Reflection;
 using UnityEngine;
 
 namespace Morgott.UI.PlayerHud
@@ -30,22 +31,32 @@ namespace Morgott.UI.PlayerHud
             });
         }
 
+        private static readonly FieldInfo ButtonsField = HarmonyLib.AccessTools.Field(typeof(ZInput), "m_buttons");
+        private static PropertyInfo _buttonActionProp;
+        private static PropertyInfo _bindingsProp;
+        private static PropertyInfo _effectivePathProp;
+
         // Latin key label from the binding path ("<Keyboard>/f" -> "F"): GetBoundKeyString prints the key in the active
         // keyboard layout (Russian layout: F -> "А"); key hints stay Latin. Reflection (no Input System reference),
-        // called every 2 s only.
+        // members cached statically.
         public static string KeyLabel(string button)
         {
             try
             {
-                if (ZInput.instance == null) return null;
-                if (!(HarmonyLib.AccessTools.Field(typeof(ZInput), "m_buttons")?.GetValue(ZInput.instance) is System.Collections.IDictionary buttons) || !buttons.Contains(button)) return null;
+                if (string.IsNullOrEmpty(button) || ZInput.instance == null || ButtonsField == null) return null;
+                if (!(ButtonsField.GetValue(ZInput.instance) is System.Collections.IDictionary buttons) || !buttons.Contains(button)) return null;
                 var def = buttons[button];
                 if (def == null) return null;
-                var action = def.GetType().GetProperty("ButtonAction")?.GetValue(def);
-                if (!(action?.GetType().GetProperty("bindings")?.GetValue(action) is System.Collections.IEnumerable bindings)) return null;
+                var actionProp = _buttonActionProp ?? (_buttonActionProp = def.GetType().GetProperty("ButtonAction"));
+                var action = actionProp?.GetValue(def);
+                if (action == null) return null;
+                var bindingsProp = _bindingsProp ?? (_bindingsProp = action.GetType().GetProperty("bindings"));
+                if (!(bindingsProp?.GetValue(action) is System.Collections.IEnumerable bindings)) return null;
                 foreach (var b in bindings)
                 {
-                    var path = b.GetType().GetProperty("effectivePath")?.GetValue(b) as string;
+                    if (b == null) continue;
+                    var pathProp = _effectivePathProp ?? (_effectivePathProp = b.GetType().GetProperty("effectivePath"));
+                    var path = pathProp?.GetValue(b) as string;
                     if (string.IsNullOrEmpty(path)) continue;
                     var key = path.Substring(path.LastIndexOf('/') + 1);
                     return path.StartsWith("<Mouse>", StringComparison.Ordinal) ? "M" + key.Replace("Button", "") : EpicLootBridge.Label(key);

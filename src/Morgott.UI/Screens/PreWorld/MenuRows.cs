@@ -174,11 +174,18 @@ namespace Morgott.UI.PreWorld
         private int _seen;
         private bool _hasSeen;
 
+        private sealed class FixedTabsSource
+        {
+            private readonly RectTransform[] _tabs;
+            public FixedTabsSource(RectTransform[] tabs) => _tabs = tabs;
+            public void Fill(List<RectTransform> list) => list.AddRange(_tabs);
+        }
+
         // host: the panel whose children are tabs, divider and movers / shrink; titles: texts whose visual top is the
         // content top (else the movers' / shrink rects' tops).
         public static HeaderBand Ensure(RectTransform host, RectTransform divider, RectTransform[] tabs,
             TMP_Text[] titles, RectTransform[] movers, RectTransform[] shrink) =>
-            tabs == null ? null : Ensure(host, divider, list => list.AddRange(tabs), titles, movers, shrink);
+            tabs == null ? null : Ensure(host, divider, new FixedTabsSource(tabs).Fill, titles, movers, shrink);
 
         // tabs: fills the list with the tab row's current buttons, read every LateUpdate. The server filter tabs are not
         // fixed objects: ServerListGui.RecreateTabs (OnEnable, ServerListGui.cs:156-170 / 313-371) destroys and

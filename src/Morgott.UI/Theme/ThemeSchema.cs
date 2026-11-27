@@ -11,7 +11,7 @@ namespace Morgott.UI.Theme
         {
             var errors = new List<string>();
             if (f == null) { errors.Add("not a theme object"); return errors; }
-            if (f.schema != 1) errors.Add($"schema {f.schema} unsupported (expected 1)");
+            if (f.schema != 1) errors.Add($"schema {f.schema.ToString()} unsupported (expected 1)");
             if (string.IsNullOrEmpty(f.name)) errors.Add("name missing");
             var tokens = new HashSet<string>();
             void Token(string t, string kind)

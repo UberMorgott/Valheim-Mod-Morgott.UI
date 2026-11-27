@@ -1,6 +1,9 @@
 package main
 
-import "errors"
+import (
+	"errors"
+	"math"
+)
 
 var errCorrupt = errors.New("corrupt compressed block")
 
@@ -107,7 +110,7 @@ func (r *rangeDecoder) bit(p *uint16) uint32 {
 
 func (r *rangeDecoder) tree(probs []uint16, bits int) uint32 {
 	m := uint32(1)
-	for i := 0; i < bits; i++ {
+	for range bits {
 		m = m<<1 + r.bit(&probs[m])
 	}
 	return m - 1<<bits
@@ -115,7 +118,7 @@ func (r *rangeDecoder) tree(probs []uint16, bits int) uint32 {
 
 func (r *rangeDecoder) reverse(probs []uint16, bits int) uint32 {
 	m, sym := uint32(1), uint32(0)
-	for i := 0; i < bits; i++ {
+	for i := range bits {
 		b := r.bit(&probs[m])
 		m = m<<1 + b
 		sym |= b << i
@@ -185,7 +188,7 @@ func lzmaBlock(src []byte, size int) (out []byte, err error) {
 	if r.next() != 0 {
 		return nil, errCorrupt
 	}
-	for i := 0; i < 4; i++ {
+	for range 4 {
 		r.code = r.code<<8 | r.next()
 	}
 	lit := make([]uint16, 0x300<<(lc+lp))
@@ -204,10 +207,17 @@ func lzmaBlock(src []byte, size int) (out []byte, err error) {
 	var mainLen, repLen lenDecoder
 	mainLen.init()
 	repLen.init()
+	if size < 0 || int64(size) > math.MaxUint32 {
+		return nil, errCorrupt
+	}
 	out = make([]byte, 0, size)
 	var rep0, rep1, rep2, rep3, state uint32
 	for len(out) < size {
-		pos := uint32(len(out))
+		posInt := len(out)
+		if posInt < 0 || posInt > math.MaxUint32 {
+			return nil, errCorrupt
+		}
+		pos := uint32(posInt)
 		posState := pos & (1<<pb - 1)
 		if r.bit(&isMatch[state<<4+posState]) == 0 {
 			var prev uint32
@@ -306,11 +316,11 @@ func lzmaBlock(src []byte, size int) (out []byte, err error) {
 			}
 		}
 		length += 2
-		if rep0 >= uint32(len(out)) {
+		if uint64(rep0) >= uint64(len(out)) {
 			return nil, errCorrupt
 		}
 		for i := uint32(0); i < length && len(out) < size; i++ {
-			out = append(out, out[uint32(len(out))-rep0-1])
+			out = append(out, out[len(out)-int(rep0)-1])
 		}
 	}
 	if len(out) != size {

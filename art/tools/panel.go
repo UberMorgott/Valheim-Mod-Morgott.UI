@@ -61,7 +61,7 @@ func panelCompose(f, p int, sprites string, row2x, mask *image.NRGBA) (*image.NR
 	potSeg := []int{2447, 2574, 2701, 2828}
 	const foodW, potW = 165, 127
 	moveOverlay := func(srcX, w, dstX int) {
-		for yy := 0; yy < H; yy++ {
+		for yy := range H {
 			for xx := srcX; xx < srcX+w; xx++ {
 				if mask.NRGBAAt(xx, yy).R < 128 {
 					continue
@@ -77,7 +77,7 @@ func panelCompose(f, p int, sprites string, row2x, mask *image.NRGBA) (*image.NR
 	// left wing
 	x = panelBlockL - put0(sprites, "panel_food_in")
 	put("panel_food_in", x)
-	for k := 0; k < f; k++ {
+	for k := range f {
 		x -= foodW
 		put(fmt.Sprintf("panel_food_seg%d", panelSegArt(k, f, 3)), x)
 		i := f - 1 - k // reading order index of the food in slot k
@@ -90,7 +90,7 @@ func panelCompose(f, p int, sprites string, row2x, mask *image.NRGBA) (*image.NR
 	// right wing
 	x = panelBlockR
 	x += put("panel_potion_in", x)
-	for k := 0; k < p; k++ {
+	for k := range p {
 		put(fmt.Sprintf("panel_potion_seg%d", panelSegArt(k, p, 4)), x)
 		if k < 4 {
 			moveOverlay(potSeg[k], potW, x)
@@ -169,8 +169,8 @@ func cmdComparePanel(args []string) {
 		diff := image.NewNRGBA(image.Rect(0, 0, W1, H1))
 		var sum float64
 		n := 0
-		for y := 0; y < H1; y++ {
-			for x := 0; x < W1; x++ {
+		for y := range H1 {
+			for x := range W1 {
 				fa := frame1.NRGBAAt(x, y)
 				if fa.A < 240 || ovl.NRGBAAt(2*x, 2*y).A > 0 {
 					continue

@@ -41,6 +41,12 @@ namespace Morgott.UI.InfoScreens
         private readonly List<Image> _dims = new List<Image>(2);
         private UIGroupHandler _group;
         private Selectable _focus;
+        private PanelDecor _decor;
+        private bool _backDirty = true, _lastBackCovers;
+        private Vector2 _lastBackCanvas;
+        private int _lastBackTheme = -1;
+
+        internal int OpenCount { get; private set; }
 
         // Per-frame layout of a page without its own LateUpdate (compendium), with the skin scale.
         public Action<float> OnLayout;
@@ -96,15 +102,11 @@ namespace Morgott.UI.InfoScreens
                 if ((img.name == "blur" || img.name == "darken" || img.name == "Closebutton") && !img.transform.IsChildOf(frame)) p._dims.Add(img);
             var gui = root.GetComponentInParent<InventoryGui>(true);
             if (gui && openMethod != null) p._tabs = new InfoTabs(gui, frame, openMethod, close);
-            p._esc = MakeKey(frame, EscName, "page close key cap (mockup 02: Esc top right)", () => close?.Invoke());
+            p._esc = MakeKey(frame, EscName, "page close key cap (mockup 02: Esc top right)", p.OnEscClick);
             // ITEMS (mockup 02 top bar): the item browser lives only in the inventory's right-hand ITEMS tab (user
             // 2026-11-04) - the page closes (the inventory stays) and that tab opens.
             // Inventory pages only (a page opened from the world, e.g. the enchanting table, has no inventory tab to go to).
-            if (p._tabs != null) p._items = MakeKey(frame, "RuneSkinPageItems", "page top bar: inventory ITEMS tab (mockup 02)", () =>
-            {
-                close?.Invoke();
-                ItemBrowser.BrowserPanel.Instance?.Open();
-            });
+            if (p._tabs != null) p._items = MakeKey(frame, "RuneSkinPageItems", "page top bar: inventory ITEMS tab (mockup 02)", p.OnItemsClick);
             p._itemsLabel = ItemBrowser.Browser.Localize("$ib_tab");
             p._name = InfoArt.OwnImage(frame, "RuneSkinPageName", "decor.plaque", "page top bar: character name banner (mockup 02)");
             p._name.preserveAspect = false;
@@ -153,7 +155,15 @@ namespace Morgott.UI.InfoScreens
             for (; t && t != transform; t = t.parent) d++;
             return d;
         }
-        private static Button MakeKey(RectTransform frame, string name, string reason, Action click)
+        private void OnEscClick() => _close?.Invoke();
+
+        private void OnItemsClick()
+        {
+            _close?.Invoke();
+            ItemBrowser.BrowserPanel.Instance?.Open();
+        }
+
+        private static Button MakeKey(RectTransform frame, string name, string reason, UnityEngine.Events.UnityAction click)
         {
             var go = new GameObject(name, typeof(RectTransform));
             go.transform.SetParent(frame, false);
@@ -161,7 +171,7 @@ namespace Morgott.UI.InfoScreens
             var b = go.AddComponent<Button>();
             b.targetGraphic = back;
             b.navigation = new Navigation { mode = Navigation.Mode.Automatic }; // gamepad reaches it from the tab row
-            b.onClick.AddListener(() => click());
+            b.onClick.AddListener(click);
             var mark = DollCell.Mark(back, "info.tab", reason);
             mark.Outcome = Restyler.Apply(back, mark, ThemeTokens.Role(mark.Role)) ? Outcome.Styled : Outcome.Degraded;
             InfoArt.RowText(go.transform, "Label", "text.body", TextAlignmentOptions.Center).fontStyle |= FontStyles.Bold;
@@ -178,6 +188,8 @@ namespace Morgott.UI.InfoScreens
 
         private void OnEnable()
         {
+            OpenCount++;
+            _backDirty = true;
             FullWindow.Enter(transform, ScreenRect); // first: a closing page then never restores the inventory in between
             foreach (var p in All.ToArray())
                 if (p && p != this && p.isActiveAndEnabled) p._close?.Invoke();
@@ -191,20 +203,34 @@ namespace Morgott.UI.InfoScreens
             // InventoryGui.Hide clears every full window (FullWindowAdapter.Hide_Postfix); a page that stays open (opened
             // from the world: the enchanting table) registers again.
             if (_tabs == null && _frame && !FullWindow.Has(transform)) FullWindow.Enter(transform, ScreenRect);
-            foreach (var d in _dims)
-                if (d && d.enabled) d.enabled = false;
-            if (_group)
+            for (var i = 0; i < _dims.Count; i++)
+                if (_dims[i] && _dims[i].enabled) _dims[i].enabled = false;
+            if (_group && (!_group.m_defaultElement || !_group.m_defaultElement.activeInHierarchy))
             {
                 var own = _tabs?.OwnButton;
                 var focus = own ? own.gameObject : _esc ? _esc.gameObject : _focus ? _focus.gameObject : null;
-                if (focus && (!_group.m_defaultElement || !_group.m_defaultElement.activeInHierarchy)) _group.m_defaultElement = focus;
+                if (focus) _group.m_defaultElement = focus;
             }
             if (!_back || !_canvas || !_frame) return;
+            var size = _canvas.rect.size;
+            var theme = ThemeTokens.Revision;
+            if (_backDirty || size != _lastBackCanvas || theme != _lastBackTheme)
+                SyncBack(size, theme);
+            var inv = InventorySkin.Instance;
+            if (OnLayout != null && inv) OnLayout(inv.SkinScaleValue);
+        }
+
+        private void SyncBack(Vector2 size, int theme)
+        {
+            _backDirty = false;
+            _lastBackCanvas = size;
+            _lastBackTheme = theme;
             // Drawn only where the frame's own opaque panel backing does not fill the screen (run 20261104-205914
             // overdraw-skills / -trophies: fully under SkillsFrame/RuneSkinPanel/Backing); hidden it still takes the clicks
             // beside the frame's art (alpha 0 + culled mesh: not drawn, still a raycast target).
             var want = Backing();
-            if (BackingCovers()) want.a = 0f;
+            _lastBackCovers = BackingCovers();
+            if (_lastBackCovers) want.a = 0f;
             if (!_back.canvasRenderer.cullTransparentMesh) _back.canvasRenderer.cullTransparentMesh = true;
             if (_back.color != want || _back.sprite) { _back.sprite = null; _back.color = want; } // a restyle pass must not change it
             if (_back.transform.parent == _frame)
@@ -218,25 +244,24 @@ namespace Morgott.UI.InfoScreens
                 if (at != f - 1) _back.transform.SetSiblingIndex(at < f ? f - 1 : f); // right under the frame
             }
             Geo.Place(_canvas, _back.rectTransform, Full(_canvas));
-            var inv = InventorySkin.Instance;
-            if (OnLayout != null && inv) OnLayout(inv.SkinScaleValue);
         }
 
         // The page frame's own panel stack (on the frame, or on its vanilla "bkg" child: compendium).
         private PanelDecor Decor()
         {
+            if (_decor) return _decor;
             var d = PanelDecor.Of(_frame);
-            if (d) return d;
+            if (d) return _decor = d;
             // Else the largest stack on a direct child (compendium: "bkg"; the store: vanilla "border (1)" over its smaller
             // "bkg" - runs 20261107-143240 / -144822 took none / bkg and left the store rails 49 px off screen).
             var area = 0f;
-            foreach (Transform c in _frame)
+            foreach (var c in Children.Of(_frame))
                 if (PanelDecor.Of(c) is PanelDecor pd && c is RectTransform rt && rt.rect.width * rt.rect.height > area)
                 {
                     d = pd;
                     area = rt.rect.width * rt.rect.height;
                 }
-            return d;
+            return _decor = d;
         }
 
         private bool BackingCovers()
@@ -314,6 +339,8 @@ namespace Morgott.UI.InfoScreens
                 Ends(header.Plate, ThemeTokens.GetFloat("size.info.page.title.end", 200f) * u);
                 if (header.Title && (header.Title.fontStyle & FontStyles.UpperCase) != FontStyles.UpperCase) header.Title.fontStyle |= FontStyles.UpperCase;
             }
+            if (_back && (!_lastBackCovers || _canvas.rect.size != _lastBackCanvas || ThemeTokens.Revision != _lastBackTheme))
+                SyncBack(_canvas.rect.size, ThemeTokens.Revision);
             var top = 232f * u;
             return new Box(61f * u, top, Mathf.Max(0f, full.W - 121f * u), Mathf.Max(0f, full.H - top - 82f * u));
         }

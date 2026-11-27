@@ -158,9 +158,75 @@ namespace Morgott.UI.Screens
         private static string Subtitle(ItemDrop.ItemData item)
         {
             var s = item.m_shared;
-            var type = "$ui_tip_type_" + s.m_itemType.ToString().ToLowerInvariant();
+            var type = "$ui_tip_type_" + ItemTypeSlug(s.m_itemType);
             if (s.m_skillType == Skills.SkillType.None || !(item.IsWeapon() || s.m_itemType == ItemDrop.ItemData.ItemType.Ammo)) return type;
-            return type + " · $skill_" + s.m_skillType.ToString().ToLowerInvariant();
+            return type + " · $skill_" + SkillSlug(s.m_skillType);
+        }
+
+        internal static string SkillSlug(Skills.SkillType skill)
+        {
+            switch (skill)
+            {
+                case Skills.SkillType.None: return "none";
+                case Skills.SkillType.Swords: return "swords";
+                case Skills.SkillType.Knives: return "knives";
+                case Skills.SkillType.Clubs: return "clubs";
+                case Skills.SkillType.Polearms: return "polearms";
+                case Skills.SkillType.Spears: return "spears";
+                case Skills.SkillType.Blocking: return "blocking";
+                case Skills.SkillType.Axes: return "axes";
+                case Skills.SkillType.Bows: return "bows";
+                case Skills.SkillType.ElementalMagic: return "elementalmagic";
+                case Skills.SkillType.BloodMagic: return "bloodmagic";
+                case Skills.SkillType.Unarmed: return "unarmed";
+                case Skills.SkillType.Pickaxes: return "pickaxes";
+                case Skills.SkillType.WoodCutting: return "woodcutting";
+                case Skills.SkillType.Crossbows: return "crossbows";
+                case Skills.SkillType.Jump: return "jump";
+                case Skills.SkillType.Sneak: return "sneak";
+                case Skills.SkillType.Run: return "run";
+                case Skills.SkillType.Swim: return "swim";
+                case Skills.SkillType.Fishing: return "fishing";
+                case Skills.SkillType.Cooking: return "cooking";
+                case Skills.SkillType.Farming: return "farming";
+                case Skills.SkillType.Crafting: return "crafting";
+                case Skills.SkillType.Dodge: return "dodge";
+                case Skills.SkillType.Ride: return "ride";
+                case Skills.SkillType.All: return "all";
+                default: return ((int)skill).ToString(System.Globalization.CultureInfo.InvariantCulture);
+            }
+        }
+
+        private static string ItemTypeSlug(ItemDrop.ItemData.ItemType type)
+        {
+            switch (type)
+            {
+                case ItemDrop.ItemData.ItemType.None: return "none";
+                case ItemDrop.ItemData.ItemType.Material: return "material";
+                case ItemDrop.ItemData.ItemType.Consumable: return "consumable";
+                case ItemDrop.ItemData.ItemType.OneHandedWeapon: return "onehandedweapon";
+                case ItemDrop.ItemData.ItemType.Bow: return "bow";
+                case ItemDrop.ItemData.ItemType.Shield: return "shield";
+                case ItemDrop.ItemData.ItemType.Helmet: return "helmet";
+                case ItemDrop.ItemData.ItemType.Chest: return "chest";
+                case ItemDrop.ItemData.ItemType.Ammo: return "ammo";
+                case ItemDrop.ItemData.ItemType.Customization: return "customization";
+                case ItemDrop.ItemData.ItemType.Legs: return "legs";
+                case ItemDrop.ItemData.ItemType.Hands: return "hands";
+                case ItemDrop.ItemData.ItemType.Trophy: return "trophy";
+                case ItemDrop.ItemData.ItemType.TwoHandedWeapon: return "twohandedweapon";
+                case ItemDrop.ItemData.ItemType.Torch: return "torch";
+                case ItemDrop.ItemData.ItemType.Misc: return "misc";
+                case ItemDrop.ItemData.ItemType.Shoulder: return "shoulder";
+                case ItemDrop.ItemData.ItemType.Utility: return "utility";
+                case ItemDrop.ItemData.ItemType.Tool: return "tool";
+                case ItemDrop.ItemData.ItemType.Attach_Atgeir: return "attach_atgeir";
+                case ItemDrop.ItemData.ItemType.Fish: return "fish";
+                case ItemDrop.ItemData.ItemType.TwoHandedWeaponLeft: return "twohandedweaponleft";
+                case ItemDrop.ItemData.ItemType.AmmoNonEquipable: return "ammononequipable";
+                case ItemDrop.ItemData.ItemType.Trinket: return "trinket";
+                default: return ((int)type).ToString(System.Globalization.CultureInfo.InvariantCulture);
+            }
         }
 
         // RMB = InventoryGui.OnRightClickItem -> UseItem (equip / unequip / consume, InventoryGui.cs); Ctrl = Epic Loot's
@@ -172,8 +238,15 @@ namespace Morgott.UI.Screens
             if (item.IsEquipable()) d.Hints.Add("[RMB] " + (item.m_equipped ? "$ui_tip_unequip" : "$ui_tip_equip"));
             else if (item.m_shared.m_itemType == ItemDrop.ItemData.ItemType.Consumable) d.Hints.Add("[RMB] $ui_tip_use");
             if (epicLoot && item.IsEquipable() && !item.m_equipped && player &&
-                player.GetInventory().GetEquippedItems().Exists(i => i.m_shared.m_itemType == item.m_shared.m_itemType))
+                HasEquippedOfType(player.GetInventory().GetEquippedItems(), item.m_shared.m_itemType))
                 d.Hints.Add("[Ctrl] $ui_tip_compare");
+        }
+
+        private static bool HasEquippedOfType(List<ItemDrop.ItemData> equipped, ItemDrop.ItemData.ItemType type)
+        {
+            for (var i = 0; i < equipped.Count; i++)
+                if (equipped[i].m_shared.m_itemType == type) return true;
+            return false;
         }
     }
 }

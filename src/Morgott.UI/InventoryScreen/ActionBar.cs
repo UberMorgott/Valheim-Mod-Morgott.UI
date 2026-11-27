@@ -16,11 +16,14 @@ namespace Morgott.UI.InventoryScreen
     {
         private sealed class Entry
         {
+            public ActionBar Owner;
             public RectTransform Rect;
             public Button Button;
             public InventoryRegistry.Action Action; // null = vanilla button
             public int Order;
             public Image Background, Glyph; // own buttons only
+
+            public void OnClick() => Owner.Invoke(this);
         }
 
         // Button art of the own buttons: "action.button" (panel action rows), "action.button.header" (the buttons sit in
@@ -154,9 +157,9 @@ namespace Morgott.UI.InventoryScreen
             var glyphRole = !string.IsNullOrEmpty(a.D.GlyphToken) && ThemeTokens.HasRole(a.D.GlyphToken) ? a.D.GlyphToken : "glyph.action.generic";
             var glyph = AddGlyph(rt, glyphRole, a.D.GlyphToken != null ? ThemeTokens.GetSprite(a.D.GlyphToken) : null);
             Tooltip(go, SlotNames.Get(a.D.TooltipKey ?? a.D.Id));
-            var entry = new Entry { Rect = rt, Button = button, Action = a, Order = a.D.Order, Background = bg, Glyph = glyph };
+            var entry = new Entry { Owner = this, Rect = rt, Button = button, Action = a, Order = a.D.Order, Background = bg, Glyph = glyph };
             Header(entry);
-            button.onClick.AddListener(() => Invoke(entry));
+            button.onClick.AddListener(entry.OnClick);
             return entry;
         }
 
@@ -234,13 +237,7 @@ namespace Morgott.UI.InventoryScreen
         {
             var a = e.Action;
             if (a == null || a.Dead) return;
-            var inv = _inventory;
-            InventoryRegistry.Guard(a, () =>
-            {
-                if (a.D.OnInvokeFor != null) a.D.OnInvokeFor(inv);
-                else a.D.OnInvoke?.Invoke();
-                return true;
-            }, false);
+            InventoryRegistry.GuardInvoke(a, _inventory);
         }
     }
 }

@@ -83,41 +83,49 @@ namespace Morgott.UI.ModScreens
 
         public static bool AnyOwned() => OwnershipRegistry.IsOwned(OwnershipRegistry.InventoryExtras) || OwnershipRegistry.IsOwned(OwnershipRegistry.Radial);
 
-        private static void Try(string what, Action a)
-        {
-            try { a(); }
-            catch (Exception e) { Plugin.Log.LogError($"[Morgott.UI] {what} restyle failed (vanilla look stays): {e}"); }
-        }
+        private static void LogError(string what, Exception e) =>
+            Plugin.Log.LogError($"[Morgott.UI] {what} restyle failed (vanilla look stays): {e}");
 
         [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.Awake))]
         [HarmonyPostfix]
         [HarmonyPriority(PatchOrder.InventoryExtras)]
-        private static void Inventory_Postfix(InventoryGui __instance) => Try("inventory extras", () => VanillaExtras.Inventory(__instance));
+        private static void Inventory_Postfix(InventoryGui __instance)
+        {
+            try { VanillaExtras.Inventory(__instance); }
+            catch (Exception e) { LogError("inventory extras", e); }
+        }
 
         [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.OnOpenAchievements))]
         [HarmonyPostfix]
         private static void Achievements_Postfix(InventoryGui __instance)
         {
-            if (OwnershipRegistry.IsOwned(OwnershipRegistry.InventoryExtras) && __instance.m_achievementsPanel)
-                Try("achievements", () =>
-                {
-                    GameScreenKit.Restyle(__instance.m_achievementsPanel);
-                    // An info window like skills / trophies (AchievementsWindow: the docked right panel, its one header with drag /
-                    // double-click reset), not the vanilla full-screen-centred frame.
-                    InfoScreens.AchievementsWindow.Ensure(__instance);
-                });
+            if (!OwnershipRegistry.IsOwned(OwnershipRegistry.InventoryExtras) || !__instance.m_achievementsPanel) return;
+            try
+            {
+                GameScreenKit.Restyle(__instance.m_achievementsPanel);
+                // An info window like skills / trophies (AchievementsWindow: the docked right panel, its one header with drag /
+                // double-click reset), not the vanilla full-screen-centred frame.
+                InfoScreens.AchievementsWindow.Ensure(__instance);
+            }
+            catch (Exception e) { LogError("achievements", e); }
         }
 
         [HarmonyPatch(typeof(Hud), nameof(Hud.Awake))]
         [HarmonyPostfix]
         [HarmonyPriority(PatchOrder.HudExtras)]
-        private static void Hud_Postfix(Hud __instance) => Try("radial menu", () => VanillaExtras.Radial(__instance));
+        private static void Hud_Postfix(Hud __instance)
+        {
+            try { VanillaExtras.Radial(__instance); }
+            catch (Exception e) { LogError("radial menu", e); }
+        }
 
         [HarmonyPatch(typeof(Valheim.UI.RadialBase), nameof(Valheim.UI.RadialBase.Open))]
         [HarmonyPostfix]
         private static void Open_Postfix(Valheim.UI.RadialBase __instance)
         {
-            if (OwnershipRegistry.IsOwned(OwnershipRegistry.Radial) && __instance) Try("radial menu", () => GameScreenKit.Restyle(__instance));
+            if (!OwnershipRegistry.IsOwned(OwnershipRegistry.Radial) || !__instance) return;
+            try { GameScreenKit.Restyle(__instance); }
+            catch (Exception e) { LogError("radial menu", e); }
         }
     }
 }

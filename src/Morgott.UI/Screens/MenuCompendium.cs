@@ -23,6 +23,13 @@ namespace Morgott.UI.Screens
         public const string EntryName = "RuneSkinCompendium";
         public const string Label = "$inventory_texts"; // vanilla Compendium title token
 
+        private sealed class OpenHandler
+        {
+            private readonly Menu _menu;
+            public OpenHandler(Menu menu) => _menu = menu;
+            public void OnClick() => Open(_menu);
+        }
+
         [HarmonyPatch(typeof(Menu), nameof(Menu.Start))]
         [HarmonyPostfix]
         [HarmonyPriority(Priority.High)]
@@ -38,7 +45,7 @@ namespace Morgott.UI.Screens
             // The copy carries Settings' persistent OnSettings listener: a fresh event, only ours.
             button.onClick = new Button.ButtonClickedEvent();
             var menu = __instance;
-            button.onClick.AddListener(() => Open(menu));
+            button.onClick.AddListener(new OpenHandler(menu).OnClick);
             var label = go.GetComponentInChildren<TMP_Text>(true);
             if (label) label.text = Label;
             Localization.instance?.Localize(go.transform);

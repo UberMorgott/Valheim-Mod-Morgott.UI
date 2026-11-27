@@ -118,18 +118,27 @@ namespace Morgott.UI.Tests
             Assert.False(c.IsDouble(a, 10.5f + PortalPickerMath.DoubleClick + 0.01f));
         }
 
+        private sealed class StatusRecorder
+        {
+            public string Status = "";
+            public void Saving() => Status = "saving";
+            public bool SaveOk() { Status = "saved"; return true; }
+            public static bool SaveFail() => false;
+            public void Failed() => Status = "failed";
+        }
+
         // Host save: the routed RPC to self acks inside send, so "saved" must be the last status (2026-11-13 run).
         [Fact]
         public void SynchronousAckLandsAfterSaving()
         {
-            var status = "";
-            var ok = PortalPickerMath.Send(() => status = "saving", () => { status = "saved"; return true; }, () => status = "failed");
+            var rec = new StatusRecorder();
+            var ok = PortalPickerMath.Send(rec.Saving, rec.SaveOk, rec.Failed);
             Assert.True(ok);
-            Assert.Equal("saved", status);
+            Assert.Equal("saved", rec.Status);
 
-            ok = PortalPickerMath.Send(() => status = "saving", () => false, () => status = "failed");
+            ok = PortalPickerMath.Send(rec.Saving, StatusRecorder.SaveFail, rec.Failed);
             Assert.False(ok);
-            Assert.Equal("failed", status);
+            Assert.Equal("failed", rec.Status);
         }
     }
 }

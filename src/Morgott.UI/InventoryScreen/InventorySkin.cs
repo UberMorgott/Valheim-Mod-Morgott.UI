@@ -2,6 +2,7 @@ using Morgott.Core;
 using Morgott.UI.Api;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using Morgott.UI.Classify;
 using Morgott.UI.Ownership;
 using Morgott.UI.Responsive;
@@ -124,6 +125,28 @@ namespace Morgott.UI.InventoryScreen
             gui.gameObject.AddComponent<InventorySkin>().Init(gui);
         }
 
+        private sealed class RootContext
+        {
+            private readonly InventorySkin _skin;
+            private readonly Transform _root;
+            private readonly string _id;
+
+            public RootContext(InventorySkin skin, Transform root, string id)
+            {
+                _skin = skin;
+                _root = root;
+                _id = id;
+            }
+
+            public ScreenContext Build() => _skin.Context(_root, _id);
+        }
+
+        private void RegisterRoot(Transform root, string id)
+        {
+            ScreenRegistry.Register(root, new RootContext(this, root, id).Build);
+            ScreenRegistry.Restyle(root);
+        }
+
         private void Init(InventoryGui gui)
         {
             Instance = this;
@@ -141,13 +164,12 @@ namespace Morgott.UI.InventoryScreen
             RegisterResetAction();
             EpicLootShardSlots.SkinPlaces = SkinPlacesShardSlots;
             EpicLootShardSlots.EnsurePatched();
-            foreach (var root in OwnedRoots())
-            {
-                var r = root;
-                var id = r == _gui.m_player ? ScreenId : r == _gui.m_info ? ScreenId + ".Info" : ScreenId + ".Template";
-                ScreenRegistry.Register(r, () => Context(r, id));
-                ScreenRegistry.Restyle(r);
-            }
+            if (_gui.m_player) RegisterRoot(_gui.m_player, ScreenId);
+            if (_gui.m_info) RegisterRoot(_gui.m_info, ScreenId + ".Info");
+            // m_container sits under m_player (prefab): restyled with it.
+            if (_gui.m_playerGrid && _gui.m_playerGrid.m_elementPrefab) RegisterRoot(_gui.m_playerGrid.m_elementPrefab.transform, ScreenId + ".Template");
+            if (_gui.m_containerGrid && _gui.m_containerGrid.m_elementPrefab && _gui.m_containerGrid.m_elementPrefab != _gui.m_playerGrid.m_elementPrefab)
+                RegisterRoot(_gui.m_containerGrid.m_elementPrefab.transform, ScreenId + ".Template");
             Plugin.Log.LogInfo($"[Morgott.UI] inventory windows attached (EAQS {(EaqsBridge.Available ? "on" : "off")})");
         }
 
@@ -172,16 +194,6 @@ namespace Morgott.UI.InventoryScreen
             if (Instance == this) Instance = null;
             _resetAction?.Invoke();
             RestoreQuickBar();
-        }
-
-        private IEnumerable<Transform> OwnedRoots()
-        {
-            if (_gui.m_player) yield return _gui.m_player;
-            if (_gui.m_info) yield return _gui.m_info;
-            // m_container sits under m_player (prefab): restyled with it.
-            if (_gui.m_playerGrid && _gui.m_playerGrid.m_elementPrefab) yield return _gui.m_playerGrid.m_elementPrefab.transform;
-            if (_gui.m_containerGrid && _gui.m_containerGrid.m_elementPrefab && _gui.m_containerGrid.m_elementPrefab != _gui.m_playerGrid.m_elementPrefab)
-                yield return _gui.m_containerGrid.m_elementPrefab.transform;
         }
 
         private void ReadTokens()
@@ -364,9 +376,22 @@ namespace Morgott.UI.InventoryScreen
             var closing = _gui && _gui.m_animator && !_gui.m_animator.GetBool(AnimVisible);
             if (closing || !InventoryGui.IsVisible() || !_canvas || !Player.m_localPlayer)
             {
+                _wasFullWindow = false;
+                _panelsDirty = true;
                 RestoreQuickBar();
                 ClearBand();
                 return;
+            }
+            if (FullWindow.Any)
+            {
+                _wasFullWindow = true;
+                return;
+            }
+            if (_wasFullWindow)
+            {
+                _wasFullWindow = false;
+                _layout = null;
+                _panelsDirty = true;
             }
             FindBackpack();
             FindShardSlots();
@@ -388,7 +413,13 @@ namespace Morgott.UI.InventoryScreen
             ScrollInput();
         }
 
-        private bool _frameReady;
+        private bool _frameReady, _wasFullWindow, _panelsDirty = true, _previewWasFailed;
+        private int _panelsKey, _eaqsPlacedFrame = -1, _eaqsPlacedScroll = -1, _eaqsPlacedHash;
+        private Vector2 _eaqsPlacedDollOff;
+        private TMP_Text _coinText;
+        private readonly Dictionary<TMP_Text, (string Text, float Size, int ThemeRev, float Width)> _statWidthCache =
+            new Dictionary<TMP_Text, (string, float, int, float)>(4);
+        private readonly List<InventoryElement> _cellScratch = new List<InventoryElement>(64);
 
         // Geometry after the Animator: InventoryGui's open/close animation writes the panels' anchored positions every
         // frame after Update (in-game run 3: m_player at (40,10) instead of (576,32) at end of frame), so every
@@ -405,7 +436,17 @@ namespace Morgott.UI.InventoryScreen
             if (!_frameReady || _layout == null) return;
             _frameReady = false;
             if (!InventoryGui.IsVisible()) return;
-            ApplyPanels();
+            var fading = _fade && _fade.alpha < 0.999f;
+            var panelsKey = PanelsKey();
+            var panelsApplied = _panelsDirty || fading || panelsKey != _panelsKey;
+            if (panelsApplied)
+            {
+                _panelsDirty = false;
+                _panelsKey = panelsKey;
+                ApplyPanels();
+            }
+            else PinAnimatedPanels();
+            var playerRepositioned = false;
             foreach (var pair in _grids)
             {
                 var s = pair.Value;
@@ -413,9 +454,16 @@ namespace Morgott.UI.InventoryScreen
                 if (pair.Key && RootMoved(pair.Key, s)) s.NeedsReposition = true;
                 if (!pair.Key || !s.NeedsReposition) continue;
                 s.NeedsReposition = false;
+                if (pair.Key == _gui.m_playerGrid) playerRepositioned = true;
                 Reposition(pair.Key, s.Visible, s.Scale, s.WantPitch > 0f ? Mathf.Clamp01((s.WantPitch - s.WantCell) / s.WantPitch) : 0f);
             }
-            if (_gui.m_playerGrid && _grids.TryGetValue(_gui.m_playerGrid, out var ps)) PlaceEaqsCells(_gui.m_playerGrid, ps.Scale);
+            if (_gui.m_playerGrid && _grids.TryGetValue(_gui.m_playerGrid, out var ps))
+            {
+                var cellsNeed = panelsApplied || playerRepositioned || _eaqsPlacedFrame != Time.frameCount ||
+                                _eaqsPlacedScroll != _dollScroll || _eaqsPlacedDollOff != _dollOff || _eaqsPlacedHash != _layoutHash;
+                if (cellsNeed) PlaceEaqsCells(_gui.m_playerGrid, ps.Scale);
+                else if (_preview && (!_preview.gameObject.activeSelf || _preview.Failed != _previewWasFailed)) PlaceDollAlcove();
+            }
             if (_ghost && _preview) _preview.RenderNow(); // hidden first open: the doll's first render in the frame it is placed
             if (_preview && !_ghost) _preview.CheckShown(); // open only: one warning per open if the doll stays empty (diagnostics)
             if (_logPlacement > 0 && --_logPlacement == 0) StartCoroutine(LogAtEndOfFrame());
@@ -571,6 +619,7 @@ namespace Morgott.UI.InventoryScreen
 
         public void OnHide()
         {
+            _panelsDirty = true;
             if (_ghost && !_ghostClosing) _ghostHiddenBy = Caller() + PlayerState();
             if (_preview) _preview.Close();
             RestoreQuickBar();
@@ -656,11 +705,9 @@ namespace Morgott.UI.InventoryScreen
         private void AdoptShardSlots(RectTransform panel)
         {
             if (ScreenRegistry.RootOf(panel) == panel) return;
-            var p = (Transform)panel;
             foreach (var child in Children.Of(panel))
                 if (IsVanillaBackground(child) && child.TryGetComponent<Image>(out var image)) image.enabled = false;
-            ScreenRegistry.Register(p, () => Context(p, ScreenId + ".Sockets"));
-            ScreenRegistry.Restyle(p);
+            RegisterRoot(panel, ScreenId + ".Sockets");
         }
 
         private bool ContainerIsBackpack() =>
@@ -685,12 +732,10 @@ namespace Morgott.UI.InventoryScreen
         private void AdoptBackpack(RectTransform panel)
         {
             if (ScreenRegistry.RootOf(panel) == panel) return;
-            var p = (Transform)panel;
             if (panel.TryGetComponent<Image>(out var own)) own.enabled = false;
             foreach (var child in Children.Of(panel))
                 if (IsVanillaBackground(child) && child.TryGetComponent<Image>(out var image)) image.enabled = false;
-            ScreenRegistry.Register(p, () => Context(p, ScreenId + ".Backpack"));
-            ScreenRegistry.Restyle(p);
+            RegisterRoot(panel, ScreenId + ".Backpack");
         }
 
         // Closed (behind the spawn's loading screen, like PrewarmGrid): the AdventureBackpacks fork builds its panel while
@@ -777,10 +822,10 @@ namespace Morgott.UI.InventoryScreen
                     _ghostClosing = true;
                     try { _gui.Hide(); }
                     finally { _ghostClosing = false; }
-                    EndGhost($"closed after {_ghostHeld + 1} frames");
+                    EndGhost($"closed after {(_ghostHeld + 1).ToString(CultureInfo.InvariantCulture)} frames");
                     break;
                 case GhostStep.Done:
-                    EndGhost(_ghost ? $"hidden after {_ghostHeld + 1} frames by {_ghostHiddenBy ?? "an animator write"}" : "skipped (loading screen gone or opened first)");
+                    EndGhost(_ghost ? $"hidden after {(_ghostHeld + 1).ToString(CultureInfo.InvariantCulture)} frames by {_ghostHiddenBy ?? "an animator write"}" : "skipped (loading screen gone or opened first)");
                     break;
             }
         }
@@ -792,7 +837,7 @@ namespace Morgott.UI.InventoryScreen
             _ghostCursor = _ghost;
             _ghost = false;
             _ghostDone = true;
-            Plugin.Log.LogInfo($"[Morgott.UI] inventory first open behind the loading screen: {why}, {ms:0} ms wall");
+            Plugin.Log.LogInfo($"[Morgott.UI] inventory first open behind the loading screen: {why}, {ms.ToString("0", CultureInfo.InvariantCulture)} ms wall");
         }
 
         // The open / close EffectLists stay empty for the whole ghost window, not only around RuneSkin's own Show / Hide:
@@ -842,7 +887,7 @@ namespace Morgott.UI.InventoryScreen
         {
             var p = Player.m_localPlayer;
             if (!p) return " (no local player)";
-            return $" (dead={p.IsDead()} intro={p.InIntro()} sleeping={p.m_sleeping} cinematic={CinematicsManager.IsPlaying()} cutscene={p.InCutscene()} teleporting={p.IsTeleporting()})";
+            return $" (dead={p.IsDead().ToString()} intro={p.InIntro().ToString()} sleeping={p.m_sleeping.ToString()} cinematic={CinematicsManager.IsPlaying().ToString()} cutscene={p.InCutscene().ToString()} teleporting={p.IsTeleporting().ToString()})";
         }
 
         // Who hid the ghost open (log only): the first stack frames above InventoryGui.Hide outside Harmony / RuneSkin.
@@ -900,14 +945,15 @@ namespace Morgott.UI.InventoryScreen
             _tokens.PanelCapInset = CapKeepOut(_chestHost);
             _tokens.CenterCapInset = CapKeepOut(_invHost);
             _layout = InventoryWindowsMath.Compute(i, _tokens);
+            _panelsDirty = true;
             Shown();
             RequestBand(scale);
             _entriesRevision = -1; // rebuild doll order
             _logPlacement = 3;
             var o = _layout;
-            Plugin.Log.LogInfo($"[Morgott.UI] inventory windows: hotbar c0 {o.Hotbar.C0:0.##} pitch {o.Hotbar.Pitch:0.###} cell {o.Hotbar.Cell:0.##} F {o.Hotbar.Side:0.##} top {o.Hotbar.Top:0.#}{(i.Hotbar.Valid ? "" : " (no strip)")}; " +
-                               $"grid {o.Inventory} {o.Player} doll {o.Doll} {o.DollGrid} preview {o.DollPreview} backpack {o.Backpack} {o.BackpackGrid} chest {o.Chest} {o.ChestGrid} sockets {o.Sockets} {o.SocketsGrid} " +
-                               $"crafting {o.Crafting}{(o.CraftingTight ? " tight" : "")}{(o.DockOverflow ? " dock overflow" : "")}{(o.BackpackFolded ? " backpack folded" : "")}");
+            Plugin.Log.LogInfo($"[Morgott.UI] inventory windows: hotbar c0 {o.Hotbar.C0.ToString("0.##", CultureInfo.InvariantCulture)} pitch {o.Hotbar.Pitch.ToString("0.###", CultureInfo.InvariantCulture)} cell {o.Hotbar.Cell.ToString("0.##", CultureInfo.InvariantCulture)} F {o.Hotbar.Side.ToString("0.##", CultureInfo.InvariantCulture)} top {o.Hotbar.Top.ToString("0.#", CultureInfo.InvariantCulture)}{(i.Hotbar.Valid ? "" : " (no strip)")}; " +
+                               $"grid {o.Inventory.ToString()} {o.Player.ToString()} doll {o.Doll.ToString()} {o.DollGrid.ToString()} preview {o.DollPreview.ToString()} backpack {o.Backpack.ToString()} {o.BackpackGrid.ToString()} chest {o.Chest.ToString()} {o.ChestGrid.ToString()} sockets {o.Sockets.ToString()} {o.SocketsGrid.ToString()} " +
+                               $"crafting {o.Crafting.ToString()}{(o.CraftingTight ? " tight" : "")}{(o.DockOverflow ? " dock overflow" : "")}{(o.BackpackFolded ? " backpack folded" : "")}");
         }
 
         // Side column entries present (trash, armour, weight, coins).
@@ -988,6 +1034,14 @@ namespace Morgott.UI.InventoryScreen
             if (_layout != null) LogPlacement();
         }
 
+        private static string RenderModeName(RenderMode mode) => mode switch
+        {
+            RenderMode.ScreenSpaceOverlay => nameof(RenderMode.ScreenSpaceOverlay),
+            RenderMode.ScreenSpaceCamera => nameof(RenderMode.ScreenSpaceCamera),
+            RenderMode.WorldSpace => nameof(RenderMode.WorldSpace),
+            _ => ((int)mode).ToString(CultureInfo.InvariantCulture)
+        };
+
         // Placement self-check a few frames after a layout change: target box vs measured canvas box (diagnostics).
         private void LogPlacement()
         {
@@ -997,15 +1051,16 @@ namespace Morgott.UI.InventoryScreen
                 if (!c) return;
                 var b = Geo.BoxOf(_canvas, (RectTransform)c.transform);
                 var off = Mathf.Abs(b.X - want.X) + Mathf.Abs(b.Y - want.Y);
-                sb.Append($" {name}={b}{(off > 2f ? " OFF(want " + want + ")" : "")}");
+                sb.Append(' ').Append(name).Append('=').Append(b.ToString());
+                if (off > 2f) sb.Append(" OFF(want ").Append(want.ToString()).Append(')');
             }
-            sb.Append($" canvasMode={_rootCanvas.renderMode}");
+            sb.Append(" canvasMode=").Append(RenderModeName(_rootCanvas.renderMode));
             if (_gui.m_playerGrid)
                 foreach (var e in _gui.m_playerGrid.m_elements)
                     if (e && e.Position.x == 0 && e.Position.y == (StripHotbar && _input.Hotbar.Valid ? 1 : 0))
                     {
                         // first shown cell vs the hotbar column 0 (same x centre, same side)
-                        sb.Append($" cell0={Geo.BoxOf(_canvas, (RectTransform)e.transform)} want x {_layout.PlayerCellX(0) + _invOff.x:0.#} side {_layout.Player.Cell:0.#}");
+                        sb.Append($" cell0={Geo.BoxOf(_canvas, (RectTransform)e.transform).ToString()} want x {(_layout.PlayerCellX(0) + _invOff.x).ToString("0.#", CultureInfo.InvariantCulture)} side {_layout.Player.Cell.ToString("0.#", CultureInfo.InvariantCulture)}");
                         break;
                     }
             One("player", _gui.m_player, _invBox);
@@ -1014,11 +1069,81 @@ namespace Morgott.UI.InventoryScreen
             if (_gui.m_container && _gui.m_container.gameObject.activeSelf)
             {
                 One("container", _gui.m_container, ContainerIsBackpack() ? _packBox : _chestBox);
-                if (_gui.m_containerGrid.m_elements.Count > 0 && _gui.m_containerGrid.m_elements[0]) sb.Append($" ccell0={Geo.BoxOf(_canvas, (RectTransform)_gui.m_containerGrid.m_elements[0].transform)}");
+                if (_gui.m_containerGrid.m_elements.Count > 0 && _gui.m_containerGrid.m_elements[0]) sb.Append($" ccell0={Geo.BoxOf(_canvas, (RectTransform)_gui.m_containerGrid.m_elements[0].transform).ToString()}");
             }
             if (_packPanel) One("backpack", _packPanel, _packBox);
             if (_sockPanel && !_sockBox.IsEmpty) One("sockets", _sockPanel, _sockBox);
             Plugin.Log.LogInfo(sb.ToString());
+        }
+
+        private int PanelsKey()
+        {
+            unchecked
+            {
+                var h = _layoutHash;
+                h = h * 31 + WindowMove.Revision;
+                h = h * 31 + (WindowMove.Enabled ? 1 : 0);
+                h = h * 31 + _gridScroll;
+                var containerShown = _gui.m_container && _gui.m_container.gameObject.activeSelf;
+                var backpackInContainer = containerShown && ContainerIsBackpack();
+                var packShown = _packPanel && _packGrid;
+                var sockShown = _sockPanel && _sockCount > 0;
+                var craftUnowned = _gui.m_crafting && _gui.m_crafting.gameObject.activeSelf && !CraftingScreen.CraftingSkin.Instance;
+                h = h * 31 + (containerShown ? 1 : 0) + (backpackInContainer ? 2 : 0) + (packShown ? 4 : 0) + (sockShown ? 8 : 0) + (craftUnowned ? 16 : 0);
+                h = h * 31 + _sockCount;
+                if (containerShown && _gui.m_containerGrid && _grids.TryGetValue(_gui.m_containerGrid, out var cs)) h = h * 31 + cs.ColScroll * 7;
+                if (packShown && _grids.TryGetValue(_packGrid, out var bs)) h = h * 31 + bs.ColScroll * 13;
+                if (sockShown && _sockGrid && _grids.TryGetValue(_sockGrid, out var ss)) h = h * 31 + ss.ColScroll * 19;
+                var skillsOpen = InfoScreens.SkillsSkin.Instance && InfoScreens.SkillsSkin.Instance.IsOpen;
+                var trophiesOpen = InfoScreens.TrophiesSkin.Instance && InfoScreens.TrophiesSkin.Instance.IsOpen;
+                h = h * 31 + (skillsOpen ? 1 : 0) + (trophiesOpen ? 2 : 0);
+                if (_gui.m_info)
+                {
+                    var infoTabs = 0;
+                    for (var n = 0; n < _gui.m_info.childCount; n++)
+                    {
+                        var child = _gui.m_info.GetChild(n);
+                        if (child.gameObject.activeSelf && child.TryGetComponent<Selectable>(out _)) infoTabs++;
+                    }
+                    h = h * 31 + infoTabs;
+                }
+                var playerName = Player.m_localPlayer ? Player.m_localPlayer.GetPlayerName() : null;
+                if (!string.IsNullOrEmpty(playerName)) h = h * 31 + StringComparer.Ordinal.GetHashCode(playerName);
+                h = h * 31 + HashText(_gui.m_armor);
+                h = h * 31 + HashText(_gui.m_weight);
+                if (!_coinText)
+                {
+                    var coinPlate = _gui.m_player.Find(ModCompat.CoinPocketPlate) ?? (_gui.m_info ? _gui.m_info.Find(ModCompat.CoinPocketPlate) : null);
+                    if (coinPlate) _coinText = coinPlate.GetComponentInChildren<TMP_Text>(true);
+                }
+                if (_coinText && _coinText.gameObject.activeInHierarchy) h = h * 31 + HashText(_coinText);
+                if (containerShown)
+                {
+                    h = h * 31 + HashText(_gui.m_containerName);
+                    h = h * 31 + HashText(_gui.m_containerWeight);
+                }
+                if (packShown)
+                {
+                    var packName = Twin(_gui.m_containerName ? _gui.m_containerName.transform : null)?.GetComponent<TMP_Text>();
+                    var packWeight = Twin(_gui.m_containerWeight ? _gui.m_containerWeight.transform : null)?.GetComponentInChildren<TMP_Text>(true);
+                    h = h * 31 + HashText(packName);
+                    h = h * 31 + HashText(packWeight);
+                }
+                if (sockShown) h = h * 31 + HashText(_sockTitle);
+                return h;
+            }
+        }
+
+        private static int HashText(TMP_Text t) =>
+            t && !string.IsNullOrEmpty(t.text) ? StringComparer.Ordinal.GetHashCode(t.text) : 0;
+
+        // Clean steady frames: pin the Animator-driven vanilla panels without re-running headers, actions or stat plates.
+        private void PinAnimatedPanels()
+        {
+            if (_gui.m_player) Geo.Place(_canvas, _gui.m_player, _invBox);
+            if (_gui.m_info) Geo.Place(_canvas, _gui.m_info, new Box(_dollBox.X, _dollBox.Y, _dollBox.W, _layout.DollHeader.H));
+            if (_gui.m_container && _gui.m_container.gameObject.activeSelf)
+                Geo.Place(_canvas, _gui.m_container, ContainerIsBackpack() ? _packBox : _chestBox);
         }
 
         private void ApplyPanels()
@@ -1348,15 +1473,27 @@ namespace Morgott.UI.InventoryScreen
             Mathf.Max(plateH * 0.5f, ThemeTokens.GetFloat("floor.text.body.px", 16f) / Mathf.Max(0.01f, _rootCanvas.scaleFactor));
 
         // Width the plate's value text needs at StatValueSize(plateH), measured on its widest digits ("0" for every digit,
-        // so a weight change in play does not outgrow the plate between layout passes).
+        // so a weight change in play does not outgrow the plate between layout passes). Cached by (text, size, theme).
         private float StatValueWidth(Transform plate, float plateH)
         {
             var text = plate ? plate.GetComponentInChildren<TMP_Text>(true) : null;
-            if (!text || string.IsNullOrEmpty(text.text)) return 0f;
-            var probe = System.Text.RegularExpressions.Regex.Replace(text.text, "[0-9]", "0");
+            if (!text) return 0f;
+            var raw = text.text;
+            if (string.IsNullOrEmpty(raw)) return 0f;
             var size = StatValueSize(plateH);
-            var w = text.GetPreferredValues(probe, float.PositiveInfinity, float.PositiveInfinity).x;
-            return text.fontSize > 0.01f ? w * size / text.fontSize : w;
+            var themeRev = ThemeTokens.Revision;
+            if (_statWidthCache.TryGetValue(text, out var hit) &&
+                string.Equals(hit.Text, raw, StringComparison.Ordinal) &&
+                Mathf.Abs(hit.Size - size) < 0.01f &&
+                hit.ThemeRev == themeRev)
+                return hit.Width;
+            var chars = raw.ToCharArray();
+            for (var i = 0; i < chars.Length; i++)
+                if (chars[i] >= '0' && chars[i] <= '9') chars[i] = '0';
+            var w = text.GetPreferredValues(new string(chars), float.PositiveInfinity, float.PositiveInfinity).x;
+            var width = text.fontSize > 0.01f ? w * size / text.fontSize : w;
+            _statWidthCache[text] = (raw, size, themeRev, width);
+            return width;
         }
 
         // Chest / backpack window: the window's one header (RuneWindowHeader: glyph in the icon slot, the container name
@@ -1574,13 +1711,28 @@ namespace Morgott.UI.InventoryScreen
         // the root's classification pass (same context, same exclusions as ScreenRegistry.Restyle(root)): the full pass over
         // m_player (run 20261027-152339: "diag Inventory: graphics=804" in the first open frame) restyled the doll, footer,
         // container and headers again although nothing but the cells was new. Same roles, same look.
-        private static void RestyleCells(InventoryGrid grid, GridState s)
+        // Grid-only context: classifies only this grid's InventoryElements + m_gridRoot instead of walking all of m_player.
+        private void RestyleCells(InventoryGrid grid, GridState s)
         {
             var first = grid.m_elements.Count > 0 && grid.m_elements[0] ? grid.m_elements[0].GetInstanceID() : 0;
             if (s.StyledElements == grid.m_elements.Count && s.StyledFirst == first) return;
             var owner = ScreenRegistry.RootOf(grid.transform);
-            var ctx = ScreenRegistry.ContextOf(owner);
-            if (ctx == null) return;
+            if (!owner) return;
+            var id = owner == _packPanel ? ScreenId + ".Backpack" : owner == _sockPanel ? ScreenId + ".Sockets" : ScreenId;
+            var ctx = new ScreenContext(id, OwnershipRegistry.Inventory);
+            var inPlayer = grid == _gui.m_playerGrid;
+            var visibleRows = inPlayer && Player.m_localPlayer ? EaqsBridge.VisibleRows(int.MaxValue) : int.MaxValue;
+            _cellScratch.Clear();
+            grid.GetComponentsInChildren(true, _cellScratch);
+            for (var i = 0; i < _cellScratch.Count; i++)
+            {
+                var e = _cellScratch[i];
+                var eaqs = inPlayer && Player.m_localPlayer && e.Position.y >= visibleRows;
+                ElementRoles(ctx, e, inPlayer && e.Position.y == 0, eaqs);
+            }
+            _cellScratch.Clear();
+            if (grid.m_gridRoot && grid.m_gridRoot.TryGetComponent<Image>(out var gr))
+                ctx.Role(gr, "skip", "InventoryGrid.m_gridRoot hit area (not a screen dim)");
             s.StyledElements = grid.m_elements.Count;
             s.StyledFirst = first;
             Restyler.RestyleSubtree(grid.transform, owner, ctx);
@@ -1930,21 +2082,32 @@ namespace Morgott.UI.InventoryScreen
                     if (!e.m_used && e.m_tooltip && e.m_tooltip.m_topic != entry.Name) e.m_tooltip.m_topic = entry.Name;
                 }
             }
+            _eaqsPlacedFrame = Time.frameCount;
+            _eaqsPlacedScroll = _dollScroll;
+            _eaqsPlacedDollOff = _dollOff;
+            _eaqsPlacedHash = _layoutHash;
             if (cellsOnly)
             {
                 PlaceQuickCells(grid);
                 return;
             }
+            PlaceDollAlcove();
+            PlaceQuickCells(grid);
+        }
+
+        private void PlaceDollAlcove()
+        {
+            var o = _layout;
+            var d = o.DollGrid;
             var figure = Move(o.DollFigure, _dollOff);
             var fits = figure.W >= d.Cell;
             if (_backdrop) Show(_backdrop, fits ? figure : default);
             var live = _preview && !_preview.Failed;
+            _previewWasFailed = _preview && _preview.Failed;
             // live preview: the texture covers the whole alcove (weapons / shield / cape never cut at a narrow image
             // edge), the body framed to the figure box's height inside it
             if (_preview) _preview.Place(_canvas, fits && live ? figure : default, Move(o.DollPreview, _dollOff));
             if (_silhouette) Show(_silhouette, fits && !live ? Move(o.DollPreview, _dollOff) : default);
-
-            PlaceQuickCells(grid);
         }
         private int CountDollSources()
         {

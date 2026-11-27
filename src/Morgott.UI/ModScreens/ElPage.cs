@@ -37,6 +37,7 @@ namespace Morgott.UI.ModScreens
         private InfoPage _page;
         private RuneWindowHeader _header;
         private MovableWindow _move;
+        private System.Reflection.MethodInfo _hide;
         private bool _moveWasOn, _measured;
         private PagePart.Pane _pane;
         private Image _divider;
@@ -60,10 +61,13 @@ namespace Morgott.UI.ModScreens
             p._scrim = panel.Find("TabScrim") as RectTransform;
             p._hints = panel.Find("TabGamepadHints") as RectTransform;
             p._move = unit.GetComponent<MovableWindow>();
-            p._page = InfoPage.Ensure(panel, panel, null, () => hide?.Invoke(null, null));
+            p._hide = hide;
+            p._page = InfoPage.Ensure(panel, panel, null, p.InvokeHide);
             var canvas = panel.GetComponentInParent<Canvas>(true);
             p._canvas = canvas ? (RectTransform)canvas.rootCanvas.transform : null;
         }
+
+        private void InvokeHide() => _hide?.Invoke(null, null);
 
         private void OnDisable()
         {

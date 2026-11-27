@@ -8,6 +8,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 
 	"golang.org/x/image/draw"
@@ -167,8 +168,8 @@ func renderCut(c Cut) *image.NRGBA {
 	for _, q := range c.SquashRight {
 		squashRight(src, int(q[0]), int(q[1]), q[2], int(q[3]))
 	}
-	for i := len(c.Squash) - 1; i >= 0; i-- {
-		src = squashRows(src, int(c.Squash[i][0]), int(c.Squash[i][1]), c.Squash[i][2])
+	for _, v := range slices.Backward(c.Squash) {
+		src = squashRows(src, int(v[0]), int(v[1]), v[2])
 	}
 	for _, h := range c.Holes {
 		polygonAlpha(src, h, 0)
@@ -270,7 +271,7 @@ func renderCut(c Cut) *image.NRGBA {
 	if c.Fade[0] > 0 || c.Fade[1] > 0 {
 		W := img.Bounds().Dx()
 		for y := 0; y < img.Bounds().Dy(); y++ {
-			for x := 0; x < W; x++ {
+			for x := range W {
 				f := 1.0
 				if c.Fade[0] > 0 && x < c.Fade[0] {
 					f = math.Min(f, (float64(x)+0.5)/float64(c.Fade[0]))
@@ -285,7 +286,7 @@ func renderCut(c Cut) *image.NRGBA {
 	}
 	if c.FadeV[0] > 0 || c.FadeV[1] > 0 {
 		H := img.Bounds().Dy()
-		for y := 0; y < H; y++ {
+		for y := range H {
 			f := 1.0
 			if c.FadeV[0] > 0 && y < c.FadeV[0] {
 				f = math.Min(f, (float64(y)+0.5)/float64(c.FadeV[0]))
@@ -349,8 +350,8 @@ func sectorMask(img *image.NRGBA, index, count int) {
 	cx, cy := float64(W)/2, float64(H)/2
 	centre := float64(index) * 360 / float64(count)
 	half := 180 / float64(count)
-	for y := 0; y < H; y++ {
-		for x := 0; x < W; x++ {
+	for y := range H {
+		for x := range W {
 			a := math.Atan2(float64(x)+0.5-cx, cy-(float64(y)+0.5)) * 180 / math.Pi
 			d := math.Abs(math.Mod(a-centre+540, 360) - 180)
 			if d > half {
@@ -437,11 +438,11 @@ func nineRebuild(s *image.NRGBA, n Nine) *image.NRGBA {
 func periodicX(src *image.NRGBA, n, k int) *image.NRGBA {
 	h := src.Bounds().Dy()
 	out := crop(src, image.Rect(0, 0, n, h))
-	for y := 0; y < h; y++ {
-		for i := 0; i < k; i++ {
+	for y := range h {
+		for i := range k {
 			w := float64(i) / float64(k)
 			a, b := src.PixOffset(n+i, y), out.PixOffset(i, y)
-			for c := 0; c < 4; c++ {
+			for c := range 4 {
 				out.Pix[b+c] = uint8(float64(src.Pix[a+c])*(1-w) + float64(out.Pix[b+c])*w + 0.5)
 			}
 		}
@@ -452,11 +453,11 @@ func periodicX(src *image.NRGBA, n, k int) *image.NRGBA {
 func periodicY(src *image.NRGBA, n, k int) *image.NRGBA {
 	w := src.Bounds().Dx()
 	out := crop(src, image.Rect(0, 0, w, n))
-	for i := 0; i < k; i++ {
+	for i := range k {
 		f := float64(i) / float64(k)
-		for x := 0; x < w; x++ {
+		for x := range w {
 			a, b := src.PixOffset(x, n+i), out.PixOffset(x, i)
-			for c := 0; c < 4; c++ {
+			for c := range 4 {
 				out.Pix[b+c] = uint8(float64(src.Pix[a+c])*(1-f) + float64(out.Pix[b+c])*f + 0.5)
 			}
 		}
@@ -713,11 +714,11 @@ func keyGreen(img *image.NRGBA) {
 		img.Pix[i+3] = uint8(255 * a)
 		// despill: no green left in the smoke (green-over-violet fringes read teal)
 		// violet smoke: green stays well below red and blue; semi-transparent fringe pixels take the violet hue
-		if gg, lim := img.Pix[i+1], uint8(min(int(img.Pix[i]), int(img.Pix[i+2]))*55/100); gg > lim {
+		if gg, lim := img.Pix[i+1], clampU8(min(int(img.Pix[i]), int(img.Pix[i+2]))*55/100); gg > lim {
 			img.Pix[i+1] = lim
 		}
 		if a < 0.9 && int(img.Pix[i]) > int(img.Pix[i+2])*8/10 {
-			img.Pix[i] = uint8(int(img.Pix[i+2]) * 8 / 10)
+			img.Pix[i] = clampU8(int(img.Pix[i+2]) * 8 / 10)
 		}
 	}
 }
@@ -733,10 +734,10 @@ func keyBlack(img *image.NRGBA) {
 			img.Pix[i], img.Pix[i+1], img.Pix[i+2], img.Pix[i+3] = 0, 0, 0, 0
 			continue
 		}
-		img.Pix[i] = uint8(int(r) * 255 / int(m))
-		img.Pix[i+1] = uint8(int(g) * 255 / int(m))
-		img.Pix[i+2] = uint8(int(b) * 255 / int(m))
-		img.Pix[i+3] = uint8((int(m) - blackFloor) * 255 / (255 - blackFloor))
+		img.Pix[i] = clampU8(int(r) * 255 / int(m))
+		img.Pix[i+1] = clampU8(int(g) * 255 / int(m))
+		img.Pix[i+2] = clampU8(int(b) * 255 / int(m))
+		img.Pix[i+3] = clampU8((int(m) - blackFloor) * 255 / (255 - blackFloor))
 	}
 }
 
@@ -816,8 +817,8 @@ func mirrorLeft(img *image.NRGBA, n int) {
 func flip(src *image.NRGBA, h, v bool) *image.NRGBA {
 	W, H := src.Bounds().Dx(), src.Bounds().Dy()
 	out := image.NewNRGBA(image.Rect(0, 0, W, H))
-	for y := 0; y < H; y++ {
-		for x := 0; x < W; x++ {
+	for y := range H {
+		for x := range W {
 			sx, sy := x, y
 			if h {
 				sx = W - 1 - x
@@ -862,9 +863,9 @@ func despillViolet(img *image.NRGBA) {
 // borderless strips whose painted ends carry background spill get a hue continuous with the sliced centre.
 func flatEnds(img *image.NRGBA, l, r int) {
 	W, H := img.Bounds().Dx(), img.Bounds().Dy()
-	for y := 0; y < H; y++ {
+	for y := range H {
 		s := img.PixOffset(W/2, y)
-		for x := 0; x < W; x++ {
+		for x := range W {
 			if x >= l && x < W-r {
 				continue
 			}
@@ -879,8 +880,8 @@ func boldAlpha(src *image.NRGBA, r int) *image.NRGBA {
 	W, H := src.Bounds().Dx(), src.Bounds().Dy()
 	out := image.NewNRGBA(src.Bounds())
 	copy(out.Pix, src.Pix)
-	for y := 0; y < H; y++ {
-		for x := 0; x < W; x++ {
+	for y := range H {
+		for x := range W {
 			m := uint8(0)
 			for dy := -r; dy <= r; dy++ {
 				for dx := -r; dx <= r; dx++ {

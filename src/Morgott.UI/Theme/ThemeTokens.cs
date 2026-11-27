@@ -113,8 +113,14 @@ namespace Morgott.UI.Theme
         }
 
         // A legacy face of the theme (diagnostics): a bundle legacy Font or a theme TMP face's source font.
-        public static bool IsLegacyThemeFont(Font f) =>
-            f && (BundleLegacyFonts.ContainsValue(f) || Fonts.Values.Any(t => t && t.sourceFontFile == f));
+        public static bool IsLegacyThemeFont(Font f)
+        {
+            if (!f) return false;
+            if (BundleLegacyFonts.ContainsValue(f)) return true;
+            foreach (var t in Fonts.Values)
+                if (t && t.sourceFontFile == f) return true;
+            return false;
+        }
 
         private static readonly Dictionary<string, Font> LegacyFonts = new Dictionary<string, Font>();
         private static readonly Dictionary<string, Font> BundleLegacyFonts = new Dictionary<string, Font>();
@@ -154,18 +160,23 @@ namespace Morgott.UI.Theme
                 var tex = s ? s.texture : null;
                 if (!tex || !seen.Add(tex) || tex.mipmapCount <= 1) continue;
                 tex.mipMapBias = bias;
-                pages.Add($"{tex.name} {tex.width}x{tex.height} mips {tex.mipmapCount}");
+                pages.Add($"{tex.name} {tex.width.ToString()}x{tex.height.ToString()} mips {tex.mipmapCount.ToString()}");
             }
             if (pages.Count > 0 && bias != _loggedMipBias)
             {
                 _loggedMipBias = bias;
-                Plugin.Log.LogInfo($"[Morgott.UI] atlas mip bias {bias:0.##} on {pages.Count} page(s): {string.Join("; ", pages)}");
+                Plugin.Log.LogInfo($"[Morgott.UI] atlas mip bias {bias.ToString("0.##")} on {pages.Count.ToString()} page(s): {string.Join("; ", pages)}");
             }
         }
         private static float _loggedMipBias = float.NaN;
         private static void OnAtlasRequested(string tag, Action<SpriteAtlas> done)
         {
-            var atlas = Atlases.FirstOrDefault(a => a && (a.tag == tag || a.name == tag));
+            SpriteAtlas atlas = null;
+            for (var i = 0; i < Atlases.Count; i++)
+            {
+                var a = Atlases[i];
+                if (a && (a.tag == tag || a.name == tag)) { atlas = a; break; }
+            }
             if (!atlas && _bundle) atlas = _bundle.LoadAsset<SpriteAtlas>(tag);
             if (atlas) done(atlas);
         }
@@ -219,7 +230,7 @@ namespace Morgott.UI.Theme
             if (Fonts.TryGetValue("font.body", out var body) && body && TMP_Settings.instance) TMP_Settings.defaultFontAsset = body;
             Source = source;
             Revision++;
-            Plugin.Log.LogInfo($"[Morgott.UI] theme '{ThemeName}' rev {Revision} from {source}; bundle {(BundleLoaded ? "loaded" : "MISSING")} ({BundlePath})");
+            Plugin.Log.LogInfo($"[Morgott.UI] theme '{ThemeName}' rev {Revision.ToString()} from {source}; bundle {(BundleLoaded ? "loaded" : "MISSING")} ({BundlePath})");
             return true;
         }
 
@@ -263,27 +274,42 @@ namespace Morgott.UI.Theme
             return missing == null || missing.Count == 0;
         }
 
+        private static readonly string[] FallbackFontNames = { "Valheim-AveriaSansLibre", "Valheim-AveriaSerifLibre", "Valheim-Norsebold" };
+
         // Our own font assets get the game's fonts as tail fallbacks (glyphs our fonts lack: CJK, symbols). Built once,
         // in a fixed order, only on our assets (never on shared game assets).
         public static void EnsureFontFallbacks()
         {
             if (_fallbacksLinked || Fonts.Count == 0) return;
             var game = Resources.FindObjectsOfTypeAll<TMP_FontAsset>();
-            var tail = new[] { "Valheim-AveriaSansLibre", "Valheim-AveriaSerifLibre", "Valheim-Norsebold" }
-                .Select(n => game.FirstOrDefault(f => f && f.name == n)).Where(f => f).ToList();
+            var tail = new List<TMP_FontAsset>(FallbackFontNames.Length);
+            for (var i = 0; i < FallbackFontNames.Length; i++)
+            {
+                var n = FallbackFontNames[i];
+                for (var j = 0; j < game.Length; j++)
+                {
+                    var f = game[j];
+                    if (f && f.name == n) { tail.Add(f); break; }
+                }
+            }
             if (tail.Count == 0) return; // game fonts not loaded yet; retried on the next restyle
             _fallbacksLinked = true;
             // Our TMP materials use the game's own SDF shader: a shader compiled into the bundle may not match the
             // game's graphics setup (art pipeline note), the game's instance always does.
             var gameShader = tail[0].material ? tail[0].material.shader : null;
-            foreach (var font in Fonts.Values.Where(f => f && !LoadedFonts.ContainsValue(f.name)).Distinct())
+            var seen = new HashSet<TMP_FontAsset>();
+            foreach (var font in Fonts.Values)
             {
+                if (!font || LoadedFonts.ContainsValue(font.name) || !seen.Add(font)) continue;
                 if (gameShader && font.material && font.material.shader != gameShader)
                     font.material.shader = gameShader;
                 if (font.fallbackFontAssetTable == null) font.fallbackFontAssetTable = new List<TMP_FontAsset>();
-                foreach (var t in tail)
+                for (var i = 0; i < tail.Count; i++)
+                {
+                    var t = tail[i];
                     if (t != font && !font.fallbackFontAssetTable.Contains(t))
                         font.fallbackFontAssetTable.Add(t);
+                }
             }
         }
 
@@ -347,7 +373,7 @@ namespace Morgott.UI.Theme
                 if (f && !BundleLegacyFonts.ContainsKey(f.name)) BundleLegacyFonts.Add(f.name, f);
             // Standalone readable textures (theme "textures", e.g. the cursor) load by name when the theme asks
             // (BundleTexture): LoadAllAssets<Texture2D> walked every sprite / font atlas page too.
-            Plugin.Log.LogInfo($"[Morgott.UI] bundle: {BundleSprites.Count} sprites, {BundleFonts.Count} TMP fonts, {BundleLegacyFonts.Count} legacy fonts");
+            Plugin.Log.LogInfo($"[Morgott.UI] bundle: {BundleSprites.Count.ToString()} sprites, {BundleFonts.Count.ToString()} TMP fonts, {BundleLegacyFonts.Count.ToString()} legacy fonts");
         }
 
         private static Texture2D BundleTexture(string name)

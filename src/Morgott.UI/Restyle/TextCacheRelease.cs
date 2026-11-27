@@ -18,6 +18,12 @@ namespace Morgott.UI.Restyle
             Localization.m_instance?.RemoveTextFromCache(__instance); // m_instance: the getter would create one at shutdown
             ModScreens.ForeignUi.Forget(__instance);
             NameCache.Forget(__instance);
+            if (__instance)
+            {
+                NameCache.Forget(__instance.gameObject);
+                NameCache.Forget(__instance.transform);
+            }
+            PreWorld.ReadableSweep.Forget(__instance);
         }
     }
 }

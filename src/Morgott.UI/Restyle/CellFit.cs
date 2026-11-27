@@ -47,6 +47,15 @@ namespace Morgott.UI.Restyle
         private readonly List<Sized> _sized = new List<Sized>(2);
         private Image _cell;
         private bool _zones, _owned;
+        private Image[] _images = System.Array.Empty<Image>();
+        private TMP_Text[] _texts = System.Array.Empty<TMP_Text>();
+        private GuiBar[] _bars = System.Array.Empty<GuiBar>();
+        private Transform _cachedScope;
+        private int _cachedScopeChildCount = -1;
+        private int _themeRev = -1;
+        private long _lastStamp;
+        private bool _childrenDirty = true;
+        private bool _dirty = true;
 
         public static void Ensure(Image cell, bool zones = false)
         {
@@ -57,7 +66,142 @@ namespace Morgott.UI.Restyle
                 fit.hideFlags = HideFlags.HideInInspector;
                 fit._cell = cell;
             }
-            fit._zones = zones;
+            if (fit._zones != zones)
+            {
+                fit._zones = zones;
+                fit._childrenDirty = true;
+                fit._dirty = true;
+            }
+        }
+
+        private void OnEnable() => _dirty = true;
+
+        private void OnRectTransformDimensionsChange() => _dirty = true;
+
+        private void OnTransformChildrenChanged()
+        {
+            _childrenDirty = true;
+            _dirty = true;
+        }
+
+        private void RefreshChildren(Transform scope)
+        {
+            Images.Clear();
+            scope.GetComponentsInChildren(true, Images);
+            var imgCount = 0;
+            for (var i = 0; i < Images.Count; i++)
+                if (Images[i] && Images[i] != _cell) imgCount++;
+            if (imgCount == 0) _images = System.Array.Empty<Image>();
+            else
+            {
+                if (_images.Length != imgCount) _images = new Image[imgCount];
+                var k = 0;
+                for (var i = 0; i < Images.Count; i++)
+                    if (Images[i] && Images[i] != _cell) _images[k++] = Images[i];
+            }
+            Images.Clear();
+
+            Texts.Clear();
+            scope.GetComponentsInChildren(true, Texts);
+            if (Texts.Count == 0) _texts = System.Array.Empty<TMP_Text>();
+            else
+            {
+                if (_texts.Length != Texts.Count) _texts = new TMP_Text[Texts.Count];
+                Texts.CopyTo(_texts);
+            }
+            Texts.Clear();
+
+            if (_zones)
+            {
+                Bars.Clear();
+                scope.GetComponentsInChildren(true, Bars);
+                if (Bars.Count == 0) _bars = System.Array.Empty<GuiBar>();
+                else
+                {
+                    if (_bars.Length != Bars.Count) _bars = new GuiBar[Bars.Count];
+                    Bars.CopyTo(_bars);
+                }
+                Bars.Clear();
+            }
+            else _bars = System.Array.Empty<GuiBar>();
+
+            _cachedScope = scope;
+            _cachedScopeChildCount = scope.childCount;
+            _childrenDirty = false;
+        }
+
+        private long StateStamp(Rect cr)
+        {
+            unchecked
+            {
+                long h = 17;
+                h = h * 31 + cr.width.GetHashCode();
+                h = h * 31 + cr.height.GetHashCode();
+                for (var i = 0; i < _images.Length; i++)
+                {
+                    var img = _images[i];
+                    if (!img) { _childrenDirty = true; return long.MinValue; }
+                    var on = img.isActiveAndEnabled;
+                    h = h * 31 + (on ? 1 : 0);
+                    if (!on) continue;
+                    var sp = img.sprite;
+                    h = h * 31 + (sp ? sp.GetInstanceID() : 0);
+                    h = h * 31 + (img.color.a > 0.05f ? 1 : 0);
+                    var rt = img.rectTransform;
+                    var p = rt.anchoredPosition;
+                    var r = rt.rect;
+                    var s = rt.localScale;
+                    h = h * 31 + p.x.GetHashCode();
+                    h = h * 31 + p.y.GetHashCode();
+                    h = h * 31 + r.width.GetHashCode();
+                    h = h * 31 + r.height.GetHashCode();
+                    h = h * 31 + s.x.GetHashCode();
+                    h = h * 31 + s.y.GetHashCode();
+                }
+                for (var i = 0; i < _texts.Length; i++)
+                {
+                    var t = _texts[i];
+                    if (!t) { _childrenDirty = true; return long.MinValue; }
+                    var on = t.isActiveAndEnabled;
+                    h = h * 31 + (on ? 1 : 0);
+                    if (!on) continue;
+                    var info = t.textInfo;
+                    var chars = info != null ? info.characterCount : 0;
+                    h = h * 31 + chars;
+                    if (chars == 0) continue;
+                    var rt = t.rectTransform;
+                    var p = rt.anchoredPosition;
+                    var b = t.textBounds;
+                    h = h * 31 + p.x.GetHashCode();
+                    h = h * 31 + p.y.GetHashCode();
+                    h = h * 31 + t.fontSize.GetHashCode();
+                    h = h * 31 + b.min.x.GetHashCode();
+                    h = h * 31 + b.size.x.GetHashCode();
+                    h = h * 31 + b.min.y.GetHashCode();
+                    h = h * 31 + b.size.y.GetHashCode();
+                }
+                if (_zones)
+                {
+                    for (var i = 0; i < _bars.Length; i++)
+                    {
+                        var bar = _bars[i];
+                        if (!bar) { _childrenDirty = true; return long.MinValue; }
+                        var on = bar.isActiveAndEnabled;
+                        h = h * 31 + (on ? 1 : 0);
+                        if (!on) continue;
+                        if (bar.transform is RectTransform rt)
+                        {
+                            var p = rt.anchoredPosition;
+                            var r = rt.rect;
+                            h = h * 31 + p.x.GetHashCode();
+                            h = h * 31 + p.y.GetHashCode();
+                            h = h * 31 + r.width.GetHashCode();
+                            h = h * 31 + r.height.GetHashCode();
+                        }
+                    }
+                }
+                return h;
+            }
         }
 
         private void LateUpdate()
@@ -65,39 +209,57 @@ namespace Morgott.UI.Restyle
             if (_reverted) return;
             if (!_cell) _cell = GetComponent<Image>();
             if (!_cell || !_cell.enabled) return;
+            if (_zones && (_owned || (_owned = TryGetComponent<InventoryScreen.GridCellLook>(out _)))) return;
             var space = _cell.rectTransform;
             var cr = space.rect;
             if (!LayoutMath.IsCellShape(cr.width, cr.height)) return;
             var scope = transform.childCount > 0 || !transform.parent ? transform : transform.parent;
+            if (_childrenDirty || scope != _cachedScope || scope.childCount != _cachedScopeChildCount)
+            {
+                RefreshChildren(scope);
+                _dirty = true;
+            }
+            if (_themeRev != ThemeTokens.Revision)
+            {
+                _themeRev = ThemeTokens.Revision;
+                _dirty = true;
+            }
+            var stamp = StateStamp(cr);
+            if (_childrenDirty)
+            {
+                RefreshChildren(scope);
+                _dirty = true;
+            }
+            else if (!_dirty && stamp == _lastStamp) return;
+
             if (_zones)
             {
-                // Inventory / container grid cells are laid out by their owner (GridCellLook, user defect 2026-10-23: the
-                // zone bands shrank "50/50" to the ~9 px band height, cut the icon to 64 % and could not fit the vanilla
-                // durability bar, wider than the cell). The band rule stays for the other item cells.
-                if (_owned || (_owned = TryGetComponent<InventoryScreen.GridCellLook>(out _))) return;
                 var band = LayoutMath.ZoneBand(Mathf.Min(cr.width, cr.height), ThemeTokens.GetFloat("share.cell.zone", 0.17f), ThemeTokens.GetFloat("size.cell.zone.min", 9f));
-                ZoneIcon(scope, space, cr, band);
-                ZoneTexts(scope, space, cr, band);
-                ZoneBars(scope, space, cr, band);
-                return;
+                ZoneIcon(space, cr, band);
+                ZoneTexts(space, cr, band);
+                ZoneBars(space, cr, band);
             }
-            CentreIcon(scope, space, cr);
-            KeepTexts(scope, space, cr);
+            else
+            {
+                CentreIcon(space, cr);
+                KeepTexts(space, cr);
+            }
+            _dirty = false;
+            _lastStamp = StateStamp(cr);
         }
 
         // Main icon: largest drawn sprite image whose centre lies in the cell, 12-150 % of its area. Images drawn in
         // a clear colour (vanilla InventoryElement.m_dropFocus, Color.clear until a touch drag) are not icons.
-        private Image FindIcon(Transform scope, RectTransform space, Rect cr, out Rect ir)
+        private Image FindIcon(RectTransform space, Rect cr, out Rect ir)
         {
-            Images.Clear();
-            scope.GetComponentsInChildren(false, Images);
             Image icon = null;
             var best = 0f;
             var area = cr.width * cr.height;
             ir = default;
-            foreach (var img in Images)
+            for (var i = 0; i < _images.Length; i++)
             {
-                if (!img || img == _cell || !img.enabled || !img.sprite || img.type == Image.Type.Filled) continue;
+                var img = _images[i];
+                if (!img || !img.isActiveAndEnabled || !img.sprite || img.type == Image.Type.Filled) continue;
                 if (img.canvasRenderer.GetInheritedAlpha() <= 0.05f || img.rectTransform.lossyScale.x <= 0.001f) continue;
                 var c = img.color;
                 if (c.a <= 0.05f && c.r + c.g + c.b <= 0.05f) continue;
@@ -110,13 +272,12 @@ namespace Morgott.UI.Restyle
                 best = a;
                 ir = r;
             }
-            Images.Clear();
             return icon;
         }
 
-        private void CentreIcon(Transform scope, RectTransform space, Rect cr)
+        private void CentreIcon(RectTransform space, Rect cr)
         {
-            var icon = FindIcon(scope, space, cr, out var ir);
+            var icon = FindIcon(space, cr, out var ir);
             if (!icon) return;
             var dx = LayoutMath.CentreOffset(cr.xMin, cr.xMax, ir.xMin, ir.xMax);
             var dy = LayoutMath.CentreOffset(cr.yMin, cr.yMax, ir.yMin, ir.yMax);
@@ -124,9 +285,9 @@ namespace Morgott.UI.Restyle
         }
 
         // Icon scaled (uniform localScale) so its drawn rect's longer side = the zone icon side, then centred.
-        private void ZoneIcon(Transform scope, RectTransform space, Rect cr, float band)
+        private void ZoneIcon(RectTransform space, Rect cr, float band)
         {
-            var icon = FindIcon(scope, space, cr, out var ir);
+            var icon = FindIcon(space, cr, out var ir);
             if (!icon) return;
             var side = LayoutMath.ZoneIconSide(Mathf.Min(cr.width, cr.height), band);
             var cur = Mathf.Max(ir.width, ir.height);
@@ -140,15 +301,15 @@ namespace Morgott.UI.Restyle
             Shift(icon.rectTransform, space, dx, dy);
         }
 
-        private void ZoneTexts(Transform scope, RectTransform space, Rect cr, float band)
+        private void ZoneTexts(RectTransform space, Rect cr, float band)
         {
+            if (_texts.Length == 0) return;
             var pad = ThemeTokens.GetFloat("size.cell.zone.pad", 1f);
             var floor = ThemeTokens.GetFloat("size.cell.zone.font.min", 8f);
-            Texts.Clear();
-            scope.GetComponentsInChildren(false, Texts);
-            foreach (var t in Texts)
+            for (var i = 0; i < _texts.Length; i++)
             {
-                if (!t || !t.enabled || t.textInfo == null || t.textInfo.characterCount == 0) continue;
+                var t = _texts[i];
+                if (!t || !t.isActiveAndEnabled || t.textInfo == null || t.textInfo.characterCount == 0) continue;
                 var b = t.textBounds;
                 if (b.size.x <= 0.01f || b.size.y <= 0.01f || b.size.x > 1e6f) continue;
                 var r = TextInset.RectIn(t.rectTransform, new Rect(b.min.x, b.min.y, b.size.x, b.size.y), space);
@@ -162,34 +323,32 @@ namespace Morgott.UI.Restyle
                 var dy = LayoutMath.ClampOffset(zMin + pad, zMin + band - pad, r.yMin, r.yMax);
                 Shift(t.rectTransform, space, dx, dy);
             }
-            Texts.Clear();
         }
 
         // Durability bar (vanilla GuiBar) inside the bottom band, inside the cell.
-        private void ZoneBars(Transform scope, RectTransform space, Rect cr, float band)
+        private void ZoneBars(RectTransform space, Rect cr, float band)
         {
+            if (_bars.Length == 0) return;
             var pad = ThemeTokens.GetFloat("size.cell.zone.pad", 1f);
-            Bars.Clear();
-            scope.GetComponentsInChildren(false, Bars);
-            foreach (var bar in Bars)
+            for (var i = 0; i < _bars.Length; i++)
             {
-                if (!bar || !(bar.transform is RectTransform rt)) continue;
+                var bar = _bars[i];
+                if (!bar || !bar.isActiveAndEnabled || !(bar.transform is RectTransform rt)) continue;
                 var r = TextInset.RectIn(rt, rt.rect, space);
                 if (!cr.Contains(r.center)) continue;
                 var dx = LayoutMath.ClampOffset(cr.xMin + pad, cr.xMax - pad, r.xMin, r.xMax);
                 var dy = LayoutMath.ClampOffset(cr.yMin + pad, cr.yMin + band - pad, r.yMin, r.yMax);
                 Shift(rt, space, dx, dy);
             }
-            Bars.Clear();
         }
 
-        private void KeepTexts(Transform scope, RectTransform space, Rect cr)
+        private void KeepTexts(RectTransform space, Rect cr)
         {
-            Texts.Clear();
-            scope.GetComponentsInChildren(false, Texts);
-            foreach (var t in Texts)
+            if (_texts.Length == 0) return;
+            for (var i = 0; i < _texts.Length; i++)
             {
-                if (!t || !t.enabled || t.textInfo == null || t.textInfo.characterCount == 0) continue;
+                var t = _texts[i];
+                if (!t || !t.isActiveAndEnabled || t.textInfo == null || t.textInfo.characterCount == 0) continue;
                 var b = t.textBounds;
                 if (b.size.x <= 0.01f || b.size.y <= 0.01f || b.size.x > 1e6f) continue;
                 var r = TextInset.RectIn(t.rectTransform, new Rect(b.min.x, b.min.y, b.size.x, b.size.y), space);
@@ -198,7 +357,6 @@ namespace Morgott.UI.Restyle
                 var dy = LayoutMath.ClampOffset(cr.yMin, cr.yMax, r.yMin, r.yMax);
                 Shift(t.rectTransform, space, dx, dy);
             }
-            Texts.Clear();
         }
 
         // Moves rt by (dx, dy) units of space (anchoredPosition is in its parent's units).

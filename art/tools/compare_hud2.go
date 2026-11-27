@@ -177,7 +177,7 @@ func compareHud3(heightRef float64, opt hudOpts) (*image.NRGBA, *image.NRGBA) {
 
 	// hotbar: mockup cells 465 + i * 88.3, 886..972 (content), rarity / selection as the mockup
 	rar := []string{rarity["legendary"], rarity["rare"], rarity["magic"], rarity["epic"], "", "", "", ""}
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		x := l.HotX + float64(i)*(in.Cell+in.Gap)
 		cy := l.CellsY
 		cw, ch := in.Cell, in.CellH
@@ -206,14 +206,15 @@ func compareHud3(heightRef float64, opt hudOpts) (*image.NRGBA, *image.NRGBA) {
 		if i == 3 {
 			tbox("gem_rarity", x+cw-ch*0.3, cy+ch*0.70, ch*0.24, ch*0.24, "#5fd35f", 1)
 		}
-		if i < 6 {
+		durs := []float64{0.9, 0.7, 0.8, 0.6, 0.85, 0.5}
+		if i < len(durs) {
 			tbox("strip_dur", x+cw*0.1, cy-6, cw*0.8, 4, "#05090c", 0.7)
-			tbox("strip_dur", x+cw*0.1, cy-6, cw*0.8*[]float64{0.9, 0.7, 0.8, 0.6, 0.85, 0.5}[i], 4, gold, 1)
+			tbox("strip_dur", x+cw*0.1, cy-6, cw*0.8*durs[i], 4, gold, 1)
 		}
 	}
 	// abilities: Q dash, G bash (cooldown 12), empty slot (rune ghost), guardian power F
 	abMock := []float64{1170, 1258, 1440}
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		x := l.AbX + float64(i)*(in.Cell+in.Gap)
 		cy := l.CellsY
 		cw, ch := in.Cell, in.CellH
@@ -274,10 +275,7 @@ func compareHud3(heightRef float64, opt hudOpts) (*image.NRGBA, *image.NRGBA) {
 	debuffCell := func(i int) (float64, float64) { return 1700 + float64(i%3)*63.4, 797 }
 	group := func(n int, cellAt func(int) (float64, float64), x0, x1, yBottom, cs float64, right bool) {
 		gap := 6.0
-		per := int((x1 - x0 + gap) / (cs + gap))
-		if per < 1 {
-			per = 1
-		}
+		per := max(int((x1-x0+gap)/(cs+gap)), 1)
 		shown := n
 		more := 0
 		if n > per*3 {

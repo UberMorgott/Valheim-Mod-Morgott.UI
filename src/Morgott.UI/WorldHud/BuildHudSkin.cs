@@ -24,7 +24,13 @@ namespace Morgott.UI.WorldHud
 
         public static void Attach(Hud hud)
         {
-            if (hud.m_buildUi) Register(hud.m_buildUi.transform, ScreenId);
+            if (hud.m_buildUi)
+            {
+                var buildRoot = hud.m_buildUi.transform;
+                Register(buildRoot, ScreenId);
+                _styledBuildUi = buildRoot;
+                _styledBuildRev = ThemeTokens.Revision;
+            }
             if (hud.m_buildHud)
             {
                 var info = hud.m_buildHud.transform.Find("SelectedInfo");
@@ -42,8 +48,16 @@ namespace Morgott.UI.WorldHud
         private static void Register(Transform root, string id)
         {
             PreWorldKit.Panels(root, "size.panel.pad");
-            ScreenRegistry.Register(root, () => Context(root, id));
+            ScreenRegistry.Register(root, new ContextProvider(root, id).Get);
             ScreenRegistry.Restyle(root);
+        }
+
+        private sealed class ContextProvider
+        {
+            private readonly Transform _root;
+            private readonly string _id;
+            public ContextProvider(Transform root, string id) { _root = root; _id = id; }
+            public ScreenContext Get() => Context(_root, _id ?? (ScreenId + "." + _root.name.Replace("(Clone)", "")));
         }
 
         // Selected-piece strip (mockup m6-build-a: frame_inset well): vanilla draws its backgrounds only in some states
@@ -101,23 +115,52 @@ namespace Morgott.UI.WorldHud
         // cannot hold it. The icon is scaled to the cell height. The requirement row moves as one block (`requirements`
         // keeps its own cell spacing). Each call moves elements by (target - current drawn box): idempotent per frame.
         // Bkg2 (vanilla 50 % black) + the well hug the row.
-        private static RectTransform _req, _bkg, _wellRt;
-        private static Transform _info;
+        private static GameObject _buildHud;
+        private static RectTransform _info, _req, _bkg, _wellRt;
         private static TMP_Text _creator;
+        private static GameObject[] _reqItemsSource;
+        private static TMP_Text[][] _reqTexts;
+        private static readonly RectTransform[] _stripMoves = new RectTransform[5];
+        private static readonly Rect[] _stripBoxes = new Rect[5];
+        private static readonly float[] _stripWidths = new float[5];
+        private static readonly float[] _stripLefts = new float[5];
+
+        private static Rect StripBox(Transform info, Transform from, Vector2 min, Vector2 max)
+        {
+            Vector2 a = info.InverseTransformPoint(from.TransformPoint(min)), c = info.InverseTransformPoint(from.TransformPoint(max));
+            return Rect.MinMaxRect(Mathf.Min(a.x, c.x), Mathf.Min(a.y, c.y), Mathf.Max(a.x, c.x), Mathf.Max(a.y, c.y));
+        }
+
+        private static Rect StripUnion(Rect p, Rect q) =>
+            Rect.MinMaxRect(Mathf.Min(p.xMin, q.xMin), Mathf.Min(p.yMin, q.yMin), Mathf.Max(p.xMax, q.xMax), Mathf.Max(p.yMax, q.yMax));
+
+        private static bool StripTextBox(Transform info, TMP_Text x, out Rect r)
+        {
+            r = default;
+            if (!x || !x.enabled || !x.gameObject.activeInHierarchy || string.IsNullOrEmpty(x.text)) return false;
+            var tb = x.textBounds; // last mesh: one frame behind a text change, SetupPieceInfo runs every frame
+            if (!(tb.size.x > 0f)) return false;
+            r = StripBox(info, x.transform, tb.min, tb.max);
+            return true;
+        }
 
         public static void FitStrip(Hud hud)
         {
-            var info = hud.m_buildHud ? hud.m_buildHud.transform.Find("SelectedInfo") as RectTransform : null;
-            if (!info || hud.m_requirementItems == null || hud.m_requirementItems.Length == 0 || !hud.m_requirementItems[0]) return;
-            if (_info != info)
+            if (!hud.m_buildHud || hud.m_requirementItems == null || hud.m_requirementItems.Length == 0 || !hud.m_requirementItems[0]) return;
+            if (_buildHud != hud.m_buildHud || !_info)
             {
-                _req = info.Find("requirements") as RectTransform;
-                _bkg = info.Find("Bkg2") as RectTransform;
-                _wellRt = info.Find(WellName) as RectTransform;
-                _creator = EnsureCreator(info);
-                if (!_req) return;
-                _info = info;
+                _buildHud = hud.m_buildHud;
+                _info = _buildHud.transform.Find("SelectedInfo") as RectTransform;
+                if (!_info) return;
+                _req = _info.Find("requirements") as RectTransform;
+                _bkg = _info.Find("Bkg2") as RectTransform;
+                _wellRt = _info.Find(WellName) as RectTransform;
+                _creator = EnsureCreator(_info);
+                _reqItemsSource = null;
+                _reqTexts = null;
             }
+            var info = _info;
+            if (!_req) return;
             if (hud.m_pieceDescription && hud.m_pieceDescription.enabled) hud.m_pieceDescription.enabled = false;
             var cellH = ((RectTransform)hud.m_requirementItems[0].transform).rect.height;
             UpdateRepairCreator(hud, info, cellH);
@@ -129,61 +172,64 @@ namespace Morgott.UI.WorldHud
             }
 
             // Drawn box of each element in SelectedInfo space.
-            var moves = new System.Collections.Generic.List<RectTransform>(5);
-            var boxes = new System.Collections.Generic.List<Rect>(5);
-            Rect Box(Transform from, Vector2 min, Vector2 max)
-            {
-                Vector2 a = info.InverseTransformPoint(from.TransformPoint(min)), c = info.InverseTransformPoint(from.TransformPoint(max));
-                return Rect.MinMaxRect(Mathf.Min(a.x, c.x), Mathf.Min(a.y, c.y), Mathf.Max(a.x, c.x), Mathf.Max(a.y, c.y));
-            }
-            Rect Union(Rect p, Rect q) => Rect.MinMaxRect(Mathf.Min(p.xMin, q.xMin), Mathf.Min(p.yMin, q.yMin), Mathf.Max(p.xMax, q.xMax), Mathf.Max(p.yMax, q.yMax));
-            bool TextBox(TMP_Text x, out Rect r)
-            {
-                r = default;
-                if (!x || !x.enabled || !x.gameObject.activeInHierarchy || string.IsNullOrEmpty(x.text)) return false;
-                var tb = x.textBounds; // last mesh: one frame behind a text change, SetupPieceInfo runs every frame
-                if (!(tb.size.x > 0f)) return false;
-                r = Box(x.transform, tb.min, tb.max);
-                return true;
-            }
-            void Element(RectTransform move, Rect box) { moves.Add(move); boxes.Add(box); }
+            var count = 0;
+            if (icon) { _stripMoves[count] = icon; _stripBoxes[count++] = StripBox(info, icon, icon.rect.min, icon.rect.max); }
+            if (StripTextBox(info, hud.m_buildSelection, out var nameBox)) { _stripMoves[count] = hud.m_buildSelection.rectTransform; _stripBoxes[count++] = nameBox; }
 
-            if (icon) Element(icon, Box(icon, icon.rect.min, icon.rect.max));
-            if (TextBox(hud.m_buildSelection, out var nameBox)) Element(hud.m_buildSelection.rectTransform, nameBox);
+            var items = hud.m_requirementItems;
+            if (_reqItemsSource != items || _reqTexts == null || _reqTexts.Length != items.Length)
+            {
+                _reqItemsSource = items;
+                _reqTexts = new TMP_Text[items.Length][];
+                for (var i = 0; i < items.Length; i++)
+                    if (items[i]) _reqTexts[i] = items[i].GetComponentsInChildren<TMP_Text>(true);
+            }
             var cells = false;
             var row = default(Rect);
-            foreach (var go in hud.m_requirementItems)
+            for (var i = 0; i < items.Length; i++)
             {
+                var go = items[i];
                 if (!go || !go.activeSelf) continue;
                 var rt = (RectTransform)go.transform;
-                var cell = Box(rt, rt.rect.min, rt.rect.max);
-                foreach (var t in go.GetComponentsInChildren<TMP_Text>(false))
-                    if (TextBox(t, out var tr)) cell = Union(cell, tr); // res_name / res_amount drawn past the cell count
-                row = cells ? Union(row, cell) : cell;
+                var cell = StripBox(info, rt, rt.rect.min, rt.rect.max);
+                var texts = _reqTexts[i] ?? (_reqTexts[i] = go.GetComponentsInChildren<TMP_Text>(true));
+                for (var j = 0; j < texts.Length; j++)
+                    if (StripTextBox(info, texts[j], out var tr)) cell = StripUnion(cell, tr); // res_name / res_amount drawn past the cell count
+                row = cells ? StripUnion(row, cell) : cell;
                 cells = true;
             }
-            if (cells) Element(_req, row);
+            if (cells) { _stripMoves[count] = _req; _stripBoxes[count++] = row; }
             var snap = hud.m_snappingIcon && hud.m_snappingIcon.enabled ? hud.m_snappingIcon.rectTransform : null;
-            if (snap) Element(snap, Box(snap, snap.rect.min, snap.rect.max));
-            if (TextBox(_creator, out var creatorBox)) Element(_creator.rectTransform, creatorBox);
-            if (moves.Count == 0) return;
+            if (snap) { _stripMoves[count] = snap; _stripBoxes[count++] = StripBox(info, snap, snap.rect.min, snap.rect.max); }
+            if (StripTextBox(info, _creator, out var creatorBox)) { _stripMoves[count] = _creator.rectTransform; _stripBoxes[count++] = creatorBox; }
+            if (count == 0) return;
 
             var inner = Theme.ThemeTokens.GetFloat("size.build.strip.inner", 6f);
             var pad = Theme.ThemeTokens.GetFloat("size.build.strip.pad", 10f);
             var gap = Theme.ThemeTokens.GetFloat("size.build.strip.gap", 8f);
-            var widths = new float[moves.Count];
             var rowH = 0f;
-            for (var i = 0; i < moves.Count; i++) { widths[i] = boxes[i].width; rowH = Mathf.Max(rowH, boxes[i].height); }
-            var lefts = PlayHudMath.StripRow(widths, gap);
-            var mid = inner + pad + rowH * 0.5f;
-            for (var i = 0; i < moves.Count; i++)
+            var x = 0f;
+            var gapClamped = Mathf.Max(0f, gap);
+            for (var i = 0; i < count; i++)
             {
-                var d = new Vector2(lefts[i] - boxes[i].xMin, mid - boxes[i].center.y);
-                if (d.sqrMagnitude <= 0.0001f) continue;
-                var parent = moves[i].parent;
-                moves[i].anchoredPosition += (Vector2)parent.InverseTransformVector(info.TransformVector(d));
+                var w = _stripBoxes[i].width;
+                _stripWidths[i] = w;
+                rowH = Mathf.Max(rowH, _stripBoxes[i].height);
+                _stripLefts[i] = x;
+                x += Mathf.Max(0f, w) + (i + 1 < count ? gapClamped : 0f);
             }
-            var box = Rect.MinMaxRect(lefts[0], inner + pad, lefts[moves.Count - 1] + widths[moves.Count - 1], inner + pad + rowH);
+            var half = x * 0.5f;
+            for (var i = 0; i < count; i++) _stripLefts[i] -= half;
+            var mid = inner + pad + rowH * 0.5f;
+            for (var i = 0; i < count; i++)
+            {
+                var d = new Vector2(_stripLefts[i] - _stripBoxes[i].xMin, mid - _stripBoxes[i].center.y);
+                if (d.sqrMagnitude <= 0.0001f) continue;
+                var move = _stripMoves[i];
+                var parent = move.parent;
+                move.anchoredPosition += (Vector2)parent.InverseTransformVector(info.TransformVector(d));
+            }
+            var box = Rect.MinMaxRect(_stripLefts[0], inner + pad, _stripLefts[count - 1] + _stripWidths[count - 1], inner + pad + rowH);
             var full = info.rect;
             Hug(_bkg, box, full, inner);
             Hug(_wellRt, box, full, inner + pad);
@@ -213,10 +259,10 @@ namespace Morgott.UI.WorldHud
                 player.GetPlayerName(),
                 FindLivePlayerName,
                 history?.Count ?? 0,
-                i => (history[i].m_serverAssignedDisplayName, history[i].m_displayName),
+                ReadWorldHistory,
                 piece.GetCreatorPlatformUserIdIndex(),
                 unknown,
-                (name, id) => CensorShittyWords.FilterUGC(name, UGCType.CharacterName, id));
+                FilterCreatorName);
             var line = PlayHudMath.FormatRepairCreator(Words.Get("$ui_repair_built_by"), resolved);
             StyleCreator(_creator);
             var turnedOn = !_creator.gameObject.activeSelf;
@@ -258,14 +304,73 @@ namespace Morgott.UI.WorldHud
             if (ui.m_tagButtonPrefab) RegisterTemplate(ui.m_tagButtonPrefab.transform);
         }
 
+        private static (string, string) ReadWorldHistory(int i)
+        {
+            var entry = ZNet.World.m_playerHistory[i];
+            return (entry.m_serverAssignedDisplayName, entry.m_displayName);
+        }
+
+        private static string FilterCreatorName(string name, long id) =>
+            CensorShittyWords.FilterUGC(name, UGCType.CharacterName, id);
+
         private static void RegisterTemplate(Transform template)
         {
             if (ScreenRegistry.ContextOf(template) != null) return;
-            ScreenRegistry.Register(template, () => Context(template, ScreenId + "." + template.name.Replace("(Clone)", "")));
+            ScreenRegistry.Register(template, new ContextProvider(template, null).Get);
             ScreenRegistry.Restyle(template);
         }
 
-        public static void Refresh(BuildUi ui) => ScreenRegistry.Restyle(ui.transform);
+        private static Transform _styledBuildUi;
+        private static int _styledBuildRev = -1;
+
+        public static void Refresh(BuildUi ui)
+        {
+            if (!ui) return;
+            var root = ui.transform;
+            var rev = ThemeTokens.Revision;
+            if (_styledBuildUi != root || _styledBuildRev != rev)
+            {
+                if (ScreenRegistry.Restyle(root))
+                {
+                    _styledBuildUi = root;
+                    _styledBuildRev = rev;
+                }
+                return;
+            }
+            // Warm open: only restyle newly pooled / mod-added piece or tag button subtrees.
+            if (ui.m_specialPieceButton) RefreshPiece(ui.m_specialPieceButton, root, rev);
+            var pieces = ui.m_pieceButtons;
+            if (pieces != null)
+                for (var i = 0; i < pieces.Count; i++) RefreshPiece(pieces[i], root, rev);
+            var tagList = ui.m_tagListScrollContent;
+            if (tagList)
+            {
+                for (var i = 0; i < tagList.childCount; i++)
+                {
+                    var child = tagList.GetChild(i);
+                    if (child.TryGetComponent<BuildUiTagButton>(out var tb)) RefreshTag(tb, root, rev);
+                }
+            }
+        }
+
+        private static void RefreshPiece(BuildUiPieceButton piece, Transform root, int rev)
+        {
+            if (!piece) return;
+            var g = piece.m_button && piece.m_button.targetGraphic ? piece.m_button.targetGraphic : piece.GetComponent<Image>();
+            if (IsStyledMark(g, rev)) return;
+            Restyle.Restyler.RestyleSubtree(piece.transform, root, Context(piece.transform, ScreenId));
+        }
+
+        private static void RefreshTag(BuildUiTagButton tag, Transform root, int rev)
+        {
+            if (!tag) return;
+            var g = tag.TryGetComponent<Selectable>(out var sel) && sel.targetGraphic ? sel.targetGraphic : tag.GetComponent<Image>();
+            if (IsStyledMark(g, rev)) return;
+            Restyle.Restyler.RestyleSubtree(tag.transform, root, Context(tag.transform, ScreenId));
+        }
+
+        private static bool IsStyledMark(Graphic g, int rev) =>
+            g && g.TryGetComponent<Restyle.SkinMark>(out var m) && m.IsOwnMark && m.ThemeRevision == rev;
 
         private static ScreenContext Context(Transform root, string id)
         {

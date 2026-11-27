@@ -229,6 +229,8 @@ namespace Morgott.UI.PreWorld
             _base[t] = b;
         }
 
+        internal static void Forget(TMP_Text t) => _base.Remove(t);
+
         private static void Prune()
         {
             var dead = new System.Collections.Generic.List<TMP_Text>();

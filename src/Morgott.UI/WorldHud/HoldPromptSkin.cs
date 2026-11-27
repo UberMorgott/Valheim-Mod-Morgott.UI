@@ -100,9 +100,10 @@ namespace Morgott.UI.WorldHud
         // After every Awake postfix (PlayHudAdapter clears the report list there).
         private void Start()
         {
-            var root = _parent;
-            PlayHud.Reports.Add(() => Instance == this && root ? _art.Report(root) : null);
+            PlayHud.Reports.Add(BuildReport);
         }
+
+        private Diagnostics.ScreenReport BuildReport() => Instance == this && _parent ? _art.Report(_parent) : null;
 
         private void LateUpdate()
         {

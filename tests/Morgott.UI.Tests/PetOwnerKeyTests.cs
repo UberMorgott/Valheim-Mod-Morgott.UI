@@ -12,7 +12,7 @@ namespace Morgott.UI.Tests
             var d = new DirectoryInfo(System.AppContext.BaseDirectory);
             while (d != null && !File.Exists(Path.Combine(d.FullName, "Morgott.UI.sln"))) d = d.Parent;
             var src = Path.Combine(d!.FullName, "src", "Morgott.UI");
-            foreach (var f in Directory.EnumerateFiles(src, "*.cs", SearchOption.AllDirectories))
+            foreach (var f in Directory.GetFiles(src, "*.cs", SearchOption.AllDirectories))
                 Assert.DoesNotContain("\"mt_pet_owner\"", File.ReadAllText(f));
             Assert.Contains("Morgott.Core.Contracts.PetOwner.GetStableHashCode()", File.ReadAllText(Path.Combine(src, "Hud", "SummonFrames.cs")));
         }

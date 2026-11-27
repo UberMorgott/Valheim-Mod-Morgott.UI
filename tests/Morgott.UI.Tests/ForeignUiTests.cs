@@ -162,6 +162,34 @@ namespace Morgott.UI.Tests
         [InlineData("Buy", null)]
         public void BoardTabsMapToKitGlyphs(string tab, string want) => Assert.Equal(want, BoardGlyph(tab));
 
+        private static bool HasFamily(ThemeFile f, string fam)
+        {
+            for (var i = 0; i < f.families.Length; i++)
+                if (f.families[i].family == fam) return true;
+            return false;
+        }
+
+        private static bool HasRole(ThemeFile f, string role)
+        {
+            for (var i = 0; i < f.roles.Length; i++)
+                if (f.roles[i].role == role) return true;
+            return false;
+        }
+
+        private static bool HasFloat(ThemeFile f, string token)
+        {
+            for (var i = 0; i < f.floats.Length; i++)
+                if (f.floats[i].token == token) return true;
+            return false;
+        }
+
+        private static bool HasSprite(ThemeFile f, string token)
+        {
+            for (var i = 0; i < f.sprites.Length; i++)
+                if (f.sprites[i].token == token) return true;
+            return false;
+        }
+
         // Stable family names (other mods ask for them by string) and the shipped theme declares each one with its roles.
         [Fact]
         public void M7FamiliesAreDeclaredInTheTheme()
@@ -171,9 +199,9 @@ namespace Morgott.UI.Tests
             var f = ThemeJson.Parse(r.ReadToEnd());
             Assert.Empty(ThemeSchema.Validate(f));
             foreach (var fam in new[] { "ModUi", "EpicLootEnchanting", "EpicLootBoard", "EpicLootTemper", "ModHud", "InventoryExtras", "Radial" })
-                Assert.Contains(f.families, x => x.family == fam);
+                Assert.True(HasFamily(f, fam), fam);
             foreach (var role in new[] { "legacy.title", "legacy.body", "legacy.label", "legacy.muted", "glyph.ench.enchant", "glyph.ench.vault", "glyph.board.bounty", "plate.currency" })
-                Assert.Contains(f.roles, x => x.role == role);
+                Assert.True(HasRole(f, role), role);
             Assert.Equal("sprite.glyph.panel.chest", Array.Find(f.roles, x => x.role == "glyph.ench.vault").sprite);
             Assert.Equal("font.display", Array.Find(f.roles, x => x.role == "legacy.title").font);
         }
@@ -246,11 +274,11 @@ namespace Morgott.UI.Tests
             using var r = new System.IO.StreamReader(s!);
             var f = ThemeJson.Parse(r.ReadToEnd());
             foreach (var role in new[] { "badge.ench.lock", "glyph.ench.lock" })
-                Assert.Contains(f.roles, x => x.role == role);
+                Assert.True(HasRole(f, role), role);
             foreach (var token in new[] { "size.el.tab.w", "size.el.tab.h", "size.el.tab.icon", "size.el.tab.caption", "size.el.tab.badge" })
-                Assert.Contains(f.floats, x => x.token == token);
+                Assert.True(HasFloat(f, token), token);
             foreach (var token in new[] { "sprite.ench.lock.badge", "sprite.ench.lock.glyph" })
-                Assert.Contains(f.sprites, x => x.token == token);
+                Assert.True(HasSprite(f, token), token);
         }
 
         private abstract class StubMessagePanelBase { }

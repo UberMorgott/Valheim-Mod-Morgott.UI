@@ -35,7 +35,17 @@ namespace Morgott.UI.Tests
             Assert.Null(t.fonts.Single(f => f.token == "font.display").legacy); // loaded rune face: its own source font
             Assert.Equal("cursor", t.textures.Single(x => x.token == "texture.cursor").asset);
             foreach (var role in new[] { "legacy.body", "legacy.label", "legacy.muted", "text.legacy" })
-                Assert.Equal("font.body", t.roles.Single(r => r.role == role).font);
+            {
+                RoleRule match = null;
+                for (var i = 0; i < t.roles.Length; i++)
+                {
+                    if (t.roles[i].role != role) continue;
+                    Assert.Null(match);
+                    match = t.roles[i];
+                }
+                Assert.NotNull(match);
+                Assert.Equal("font.body", match.font);
+            }
         }
 
         [Fact]

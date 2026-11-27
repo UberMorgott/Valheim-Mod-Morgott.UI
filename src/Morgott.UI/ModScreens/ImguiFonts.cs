@@ -16,6 +16,7 @@ namespace Morgott.UI.ModScreens
     {
         private static Font _font, _bold;
         private static FieldInfo[] _cmStyles;
+        private static Harmony _harmony;
         private GUISkin _done;
 
         public static void Init(GameObject host, Harmony harmony)
@@ -30,9 +31,12 @@ namespace Morgott.UI.ModScreens
             }
             Plugin.Log.LogInfo($"[Morgott.UI] IMGUI fonts: body '{_font.name}', bold '{(_bold ? _bold.name : "-")}'");
             host.AddComponent<ImguiFonts>();
+            _harmony = harmony;
             foreach (var a in AppDomain.CurrentDomain.GetAssemblies()) Hook(a, harmony);
-            AppDomain.CurrentDomain.AssemblyLoad += (_, args) => Hook(args.LoadedAssembly, harmony);
+            AppDomain.CurrentDomain.AssemblyLoad += OnAssemblyLoad;
         }
+
+        private static void OnAssemblyLoad(object sender, AssemblyLoadEventArgs args) => Hook(args.LoadedAssembly, _harmony);
 
         private static void Hook(Assembly a, Harmony harmony)
         {

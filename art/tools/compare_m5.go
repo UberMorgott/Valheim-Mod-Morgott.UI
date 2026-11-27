@@ -103,7 +103,7 @@ func compareM5Char() (*image.NRGBA, *image.NRGBA) {
 	c.sprite("field_search", 1384, 222, 448, 50)
 	c.text("Имя...", sans, 22, palette["text_disabled"], 1402, 247, 0)
 	c.text("Тип тела", sans, 21, body, 1384, 305, 0)
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		x := 1384 + float64(i)*101
 		n := "tab_square_normal"
 		if i == 0 {
@@ -114,7 +114,7 @@ func compareM5Char() (*image.NRGBA, *image.NRGBA) {
 	}
 	for k, t := range []string{"Волосы", "Борода"} {
 		c.text(t, sans, 21, body, 1384, 443+float64(k)*124, 0)
-		for i := 0; i < 6; i++ {
+		for i := range 6 {
 			x := 1387 + float64(i)*76
 			y := 466 + float64(k)*122
 			n := "slot_cell_recess"

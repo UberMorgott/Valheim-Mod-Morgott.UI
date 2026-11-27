@@ -33,22 +33,39 @@ namespace Morgott.UI.Theme
         }
 
         // Base order kept, same-key entries replaced in place, new ones appended (or put in front).
-        private static T[] ByKey<T>(T[] baseItems, T[] layerItems, Func<T, string> key, bool newFirst = false)
+        private static T[] ByKey<T>(T[] baseItems, T[] layerItems, Func<T, string> key, bool newFirst = false) where T : class
         {
             if (layerItems == null || layerItems.Length == 0) return baseItems;
             if (baseItems == null || baseItems.Length == 0) return layerItems;
             var replace = new Dictionary<string, T>();
             var added = new List<T>();
-            foreach (var item in layerItems)
+            for (var i = 0; i < layerItems.Length; i++)
             {
+                var item = layerItems[i];
                 if (item == null) continue;
                 replace[key(item) ?? ""] = item; // last one in the layer wins
             }
-            var baseKeys = new HashSet<string>(baseItems.Where(i => i != null).Select(i => key(i) ?? ""));
-            foreach (var item in layerItems)
-                if (item != null && !baseKeys.Contains(key(item) ?? "") && ReferenceEquals(replace[key(item) ?? ""], item)) added.Add(item);
-            var kept = baseItems.Select(i => i != null && replace.TryGetValue(key(i) ?? "", out var r) ? r : i);
-            return (newFirst ? added.Concat(kept) : kept.Concat(added)).ToArray();
+            var baseKeys = new HashSet<string>();
+            for (var i = 0; i < baseItems.Length; i++)
+                if (baseItems[i] != null) baseKeys.Add(key(baseItems[i]) ?? "");
+            for (var i = 0; i < layerItems.Length; i++)
+            {
+                var item = layerItems[i];
+                if (item == null) continue;
+                var k = key(item) ?? "";
+                if (!baseKeys.Contains(k) && ReferenceEquals(replace[k], item)) added.Add(item);
+            }
+            var result = new T[baseItems.Length + added.Count];
+            var offset = newFirst ? added.Count : 0;
+            for (var i = 0; i < baseItems.Length; i++)
+            {
+                var item = baseItems[i];
+                result[offset + i] = item != null && replace.TryGetValue(key(item) ?? "", out var r) ? r : item;
+            }
+            var addOffset = newFirst ? 0 : baseItems.Length;
+            for (var i = 0; i < added.Count; i++)
+                result[addOffset + i] = added[i];
+            return result;
         }
     }
 }

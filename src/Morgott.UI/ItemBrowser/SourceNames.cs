@@ -54,8 +54,10 @@ namespace Morgott.UI.ItemBrowser
             bool Token(string s) => !string.IsNullOrEmpty(s) && s[0] == '$' && Translated(s, localize);
             if (Token(current)) return current;
             var plain = !string.IsNullOrEmpty(current) && current[0] != '$' ? current : null;
-            foreach (var c in candidates)
+            var list = candidates as IList<string> ?? new List<string>(candidates);
+            for (var i = 0; i < list.Count; i++)
             {
+                var c = list[i];
                 if (Token(c)) return c;
                 if (plain == null && !string.IsNullOrEmpty(c) && c[0] != '$') plain = c;
             }
@@ -118,18 +120,20 @@ namespace Morgott.UI.ItemBrowser
         }
 
         // Splits on '_', '-', ' ', parentheses and lower->upper camel steps.
-        private static IEnumerable<string> Split(string id)
+        private static List<string> Split(string id)
         {
+            var parts = new List<string>();
             var sb = new StringBuilder();
             for (var i = 0; i < id.Length; i++)
             {
                 var c = id[i];
                 var cut = c == '_' || c == '-' || c == ' ' || c == '(' || c == ')';
-                if (!cut && i > 0 && char.IsUpper(c) && char.IsLower(id[i - 1])) { if (sb.Length > 0) yield return sb.ToString(); sb.Clear(); }
-                if (cut) { if (sb.Length > 0) yield return sb.ToString(); sb.Clear(); continue; }
+                if (!cut && i > 0 && char.IsUpper(c) && char.IsLower(id[i - 1])) { if (sb.Length > 0) parts.Add(sb.ToString()); sb.Clear(); }
+                if (cut) { if (sb.Length > 0) parts.Add(sb.ToString()); sb.Clear(); continue; }
                 sb.Append(c);
             }
-            if (sb.Length > 0) yield return sb.ToString();
+            if (sb.Length > 0) parts.Add(sb.ToString());
+            return parts;
         }
     }
 }

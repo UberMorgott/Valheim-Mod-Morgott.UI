@@ -30,7 +30,14 @@ namespace Morgott.UI.WorldHud
         internal static void Register(MessageHud hud)
         {
             // Same place and lifetime as vanilla's "ShowMessage" (MessageHud.Start, MessageHud.cs:111).
-            ZRoutedRpc.instance.Register<string>(Morgott.Core.Contracts.ServerAnnounceRpc, (sender, text) => Receive(hud, sender, text));
+            ZRoutedRpc.instance.Register<string>(Morgott.Core.Contracts.ServerAnnounceRpc, new RpcReceiver(hud).Receive);
+        }
+
+        private sealed class RpcReceiver
+        {
+            private readonly MessageHud _hud;
+            public RpcReceiver(MessageHud hud) => _hud = hud;
+            public void Receive(long sender, string text) => ServerAnnounce.Receive(_hud, sender, text);
         }
 
         private static void Receive(MessageHud hud, long sender, string text)

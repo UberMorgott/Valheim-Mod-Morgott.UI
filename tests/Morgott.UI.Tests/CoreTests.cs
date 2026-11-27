@@ -105,6 +105,26 @@ namespace Morgott.UI.Tests
             Assert.Equal(280.8f, Morgott.UI.MapScreen.MinimapMath.RingSize(320f, 1080f, 1f, 0.26f), 1);
         }
 
+        private static RoleRule FindRole(ThemeFile f, string role)
+        {
+            for (var i = 0; i < f.roles.Length; i++)
+                if (f.roles[i].role == role) return f.roles[i];
+            return null;
+        }
+
+        private static AssetEntry SingleSprite(ThemeFile f, string token)
+        {
+            AssetEntry match = null;
+            for (var i = 0; i < f.sprites.Length; i++)
+            {
+                if (f.sprites[i].token != token) continue;
+                Assert.Null(match);
+                match = f.sprites[i];
+            }
+            Assert.NotNull(match);
+            return match;
+        }
+
         // The shipped theme: two faces (user 2026-10-22), the rune face as display bound late from a loaded asset (menu
         // entries, headers), PT Sans for everything else (buttons, rows, tooltips, item names) with its real bold cut.
         [Fact]
@@ -119,11 +139,11 @@ namespace Morgott.UI.Tests
             Assert.Equal("loaded", System.Array.Find(f.fonts, x => x.token == "font.display").source);
             Assert.Equal("Valheim-Norsebold", System.Array.Find(f.fonts, x => x.token == "font.display").asset);
             foreach (var role in new[] { "menu.entry", "button.label.menu", "text.header", "info.title", "text.display" })
-                Assert.Equal("font.display", System.Array.Find(f.roles, x => x.role == role).font);
+                Assert.Equal("font.display", FindRole(f, role).font);
             foreach (var role in new[] { "button.label", "row.label" })
-                Assert.Equal("font.body", System.Array.Find(f.roles, x => x.role == role).font);
+                Assert.Equal("font.body", FindRole(f, role).font);
             foreach (var role in new[] { "tooltip.topic", "craft.title", "dialog.subject", "button.label.primary" })
-                Assert.Equal("font.body.bold", System.Array.Find(f.roles, x => x.role == role).font);
+                Assert.Equal("font.body.bold", FindRole(f, role).font);
             Assert.All(f.roles, x => Assert.True(x.font == null || x.font == "font.body" || x.font == "font.body.bold" || x.font == "font.display", x.role + ": " + x.font));
         }
 
@@ -166,7 +186,7 @@ namespace Morgott.UI.Tests
             var roles = theme.roles.Select(r => r.role).ToList();
             foreach (var role in new[] { "panel", "button", "menu.entry", "tooltip.box", "tooltip.text", "tooltip.topic", "content", "skip" })
                 Assert.Contains(role, roles);
-            Assert.Equal("button_hover", theme.sprites.Single(s => s.token == theme.roles.Single(r => r.role == "button").spriteHover).asset);
+            Assert.Equal("button_hover", SingleSprite(theme, theme.roles.Single(r => r.role == "button").spriteHover).asset);
         }
 
         [Theory]
@@ -174,7 +194,15 @@ namespace Morgott.UI.Tests
         [InlineData("{\"schema\": 1} x")]
         [InlineData("{\"a\": 1, \"a\": 2}")]
         [InlineData("[1]")]
-        public void ParserRejectsBadJson(string json) => Assert.Throws<FormatException>(() => ThemeJson.Parse(json));
+        public void ParserRejectsBadJson(string json)
+        {
+            try
+            {
+                ThemeJson.Parse(json);
+                Assert.Fail("Expected FormatException.");
+            }
+            catch (FormatException) { }
+        }
     }
 
 }

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 
 namespace Morgott.UI.PlayerHud
 {
@@ -70,8 +71,9 @@ namespace Morgott.UI.PlayerHud
             var typeOrder = new Dictionary<long, int>();
             var stacks = new Dictionary<long, PartyGroup>();
             var list = new List<PartyGroup>();
-            foreach (var u in units)
+            for (var i = 0; i < units.Count; i++)
             {
+                var u = units[i];
                 var type = TypeKey(u.Prefab, u.Pet);
                 if (!typeOrder.ContainsKey(type)) typeOrder[type] = typeOrder.Count + (u.Pet ? 1 << 20 : 0);
                 var cls = StateClass(u.State);
@@ -85,18 +87,37 @@ namespace Morgott.UI.PlayerHud
                 s.Units.Add(u);
             }
             foreach (var s in list) Aggregate(s);
-            var order = new List<KeyValuePair<PartyGroup, int>>();
-            for (var i = 0; i < list.Count; i++) order.Add(new KeyValuePair<PartyGroup, int>(list[i], i));
-            order.Sort((a, b) =>
+            var order = new List<GroupOrder>(list.Count);
+            for (var i = 0; i < list.Count; i++)
             {
-                var ta = typeOrder[TypeKey(a.Key.Prefab, a.Key.Pet)];
-                var tb = typeOrder[TypeKey(b.Key.Prefab, b.Key.Pet)];
-                if (ta != tb) return ta.CompareTo(tb);
-                var ra = StateRank(a.Key.State);
-                var rb = StateRank(b.Key.State);
-                return ra != rb ? ra.CompareTo(rb) : a.Value.CompareTo(b.Value);
-            });
-            return order.ConvertAll(p => p.Key);
+                var g = list[i];
+                order.Add(new GroupOrder(g, typeOrder[TypeKey(g.Prefab, g.Pet)], StateRank(g.State), i));
+            }
+            order.Sort(GroupOrderComparison);
+            for (var i = 0; i < order.Count; i++) list[i] = order[i].Group;
+            return list;
+        }
+
+        private readonly struct GroupOrder
+        {
+            public readonly PartyGroup Group;
+            public readonly int TypeOrder, Rank, Index;
+
+            public GroupOrder(PartyGroup group, int typeOrder, int rank, int index)
+            {
+                Group = group;
+                TypeOrder = typeOrder;
+                Rank = rank;
+                Index = index;
+            }
+        }
+
+        private static readonly Comparison<GroupOrder> GroupOrderComparison = CompareGroupOrder;
+
+        private static int CompareGroupOrder(GroupOrder a, GroupOrder b)
+        {
+            if (a.TypeOrder != b.TypeOrder) return a.TypeOrder.CompareTo(b.TypeOrder);
+            return a.Rank != b.Rank ? a.Rank.CompareTo(b.Rank) : a.Index.CompareTo(b.Index);
         }
 
         private static long TypeKey(int prefab, bool pet) => ((long)(uint)prefab << 1) | (pet ? 1L : 0L);
@@ -142,7 +163,7 @@ namespace Morgott.UI.PlayerHud
         public static string Timer(double remaining)
         {
             var s = Math.Max(0, (int)Math.Ceiling(remaining));
-            return $"{s / 60}:{s % 60:00}";
+            return (s / 60).ToString(CultureInfo.InvariantCulture) + ":" + (s % 60).ToString("00", CultureInfo.InvariantCulture);
         }
 
         // Height of one icon block: tile, 2 px, ES bar, 1 px, life bar (mockup PH = 44 + 2 + 3 + 1 + 4 = 54).

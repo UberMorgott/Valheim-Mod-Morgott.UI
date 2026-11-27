@@ -66,8 +66,8 @@ func (c *canvas) locked(x, y, w, h float64) {
 }
 
 func (c *canvas) grid(mock *image.NRGBA, x0, y0, px, py, cs float64, cols, rows, iconRows, iconCols int) {
-	for r := 0; r < rows; r++ {
-		for k := 0; k < cols; k++ {
+	for r := range rows {
+		for k := range cols {
 			x, y := x0+float64(k)*px, y0+float64(r)*py
 			c.sprite("slot_cell", x, y, cs, cs)
 			if r < iconRows && k < iconCols {
@@ -107,8 +107,8 @@ func compareM2() *image.NRGBA {
 	doll := [3][3]string{{"glyph_slot_helmet", "glyph_slot_back", "glyph_slot_light"},
 		{"glyph_slot_chest", "glyph_slot_belt", "glyph_slot_necklace"},
 		{"glyph_slot_legs", "glyph_slot_ring", "glyph_slot_ring"}}
-	for r := 0; r < 3; r++ {
-		for k := 0; k < 3; k++ {
+	for r := range 3 {
+		for k := range 3 {
 			x, y := 672+float64(k)*91, 192+float64(r)*90
 			c.sprite("slot_cell_recess", x, y, 85, 84)
 			if r == 0 && k == 1 { // worn cape: item icon replaces the glyph
@@ -118,7 +118,7 @@ func compareM2() *image.NRGBA {
 			c.glyph(doll[r][k], x+42.5, y+42, 50, carve, 0.6)
 		}
 	}
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		y := 190 + float64(i)*97
 		c.sprite("slot_mirror", 1145, y, 97, 94)
 		c.icon(mock, 1154, y+8, 80, 78)
@@ -126,12 +126,12 @@ func compareM2() *image.NRGBA {
 	}
 	// hotbar header + grid
 	c.sprite("hotbar_header", 674, 506, 578, 36)
-	for k := 0; k < 8; k++ {
+	for k := range 8 {
 		cx := 715 + float64(k)*70.5
 		c.text(fmt.Sprint(k+1), serif, 24, cyan, cx, 523, 1)
 	}
 	c.grid(mock, 682, 542, 70.5, 68.5, 66, 8, 4, 1, 8)
-	for k := 0; k < 3; k++ {
+	for k := range 3 {
 		c.equipped(682+float64(k)*70.5, 542, 66)
 	}
 	c.locked(682+7*70.5, 542, 66, 66)
@@ -165,7 +165,7 @@ func compareM2() *image.NRGBA {
 		c.sprite(n, t.x, 135, t.w, 37)
 		c.text(t.s, sans, 18, col, t.x+t.w/2, 153, 1)
 	}
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		x := 1334 + float64(i)*52
 		n := "slot_cell"
 		if i == 5 {

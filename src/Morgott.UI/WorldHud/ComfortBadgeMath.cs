@@ -31,8 +31,8 @@ namespace Morgott.UI.WorldHud
             {
                 var c = Corner(i);
                 var free = true;
-                foreach (var t in taken)
-                    if (c.Overlaps(t)) { free = false; break; }
+                for (var j = 0; j < taken.Count; j++)
+                    if (c.Overlaps(taken[j])) { free = false; break; }
                 if (free) return i;
             }
             return 0;
@@ -54,8 +54,11 @@ namespace Morgott.UI.WorldHud
         // and of a name: a piece in range with at least this comfort and the same group or name already holds the slot.
         internal static bool Counted(int group, string name, int comfort, IReadOnlyList<Source> nearby)
         {
-            foreach (var n in nearby)
+            for (var i = 0; i < nearby.Count; i++)
+            {
+                var n = nearby[i];
                 if (n.Comfort >= comfort && (n.Name == name || (group != 0 && n.Group == group))) return true;
+            }
             return false;
         }
     }

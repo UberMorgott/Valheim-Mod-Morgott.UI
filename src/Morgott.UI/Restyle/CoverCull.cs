@@ -20,12 +20,19 @@ namespace Morgott.UI.Restyle
         private const int MaxDepth = 6;
         private const float Tol = 0.5f;
 
+        private struct SubtreeBounds
+        {
+            public bool Any;
+            public bool HasOverride;
+            public float X0, Y0, X1, Y1;
+            public int MaxOverrideOrder;
+        }
+
         private static readonly HashSet<GameObject> Covered = new HashSet<GameObject>();
         private static readonly HashSet<GameObject> Next = new HashSet<GameObject>();
         private static readonly List<GameObject> Drop = new List<GameObject>();
-        private static readonly List<Graphic> Graphics = new List<Graphic>(256);
-        private static readonly List<Canvas> Canvases = new List<Canvas>(16);
-        private static readonly List<Canvas> Inner = new List<Canvas>(16);
+        private static readonly List<Canvas> RootCanvases = new List<Canvas>(16);
+        private static readonly Dictionary<Transform, SubtreeBounds> BoundsCache = new Dictionary<Transform, SubtreeBounds>(128);
         private static readonly Vector3[] Corners = new Vector3[4];
 
         public static int CoveredCount => Covered.Count;
@@ -34,12 +41,35 @@ namespace Morgott.UI.Restyle
         public static void Refresh(IReadOnlyList<Transform> windows, IReadOnlyList<Rect> opaque)
         {
             Next.Clear();
+            var hasValid = false;
             for (var i = 0; i < windows.Count; i++)
+                if (windows[i] && opaque[i].width > 1f && opaque[i].height > 1f) { hasValid = true; break; }
+            if (hasValid)
             {
-                var w = windows[i];
-                var r = opaque[i];
-                if (!w || r.width <= 1f || r.height <= 1f) continue;
-                Collect(w, r);
+                RootCanvases.Clear();
+                BoundsCache.Clear();
+                try
+                {
+                    var all = Object.FindObjectsByType<Canvas>(FindObjectsSortMode.None);
+                    for (var i = 0; i < all.Length; i++)
+                    {
+                        var c = all[i];
+                        if (c && c.isRootCanvas && c.isActiveAndEnabled && c.renderMode != RenderMode.WorldSpace)
+                            RootCanvases.Add(c);
+                    }
+                    for (var i = 0; i < windows.Count; i++)
+                    {
+                        var w = windows[i];
+                        var r = opaque[i];
+                        if (!w || r.width <= 1f || r.height <= 1f) continue;
+                        Collect(w, r);
+                    }
+                }
+                finally
+                {
+                    RootCanvases.Clear();
+                    BoundsCache.Clear();
+                }
             }
             Drop.Clear();
             foreach (var go in Covered)
@@ -80,18 +110,22 @@ namespace Morgott.UI.Restyle
             // EnemyHud and DamageText under IngameGui stayed drawn under the map backing).
             if (root && sortCanvas.transform != root && sortCanvas.rootCanvas.sortingOrder < order)
                 for (var node = sortCanvas.transform; node && node != root && node.parent; node = node.parent)
-                    foreach (Transform sib in node.parent)
+                {
+                    var parent = node.parent;
+                    for (var i = 0; i < parent.childCount; i++)
+                    {
+                        var sib = parent.GetChild(i);
                         if (sib != node) Consider(sib, opaque, order, 0, true);
-            // Root canvases drawn earlier (lower sorting order).
-            Canvases.Clear();
-            Canvases.AddRange(Object.FindObjectsByType<Canvas>(FindObjectsSortMode.None));
-            foreach (var c in Canvases)
+                    }
+                }
+            // Root canvases drawn earlier (lower sorting order), hoisted once per Refresh.
+            for (var i = 0; i < RootCanvases.Count; i++)
             {
-                if (!c || !c.isRootCanvas || !c.isActiveAndEnabled || c.renderMode == RenderMode.WorldSpace) continue;
-                if (c.sortingOrder >= order || c.transform == root) continue;
-                foreach (Transform child in c.transform) Consider(child, opaque, order, 0);
+                var c = RootCanvases[i];
+                if (!c || c.sortingOrder >= order || c.transform == root) continue;
+                var ct = c.transform;
+                for (var j = 0; j < ct.childCount; j++) Consider(ct.GetChild(j), opaque, order, 0);
             }
-            Canvases.Clear();
         }
 
         // tieAbove: an equal sorting order counts as drawn after the window (a later sibling branch: order not proven).
@@ -99,57 +133,79 @@ namespace Morgott.UI.Restyle
         {
             if (!t || !t.gameObject.activeInHierarchy || !(t is RectTransform)) return;
             // Sorted above the window by its own (or an ancestor's) override-sorting canvas: drawn after it.
-            var sort = SortCanvas(t);
-            if (sort && sort.overrideSorting && (sort.sortingOrder > windowOrder || tieAbove && sort.sortingOrder == windowOrder)) return;
-            if (!Bounds(t, out var b, out var above)) return;
-            if (!RenderGateMath.Overlaps(opaque.xMin, opaque.yMin, opaque.xMax, opaque.yMax, b.xMin, b.yMin, b.xMax, b.yMax)) return;
-            var aboveWindow = above != null && (above.sortingOrder > windowOrder || tieAbove && above.sortingOrder == windowOrder);
-            if (!aboveWindow && RenderGateMath.Inside(opaque.xMin, opaque.yMin, opaque.xMax, opaque.yMax, b.xMin, b.yMin, b.xMax, b.yMax, Tol))
+            if (depth == 0)
+            {
+                var sort = SortCanvas(t);
+                if (sort && sort.overrideSorting && (sort.sortingOrder > windowOrder || tieAbove && sort.sortingOrder == windowOrder)) return;
+            }
+            else if (t.TryGetComponent<Canvas>(out var own) && own.enabled && own.overrideSorting &&
+                (own.sortingOrder > windowOrder || tieAbove && own.sortingOrder == windowOrder)) return;
+            var b = GetBounds(t);
+            if (!b.Any) return;
+            if (!RenderGateMath.Overlaps(opaque.xMin, opaque.yMin, opaque.xMax, opaque.yMax, b.X0, b.Y0, b.X1, b.Y1)) return;
+            var aboveWindow = b.HasOverride && (b.MaxOverrideOrder > windowOrder || tieAbove && b.MaxOverrideOrder == windowOrder);
+            if (!aboveWindow && RenderGateMath.Inside(opaque.xMin, opaque.yMin, opaque.xMax, opaque.yMax, b.X0, b.Y0, b.X1, b.Y1, Tol))
             {
                 Next.Add(t.gameObject);
                 return;
             }
             if (depth >= MaxDepth) return;
-            foreach (Transform child in t) Consider(child, opaque, windowOrder, depth + 1, tieAbove);
+            for (var i = 0; i < t.childCount; i++) Consider(t.GetChild(i), opaque, windowOrder, depth + 1, tieAbove);
         }
 
-        // Screen bounds of the subtree's enabled graphics; above = the highest override-sorting canvas inside it.
-        private static bool Bounds(Transform t, out Rect bounds, out Canvas above)
+        // Screen bounds + highest override-sorting canvas of the active subtree, memoized once per Transform per Refresh.
+        private static SubtreeBounds GetBounds(Transform t)
         {
-            bounds = default;
-            above = null;
-            // own list: Collect is iterating Canvases while it calls Consider -> Bounds (combined run 20261023-161531:
-            // 36 x 'Collection was modified' from InventoryGui.Update, half-applied gates = covered > 0)
-            Inner.Clear();
-            t.GetComponentsInChildren(false, Inner);
-            foreach (var c in Inner)
-                if (c.overrideSorting && c.enabled && (above == null || c.sortingOrder > above.sortingOrder)) above = c;
-            Inner.Clear();
-            Graphics.Clear();
-            t.GetComponentsInChildren(false, Graphics);
-            var any = false;
-            float x0 = 0f, y0 = 0f, x1 = 0f, y1 = 0f;
-            foreach (var g in Graphics)
+            if (BoundsCache.TryGetValue(t, out var cached)) return cached;
+            var res = default(SubtreeBounds);
+            if (t.TryGetComponent<Canvas>(out var c) && c.overrideSorting && c.enabled)
             {
-                if (!g.enabled || !g.canvas) continue;
+                res.HasOverride = true;
+                res.MaxOverrideOrder = c.sortingOrder;
+            }
+            if (t.TryGetComponent<Graphic>(out var g) && g.enabled && g.canvas)
+            {
                 var rt = g.rectTransform;
-                if (rt.rect.width <= 0f || rt.rect.height <= 0f) continue;
-                rt.GetWorldCorners(Corners);
-                var cam = g.canvas.rootCanvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : g.canvas.rootCanvas.worldCamera;
-                for (var k = 0; k < 4; k++)
+                if (rt.rect.width > 0f && rt.rect.height > 0f)
                 {
-                    var p = RectTransformUtility.WorldToScreenPoint(cam, Corners[k]);
-                    if (!any) { x0 = x1 = p.x; y0 = y1 = p.y; any = true; continue; }
-                    if (p.x < x0) x0 = p.x;
-                    if (p.x > x1) x1 = p.x;
-                    if (p.y < y0) y0 = p.y;
-                    if (p.y > y1) y1 = p.y;
+                    rt.GetWorldCorners(Corners);
+                    var cam = g.canvas.rootCanvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : g.canvas.rootCanvas.worldCamera;
+                    for (var k = 0; k < 4; k++)
+                    {
+                        var p = RectTransformUtility.WorldToScreenPoint(cam, Corners[k]);
+                        if (!res.Any) { res.X0 = res.X1 = p.x; res.Y0 = res.Y1 = p.y; res.Any = true; continue; }
+                        if (p.x < res.X0) res.X0 = p.x;
+                        if (p.x > res.X1) res.X1 = p.x;
+                        if (p.y < res.Y0) res.Y0 = p.y;
+                        if (p.y > res.Y1) res.Y1 = p.y;
+                    }
                 }
             }
-            Graphics.Clear();
-            if (!any) return false;
-            bounds = Rect.MinMaxRect(x0, y0, x1, y1);
-            return true;
+            var count = t.childCount;
+            for (var i = 0; i < count; i++)
+            {
+                var child = t.GetChild(i);
+                if (!child.gameObject.activeSelf) continue;
+                var cb = GetBounds(child);
+                if (cb.HasOverride && (!res.HasOverride || cb.MaxOverrideOrder > res.MaxOverrideOrder))
+                {
+                    res.HasOverride = true;
+                    res.MaxOverrideOrder = cb.MaxOverrideOrder;
+                }
+                if (cb.Any)
+                {
+                    if (!res.Any) { res.X0 = cb.X0; res.Y0 = cb.Y0; res.X1 = cb.X1; res.Y1 = cb.Y1; res.Any = true; }
+                    else
+                    {
+                        if (cb.X0 < res.X0) res.X0 = cb.X0;
+                        if (cb.X1 > res.X1) res.X1 = cb.X1;
+                        if (cb.Y0 < res.Y0) res.Y0 = cb.Y0;
+                        if (cb.Y1 > res.Y1) res.Y1 = cb.Y1;
+                    }
+                }
+            }
+            BoundsCache[t] = res;
+            return res;
         }
 
         // The canvas whose sorting order places the window: nearest override-sorting canvas, else the root.

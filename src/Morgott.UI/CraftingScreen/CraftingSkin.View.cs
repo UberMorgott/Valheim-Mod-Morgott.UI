@@ -6,6 +6,7 @@ using Morgott.UI.Restyle;
 using Morgott.UI.Theme;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Events;
 using UnityEngine.UI;
 
 namespace Morgott.UI.CraftingScreen
@@ -113,7 +114,7 @@ namespace Morgott.UI.CraftingScreen
             else if (_gui.m_activeGroup > index) _gui.m_activeGroup--;
         }
 
-        private Button PlateButton(string name, Action click, out Image plate, string role = "craft.control")
+        private Button PlateButton(string name, UnityAction click, out Image plate, string role = "craft.control")
         {
             plate = new GameObject(name, typeof(RectTransform)).AddComponent<Image>();
             plate.rectTransform.SetParent(_ctl, false);
@@ -121,9 +122,61 @@ namespace Morgott.UI.CraftingScreen
             button.targetGraphic = plate;
             button.navigation = RowNav;
             Styled(plate, role, "crafting view control plate (" + role + ")");
-            button.onClick.AddListener(() => click());
+            button.onClick.AddListener(click);
             return button;
         }
+
+        private static void OnSortChanged(int i)
+        {
+            if (View() is ICraftingAvailability v && i >= 0 && i < SortKeys.Length) v.Sort = SortKeys[i];
+        }
+
+        private static void OnToggleSortDir()
+        {
+            if (View() is ICraftingAvailability v) v.Descending = !v.Descending;
+        }
+
+        private static void OnToggleNewOnly()
+        {
+            if (View() is ICraftingAvailability v) v.NewOnly = !v.NewOnly;
+        }
+
+        private sealed class ShowSetter
+        {
+            private readonly CraftShow _key;
+            public ShowSetter(CraftShow key) => _key = key;
+            public void Apply() { if (View() is ICraftingAvailability v) v.Show = _key; }
+        }
+
+        private static string SortKeyToken(CraftSort s) => s switch
+        {
+            CraftSort.Default => "default",
+            CraftSort.Name => "name",
+            CraftSort.Health => "health",
+            CraftSort.Stamina => "stamina",
+            CraftSort.Eitr => "eitr",
+            CraftSort.Regen => "regen",
+            CraftSort.Duration => "duration",
+            CraftSort.Recent => "recent",
+            CraftSort.Craftable => "craftable",
+            _ => "default",
+        };
+
+        private static string ShowKeyName(CraftShow s) => s switch
+        {
+            CraftShow.All => "All",
+            CraftShow.Craftable => "Craftable",
+            CraftShow.Missing => "Missing",
+            _ => "All",
+        };
+
+        private static string ShowKeyToken(CraftShow s) => s switch
+        {
+            CraftShow.All => "all",
+            CraftShow.Craftable => "craftable",
+            CraftShow.Missing => "missing",
+            _ => "all",
+        };
 
         private Image Glyph(RectTransform parent, string role)
         {
@@ -175,15 +228,12 @@ namespace Morgott.UI.CraftingScreen
                 else if (n == "Item Background") Styled(image, "dropdown.item", "crafting sort dropdown item");
                 else if (n == "Item Checkmark") Styled(image, "toggle.check", "crafting sort dropdown check");
             }
-            _sortDrop.onValueChanged.AddListener(i =>
-            {
-                if (View() is ICraftingAvailability v && i >= 0 && i < SortKeys.Length) v.Sort = SortKeys[i];
-            });
+            _sortDrop.onValueChanged.AddListener(OnSortChanged);
 
-            var dir = PlateButton(Prefix + "SortDir", () => { if (View() is ICraftingAvailability v) v.Descending = !v.Descending; }, out var dirPlate);
+            var dir = PlateButton(Prefix + "SortDir", OnToggleSortDir, out var dirPlate);
             _dirGlyph = Glyph(dirPlate.rectTransform, "craft.glyph.sort.desc");
             Tip(dir.gameObject, "$ui_craft_sort_dir");
-            var funnel = PlateButton(Prefix + "NewOnly", () => { if (View() is ICraftingAvailability v) v.NewOnly = !v.NewOnly; }, out var newPlate);
+            var funnel = PlateButton(Prefix + "NewOnly", OnToggleNewOnly, out var newPlate);
             _newGlyph = Glyph(newPlate.rectTransform, "craft.glyph.filter");
             Tip(funnel.gameObject, "$ui_craft_new_only");
             // Count badge (mockup-v2): filled cyan dot, dark digit.
@@ -203,7 +253,7 @@ namespace Morgott.UI.CraftingScreen
             for (var i = 0; i < ShowKeys.Length; i++)
             {
                 var key = ShowKeys[i];
-                _showButtons[i] = PlateButton(Prefix + "Show" + key, () => { if (View() is ICraftingAvailability v) v.Show = key; }, out var plate, "craft.row.selected");
+                _showButtons[i] = PlateButton(Prefix + "Show" + ShowKeyName(key), new ShowSetter(key).Apply, out var plate, "craft.row.selected");
                 _showButtons[i].transition = Selectable.Transition.None;
                 _showLabels[i] = ViewText("Label", plate.rectTransform, "", "text.body");
             }
@@ -242,7 +292,7 @@ namespace Morgott.UI.CraftingScreen
                 _sortLang = lang;
                 _sortDrop.ClearOptions();
                 var options = new List<string>(SortKeys.Length);
-                foreach (var s in SortKeys) options.Add(Localization.instance.Localize("$ui_craft_sort_" + s.ToString().ToLowerInvariant()));
+                foreach (var s in SortKeys) options.Add(Localization.instance.Localize("$ui_craft_sort_" + SortKeyToken(s)));
                 _sortDrop.AddOptions(options);
             }
             var index = Array.IndexOf(SortKeys, view.Sort);
@@ -311,7 +361,7 @@ namespace Morgott.UI.CraftingScreen
                 var inset = CraftingMath.Inset(cell, cell.H * 0.08f, cell.H * 0.08f);
                 Geo.Place(_canvas, (RectTransform)button.transform, inset.IsEmpty ? cell : inset);
                 var label = _showLabels[i];
-                if (_showLang != lang) label.text = Words.Get("$ui_craft_show_" + ShowKeys[i].ToString().ToLowerInvariant());
+                if (_showLang != lang) label.text = Words.Get("$ui_craft_show_" + ShowKeyToken(ShowKeys[i]));
                 Geo.Place(_canvas, label.rectTransform, cell);
                 Label(label, TextAlignmentOptions.Center, font);
             }
@@ -537,7 +587,7 @@ namespace Morgott.UI.CraftingScreen
             if (view == null || !view.ControlsShown || !recipe || !recipe.m_item || _gui.m_selectedRecipe.ItemData != null || !player) return false;
             var shared = recipe.m_item.m_itemData.m_shared;
             food = IsFood(shared);
-            count = view.GetMaxCrafts(recipe, 1, CountCap());
+            count = MaxAmount();
             var station = Station();
             var skill = station && station.m_craftingSkill != Skills.SkillType.None;
             bonus = CraftingMath.BonusPercent(skill ? player.GetSkillFactor(station.m_craftingSkill) : 0f, _gui.m_craftBonusChance, shared.m_maxStackSize, skill);

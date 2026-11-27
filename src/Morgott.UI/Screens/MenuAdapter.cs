@@ -1,9 +1,11 @@
 using System;
+using System.Collections.Generic;
 using Morgott.UI.Api;
 using HarmonyLib;
 using Morgott.UI.Classify;
 using Morgott.UI.Responsive;
 using Morgott.UI.Restyle;
+using Morgott.UI.Theme;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -108,10 +110,27 @@ namespace Morgott.UI.Screens
             if (panel && panel.TryGetComponent<PanelDecor>(out var decor)) decor.FitToChildren("size.panel.pad");
         }
 
+        private static Transform _styledRoot;
+        private static int _styledRev = -1;
+        private static readonly List<Button> ButtonBuf = new List<Button>(16);
+
+        private sealed class MenuContextProvider
+        {
+            private readonly Menu _menu;
+            public MenuContextProvider(Menu menu) => _menu = menu;
+            public ScreenContext Build() => Context(_menu);
+        }
+
         private static void Apply(Menu menu)
         {
             if (!menu) return;
             var root = menu.transform;
+            var rev = ThemeTokens.Revision;
+            if (_styledRoot == root && _styledRev == rev)
+            {
+                ApplyWarm(menu, root, rev);
+                return;
+            }
             if (menu.menuEntriesParent)
             {
                 // Entry states via their owning components (MenuEntryStyle), then the panel stack behind the entries.
@@ -126,12 +145,53 @@ namespace Morgott.UI.Screens
             DialogFrame.Apply(menu.m_logoutDialog);
             DialogFrame.Apply(menu.m_cloudStorageWarning ? menu.m_cloudStorageWarning.transform : null);
             DialogFrame.Apply(menu.m_cloudStorageWarningNextSave ? menu.m_cloudStorageWarningNextSave.transform : null);
-            ScreenRegistry.Register(root, () => Context(menu));
+            ScreenRegistry.Register(root, new MenuContextProvider(menu).Build);
             ScreenRegistry.Restyle(root);
             // SkinScale on the dialogs' content roots, never on the canvas (GuiScaler owns scaleFactor).
             ResponsiveContext.ApplyScale(menu.m_menuDialog);
             ResponsiveContext.ApplyScale(menu.m_quitDialog);
             ResponsiveContext.ApplyScale(menu.m_logoutDialog);
+            _styledRoot = root;
+            _styledRev = rev;
+        }
+
+        // Warm Esc open: only ensure + restyle newly added / unmarked entry or root mod buttons.
+        private static void ApplyWarm(Menu menu, Transform root, int rev)
+        {
+            ScreenContext ctx = null;
+            if (menu.menuEntriesParent)
+            {
+                ButtonBuf.Clear();
+                menu.menuEntriesParent.GetComponentsInChildren(true, ButtonBuf);
+                for (var i = 0; i < ButtonBuf.Count; i++)
+                {
+                    var button = ButtonBuf[i];
+                    if (!button) continue;
+                    if (!button.TryGetComponent<MenuEntryStyle>(out _) && button.transition == Selectable.Transition.Animation)
+                        MenuEntryStyle.Ensure(button, button.GetComponentInChildren<TMP_Text>(true));
+                    var g = button.targetGraphic ? button.targetGraphic : button.GetComponentInChildren<TMP_Text>(true);
+                    if (g && (!g.TryGetComponent<SkinMark>(out var m) || !m.IsOwnMark || m.ThemeRevision != rev))
+                    {
+                        if (ctx == null) ctx = Context(menu);
+                        Restyler.RestyleSubtree(button.transform, root, ctx);
+                    }
+                }
+                ButtonBuf.Clear();
+            }
+            if (menu.m_root)
+            {
+                for (var i = 0; i < menu.m_root.childCount; i++)
+                {
+                    var child = menu.m_root.GetChild(i);
+                    if (!child.TryGetComponent<Button>(out var b)) continue;
+                    var g = b.targetGraphic;
+                    if (g && (!g.TryGetComponent<SkinMark>(out var m) || !m.IsOwnMark || m.ThemeRevision != rev))
+                    {
+                        if (ctx == null) ctx = Context(menu);
+                        Restyler.RestyleSubtree(child, root, ctx);
+                    }
+                }
+            }
         }
 
         // Classifier step (b): what the vanilla fields tell about the menu.

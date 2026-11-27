@@ -31,14 +31,23 @@ namespace Morgott.UI.GameScreens
 
         private sealed class Tab
         {
+            public HildirBoard Owner;
+            public int Index;
             public Button Button;
             public Image Sel;
             public Image[] Edge;
             public TMP_Text Label;
+
+            public void OnClick()
+            {
+                Owner._tab = Index;
+                Owner._view = true;
+            }
         }
 
         private sealed class RowView
         {
+            public HildirBoard Owner;
             public RectTransform Rt;
             public CanvasGroup Group;
             public Image Sel, Socket, Icon, Coin, Token, Lock;
@@ -46,6 +55,13 @@ namespace Morgott.UI.GameScreens
             public TMP_Text Name, Biome, Coins, Gold, Chip;
             public RectTransform ChipPlate;
             public HildirRow Data;
+
+            public void OnClick()
+            {
+                if (Data == null) return;
+                Owner._selected[Owner._tab] = Data.Prefab;
+                Owner._view = true;
+            }
         }
 
         private sealed class InfoRow
@@ -144,9 +160,10 @@ namespace Morgott.UI.GameScreens
             _title.text = L("$ui_hildir_board");
             for (var i = 0; i < _tabs.Length; i++)
             {
-                var n = i;
-                var b = Btn(_root, "HildirTab" + i, "craft.row", () => { _tab = n; _view = true; });
-                var t = new Tab { Button = b, Sel = Img(b.transform, "Sel", "craft.row.selected") };
+                var t = new Tab { Owner = this, Index = i };
+                var b = Btn(_root, "HildirTab" + i, "craft.row", t.OnClick);
+                t.Button = b;
+                t.Sel = Img(b.transform, "Sel", "craft.row.selected");
                 t.Label = Txt(b.transform, "Label", "text.body", TextAlignmentOptions.Center, 24f);
                 t.Label.fontStyle = FontStyles.UpperCase;
                 t.Edge = Edge(b.transform);
@@ -192,16 +209,11 @@ namespace Morgott.UI.GameScreens
         {
             var back = Img(_root, "HildirRow", "craft.row");
             back.raycastTarget = true;
-            var rv = new RowView { Rt = back.rectTransform, Group = back.gameObject.AddComponent<CanvasGroup>() };
+            var rv = new RowView { Owner = this, Rt = back.rectTransform, Group = back.gameObject.AddComponent<CanvasGroup>() };
             var b = back.gameObject.AddComponent<Button>();
             b.targetGraphic = back;
             b.navigation = new Navigation { mode = Navigation.Mode.Automatic }; // gamepad walks rows / tabs / actions spatially (InfoTabs, vanilla store prefab default)
-            b.onClick.AddListener(() =>
-            {
-                if (rv.Data == null) return;
-                _selected[_tab] = rv.Data.Prefab;
-                _view = true;
-            });
+            b.onClick.AddListener(rv.OnClick);
             Restyle(back, "craft.row");
             rv.Sel = Img(back.transform, "Sel", "craft.row.selected");
             rv.Socket = Img(back.transform, "Socket", "socket.round");
@@ -426,6 +438,21 @@ namespace Morgott.UI.GameScreens
             Rect(_rGold.rectTransform, new Box(x, 0f, Mathf.Max(0f, rw - x - 8f), 48f));
         }
 
+        private sealed class LabelWidth
+        {
+            public TMP_Text Text;
+            public string Source;
+            public float Scale;
+            public readonly Func<int, int, float> Measure;
+
+            public LabelWidth() => Measure = Compute;
+
+            private float Compute(int i, int j) =>
+                Scale * Text.GetPreferredValues(Source.Substring(i, j - i), float.PositiveInfinity, float.PositiveInfinity).x;
+        }
+
+        private static readonly LabelWidth MeasureLabel = new LabelWidth();
+
         private static void Place(Button b, Box box, bool enabled, string token)
         {
             Rect((RectTransform)b.transform, box);
@@ -441,8 +468,10 @@ namespace Morgott.UI.GameScreens
                 // Mockup: a two-word label on two lines at the full size (HildirBoardMath.ButtonLabel). Measured at the current
                 // size and scaled (widths are linear in the size): no size flip, no mesh rebuild while nothing changed.
                 var s = L(token);
-                var k = ButtonText / Mathf.Max(1f, t.fontSize);
-                var shown = HildirBoardMath.ButtonLabel(s, (i, j) => k * t.GetPreferredValues(s.Substring(i, j - i), float.PositiveInfinity, float.PositiveInfinity).x,
+                MeasureLabel.Text = t;
+                MeasureLabel.Source = s;
+                MeasureLabel.Scale = ButtonText / Mathf.Max(1f, t.fontSize);
+                var shown = HildirBoardMath.ButtonLabel(s, MeasureLabel.Measure,
                     Mathf.Max(0f, box.W - 2f * inset), ButtonText, out var size);
                 Set(t, shown);
                 if (Mathf.Abs(t.fontSize - size) > 0.05f) t.fontSize = size;
@@ -457,13 +486,15 @@ namespace Morgott.UI.GameScreens
             if (_busy || _c == null || r?.Id == null || r.Chip != HildirChip.Open) return;
             _busy = true;
             _view = true;
-            _c.Accept(r.Id, ok =>
-            {
-                if (!ok && MessageHud.instance) MessageHud.instance.ShowMessage(MessageHud.MessageType.Center, L("$ui_hildir_accept_failed"));
-                _busy = false;
-                _view = true;
-                _gate.Force(); // the one immediate read this action owes
-            });
+            _c.Accept(r.Id, OnAcceptResult);
+        }
+
+        private void OnAcceptResult(bool ok)
+        {
+            if (!ok && MessageHud.instance) MessageHud.instance.ShowMessage(MessageHud.MessageType.Center, L("$ui_hildir_accept_failed"));
+            _busy = false;
+            _view = true;
+            _gate.Force(); // the one immediate read this action owes
         }
 
         private void Claim()
@@ -474,18 +505,32 @@ namespace Morgott.UI.GameScreens
             _gate.Force();
         }
 
+        private sealed class AbandonConfirm
+        {
+            private readonly HildirBoard _board;
+            private readonly IHildirContracts _contracts;
+            private readonly string _id;
+
+            public AbandonConfirm(HildirBoard board, IHildirContracts contracts, string id)
+            {
+                _board = board;
+                _contracts = contracts;
+                _id = id;
+            }
+
+            public void Invoke()
+            {
+                UnifiedPopup.Pop();
+                _contracts.Abandon(_id);
+                _board._gate.Force();
+            }
+        }
+
         private void Abandon()
         {
             var r = Selected();
             if (_c == null || r?.Id == null || r.Chip != HildirChip.Taken) return;
-            var id = r.Id;
-            var c = _c;
-            UnifiedPopup.Push(new YesNoPopup(Name(r), "$ui_hildir_abandon_confirm", () =>
-            {
-                UnifiedPopup.Pop();
-                c.Abandon(id);
-                _gate.Force();
-            }, UnifiedPopup.Pop));
+            UnifiedPopup.Push(new YesNoPopup(Name(r), "$ui_hildir_abandon_confirm", new AbandonConfirm(this, _c, r.Id).Invoke, UnifiedPopup.Pop));
         }
 
         // ---- game data
@@ -566,7 +611,7 @@ namespace Morgott.UI.GameScreens
             return t;
         }
 
-        private Button Btn(Transform parent, string name, string role, Action click, string label = null)
+        private Button Btn(Transform parent, string name, string role, UnityEngine.Events.UnityAction click, string label = null)
         {
             var image = Img(parent, name, role);
             image.preserveAspect = false;
@@ -574,7 +619,7 @@ namespace Morgott.UI.GameScreens
             var b = image.gameObject.AddComponent<Button>();
             b.targetGraphic = image;
             b.navigation = new Navigation { mode = Navigation.Mode.Automatic };
-            b.onClick.AddListener(() => click());
+            b.onClick.AddListener(click);
             // Styled after the Button exists: the role's sprite states go on its targetGraphic (BrowserPanel.Btn).
             Restyle(image, role);
             if (label != null)

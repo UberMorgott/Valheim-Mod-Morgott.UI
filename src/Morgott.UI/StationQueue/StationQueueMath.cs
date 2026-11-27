@@ -281,7 +281,7 @@ namespace Morgott.UI.StationQueue
         public static List<StationQueueEntry> Clone(IList<StationQueueEntry> entries)
         {
             var list = new List<StationQueueEntry>(entries.Count + 1);
-            foreach (var e in entries) list.Add(e.Clone());
+            for (var i = 0; i < entries.Count; i++) list.Add(entries[i].Clone());
             return list;
         }
 
@@ -331,7 +331,7 @@ namespace Morgott.UI.StationQueue
 
         // "Loaded: 4/20" + the input unit when the language has one ("ткани").
         public static string Loaded(string template, int loaded, int capacity, string unit) =>
-            Format(template, loaded, capacity) + (string.IsNullOrEmpty(unit) ? "" : " " + unit);
+            Format(template, loaded.ToString(CultureInfo.InvariantCulture), capacity.ToString(CultureInfo.InvariantCulture)) + (string.IsNullOrEmpty(unit) ? "" : " " + unit);
 
         // The edited entry in a list read since the editor opened: by its owner id (rows above it may have finished and gone
         // meanwhile), an unnumbered one by `index` while that is still the same input; -1 = gone.
@@ -369,7 +369,7 @@ namespace Morgott.UI.StationQueue
         // Single-input window: its one entry (the first one for that input), or null = no queue.
         public static StationQueueEntry SingleEntry(IList<StationQueueEntry> entries, string input)
         {
-            foreach (var e in entries) if (e.Item == input) return e;
+            for (var i = 0; i < entries.Count; i++) if (entries[i].Item == input) return entries[i];
             return null;
         }
 

@@ -43,12 +43,7 @@ namespace Morgott.UI.Icons
                 "icon atlas covers; other items keep their own icon. Takes effect on the next game launch.");
             if (!enabled.Value || SystemInfo.graphicsDeviceType == GraphicsDeviceType.Null || !Parse()) return;
             // Jotunn adds mod items (Consumables, Epic Loot gems, ...) in its ObjectDB postfixes, then raises this.
-            ItemManager.OnItemsRegistered += () =>
-            {
-                Apply(ObjectDB.instance);
-                // Every mod item of this ObjectDB is registered now: pages still untouched hold only absent items.
-                DropPrefetched();
-            };
+            ItemManager.OnItemsRegistered += OnItemsRegistered;
             var postfix = new HarmonyMethod(typeof(IconRestyle), nameof(ObjectDbPostfix)) { priority = Priority.Last };
             harmony.Patch(AccessTools.Method(typeof(ObjectDB), nameof(ObjectDB.Awake)), postfix: postfix);
             harmony.Patch(AccessTools.Method(typeof(ObjectDB), nameof(ObjectDB.CopyOtherDB)), postfix: postfix);
@@ -59,8 +54,29 @@ namespace Morgott.UI.Icons
             {
                 var path = Path.Combine(_dir, _atlas.Pages[i].File);
                 var length = _atlas.Pages[i].Bytes;
-                _prefetch[i] = Task.Run(() => ReadGzipNative(path, length));
+                _prefetch[i] = Task.Run(new PrefetchJob(path, length).Run);
             }
+        }
+
+        private static void OnItemsRegistered()
+        {
+            Apply(ObjectDB.instance);
+            // Every mod item of this ObjectDB is registered now: pages still untouched hold only absent items.
+            DropPrefetched();
+        }
+
+        private sealed class PrefetchJob
+        {
+            private readonly string _path;
+            private readonly int _length;
+
+            internal PrefetchJob(string path, int length)
+            {
+                _path = path;
+                _length = length;
+            }
+
+            internal NativeArray<byte> Run() => ReadGzipNative(_path, _length);
         }
 
         private static void ObjectDbPostfix(ObjectDB __instance) => Apply(__instance);
@@ -109,10 +125,10 @@ namespace Morgott.UI.Icons
                     loaded++;
                     bytes += _atlas.Pages[i].Bytes;
                 }
-            Plugin.Log.LogInfo($"[IconRestyle] {set} item icon(s) restyled ({_sprites.Count} loaded of " +
-                               $"{_atlas.Items.Count} in atlas); pages {loaded}/{_atlas.Pages.Count} loaded (" +
-                               $"{bytes / 1048576.0:0.0} MiB BC7 in VRAM), {loadedNow} now in {loadMs:0.0} ms, " +
-                               $"apply {watch.Elapsed.TotalMilliseconds:0.0} ms");
+            Plugin.Log.LogInfo($"[IconRestyle] {set.ToString()} item icon(s) restyled ({_sprites.Count.ToString()} loaded of " +
+                               $"{_atlas.Items.Count.ToString()} in atlas); pages {loaded.ToString()}/{_atlas.Pages.Count.ToString()} loaded (" +
+                               $"{(bytes / 1048576.0).ToString("0.0")} MiB BC7 in VRAM), {loadedNow.ToString()} now in {loadMs.ToString("0.0")} ms, " +
+                               $"apply {watch.Elapsed.TotalMilliseconds.ToString("0.0")} ms");
         }
 
         private static bool Exists(ObjectDB db, string name) =>
@@ -251,11 +267,11 @@ namespace Morgott.UI.Icons
                     while (read < length)
                     {
                         var n = gz.Read(chunk, 0, Math.Min(chunk.Length, length - read));
-                        if (n <= 0) throw new InvalidDataException($"{read} of {length} bytes");
+                        if (n <= 0) throw new InvalidDataException($"{read.ToString()} of {length.ToString()} bytes");
                         NativeArray<byte>.Copy(chunk, 0, raw, read, n);
                         read += n;
                     }
-                    if (gz.ReadByte() >= 0) throw new InvalidDataException($"more than {length} bytes");
+                    if (gz.ReadByte() >= 0) throw new InvalidDataException($"more than {length.ToString()} bytes");
                 }
                 return raw;
             }
@@ -307,7 +323,7 @@ namespace Morgott.UI.Icons
             if (!SimpleJson.SimpleJson.TryDeserializeObject(json, out var parsed) || !(parsed is IDictionary<string, object> root))
                 return Fail("not a JSON object", out error);
             if (!string.Equals(Format, Get(root, "format") as string, StringComparison.Ordinal)) return Fail($"format must be \"{Format}\"", out error);
-            if (Int(root, "version") != Version) return Fail($"unsupported version (want {Version})", out error);
+            if (Int(root, "version") != Version) return Fail($"unsupported version (want {Version.ToString()})", out error);
             if (!string.Equals("bc7", Get(root, "encoding") as string, StringComparison.Ordinal) || !string.Equals("gzip", Get(root, "compression") as string, StringComparison.Ordinal))
                 return Fail("encoding must be bc7, compression gzip", out error);
             var a = new Atlas { CellSize = Int(root, "cell"), Columns = Int(root, "cols"), Gutter = Int(root, "gutter"), Mips = Int(root, "mips") };
@@ -315,28 +331,31 @@ namespace Morgott.UI.Icons
                 return Fail("cell, cols, mips must be > 0, gutter >= 0", out error);
             if (!(Get(root, "pages") is IList<object> pages)) return Fail("\"pages\" array missing", out error);
             var stride = a.CellSize + 2 * a.Gutter;
-            foreach (var entry in pages)
+            for (var i = 0; i < pages.Count; i++)
             {
+                var entry = pages[i];
                 if (!(entry is IDictionary<string, object> p)) return Fail("page is not an object", out error);
                 var page = new Page { File = Get(p, "file") as string, Width = Int(p, "width"), Height = Int(p, "height"), Bytes = Int(p, "bytes") };
                 if (string.IsNullOrEmpty(page.File) || page.File.IndexOfAny(new[] { '/', '\\' }) >= 0 || page.File.Contains(".."))
-                    return Fail($"page {a.Pages.Count}: bad file name", out error);
+                    return Fail($"page {a.Pages.Count.ToString()}: bad file name", out error);
                 if (page.Width <= 0 || page.Height <= 0 || page.Width % 4 != 0 || page.Height % 4 != 0 || page.Width < a.Columns * stride)
-                    return Fail($"page {page.File}: bad size {page.Width}x{page.Height}", out error);
+                    return Fail($"page {page.File}: bad size {page.Width.ToString()}x{page.Height.ToString()}", out error);
                 var want = Bc7Size(page.Width, page.Height, a.Mips);
                 if (page.Bytes != want)
-                    return Fail($"page {page.File}: {page.Bytes} bytes, BC7 {page.Width}x{page.Height} x{a.Mips} needs {want}", out error);
+                    return Fail($"page {page.File}: {page.Bytes.ToString()} bytes, BC7 {page.Width.ToString()}x{page.Height.ToString()} x{a.Mips.ToString()} needs {want.ToString()}", out error);
                 a.Pages.Add(page);
             }
             if (!(Get(root, "items") is IDictionary<string, object> items)) return Fail("\"items\" object missing", out error);
-            foreach (var kv in items)
+            var itemEntries = new List<KeyValuePair<string, object>>(items);
+            for (var i = 0; i < itemEntries.Count; i++)
             {
+                var kv = itemEntries[i];
                 if (!(kv.Value is IList<object> pair) || pair.Count != 2)
                     return Fail($"{kv.Key}: want [page, slot]", out error);
                 var cell = new Entry { Page = Convert.ToInt32(pair[0]), Slot = Convert.ToInt32(pair[1]) };
                 if (cell.Page < 0 || cell.Page >= a.Pages.Count || cell.Slot < 0 ||
                     cell.Slot / a.Columns * stride + stride > a.Pages[cell.Page].Height)
-                    return Fail($"{kv.Key}: cell [{cell.Page}, {cell.Slot}] outside the atlas", out error);
+                    return Fail($"{kv.Key}: cell [{cell.Page.ToString()}, {cell.Slot.ToString()}] outside the atlas", out error);
                 a.Items[kv.Key] = cell;
             }
             atlas = a;

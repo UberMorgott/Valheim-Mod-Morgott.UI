@@ -383,7 +383,8 @@ namespace Morgott.UI.Tests
             Assert.Empty(ix.ObtainedFrom("fire_pit"));
             Assert.False(ix.Entries.ContainsKey("use:fuel:empty"));
             Assert.False(ix.Entries.ContainsKey("use:altar:Dragon"));
-            Assert.All(new[] { "use:power:BossStone_Eikthyr", "use:altar:Eikthyr", "use:fuel:fire_pit" }, id => Assert.Equal("use", ix.Entries[id].Hidden));
+            foreach (var id in new[] { "use:power:BossStone_Eikthyr", "use:altar:Eikthyr", "use:fuel:fire_pit" })
+                Assert.Equal("use", ix.Entries[id].Hidden);
         }
 
         // Player report: a trophy's crafting recipe sat below the incinerator's ~50-trophy rows and turret targets, off the first

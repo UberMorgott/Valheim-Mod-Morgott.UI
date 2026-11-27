@@ -70,8 +70,16 @@ namespace Morgott.UI.PreWorld
             // Newest first; the file order is kept inside one day (stable sort).
             var idx = new Dictionary<ChangelogEntry, int>(list.Count);
             for (var i = 0; i < list.Count; i++) idx[list[i]] = i;
-            list.Sort((a, b) => a.Date != b.Date ? b.Date.CompareTo(a.Date) : idx[a].CompareTo(idx[b]));
+            list.Sort(new EntryDateOrderComparer(idx));
             return list;
+        }
+
+        private sealed class EntryDateOrderComparer : IComparer<ChangelogEntry>
+        {
+            private readonly Dictionary<ChangelogEntry, int> _idx;
+            public EntryDateOrderComparer(Dictionary<ChangelogEntry, int> idx) => _idx = idx;
+            public int Compare(ChangelogEntry a, ChangelogEntry b) =>
+                a.Date != b.Date ? b.Date.CompareTo(a.Date) : _idx[a].CompareTo(_idx[b]);
         }
 
         private static string Str(Dictionary<string, object> o, string key) => o.TryGetValue(key, out var v) ? v as string : null;
@@ -116,7 +124,11 @@ namespace Morgott.UI.PreWorld
         public static List<string> MatchMods(List<string> mods, string query)
         {
             query = (query ?? "").Trim();
-            return query.Length == 0 ? mods : mods.FindAll(m => m.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0);
+            if (query.Length == 0) return mods;
+            var result = new List<string>();
+            for (var i = 0; i < mods.Count; i++)
+                if (mods[i].IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0) result.Add(mods[i]);
+            return result;
         }
 
         // "All" / "None" over the given (searched) mods.

@@ -250,28 +250,29 @@ namespace Morgott.UI.Tests
             Assert.InRange(share, 0.1f, 0.2f);
         }
 
+        private static void AssertSliceSize(Dictionary<string, (float W, float H)> size, string token, float w)
+        {
+            var asset = Sprites["sprite.hud.panel." + token];
+            Assert.Equal((w + 2f * P("lap")) * 2f, size[asset].W, 1); // + the overlap into both neighbours
+            Assert.Equal(P("h") * 2f, size[asset].H, 1);
+        }
+
         // Theme geometry = the shipped slices (sprites authored 2x).
         [Fact]
         public void ThemeMatchesTheSlices()
         {
             var json = JsonDocument.Parse(File.ReadAllText(Path.Combine(RepoRoot(), "art", "sprites", "sprites.json")));
             var size = json.RootElement.GetProperty("sprites").EnumerateArray().ToDictionary(e => e.GetProperty("name").GetString()!, e => (e.GetProperty("size")[0].GetSingle(), e.GetProperty("size")[1].GetSingle()));
-            void Is(string token, float w)
-            {
-                var asset = Sprites["sprite.hud.panel." + token];
-                Assert.Equal((w + 2f * P("lap")) * 2f, size[asset].Item1, 1); // + the overlap into both neighbours
-                Assert.Equal(P("h") * 2f, size[asset].Item2, 1);
-            }
-            Is("block.l", P("block.l.w"));
-            Is("hotbar", P("hotbar.w"));
-            Is("ability", P("ability.w"));
-            Is("block.r", P("block.r.w"));
-            Is("food.in", P("food.in.w"));
-            Is("food.end", P("food.end.w"));
-            Is("potion.in", P("potion.in.w"));
-            Is("potion.end", P("potion.end.w"));
-            for (var k = 0; k < Floats["count.hud.panel.food.arts"]; k++) Is("food.seg" + k, P("food.seg.w"));
-            for (var k = 0; k < Floats["count.hud.panel.potion.arts"]; k++) Is("potion.seg" + k, P("potion.seg.w"));
+            AssertSliceSize(size, "block.l", P("block.l.w"));
+            AssertSliceSize(size, "hotbar", P("hotbar.w"));
+            AssertSliceSize(size, "ability", P("ability.w"));
+            AssertSliceSize(size, "block.r", P("block.r.w"));
+            AssertSliceSize(size, "food.in", P("food.in.w"));
+            AssertSliceSize(size, "food.end", P("food.end.w"));
+            AssertSliceSize(size, "potion.in", P("potion.in.w"));
+            AssertSliceSize(size, "potion.end", P("potion.end.w"));
+            for (var k = 0; k < Floats["count.hud.panel.food.arts"]; k++) AssertSliceSize(size, "food.seg" + k, P("food.seg.w"));
+            for (var k = 0; k < Floats["count.hud.panel.potion.arts"]; k++) AssertSliceSize(size, "potion.seg" + k, P("potion.seg.w"));
         }
 
         // Right end = mirror of the left (user 2026-10-26: the row's own right medallion sat over the last potion cell, its

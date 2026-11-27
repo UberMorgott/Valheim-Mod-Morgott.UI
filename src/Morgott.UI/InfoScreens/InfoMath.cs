@@ -24,6 +24,45 @@ namespace Morgott.UI.InfoScreens
         // (FullWindow); achievements and mod panels (Almanac) have no mirror, so the header row stays for them.
         public static bool HeaderTabsShown(bool skillsOpen, bool trophiesOpen) => !skillsOpen && !trophiesOpen;
 
+        private sealed class LevelComparer : IComparer<int>
+        {
+            private readonly IReadOnlyList<float> _levels;
+            private readonly IReadOnlyList<string> _names;
+            private readonly StringComparer _comparer;
+
+            public LevelComparer(IReadOnlyList<float> levels, IReadOnlyList<string> names, StringComparer comparer)
+            {
+                _levels = levels;
+                _names = names;
+                _comparer = comparer;
+            }
+
+            public int Compare(int a, int b)
+            {
+                var c = _levels[b].CompareTo(_levels[a]);
+                if (c == 0) c = _comparer.Compare(_names[a], _names[b]);
+                return c != 0 ? c : a.CompareTo(b);
+            }
+        }
+
+        private sealed class NameComparer : IComparer<int>
+        {
+            private readonly IReadOnlyList<string> _names;
+            private readonly StringComparer _comparer;
+
+            public NameComparer(IReadOnlyList<string> names, StringComparer comparer)
+            {
+                _names = names;
+                _comparer = comparer;
+            }
+
+            public int Compare(int a, int b)
+            {
+                var c = _comparer.Compare(_names[a], _names[b]);
+                return c != 0 ? c : a.CompareTo(b);
+            }
+        }
+
         // Skill row order: mode 0 = as given, 1 = level high first (ties by name), 2 = name. Returns source indices.
         public static int[] SkillOrder(IReadOnlyList<float> levels, IReadOnlyList<string> names, int mode, StringComparer comparer)
         {
@@ -31,18 +70,9 @@ namespace Morgott.UI.InfoScreens
             var order = new int[n];
             for (var i = 0; i < n; i++) order[i] = i;
             if (mode == 1)
-                Array.Sort(order, (a, b) =>
-                {
-                    var c = levels[b].CompareTo(levels[a]);
-                    if (c == 0) c = comparer.Compare(names[a], names[b]);
-                    return c != 0 ? c : a.CompareTo(b);
-                });
+                Array.Sort(order, new LevelComparer(levels, names, comparer));
             else if (mode == 2)
-                Array.Sort(order, (a, b) =>
-                {
-                    var c = comparer.Compare(names[a], names[b]);
-                    return c != 0 ? c : a.CompareTo(b);
-                });
+                Array.Sort(order, new NameComparer(names, comparer));
             return order;
         }
     }

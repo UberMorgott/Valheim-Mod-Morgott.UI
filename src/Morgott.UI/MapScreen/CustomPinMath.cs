@@ -129,7 +129,7 @@ namespace Morgott.UI.MapScreen
         {
             var id = IsValidToken(iconId) ? iconId.ToLowerInvariant() : DefaultIconId;
             var color = TryParseHexRgb(hex, out var r, out var g, out var b)
-                ? string.Format(CultureInfo.InvariantCulture, "{0:X2}{1:X2}{2:X2}", r, g, b)
+                ? r.ToString("X2", CultureInfo.InvariantCulture) + g.ToString("X2", CultureInfo.InvariantCulture) + b.ToString("X2", CultureInfo.InvariantCulture)
                 : DefaultHex;
             var clean = NormalizeVisibleName(visibleName);
             var tag = $"{TagPrefix}{id}:{color}]";
@@ -168,7 +168,9 @@ namespace Morgott.UI.MapScreen
             var iconId = iconPart.ToLowerInvariant();
             var iconIndex = IconIndex(iconId);
             var hasColor = TryParseHexRgb(colorPart, out var r, out var g, out var b);
-            var hex = hasColor ? string.Format(CultureInfo.InvariantCulture, "{0:X2}{1:X2}{2:X2}", r, g, b) : "";
+            var hex = hasColor
+                ? r.ToString("X2", CultureInfo.InvariantCulture) + g.ToString("X2", CultureInfo.InvariantCulture) + b.ToString("X2", CultureInfo.InvariantCulture)
+                : "";
 
             var nameEnd = start;
             if (nameEnd > 0 && raw[nameEnd - 1] == ' ') nameEnd--;
@@ -268,7 +270,7 @@ namespace Morgott.UI.MapScreen
 
         // ValheimPlus syncPins dedup key format: "<type>|<x:F1>|<z:F1>|<name>" (InvariantCulture).
         public static string VPlusSyncKey(Minimap.PinType type, Vector3 pos, string rawName) =>
-            string.Format(CultureInfo.InvariantCulture, "{0}|{1:F1}|{2:F1}|{3}", (int)type, pos.x, pos.z, rawName ?? "");
+            $"{((int)type).ToString(CultureInfo.InvariantCulture)}|{pos.x.ToString("F1", CultureInfo.InvariantCulture)}|{pos.z.ToString("F1", CultureInfo.InvariantCulture)}|{rawName ?? ""}";
 
         // True when any OTHER saved pin (including filter-hidden pins) already holds the same V+ sync key.
         public static bool HasVPlusKeyCollision(
@@ -280,13 +282,16 @@ namespace Morgott.UI.MapScreen
         {
             if (existingPins == null) return false;
             var targetKey = VPlusSyncKey(targetType, targetPos, targetRawName);
-            foreach (var p in existingPins)
-            {
-                if (!p.Save || (editingPin != null && ReferenceEquals(p.Pin, editingPin))) continue;
-                if (string.Equals(VPlusSyncKey(p.Type, p.Pos, p.RawName), targetKey, StringComparison.Ordinal))
-                    return true;
-            }
+            var list = existingPins as IReadOnlyList<SavedPinIdentity> ?? new List<SavedPinIdentity>(existingPins);
+            for (var i = 0; i < list.Count; i++)
+                if (MatchesVPlusCollision(list[i], editingPin, targetKey)) return true;
             return false;
+        }
+
+        private static bool MatchesVPlusCollision(SavedPinIdentity p, object editingPin, string targetKey)
+        {
+            if (!p.Save || (editingPin != null && ReferenceEquals(p.Pin, editingPin))) return false;
+            return string.Equals(VPlusSyncKey(p.Type, p.Pos, p.RawName), targetKey, StringComparison.Ordinal);
         }
 
         public static bool IsCustomPinVisible(string rawName, ISet<string> hiddenCustomIcons)
@@ -307,19 +312,9 @@ namespace Morgott.UI.MapScreen
             var g = new byte[IconIds.Length];
             var b = new byte[IconIds.Length];
 
-            foreach (var raw in rawPinNames)
-            {
-                if (!TryDecode(raw, out var d) || d.IconIndex < 0) continue;
-                var idx = d.IconIndex;
-                counts[idx]++;
-                if (!hasColor[idx] && d.HasColor)
-                {
-                    hasColor[idx] = true;
-                    r[idx] = d.R;
-                    g[idx] = d.G;
-                    b[idx] = d.B;
-                }
-            }
+            var list = rawPinNames as IReadOnlyList<string> ?? new List<string>(rawPinNames);
+            for (var i = 0; i < list.Count; i++)
+                AccumulateCustomIcon(list[i], counts, hasColor, r, g, b);
 
             for (var i = 0; i < IconIds.Length; i++)
             {
@@ -327,6 +322,20 @@ namespace Morgott.UI.MapScreen
                 var id = IconIds[i];
                 var hidden = hiddenCustomIcons != null && hiddenCustomIcons.Contains(id);
                 into.Add(new CustomIconSummary(id, i, counts[i], hidden, hasColor[i], r[i], g[i], b[i]));
+            }
+        }
+
+        private static void AccumulateCustomIcon(string raw, int[] counts, bool[] hasColor, byte[] r, byte[] g, byte[] b)
+        {
+            if (!TryDecode(raw, out var d) || d.IconIndex < 0) return;
+            var idx = d.IconIndex;
+            counts[idx]++;
+            if (!hasColor[idx] && d.HasColor)
+            {
+                hasColor[idx] = true;
+                r[idx] = d.R;
+                g[idx] = d.G;
+                b[idx] = d.B;
             }
         }
 
@@ -347,10 +356,22 @@ namespace Morgott.UI.MapScreen
         {
             if (hidden == null) return "";
             var present = new bool[IconIds.Length];
-            foreach (var id in hidden)
+            if (hidden is HashSet<string> set)
             {
-                var idx = IconIndex(id);
-                if (idx >= 0) present[idx] = true;
+                foreach (var id in set)
+                {
+                    var idx = IconIndex(id);
+                    if (idx >= 0) present[idx] = true;
+                }
+            }
+            else
+            {
+                var list = hidden as IReadOnlyList<string> ?? new List<string>(hidden);
+                for (var i = 0; i < list.Count; i++)
+                {
+                    var idx = IconIndex(list[i]);
+                    if (idx >= 0) present[idx] = true;
+                }
             }
             var sb = new StringBuilder();
             for (var i = 0; i < IconIds.Length; i++)

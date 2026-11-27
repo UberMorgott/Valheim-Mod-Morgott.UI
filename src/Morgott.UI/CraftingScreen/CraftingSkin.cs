@@ -1,6 +1,7 @@
 using Morgott.UI.Api;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using Morgott.UI.Classify;
 using Morgott.UI.InventoryScreen;
 using Morgott.UI.Ownership;
@@ -8,6 +9,7 @@ using Morgott.UI.Restyle;
 using Morgott.UI.Theme;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Events;
 using UnityEngine.UI;
 using Morgott.UI.Compat;
 
@@ -43,6 +45,7 @@ namespace Morgott.UI.CraftingScreen
         private string _amountShown;
         private bool _amountOwned;
         private Recipe _maxRecipe;
+        private int _maxEpoch = -1;
         private float _maxAt;
         private Box _troughBox;
         private RowArrows _tabArrows, _catArrows, _subArrows;
@@ -51,7 +54,9 @@ namespace Morgott.UI.CraftingScreen
         private CraftingLayout _layout;
         private int _hash;
         private int _tabOffset, _catOffset, _subOffset;
-        private bool _frameReady;
+        private bool _frameReady, _wasFullWindow, _applyDirty = true;
+        private int _applyKey, _tabSelMask;
+        private TMP_Text _craftLabel;
         private int _rowCount = -1, _rowFirst, _rowsTheme = -1;
         private float _rowPitch = -1f;
         private int _reqCells = -1;
@@ -189,7 +194,7 @@ namespace Morgott.UI.CraftingScreen
         // Step glyph = one sprite pair of the same stroke (glyph_minus / glyph_plus, 48 px, 12 px bars) in one colour
         // (roles craft.amount.glyph.*): the old TMP en dash "–" drew a hairline beside the bold "+" and was dimmed to
         // alpha 0.35 at amount 1 (0.25.0 user report: [-] barely visible). The disabled step keeps its plate only.
-        private Button StepButton(RectTransform parent, string name, string glyphRole, Action click)
+        private Button StepButton(RectTransform parent, string name, string glyphRole, UnityAction click)
         {
             var image = new GameObject(name, typeof(RectTransform)).AddComponent<Image>();
             image.rectTransform.SetParent(parent, false);
@@ -199,7 +204,7 @@ namespace Morgott.UI.CraftingScreen
             // Styled after the Button exists: the role's sprite states go on its targetGraphic.
             var mark = DollCell.Mark(image, "craft.amount.step", "craft amount step button (square glyph plate)");
             mark.Outcome = Restyler.Apply(image, mark, ThemeTokens.Role(mark.Role)) ? Outcome.Styled : Outcome.Degraded;
-            button.onClick.AddListener(() => click());
+            button.onClick.AddListener(click);
             var glyph = new GameObject("Glyph", typeof(RectTransform)).AddComponent<Image>();
             glyph.rectTransform.SetParent(image.rectTransform, false);
             glyph.raycastTarget = false;
@@ -239,7 +244,7 @@ namespace Morgott.UI.CraftingScreen
             rt.offsetMin = rt.offsetMax = Vector2.zero;
         }
 
-        private TMP_Text CraftLabel() => _gui.m_craftButton ? _gui.m_craftButton.GetComponentInChildren<TMP_Text>(true) : null;
+        private TMP_Text CraftLabel() => _craftLabel ? _craftLabel : (_craftLabel = _gui.m_craftButton ? _gui.m_craftButton.GetComponentInChildren<TMP_Text>(true) : null);
 
         // Progress state: vanilla progressbar (GuiBar m_craftProgressBar: bkg trough + bar fill) restyled to the craft row kit
         // (craft_bar_trough / craft_bar_fill, roles craft.progress.*) inside craft_bar_frame (own image), approved mockup craft-progress.png.
@@ -274,13 +279,13 @@ namespace Morgott.UI.CraftingScreen
         {
             public readonly RectTransform Prev, Next;
 
-            public RowArrows(RectTransform parent, string name, Action prev, Action next)
+            public RowArrows(RectTransform parent, string name, UnityAction prev, UnityAction next)
             {
                 Prev = Make(parent, name + "Prev", "craft.arrow.left", prev);
                 Next = Make(parent, name + "Next", "craft.arrow.right", next);
             }
 
-            private static RectTransform Make(RectTransform parent, string name, string role, Action click)
+            private static RectTransform Make(RectTransform parent, string name, string role, UnityAction click)
             {
                 var image = new GameObject(name, typeof(RectTransform)).AddComponent<Image>();
                 image.rectTransform.SetParent(parent, false);
@@ -292,7 +297,7 @@ namespace Morgott.UI.CraftingScreen
                 button.targetGraphic = image;
                 button.transition = Selectable.Transition.None;
                 button.navigation = new Navigation { mode = Navigation.Mode.None };
-                button.onClick.AddListener(() => click());
+                button.onClick.AddListener(click);
                 image.gameObject.SetActive(false);
                 return image.rectTransform;
             }
@@ -700,7 +705,20 @@ namespace Morgott.UI.CraftingScreen
                 // the 0.15 s fade) and re-enabled its graphics in the next open frame (Apply). Only a crafting panel that
                 // left the hierarchy takes its frame with it.
                 if (_host && _host.gameObject.activeSelf && !_crafting.gameObject.activeInHierarchy) _host.gameObject.SetActive(false);
+                _wasFullWindow = false;
+                _applyDirty = true;
                 return;
+            }
+            if (FullWindow.Any)
+            {
+                _wasFullWindow = true;
+                return;
+            }
+            if (_wasFullWindow)
+            {
+                _wasFullWindow = false;
+                _layout = null;
+                _applyDirty = true;
             }
             _frameReady = true;
         }
@@ -730,20 +748,91 @@ namespace Morgott.UI.CraftingScreen
                 _tabOffset = _layout.Tabs.First;
                 _catOffset = _layout.Categories.First;
                 _subOffset = _layout.SubCategories.First;
+                _applyDirty = true;
             }
-            Apply(_layout, box);
+            var browserUp = ItemBrowser.BrowserPanel.Up;
+            var progress = _gui.m_craftProgressPanel && _gui.m_craftProgressPanel.gameObject.activeSelf;
+            var key = ApplyKey(hash, browserUp, progress);
+            if (_applyDirty || key != _applyKey)
+            {
+                _applyDirty = false;
+                _applyKey = key;
+                Apply(_layout, box);
+                return;
+            }
+            // Pin over vanilla's Animator without re-running header / controls / detail placement.
+            if (!_host.gameObject.activeSelf) _host.gameObject.SetActive(true);
+            Geo.Place(_canvas, _host, box);
+            Geo.SetScale(_crafting, 1f);
+            Geo.Place(_canvas, _crafting, box);
+            if (browserUp) PlaceBrowser(_layout);
+            else
+            {
+                if (RowDataDue()) RowViews(_gui.m_availableRecipes, false);
+                if (_chain && _chain.gameObject.activeInHierarchy) Chain(_layout);
+            }
+        }
+
+        private int ApplyKey(int hash, bool browserUp, bool progress)
+        {
+            unchecked
+            {
+                var h = hash;
+                h = h * 31 + Restyle.WindowMove.Revision;
+                var sel = _gui.m_selectedRecipe;
+                h = h * 31 + (sel.Recipe ? sel.Recipe.GetInstanceID() : 0);
+                h = h * 31 + (sel.ItemData != null ? sel.ItemData.GetHashCode() ^ (sel.ItemData.m_quality * 17) : 0);
+                h = h * 31 + _stockEpoch;
+                h = h * 31 + _max;
+                h = h * 31 + _want;
+                h = h * 31 + (progress ? 1 : 0) + (browserUp ? 2 : 0) + (_gui.InCraftTab() ? 4 : 0) +
+                    (_rowsRebuilt ? 8 : 0) + (_amountField && _amountField.isFocused ? 16 : 0) +
+                    (_gui.m_variantButton && _gui.m_variantButton.gameObject.activeSelf ? 32 : 0) +
+                    (_gui.m_craftButton && _gui.m_craftButton.interactable ? 64 : 0);
+                if (progress || _queue.Running)
+                    h = ((h * 31 + (_queue.Running ? 1 : 0) + (_gui.m_multiCrafting ? 2 : 0)) * 31 + _queue.Done) * 31 + _queue.Total * 13 + _gui.m_multiCraftAmount;
+                h = h * 31 + _tabSelMask;
+                var rows = _gui.m_availableRecipes;
+                h = h * 31 + rows.Count;
+                if (rows.Count > 0 && rows[0].InterfaceElement) h = h * 31 + rows[0].InterfaceElement.GetInstanceID();
+                var station = Station();
+                var net = Network();
+                h = h * 31 + (station ? station.GetInstanceID() : 0);
+                h = h * 31 + (station && net != null && net.IsDetached(station) ? 1 : 0);
+                var level = _gui.m_craftingStationLevelRoot;
+                h = h * 31 + (level && level.gameObject.activeInHierarchy ? 1 : 0);
+                if (_gui.m_craftingStationLevel && !string.IsNullOrEmpty(_gui.m_craftingStationLevel.text))
+                    h = h * 31 + StringComparer.Ordinal.GetHashCode(_gui.m_craftingStationLevel.text);
+                if (View() is Morgott.Core.ICraftingAvailability view)
+                    h = h * 31 + ((int)view.Sort | ((int)view.Show << 4) | (view.Descending ? 64 : 0) | (view.NewOnly ? 128 : 0) | (view.ControlsShown ? 256 : 0));
+                var rl = RecipeList();
+                var dr = _crafting.Find("Decription");
+                h = h * 31 + (rl && rl.gameObject.activeSelf ? 1 : 0) + (dr && dr.gameObject.activeSelf ? 2 : 0);
+                var desc = _gui.m_recipeDecription;
+                if (desc && !ReferenceEquals(desc.text, _descText)) h ^= 0x5A5A5A5A;
+                h = h * 31 + StringComparer.Ordinal.GetHashCode(Localization.instance.GetSelectedLanguage());
+                h = h * 31 + ThemeTokens.Revision;
+                return h;
+            }
         }
 
         private void Collect()
         {
             _tabs.Clear();
+            var selMask = 0;
+            var bit = 1;
             var tabs = TabsRoot();
             // Index loops: foreach over a Transform allocates an enumerator per call (per frame here).
             if (tabs)
                 for (var n = 0; n < tabs.childCount; n++)
                 {
                     var c = tabs.GetChild(n);
-                    if (c.gameObject.activeSelf && c.TryGetComponent<Button>(out _)) _tabs.Add((RectTransform)c);
+                    if (c.gameObject.activeSelf && c.TryGetComponent<Button>(out var b))
+                    {
+                        _tabs.Add((RectTransform)c);
+                        if (!b.interactable) selMask |= bit;
+                        bit <<= 1;
+                    }
                 }
             _cats.Clear();
             var filter = Filter();
@@ -752,7 +841,12 @@ namespace Morgott.UI.CraftingScreen
                 for (var n = 0; n < catRoot.childCount; n++)
                 {
                     var c = catRoot.GetChild(n);
-                    if (c.gameObject.activeSelf && c.TryGetComponent<Button>(out _)) _cats.Add((RectTransform)c);
+                    if (c.gameObject.activeSelf && c.TryGetComponent<Button>(out var b))
+                    {
+                        _cats.Add((RectTransform)c);
+                        if (!b.interactable) selMask |= bit;
+                        bit <<= 1;
+                    }
                 }
             _subs.Clear();
             var subRoot = filter ? filter.Find(Morgott.Core.Contracts.CraftSubs) : null;
@@ -760,8 +854,14 @@ namespace Morgott.UI.CraftingScreen
                 for (var n = 0; n < subRoot.childCount; n++)
                 {
                     var c = subRoot.GetChild(n);
-                    if (c.gameObject.activeSelf && c.TryGetComponent<Button>(out _)) _subs.Add((RectTransform)c);
+                    if (c.gameObject.activeSelf && c.TryGetComponent<Button>(out var b))
+                    {
+                        _subs.Add((RectTransform)c);
+                        if (!b.interactable) selMask |= bit;
+                        bit <<= 1;
+                    }
                 }
+            _tabSelMask = selMask;
             _reqActive.Clear();
             var list = _gui.m_recipeRequirementList;
             if (list != null)
@@ -845,12 +945,23 @@ namespace Morgott.UI.CraftingScreen
 
             Header(o);
             Tabs(o);
-            NetworkRow(o);
-            Categories(o);
-            Controls(o);
-            List(o);
-            Detail(o);
-            Buttons(o);
+            if (!ItemBrowser.BrowserPanel.Up)
+            {
+                NetworkRow(o);
+                Categories(o);
+                Controls(o);
+                List(o);
+                Detail(o);
+                Buttons(o);
+            }
+            else
+            {
+                // Skip laying out hidden crafting controls / list / detail while the item browser covers the body;
+                // ensure any own overlay controls are hidden on the transition frame.
+                if (_ctl && _ctl.gameObject.activeSelf) { GamepadGroup(false); _ctl.gameObject.SetActive(false); }
+                _catArrows.Show(_canvas, NoRow);
+                _subArrows.Show(_canvas, NoRow);
+            }
             // Our ITEMS tab hides Crafting/RecipeList and Crafting/Decription while it is up (BrowserPanel.SetBody): the
             // wells behind them follow, so neither well nor their column seam shows under the browser.
             var recipeList = RecipeList();
@@ -858,7 +969,11 @@ namespace Morgott.UI.CraftingScreen
             WellShown(_listWell, !recipeList || recipeList.gameObject.activeSelf);
             WellShown(_detailWell, !detailRoot || detailRoot.gameObject.activeSelf);
             // The browser sits on the window glass, no well (mockups 2026-11-04 04/05).
-            if (!ItemBrowser.BrowserPanel.Up) return;
+            if (ItemBrowser.BrowserPanel.Up) PlaceBrowser(o);
+        }
+
+        private void PlaceBrowser(CraftingLayout o)
+        {
             var top = o.Search.IsEmpty ? o.List.Y : o.Search.Y;
             var area = new Box(o.List.X, top, o.Detail.Right - o.List.X, o.ButtonRow.Bottom - top);
             // Mockup A: the browser spans ~6 % more than the craft columns (into the frame margin), ~8 px inner margin.
@@ -1684,8 +1799,20 @@ namespace Morgott.UI.CraftingScreen
             MeasureName(n, text, w, h, max);
         }
 
-        // Own method: its measuring lambda captures n / text, and a closure over FitName's locals was allocated on every
-        // call (each cell, each frame), the unchanged early return included.
+        private sealed class NameMeasurer
+        {
+            private TMP_Text _n;
+            private string _text;
+            private float _unit;
+
+            public void Set(TMP_Text n, string text, float unit) { _n = n; _text = text; _unit = unit; }
+            public void Clear() { _n = null; _text = null; }
+            public float Width(int i, int j) => _n.GetPreferredValues(_text.Substring(i, j - i), float.PositiveInfinity, float.PositiveInfinity).x / _unit;
+        }
+
+        private static readonly NameMeasurer SharedNameMeasurer = new NameMeasurer();
+        private static readonly Func<int, int, float> SharedNameWidth = SharedNameMeasurer.Width;
+
         private static void MeasureName(TMP_Text n, string text, float w, float h, float max)
         {
             var min = Readable.ShrinkFloor(n, max);
@@ -1694,7 +1821,9 @@ namespace Morgott.UI.CraftingScreen
             var one = n.GetPreferredValues(text, float.PositiveInfinity, float.PositiveInfinity);
             var lineH = one.y / unit;
             var oneW = one.x / unit;
-            var split = LabelFit.BestSplit(text, (i, j) => n.GetPreferredValues(text.Substring(i, j - i), float.PositiveInfinity, float.PositiveInfinity).x / unit, out var twoW);
+            SharedNameMeasurer.Set(n, text, unit);
+            var split = LabelFit.BestSplit(text, SharedNameWidth, out var twoW);
+            SharedNameMeasurer.Clear();
             // Two-line names set tight (theme size.craft.label.spacing, TMP em/100): the socket's name band is short.
             var spacing = split > 0 ? ThemeTokens.GetFloat("size.craft.label.spacing", -22f) : 0f;
             if (!Mathf.Approximately(n.lineSpacing, spacing)) n.lineSpacing = spacing;
@@ -1996,8 +2125,9 @@ namespace Morgott.UI.CraftingScreen
             var recipe = _gui.m_selectedRecipe.Recipe;
             var player = Player.m_localPlayer;
             if (!recipe || !player) return 1;
-            if (recipe == _maxRecipe && Time.unscaledTime < _maxAt) return _max;
+            if (recipe == _maxRecipe && _maxEpoch == _stockEpoch && Time.unscaledTime < _maxAt) return _max;
             _maxRecipe = recipe;
+            _maxEpoch = _stockEpoch;
             _maxAt = Time.unscaledTime + 0.25f;
             // The rules live with the owner (Core ICraftingAvailability, Morgott.Patcher): stepper, row counts and Craft agree.
             var view = View();
@@ -2065,7 +2195,7 @@ namespace Morgott.UI.CraftingScreen
             if (n <= 1 || _gui.m_craftTimer != 0f) return;
             _queue.Start(n);
             _queueRecipe = _gui.m_craftRecipe;
-            Plugin.Log.LogInfo($"[Morgott.UI] craft queue: {_queueRecipe.name} x{n}");
+            Plugin.Log.LogInfo($"[Morgott.UI] craft queue: {_queueRecipe.name} x{n.ToString(CultureInfo.InvariantCulture)}");
         }
 
         // DoCrafting prefix / postfix: did this craft of the queue add the item.
@@ -2092,7 +2222,7 @@ namespace Morgott.UI.CraftingScreen
             {
                 _judged = false;
                 if (_queue.Finished(_crafted, _refused)) NextCraft();
-                else Plugin.Log.LogInfo($"[Morgott.UI] craft queue ended: {_queue.Done}/{_queue.Total} crafted");
+                else Plugin.Log.LogInfo($"[Morgott.UI] craft queue ended: {_queue.Done.ToString(CultureInfo.InvariantCulture)}/{_queue.Total.ToString(CultureInfo.InvariantCulture)} crafted");
                 return;
             }
             if (_queue.Waiting) NextCraft();
@@ -2144,7 +2274,7 @@ namespace Morgott.UI.CraftingScreen
         {
             if (!_queue.Running) return;
             _queue.Stop();
-            Plugin.Log.LogInfo($"[Morgott.UI] craft queue stopped at {_queue.Done}/{_queue.Total}: {why}");
+            Plugin.Log.LogInfo($"[Morgott.UI] craft queue stopped at {_queue.Done.ToString(CultureInfo.InvariantCulture)}/{_queue.Total.ToString(CultureInfo.InvariantCulture)}: {why}");
         }
 
         // Glyph at the button's left (craft in the craft tab, upgrade otherwise) and the label in the span right of it

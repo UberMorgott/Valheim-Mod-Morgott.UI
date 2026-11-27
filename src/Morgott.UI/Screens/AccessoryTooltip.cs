@@ -62,7 +62,7 @@ namespace Morgott.UI.Screens
             if (!(effect is SE_Stats se) || se.m_damageModifier == 1f || se.m_modifyAttackSkill == Skills.SkillType.None) return null;
             var skill = se.m_modifyAttackSkill == Skills.SkillType.All
                 ? "$ui_tip_all_skills"
-                : "$skill_" + se.m_modifyAttackSkill.ToString().ToLowerInvariant();
+                : "$skill_" + TooltipSheetGather.SkillSlug(se.m_modifyAttackSkill);
             return TooltipSheet.SkillDamageLine(skill, se.m_damageModifier);
         }
     }

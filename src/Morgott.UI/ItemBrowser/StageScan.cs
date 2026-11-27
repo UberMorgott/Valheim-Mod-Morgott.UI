@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.Text;
 using Morgott.Core;
 using UnityEngine;
@@ -73,7 +74,7 @@ namespace Morgott.UI.ItemBrowser
             foreach (var f in facts) byPrefab[f.Prefab] = f;
             var solver = new StageSolver();
             // A failure here leaves every entry unknown; the browser itself keeps working.
-            var build = StageGraph.Build(ix, w, facts, solver).GetEnumerator();
+            var build = StageGraph.BuildSteps(ix, w, facts, solver);
             while (true)
             {
                 bool more, solved = false;
@@ -115,7 +116,7 @@ namespace Morgott.UI.ItemBrowser
             Data = data;
             Revision++;
             Done = true;
-            Plugin.Log.LogInfo(FormattableString.Invariant($"[Morgott.UI] item browser stages: {data.Info.Count} entries, {facts.Count} facts, {wall.Elapsed.TotalSeconds:F1} s"));
+            Plugin.Log.LogInfo($"[Morgott.UI] item browser stages: {data.Info.Count.ToString(CultureInfo.InvariantCulture)} entries, {facts.Count.ToString(CultureInfo.InvariantCulture)} facts, {wall.Elapsed.TotalSeconds.ToString("F1", CultureInfo.InvariantCulture)} s");
         }
 
         private static string SetName(string prefab)
@@ -176,17 +177,45 @@ namespace Morgott.UI.ItemBrowser
             if (v > 0f) t.Add("damage", id, kind, "$inventory_" + kind);
         }
 
+        private static readonly Dictionary<int, string> _itemTypes = BuildLowerMap(typeof(ItemDrop.ItemData.ItemType));
+        private static readonly Dictionary<int, string> _skillTypes = BuildLowerMap(typeof(Skills.SkillType));
+        private static readonly Dictionary<int, string> _pieceCats = BuildLowerMap(typeof(Piece.PieceCategory));
+        private static readonly Dictionary<int, string> _biomes = BuildLowerMap(typeof(Heightmap.Biome));
+        private static readonly Dictionary<int, string> _factions = BuildLowerMap(typeof(Character.Faction));
+
+        private static Dictionary<int, string> BuildLowerMap(Type enumType)
+        {
+            var names = Enum.GetNames(enumType);
+            var values = Enum.GetValues(enumType);
+            var map = new Dictionary<int, string>(names.Length);
+            for (var i = 0; i < names.Length; i++)
+            {
+                var v = Convert.ToInt32(values.GetValue(i), CultureInfo.InvariantCulture);
+                if (!map.ContainsKey(v)) map[v] = names[i].ToLowerInvariant();
+            }
+            return map;
+        }
+
+        private static string LowerName(Dictionary<int, string> map, int value) =>
+            map.TryGetValue(value, out var s) ? s : value.ToString(CultureInfo.InvariantCulture);
+
+        internal static string ItemTypeLower(ItemDrop.ItemData.ItemType v) => LowerName(_itemTypes, (int)v);
+
         private static void Item(FacetTable t, BrowserIndex ix, Entry e, ItemDrop.ItemData.SharedData s, ItemFact fact, Dictionary<string, ItemFact> members, Dictionary<string, int> setBiomes, StageInfo own)
         {
             var id = e.Id;
-            var type = s.m_itemType.ToString().ToLowerInvariant();
+            var type = ItemTypeLower(s.m_itemType);
             var station = StationOf(ix, id, out var stationName);
             switch (e.Category)
             {
                 case ItemCategory.Weapons:
                     if (s.m_itemType == ItemDrop.ItemData.ItemType.Shield) t.Add("class", id, "shield", "$ib_f_shield");
                     else if (s.m_itemType == ItemDrop.ItemData.ItemType.Torch) t.Add("class", id, "torch", "$ib_f_torch");
-                    else if (StageRules.HasWeaponClass(s.m_skillType, s.m_damages.GetTotalDamage() > 0f)) t.Add("class", id, s.m_skillType.ToString().ToLowerInvariant(), "$skill_" + s.m_skillType.ToString().ToLowerInvariant());
+                    else if (StageRules.HasWeaponClass(s.m_skillType, s.m_damages.GetTotalDamage() > 0f))
+                    {
+                        var skill = LowerName(_skillTypes, (int)s.m_skillType);
+                        t.Add("class", id, skill, "$skill_" + skill);
+                    }
                     t.Add("grip", id, type, "$ib_itemtype_" + type);
                     var dmg = s.m_damages;
                     Damage(t, id, "blunt", dmg.m_blunt);
@@ -234,7 +263,7 @@ namespace Morgott.UI.ItemBrowser
 
         private static void PieceFacets(FacetTable t, Entry e, Piece p)
         {
-            var cat = p.m_category.ToString().ToLowerInvariant();
+            var cat = LowerName(_pieceCats, (int)p.m_category);
             t.Add("section", e.Id, cat, "$ib_f_sec_" + cat);
             if (p.m_craftingStation) t.Add("station", e.Id, p.m_craftingStation.gameObject.name, p.m_craftingStation.m_name);
             if (p.m_comfort > 0) t.Add("comfort", e.Id, "yes", "$ib_f_comfort_yes");
@@ -258,9 +287,9 @@ namespace Morgott.UI.ItemBrowser
             if (FoundInScan.Data != null && FoundInScan.Data.ByPrefab.TryGetValue(id, out var o))
             {
                 foreach (var tag in FoundIn.Tags(o.Kinds)) t.Add("kind", id, tag, tag);
-                foreach (var b in FoundIn.Biomes(o.Biomes)) t.Add("habitat", id, b.ToString().ToLowerInvariant(), Morgott.UI.MapScreen.MapFilterMath.NameKey(b));
+                foreach (var b in FoundIn.Biomes(o.Biomes)) t.Add("habitat", id, LowerName(_biomes, (int)b), Morgott.UI.MapScreen.MapFilterMath.NameKey(b));
             }
-            var faction = c.m_faction.ToString().ToLowerInvariant();
+            var faction = LowerName(_factions, (int)c.m_faction);
             t.Add("faction", id, faction, "$ib_f_fac_" + faction);
         }
 
@@ -280,7 +309,7 @@ namespace Morgott.UI.ItemBrowser
                 foreach (var kv in Facets.Facets)
                     if (kv.Value.ByEntry.TryGetValue(e.Id, out var keys)) facets.Append(kv.Key).Append('=').Append(string.Join("|", keys)).Append(';');
                 var missing = i.Stage < 0 && i.Via != StageVia.Magic ? Data?.Solver.Missing(e.Id) : null;
-                lines.Add($"{{\"prefab\":{Json(e.Id)},\"type\":\"{e.Type}\",\"category\":\"{(e.Type == EntryType.Item ? e.Category.ToString() : "")}\",\"mod\":{Json(e.Mod)},\"stage\":{i.Stage},\"biome\":{i.Biome},\"afterBoss\":{(i.AfterBoss ? "true" : "false")},\"via\":\"{i.Via}\",\"kind\":{Json(i.Kind)},\"ocean\":{(i.Ocean ? "true" : "false")},\"magicFact\":{(Data != null && Data.MagicFacts.Contains(e.Id) ? "true" : "false")},\"missing\":{Json(missing)},\"facets\":{Json(facets.ToString())}}}");
+                lines.Add($"{{\"prefab\":{Json(e.Id)},\"type\":\"{BrowserIndex.EntryTypeName(e.Type)}\",\"category\":\"{(e.Type == EntryType.Item ? BrowserIndex.CategoryName(e.Category) : "")}\",\"mod\":{Json(e.Mod)},\"stage\":{i.Stage.ToString(CultureInfo.InvariantCulture)},\"biome\":{i.Biome.ToString(CultureInfo.InvariantCulture)},\"afterBoss\":{(i.AfterBoss ? "true" : "false")},\"via\":\"{BrowserIndex.StageViaName(i.Via)}\",\"kind\":{Json(i.Kind)},\"ocean\":{(i.Ocean ? "true" : "false")},\"magicFact\":{(Data != null && Data.MagicFacts.Contains(e.Id) ? "true" : "false")},\"missing\":{Json(missing)},\"facets\":{Json(facets.ToString())}}}");
             }
             return lines;
         }

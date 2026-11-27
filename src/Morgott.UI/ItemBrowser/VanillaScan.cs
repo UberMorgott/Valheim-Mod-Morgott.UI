@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using Morgott.Core;
 using UnityEngine;
 
@@ -108,17 +109,18 @@ namespace Morgott.UI.ItemBrowser
             if (items != null) foreach (var g in items) if (g) _ix.NpcGear.Add(g.name);
         }
 
+        private static void SetName(string id, ref bool named, string token)
+        {
+            if (named || string.IsNullOrEmpty(token)) return;
+            named = true;
+            var e = _ix.Add(new Entry { Id = id, Name = token, Type = EntryType.Other, Mod = _mod(id) });
+            if (e.Type == EntryType.Other && (e.Name == id || e.Name == SourceNames.Readable(id))) e.Name = token; // entered earlier as a bare relation source
+        }
+
         private static void Sources(GameObject go)
         {
             var id = go.name;
             var named = false;
-            void Name(string token)
-            {
-                if (named || string.IsNullOrEmpty(token)) return;
-                named = true;
-                var e = _ix.Add(new Entry { Id = id, Name = token, Type = EntryType.Other, Mod = _mod(id) });
-                if (e.Type == EntryType.Other && (e.Name == id || e.Name == SourceNames.Readable(id))) e.Name = token; // entered earlier as a bare relation source
-            }
             foreach (var c in go.GetComponents<Component>())
                 switch (c)
                 {
@@ -141,8 +143,8 @@ namespace Morgott.UI.ItemBrowser
                         if (h.m_randomItems != null) foreach (var ri in h.m_randomItems) if (ri?.m_prefab) _ix.NpcGear.Add(ri.m_prefab.name);
                         break;
                     case DropOnDestroyed dd: Table(RelationKind.Destroy, id, dd.m_dropWhenDestroyed, go.TryGetComponent<Destructible>(out var ddd) ? ddd.m_minToolTier : 0); break;
-                    case MineRock mr: Name(mr.m_name); Table(RelationKind.Mine, id, mr.m_dropItems, mr.m_minToolTier); break;
-                    case MineRock5 mr5: Name(mr5.m_name); Table(RelationKind.Mine, id, mr5.m_dropItems, mr5.m_minToolTier); break;
+                    case MineRock mr: SetName(id, ref named, mr.m_name); Table(RelationKind.Mine, id, mr.m_dropItems, mr.m_minToolTier); break;
+                    case MineRock5 mr5: SetName(id, ref named, mr5.m_name); Table(RelationKind.Mine, id, mr5.m_dropItems, mr5.m_minToolTier); break;
                     case TreeBase tb:
                         Table(RelationKind.Tree, id, tb.m_dropWhenDestroyed, tb.m_minToolTier);
                         Spawned(RelationKind.Tree, id, tb.m_minToolTier, tb.m_logPrefab, tb.m_stubPrefab); // tree -> log -> wood chain
@@ -154,11 +156,11 @@ namespace Morgott.UI.ItemBrowser
                     case Destructible de when de.m_spawnWhenDestroyed:
                         Add(RelationKind.Destroy, id, null, new[] { new Stack(de.m_spawnWhenDestroyed.name) }, null, 0, 0, null, de.m_minToolTier);
                         break;
-                    case Container ct: Name(ct.m_name); Table(RelationKind.Container, id, ct.m_defaultItems, 0, true); break; // placed chest loot is incidental (stage rule)
+                    case Container ct: SetName(id, ref named, ct.m_name); Table(RelationKind.Container, id, ct.m_defaultItems, 0, true); break; // placed chest loot is incidental (stage rule)
                     case Pickable pk:
                         if (pk.m_itemPrefab)
                         {
-                            Name(string.IsNullOrEmpty(pk.m_overrideName) && pk.m_itemPrefab.TryGetComponent<ItemDrop>(out var pd) ? pd.m_itemData.m_shared.m_name : pk.m_overrideName);
+                            SetName(id, ref named, string.IsNullOrEmpty(pk.m_overrideName) && pk.m_itemPrefab.TryGetComponent<ItemDrop>(out var pd) ? pd.m_itemData.m_shared.m_name : pk.m_overrideName);
                             Add(RelationKind.Pickable, id, null, new[] { new Stack(pk.m_itemPrefab.name, pk.m_amount, pk.m_amount) }, null, 0, 0);
                         }
                         Table(RelationKind.Pickable, id, pk.m_extraDrops);
@@ -178,7 +180,7 @@ namespace Morgott.UI.ItemBrowser
                         Spawned(RelationKind.Spawn, id, 0, pr.m_offspring, pr.m_noPartnerOffspring);
                         break;
                     case Plant pl:
-                        Name(pl.m_name);
+                        SetName(id, ref named, pl.m_name);
                         foreach (var g in pl.m_grownPrefabs) if (g) Add(RelationKind.Grow, id, null, new[] { new Stack(g.name) }, null, 0, 0);
                         break;
                     case Trader tr:
@@ -210,12 +212,15 @@ namespace Morgott.UI.ItemBrowser
                     case ShieldGenerator sg: Fuel(id, sg.m_fuelItems?.ToArray()); break;
                     case Turret tu:
                         if (tu.m_allowedAmmo != null)
-                            _ix.Use("use:ammo:" + id, "$ib_use_ammo", id, id, Items(tu.m_allowedAmmo.ConvertAll(a => a.m_ammo)), null, true);
+                            _ix.Use("use:ammo:" + id, "$ib_use_ammo", id, id, ItemsFromAmmo(tu.m_allowedAmmo), null, true);
                         if (tu.m_configTargets != null) // a trophy sets what it shoots (Turret.UseItem)
                             foreach (var tt in tu.m_configTargets)
                                 if (tt.m_item)
                                 {
-                                    var who = tt.m_targets?.Find(c => c);
+                                    Character who = null;
+                                    if (tt.m_targets != null)
+                                        for (var ti = 0; ti < tt.m_targets.Count; ti++)
+                                            if (tt.m_targets[ti]) { who = tt.m_targets[ti]; break; }
                                     _ix.Use("use:target:" + id + ":" + tt.m_item.name, who ? who.m_name : tt.m_nameOverride, who ? who.name : tt.m_item.name, id, new[] { new Stack(tt.m_item.name) }, "$ib_use_target");
                                 }
                         break;
@@ -225,7 +230,7 @@ namespace Morgott.UI.ItemBrowser
                     case Door door when door.m_keyItem: _ix.Use("use:key:" + id, "$ib_use_key", id, null, new[] { new Stack(door.m_keyItem.name) }, null); break; // Door.Interact
                     case Tameable tm when tm.m_saddleItem: _ix.Use("use:saddle:" + id, "$ib_use_saddle", id, null, new[] { new Stack(tm.m_saddleItem.name) }, null); break; // Tameable.UseItem
                     case MonsterAI ai when ai.m_consumeItems != null: _ix.Use("use:feed:" + id, "$ib_use_feed", id, null, Items(ai.m_consumeItems), null, true); break; // MonsterAI.UpdateConsumeItem
-                    case Fish fish when fish.m_baits != null: _ix.Use("use:bait:" + id, "$ib_use_bait", id, null, Items(fish.m_baits.ConvertAll(b => b?.m_bait)), null, true); break; // Fish bait (Fish.cs:613)
+                    case Fish fish when fish.m_baits != null: _ix.Use("use:bait:" + id, "$ib_use_bait", id, null, ItemsFromBaits(fish.m_baits), null, true); break; // Fish bait (Fish.cs:613)
                     case Incinerator inc when inc.m_conversions != null:
                         foreach (var cv in inc.m_conversions)
                         {
@@ -257,7 +262,7 @@ namespace Morgott.UI.ItemBrowser
             if (go.GetComponentInChildren<WispSpawner>(true) is WispSpawner ws && ws.m_wispPrefab) Spawned(RelationKind.Spawn, id, 0, ws.m_wispPrefab);
             // No named component above: the hover text vanilla shows on it (HoverText.m_text, a $token), else BrowserIndex keeps
             // SourceNames.Readable(id).
-            if (!named && go.TryGetComponent<HoverText>(out var hover)) Name(hover.m_text);
+            if (!named && go.TryGetComponent<HoverText>(out var hover)) SetName(id, ref named, hover.m_text);
         }
 
         private static void Smelt(string id, Smelter sm)
@@ -307,10 +312,32 @@ namespace Morgott.UI.ItemBrowser
             if (st.m_guardianPower) _ix.Use("use:power:" + host, st.m_guardianPower.m_name, host, null, FoundInScan.Attachable(st).ConvertAll(n => new Stack(n)).ToArray(), "$ib_use_power", true);
         }
 
-        private static Stack[] Items(IEnumerable<ItemDrop> items)
+        private static Stack[] ItemsFromAmmo(List<Turret.AmmoType> ammo)
+        {
+            var list = new List<ItemDrop>(ammo.Count);
+            for (var i = 0; i < ammo.Count; i++) list.Add(ammo[i].m_ammo);
+            return Items(list);
+        }
+
+        private static Stack[] ItemsFromBaits(List<Fish.BaitSetting> baits)
+        {
+            var list = new List<ItemDrop>(baits.Count);
+            for (var i = 0; i < baits.Count; i++) list.Add(baits[i]?.m_bait);
+            return Items(list);
+        }
+
+        private static Stack[] Items(IList<ItemDrop> items)
         {
             var list = new List<Stack>();
-            if (items != null) foreach (var i in items) if (i && !list.Exists(s => s.Prefab == i.name)) list.Add(new Stack(i.name));
+            if (items != null)
+            {
+                var seen = new HashSet<string>(StringComparer.Ordinal);
+                for (var idx = 0; idx < items.Count; idx++)
+                {
+                    var i = items[idx];
+                    if (i && seen.Add(i.name)) list.Add(new Stack(i.name));
+                }
+            }
             return list.ToArray();
         }
 
@@ -319,7 +346,8 @@ namespace Morgott.UI.ItemBrowser
         {
             if (t?.m_drops == null) return;
             var alone = t.m_drops.Count == 1;
-            var cond = alone && t.m_dropMin == 1 && t.m_dropMax == 1 ? null : t.m_oneOfEach ? $"$ib_cond_draws {t.m_dropMin}-{t.m_dropMax} $ib_cond_oneofeach" : $"$ib_cond_draws {t.m_dropMin}-{t.m_dropMax}";
+            var range = t.m_dropMin.ToString(CultureInfo.InvariantCulture) + "-" + t.m_dropMax.ToString(CultureInfo.InvariantCulture);
+            var cond = alone && t.m_dropMin == 1 && t.m_dropMax == 1 ? null : t.m_oneOfEach ? $"$ib_cond_draws {range} $ib_cond_oneofeach" : $"$ib_cond_draws {range}";
             foreach (var d in t.m_drops)
                 if (d.m_item)
                     Add(kind, source, null, new[] { new Stack(d.m_item.name, Math.Max(0, d.m_stackMin), Math.Max(Math.Max(0, d.m_stackMin), d.m_stackMax), alone ? Mathf.Clamp01(t.m_dropChance) : float.NaN) }, null, 0, 0, cond, tier, incidental);

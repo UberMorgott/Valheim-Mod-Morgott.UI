@@ -14,50 +14,62 @@ namespace Morgott.UI.Tests
             return JsonSerializer.Deserialize<Dictionary<string, string>>(s);
         }
 
+        private static readonly (string, string)[] History =
+        {
+            ("ServerOne", "SteamOne"),
+            ("", "SteamTwo"),
+            ((string)null, (string)null),
+        };
+
+        private static (string, string) HistoryAt(int i) => History[i];
+
+        private sealed class FilterStub
+        {
+            public int Calls;
+
+            public string Filter(string name, long id)
+            {
+                Calls++;
+                return name == "BadName" ? "***" : name == "Blocked" ? "" : name;
+            }
+        }
+
         [Fact]
         public void ResolveCreatorNameFollowsExactPriorityOrder()
         {
-            var history = new[]
-            {
-                ("ServerOne", "SteamOne"),
-                ("", "SteamTwo"),
-                ((string)null, (string)null),
-            };
-            (string, string) At(int i) => history[i];
-
             // 1. IPlayerNames service wins over everything.
             Assert.Equal("ServiceName", PlayHudMath.ResolveCreatorName(
                 creatorId: 100, serviceName: "ServiceName", localPlayerId: 100, localPlayerName: "Local",
-                livePlayerName: _ => "Live", history.Length, At, 0, "Unknown"));
+                livePlayerName: _ => "Live", History.Length, HistoryAt, 0, "Unknown"));
 
             // 2. Local player when service has no entry.
             Assert.Equal("Local", PlayHudMath.ResolveCreatorName(
                 creatorId: 100, serviceName: null, localPlayerId: 100, localPlayerName: "Local",
-                livePlayerName: _ => "Live", history.Length, At, 0, "Unknown"));
+                livePlayerName: _ => "Live", History.Length, HistoryAt, 0, "Unknown"));
 
             // 3. Live Player.s_players match when not local and not in service.
             Assert.Equal("LivePeer", PlayHudMath.ResolveCreatorName(
                 creatorId: 200, serviceName: "", localPlayerId: 100, localPlayerName: "Local",
-                livePlayerName: id => id == 200 ? "LivePeer" : null, history.Length, At, 0, "Unknown"));
+                livePlayerName: id => id == 200 ? "LivePeer" : null, History.Length, HistoryAt, 0, "Unknown"));
 
             // 4. Vanilla m_playerHistory fallback: prefers server-assigned name, else displayName.
             Assert.Equal("ServerOne", PlayHudMath.ResolveCreatorName(
                 creatorId: 300, serviceName: null, localPlayerId: 100, localPlayerName: "Local",
-                livePlayerName: _ => null, history.Length, At, 0, "Unknown"));
+                livePlayerName: _ => null, History.Length, HistoryAt, 0, "Unknown"));
             Assert.Equal("SteamTwo", PlayHudMath.ResolveCreatorName(
                 creatorId: 300, serviceName: null, localPlayerId: 100, localPlayerName: "Local",
-                livePlayerName: _ => null, history.Length, At, 1, "Unknown"));
+                livePlayerName: _ => null, History.Length, HistoryAt, 1, "Unknown"));
 
             // 5. Out-of-bounds or empty history falls back to unknown.
             Assert.Equal("Unknown", PlayHudMath.ResolveCreatorName(
                 creatorId: 300, serviceName: null, localPlayerId: 100, localPlayerName: "Local",
-                livePlayerName: _ => null, history.Length, At, -1, "Unknown"));
+                livePlayerName: _ => null, History.Length, HistoryAt, -1, "Unknown"));
             Assert.Equal("Unknown", PlayHudMath.ResolveCreatorName(
                 creatorId: 300, serviceName: null, localPlayerId: 100, localPlayerName: "Local",
-                livePlayerName: _ => null, history.Length, At, 99, "Unknown"));
+                livePlayerName: _ => null, History.Length, HistoryAt, 99, "Unknown"));
             Assert.Equal("Unknown", PlayHudMath.ResolveCreatorName(
                 creatorId: 300, serviceName: null, localPlayerId: 100, localPlayerName: "Local",
-                livePlayerName: _ => null, history.Length, At, 2, "Unknown"));
+                livePlayerName: _ => null, History.Length, HistoryAt, 2, "Unknown"));
         }
 
         [Fact]
@@ -84,24 +96,19 @@ namespace Morgott.UI.Tests
         [Fact]
         public void ResolveCreatorNameAppliesUgcFilterAndPreservesLiteralMarkup()
         {
-            var filterCalls = 0;
-            string Filter(string name, long id)
-            {
-                filterCalls++;
-                return name == "BadName" ? "***" : name == "Blocked" ? "" : name;
-            }
+            var stub = new FilterStub();
 
             Assert.Equal("***", PlayHudMath.ResolveCreatorName(
-                200, "BadName", 100, "Local", _ => null, 0, null, -1, "Unknown", Filter));
-            Assert.Equal(1, filterCalls);
+                200, "BadName", 100, "Local", _ => null, 0, null, -1, "Unknown", stub.Filter));
+            Assert.Equal(1, stub.Calls);
 
             // Empty filtered name falls back to unknown; unknown fallback itself is not passed to UGC filter.
             Assert.Equal("Unknown", PlayHudMath.ResolveCreatorName(
-                200, "Blocked", 100, "Local", _ => null, 0, null, -1, "Unknown", Filter));
-            Assert.Equal(2, filterCalls);
+                200, "Blocked", 100, "Local", _ => null, 0, null, -1, "Unknown", stub.Filter));
+            Assert.Equal(2, stub.Calls);
             Assert.Equal("Unknown", PlayHudMath.ResolveCreatorName(
-                200, null, 100, "Local", _ => null, 0, null, -1, "Unknown", Filter));
-            Assert.Equal(2, filterCalls);
+                200, null, 100, "Local", _ => null, 0, null, -1, "Unknown", stub.Filter));
+            Assert.Equal(2, stub.Calls);
 
             // Literal TMP tags and braces in player names format without exceptions (rendered plain via richText = false).
             var tagged = "<color=red><size=500>{Troll}</size></color>";

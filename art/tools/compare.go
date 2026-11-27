@@ -66,10 +66,10 @@ func tinted(src *image.NRGBA, t color.NRGBA) *image.NRGBA {
 	out := image.NewNRGBA(src.Bounds())
 	copy(out.Pix, src.Pix)
 	for i := 0; i < len(out.Pix); i += 4 {
-		out.Pix[i] = uint8(int(out.Pix[i]) * int(t.R) / 255)
-		out.Pix[i+1] = uint8(int(out.Pix[i+1]) * int(t.G) / 255)
-		out.Pix[i+2] = uint8(int(out.Pix[i+2]) * int(t.B) / 255)
-		out.Pix[i+3] = uint8(int(out.Pix[i+3]) * int(t.A) / 255)
+		out.Pix[i] = clampU8(int(out.Pix[i]) * int(t.R) / 255)
+		out.Pix[i+1] = clampU8(int(out.Pix[i+1]) * int(t.G) / 255)
+		out.Pix[i+2] = clampU8(int(out.Pix[i+2]) * int(t.B) / 255)
+		out.Pix[i+3] = clampU8(int(out.Pix[i+3]) * int(t.A) / 255)
 	}
 	return out
 }
@@ -125,8 +125,8 @@ func (c *canvas) draw9(name string, r image.Rectangle, tint color.NRGBA) {
 	sy := []int{0, t, H - b, H}
 	dx := []int{r.Min.X, r.Min.X + L, r.Max.X - RR, r.Max.X}
 	dy := []int{r.Min.Y, r.Min.Y + T, r.Max.Y - B, r.Max.Y}
-	for i := 0; i < 3; i++ {
-		for j := 0; j < 3; j++ {
+	for i := range 3 {
+		for j := range 3 {
 			if i == 1 && j == 1 && !s.fill {
 				continue
 			}
@@ -168,7 +168,7 @@ var faces = map[string]*opentype.Font{}
 func face(file string, px float64) font.Face {
 	f, ok := faces[file]
 	if !ok {
-		b, err := os.ReadFile(filepath.Join("art/fonts", file))
+		b, err := readFileInDir("art/fonts", file)
 		must(err)
 		f, err = opentype.Parse(b)
 		must(err)
@@ -311,8 +311,8 @@ func compareInventory() *image.NRGBA {
 
 	// inventory grid
 	c.panel(22, 22, 515, 272)
-	for row := 0; row < 4; row++ {
-		for col := 0; col < 8; col++ {
+	for row := range 4 {
+		for col := range 8 {
 			x, y := 38+float64(col)*61.6, 36+float64(row)*61.5
 			c.sprite("slot_cell", x, y, 58, 58)
 			if row == 0 {
@@ -330,8 +330,8 @@ func compareInventory() *image.NRGBA {
 	}
 	// equipment
 	c.panel(603, 22, 220, 205)
-	for row := 0; row < 3; row++ {
-		for col := 0; col < 3; col++ {
+	for row := range 3 {
+		for col := range 3 {
 			x, y := 617+float64(col)*63, 34+float64(row)*61
 			c.sprite("slot_cell", x, y, 58, 58)
 			c.icon(mock, x+4, y+4, 50, 50)
@@ -355,7 +355,7 @@ func compareInventory() *image.NRGBA {
 	c.panel(1128, 22, 525, 130)
 	c.sprite("header_plaque", 1198, 30, 380, 40)
 	c.text("AUTOTESTCHAR", sans, 22, head, 1388, 50, 1)
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		x := 1176 + float64(i)*88
 		c.sprite("slot_cell", x, 72, 74, 68)
 		c.icon(mock, x+6, y0(76), 62, 60)
@@ -398,7 +398,7 @@ func compareInventory() *image.NRGBA {
 	c.text("Мясо, гриб и одуванчик на палочке ждут", sans, 14, body, 1336, 347, 0)
 	c.text("огня. Дожарь на вертеле.", sans, 14, body, 1336, 367, 0)
 	c.text("Вес: 0,5 (0,5 Всего)", sans, 14, "#8ab4f0", 1336, 410, 0)
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		x := 1333 + float64(i)*66
 		c.sprite("slot_cell", x, 622, 62, 66)
 		if i >= 1 && i <= 3 {
@@ -421,7 +421,7 @@ func compareInventory() *image.NRGBA {
 	}
 	c.text("25", sans, 18, body, 196, 818, 1)
 	c.sprite("frame_small", 258, 818, 188, 70)
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		x := 270 + float64(i)*57
 		c.sprite("slot_cell", x, 828, 52, 52)
 		c.icon(mock, x+4, y0(832), 44, 44)

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using BepInEx.Configuration;
 using HarmonyLib;
 using Morgott.UI.Diagnostics;
@@ -146,6 +147,7 @@ namespace Morgott.UI.WorldHud
         public static CrosshairSkin Instance { get; private set; }
         private readonly HudArt _art = new HudArt(OwnershipRegistry.Crosshair);
         private Hud _hud;
+        private Transform _reportRoot;
         private Color _gold, _rest;
         private string _goldTag;
 
@@ -165,6 +167,7 @@ namespace Morgott.UI.WorldHud
             _rest.a = ThemeTokens.GetFloat("share.crosshair.alpha", 0.85f);
             _goldTag = "<color=#" + ColorUtility.ToHtmlStringRGB(_gold) + ">";
             var root = hud.m_crosshair.transform.parent;
+            _reportRoot = root;
             if (root && root.TryGetComponent<Image>(out var anchor)) _art.Content(anchor, "crosshair anchor (vanilla 5 px frame)");
             if (_art.Reskin(hud.m_crosshair, "sprite.glyph.crosshair", null, "crosshair glyph"))
             {
@@ -179,8 +182,10 @@ namespace Morgott.UI.WorldHud
             PieceHealth(hud);
             Stealth(hud);
             Plugin.Log.LogInfo("[Morgott.UI] crosshair attached");
-            PlayHud.Reports.Add(() => Instance && root ? _art.Report(root) : null);
+            PlayHud.Reports.Add(BuildReport);
         }
+
+        private ScreenReport BuildReport() => Instance && _reportRoot ? _art.Report(_reportRoot) : null;
 
         private void PieceHealth(Hud hud)
         {
@@ -264,6 +269,7 @@ namespace Morgott.UI.WorldHud
         private const int ActionBand = 1;
         private readonly HudArt _art = new HudArt(OwnershipRegistry.ActionHud);
         private Hud _hud;
+        private Transform _reportRoot;
         private Image _band;
         private RectTransform _ruleL, _ruleR;
         private string _eventText;
@@ -286,9 +292,11 @@ namespace Morgott.UI.WorldHud
             Event(hud);
             Mount(hud);
             Plugin.Log.LogInfo("[Morgott.UI] action HUD attached");
-            var root = hud.m_rootObject.transform;
-            PlayHud.Reports.Add(() => Instance && root ? _art.Report(root) : null);
+            _reportRoot = hud.m_rootObject.transform;
+            PlayHud.Reports.Add(BuildReport);
         }
+
+        private ScreenReport BuildReport() => Instance && _reportRoot ? _art.Report(_reportRoot) : null;
 
         private void Bar(Transform root, GuiBar bar, string fillColor, TMP_Text label, string what)
         {
@@ -472,6 +480,7 @@ namespace Morgott.UI.WorldHud
         private Vector2 _blockUnits, _placedAt = new Vector2(float.NaN, float.NaN);
         private readonly Vector3[] _corners = new Vector3[4];
         private readonly RectTransform[] _round = new RectTransform[2]; // compass socket + ring: kept unrotated
+        private Transform _reportRoot;
         public int ActiveIndex => _shown;
         // Harness read side: the last placement (screen px top-right corner) and whether it went beside the minimap.
         public Vector2 PlacedTopRight => _placedAt;
@@ -488,6 +497,7 @@ namespace Morgott.UI.WorldHud
             Instance = this;
             _hud = hud;
             var root = hud.m_shipHudRoot.transform;
+            _reportRoot = root;
             PlayHud.SyncPpu(_art, root);
             foreach (var t in new[] { hud.m_fullSail ? hud.m_fullSail.transform.parent?.parent : null, hud.m_shipControlsRoot ? hud.m_shipControlsRoot.transform : null })
             {
@@ -567,9 +577,11 @@ namespace Morgott.UI.WorldHud
             _thrustText.gameObject.SetActive(_readoutShown);
             _speedText.gameObject.SetActive(_readoutShown);
             Compass(hud, rs, ring, arrow, gap);
-            Plugin.Log.LogInfo($"[Morgott.UI] ship HUD attached (block {block.width:0}x{block.height:0} units)");
-            PlayHud.Reports.Add(() => Instance && root ? _art.Report(root) : null);
+            Plugin.Log.LogInfo($"[Morgott.UI] ship HUD attached (block {block.width.ToString("0", CultureInfo.InvariantCulture)}x{block.height.ToString("0", CultureInfo.InvariantCulture)} units)");
+            PlayHud.Reports.Add(BuildReport);
         }
+
+        private ScreenReport BuildReport() => Instance && _reportRoot ? _art.Report(_reportRoot) : null;
 
         // Vanilla wind compass (hudroot/ShipHud/WindIndicator: Ship, Circle, Wind/WindIcon) kept live for Hud.UpdateShipHud
         // (root z = ship yaw vs camera, Wind z = wind vs ship): moved left of the block's top edge (out of the minimap
@@ -889,7 +901,7 @@ namespace Morgott.UI.WorldHud
             _column.position = world;
             _placedAt = want;
             PlacedBeside = p.beside;
-            Plugin.Log.LogInfo($"[Morgott.UI] ship HUD placed top-right ({want.x:0},{want.y:0}) px {(p.beside ? "beside" : "under")} the minimap footprint [{fp.xMin:0},{fp.yMin:0}]-[{fp.xMax:0},{fp.yMax:0}] (floor {floor:0} px)");
+            Plugin.Log.LogInfo($"[Morgott.UI] ship HUD placed top-right ({want.x.ToString("0", CultureInfo.InvariantCulture)},{want.y.ToString("0", CultureInfo.InvariantCulture)}) px {(p.beside ? "beside" : "under")} the minimap footprint [{fp.xMin.ToString("0", CultureInfo.InvariantCulture)},{fp.yMin.ToString("0", CultureInfo.InvariantCulture)}]-[{fp.xMax.ToString("0", CultureInfo.InvariantCulture)},{fp.yMax.ToString("0", CultureInfo.InvariantCulture)}] (floor {floor.ToString("0", CultureInfo.InvariantCulture)} px)");
         }
 
         // Minimap footprint, screen px: the small root plus its direct children (ring art, biome plaque, key tip; the
@@ -936,6 +948,7 @@ namespace Morgott.UI.WorldHud
     {
         public static KeyHintsSkin Instance { get; private set; }
         private readonly HudArt _art = new HudArt(OwnershipRegistry.KeyHints);
+        private Transform _reportRoot;
 
         public static void Attach(Hud hud)
         {
@@ -948,11 +961,14 @@ namespace Morgott.UI.WorldHud
         {
             Instance = this;
             var root = hints.transform;
+            _reportRoot = root;
             PlayHud.SyncPpu(_art, root);
             Restyle(root);
             Plugin.Log.LogInfo("[Morgott.UI] key hints attached");
-            PlayHud.Reports.Add(() => Instance && root ? _art.Report(root) : null);
+            PlayHud.Reports.Add(BuildReport);
         }
+
+        private ScreenReport BuildReport() => Instance && _reportRoot ? _art.Report(_reportRoot) : null;
 
         // Also used by BuildHud for the build menu's own keyboard hints.
         internal void Restyle(Transform root)
@@ -993,17 +1009,17 @@ namespace Morgott.UI.WorldHud
         private static void Awake_Postfix(Hud __instance)
         {
             PlayHud.Reports.Clear();
-            Try("crosshair", OwnershipRegistry.Crosshair, () => CrosshairSkin.Attach(__instance));
-            Try("action HUD", OwnershipRegistry.ActionHud, () => ActionHudSkin.Attach(__instance));
-            Try("ship HUD", OwnershipRegistry.ShipHud, () => ShipHudSkin.Attach(__instance));
-            Try("key hints", OwnershipRegistry.KeyHints, () => KeyHintsSkin.Attach(__instance));
-            Try("build HUD", OwnershipRegistry.BuildHud, () => BuildHudSkin.Attach(__instance));
+            Try("crosshair", OwnershipRegistry.Crosshair, __instance, CrosshairSkin.Attach);
+            Try("action HUD", OwnershipRegistry.ActionHud, __instance, ActionHudSkin.Attach);
+            Try("ship HUD", OwnershipRegistry.ShipHud, __instance, ShipHudSkin.Attach);
+            Try("key hints", OwnershipRegistry.KeyHints, __instance, KeyHintsSkin.Attach);
+            Try("build HUD", OwnershipRegistry.BuildHud, __instance, BuildHudSkin.Attach);
         }
 
-        private static void Try(string what, string family, Action attach)
+        private static void Try(string what, string family, Hud hud, Action<Hud> attach)
         {
             if (!PlayHud.Owned(family)) return;
-            try { attach(); }
+            try { attach(hud); }
             catch (Exception e) { Plugin.Log.LogError($"[Morgott.UI] {what} restyle failed (vanilla look stays): {e}"); }
         }
 

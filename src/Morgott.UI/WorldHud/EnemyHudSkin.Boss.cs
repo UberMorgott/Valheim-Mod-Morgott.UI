@@ -1,3 +1,4 @@
+using System.Globalization;
 using Morgott.UI.Theme;
 using TMPro;
 using UnityEngine;
@@ -122,6 +123,9 @@ namespace Morgott.UI.WorldHud
                 mat.SetFloat(FxIntensity, ThemeTokens.GetFloat("fx.weld.intensity", 1.4f));
                 mat.SetFloat(FxFill, 1f);
                 weld.material = mat;
+                var guard = weld.gameObject.AddComponent<BossMaterialGuard>();
+                guard.hideFlags = HideFlags.HideInInspector;
+                guard.Mat = mat;
                 weld.enabled = false;
                 Art.Note(weld, "boss.weld", true, "boss-c weld (RuneSkin/UI Boss FX shader) on the HP edge");
             }
@@ -255,7 +259,7 @@ namespace Morgott.UI.WorldHud
             }
 
             _bossSpan = EnemyHudMath.BossSpan(width, capW, capOffset);
-            Plugin.Log.LogInfo($"[Morgott.UI] boss HUD '{t.name}' drawn as boss-c: bar {width:0.#}x{barH:0.#}, span {_bossSpan:0.#}");
+            Plugin.Log.LogInfo($"[Morgott.UI] boss HUD '{t.name}' drawn as boss-c: bar {width.ToString("0.#", CultureInfo.InvariantCulture)}x{barH.ToString("0.#", CultureInfo.InvariantCulture)}, span {_bossSpan.ToString("0.#", CultureInfo.InvariantCulture)}");
             return true;
         }
 
@@ -376,6 +380,21 @@ namespace Morgott.UI.WorldHud
             }
             if (Mathf.Abs(r.localScale.x - scale) > 0.001f) r.localScale = new Vector3(scale, scale, 1f);
             img.color = new Color(1f, 1f, 1f, alpha);
+        }
+    }
+
+    // Releases the per-boss weld Material instance when the boss HUD object is destroyed.
+    internal sealed class BossMaterialGuard : MonoBehaviour
+    {
+        internal Material Mat;
+
+        private void OnDestroy()
+        {
+            if (Mat)
+            {
+                Destroy(Mat);
+                Mat = null;
+            }
         }
     }
 }

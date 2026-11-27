@@ -125,8 +125,8 @@ func compareTrophies() (*image.NRGBA, *image.NRGBA) {
 	}
 	// grid
 	c.sprite("frame_inset", 900, 396, 976, 600)
-	for r := 0; r < 6; r++ {
-		for k := 0; k < 9; k++ {
+	for r := range 6 {
+		for k := range 9 {
 			x, y := 908+float64(k)*105.5, 403+float64(r)*97.5
 			n := "slot_cell_recess"
 			if r == 1 && k == 2 {

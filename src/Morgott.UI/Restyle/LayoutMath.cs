@@ -31,12 +31,16 @@ namespace Morgott.UI.Restyle
             var left = boxMin;
             var right = boxMax;
             if (obstacles != null)
-                foreach (var o in obstacles)
+            {
+                var list = obstacles as IList<Span> ?? new List<Span>(obstacles);
+                for (var i = 0; i < list.Count; i++)
                 {
+                    var o = list[i];
                     if (o.Centre < boxMin || o.Centre > boxMax) continue;
                     if (o.Centre < textMin) left = Math.Max(left, o.Max);
                     else if (o.Centre > textMax) right = Math.Min(right, o.Min);
                 }
+            }
             return new Span(left, Math.Max(left, right));
         }
 

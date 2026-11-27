@@ -1,4 +1,5 @@
 using System;
+using System.Text;
 using Morgott.UI.InventoryScreen;
 
 namespace Morgott.UI.CraftingScreen
@@ -73,8 +74,20 @@ namespace Morgott.UI.CraftingScreen
         public float RowPitch;
 
         public override string ToString() =>
-            $"header {Header} tabs {TabRow}({Tabs.Visible}/{Tabs.Cells.Length}{(Tabs.Scroll ? " scroll" : "")}) cats {CategoryRow}({Categories.Visible}/{Categories.Cells.Length}) subs {SubCategoryRow}({SubCategories.Visible}/{SubCategories.Cells.Length}) " +
-            $"list {List} detail {Detail} icon {Icon} desc {Description} stats {Stats} chain {Chain} req {Requirements} {RequirementColumns}x{RequirementRows} buttons {ButtonRow}";
+            new StringBuilder(256)
+                .Append("header ").Append(Header.ToString())
+                .Append(" tabs ").Append(TabRow.ToString()).Append('(').Append(Tabs.Visible).Append('/').Append(Tabs.Cells.Length).Append(Tabs.Scroll ? " scroll" : "").Append(')')
+                .Append(" cats ").Append(CategoryRow.ToString()).Append('(').Append(Categories.Visible).Append('/').Append(Categories.Cells.Length).Append(')')
+                .Append(" subs ").Append(SubCategoryRow.ToString()).Append('(').Append(SubCategories.Visible).Append('/').Append(SubCategories.Cells.Length).Append(") ")
+                .Append("list ").Append(List.ToString())
+                .Append(" detail ").Append(Detail.ToString())
+                .Append(" icon ").Append(Icon.ToString())
+                .Append(" desc ").Append(Description.ToString())
+                .Append(" stats ").Append(Stats.ToString())
+                .Append(" chain ").Append(Chain.ToString())
+                .Append(" req ").Append(Requirements.ToString()).Append(' ').Append(RequirementColumns).Append('x').Append(RequirementRows)
+                .Append(" buttons ").Append(ButtonRow.ToString())
+                .ToString();
     }
 
     // Craft row parts (canvas boxes): idle = Minus | Field | Plus | Button, progress = Bar | Cancel.

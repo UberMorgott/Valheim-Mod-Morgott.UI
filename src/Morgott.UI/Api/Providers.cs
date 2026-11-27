@@ -17,6 +17,12 @@ namespace Morgott.UI.Api
             public string Key;
             public Func<Player, T> Get;
             public int Faults;
+            public List<Entry<T>> List;
+            public void Remove()
+            {
+                List.Remove(this);
+                Revision++;
+            }
         }
 
         private static readonly List<Entry<ResourceState>> Resources = new List<Entry<ResourceState>>();
@@ -37,6 +43,10 @@ namespace Morgott.UI.Api
             public string Owner;
             public AbilitySlotDescriptor D;
             public int Faults;
+            public void Remove()
+            {
+                if (Abilities.Remove(this)) AbilityRevision++;
+            }
         }
 
         private static readonly List<Ability> Abilities = new List<Ability>();
@@ -55,11 +65,8 @@ namespace Morgott.UI.Api
             while (at > 0 && Abilities[at - 1].D.Order > d.Order) at--;
             Abilities.Insert(at, a);
             AbilityRevision++;
-            Plugin.Log.LogInfo($"[Morgott.UI] ability slot '{d.Id}' (order {d.Order}) from {owner}");
-            return () =>
-            {
-                if (Abilities.Remove(a)) AbilityRevision++;
-            };
+            Plugin.Log.LogInfo($"[Morgott.UI] ability slot '{d.Id}' (order {d.Order.ToString()}) from {owner}");
+            return a.Remove;
         }
 
         // Slot i in order; false = faulted (hidden) or out of range.
@@ -79,7 +86,7 @@ namespace Morgott.UI.Api
             catch (Exception ex)
             {
                 a.Faults++;
-                Plugin.Log.LogError($"[Morgott.UI] ability slot '{a.D.Id}' from {a.Owner} failed ({a.Faults}/{MaxFaults}): {ex}");
+                Plugin.Log.LogError($"[Morgott.UI] ability slot '{a.D.Id}' from {a.Owner} failed ({a.Faults.ToString()}/{MaxFaults.ToString()}): {ex}");
                 return false;
             }
         }
@@ -93,15 +100,11 @@ namespace Morgott.UI.Api
 
         private static Action Add<T>(List<Entry<T>> list, string owner, string key, Func<Player, T> get)
         {
-            var e = new Entry<T> { Owner = owner, Key = key, Get = get };
+            var e = new Entry<T> { Owner = owner, Key = key, Get = get, List = list };
             list.Add(e);
             Revision++;
             Plugin.Log.LogInfo($"[Morgott.UI] provider '{key}' from {owner}");
-            return () =>
-            {
-                list.Remove(e);
-                Revision++;
-            };
+            return e.Remove;
         }
 
         // Latest live provider of the pool; false = none, faulted or insane snapshot (extension hidden).
@@ -128,7 +131,8 @@ namespace Morgott.UI.Api
         public static Action AddHold(string owner, string id, Func<Player, HoldPromptState> get)
         {
             var key = owner + ":" + id;
-            Holds.RemoveAll(e => e.Key == key);
+            for (var i = Holds.Count - 1; i >= 0; i--)
+                if (Holds[i].Key == key) Holds.RemoveAt(i);
             return Add(Holds, owner, key, get);
         }
 
@@ -148,10 +152,10 @@ namespace Morgott.UI.Api
 
         public static IEnumerable<string> Describe()
         {
-            foreach (var e in Holds) yield return $"hold {e.Key} from {e.Owner} faults={e.Faults}";
-            foreach (var e in Resources) yield return $"resource {e.Key} from {e.Owner} faults={e.Faults}";
-            foreach (var e in Capacities) yield return $"capacity {e.Key} from {e.Owner} faults={e.Faults}";
-            foreach (var a in Abilities) yield return $"ability {a.D.Id} order={a.D.Order} from {a.Owner} faults={a.Faults}";
+            foreach (var e in Holds) yield return $"hold {e.Key} from {e.Owner} faults={e.Faults.ToString()}";
+            foreach (var e in Resources) yield return $"resource {e.Key} from {e.Owner} faults={e.Faults.ToString()}";
+            foreach (var e in Capacities) yield return $"capacity {e.Key} from {e.Owner} faults={e.Faults.ToString()}";
+            foreach (var a in Abilities) yield return $"ability {a.D.Id} order={a.D.Order.ToString()} from {a.Owner} faults={a.Faults.ToString()}";
         }
 
         private static Entry<T> Latest<T>(List<Entry<T>> list, string key)
@@ -172,7 +176,7 @@ namespace Morgott.UI.Api
             {
                 value = default;
                 e.Faults++;
-                Plugin.Log.LogError($"[Morgott.UI] provider '{e.Key}' from {e.Owner} failed ({e.Faults}/{MaxFaults}" +
+                Plugin.Log.LogError($"[Morgott.UI] provider '{e.Key}' from {e.Owner} failed ({e.Faults.ToString()}/{MaxFaults.ToString()}" +
                                     (e.Faults >= MaxFaults ? ", disabled" : "") + $"): {ex}");
                 return false;
             }

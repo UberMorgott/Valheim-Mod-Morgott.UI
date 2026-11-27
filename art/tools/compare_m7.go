@@ -140,7 +140,7 @@ func compareM7Board() (*image.NRGBA, *image.NRGBA) {
 		c.icon(mock, 400, y+18, 92, 94)
 		c.text(r.n, serif, 36, head, 537, y+45, 0)
 		c.text(r.b, sans, 22, dis, 537, y+90, 0)
-		for k := 0; k < 2; k++ {
+		for k := range 2 {
 			x := 815 + float64(k)*115
 			c.sprite("socket_req", x, y+18, 98, 98)
 			c.icon(mock, x+14, y+24, 70, 62)

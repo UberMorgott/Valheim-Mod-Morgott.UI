@@ -133,8 +133,27 @@ namespace Morgott.UI.MapScreen
         public static byte GridId(Heightmap.Biome biome, float height, float waterLevel) => height < waterLevel ? (byte)0 : Id(biome);
 
         // Theme token of a biome's overlay colour, its vanilla localisation key (EnvMan / MessageHud names).
-        public static string ColorToken(Heightmap.Biome biome) => "color.map.biome." + biome.ToString().ToLowerInvariant();
-        public static string NameKey(Heightmap.Biome biome) => "$biome_" + biome.ToString().ToLowerInvariant();
+        public static string ColorToken(Heightmap.Biome biome) => "color.map.biome." + BiomeSlug(biome);
+        public static string NameKey(Heightmap.Biome biome) => "$biome_" + BiomeSlug(biome);
+
+        private static string BiomeSlug(Heightmap.Biome biome)
+        {
+            switch (biome)
+            {
+                case Heightmap.Biome.None: return "none";
+                case Heightmap.Biome.Meadows: return "meadows";
+                case Heightmap.Biome.Swamp: return "swamp";
+                case Heightmap.Biome.Mountain: return "mountain";
+                case Heightmap.Biome.BlackForest: return "blackforest";
+                case Heightmap.Biome.Plains: return "plains";
+                case Heightmap.Biome.AshLands: return "ashlands";
+                case Heightmap.Biome.DeepNorth: return "deepnorth";
+                case Heightmap.Biome.Ocean: return "ocean";
+                case Heightmap.Biome.Mistlands: return "mistlands";
+                case Heightmap.Biome.All: return "all";
+                default: return ((int)biome).ToString(System.Globalization.CultureInfo.InvariantCulture);
+            }
+        }
 
         // Pixel on a biome border, one side only so the texture line is one texel wide (Codex review 2): a 4-neighbour
         // inside the grid is a lower land id. Coasts are no border (the fill ramps out instead); ocean pixels never are.

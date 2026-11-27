@@ -40,30 +40,37 @@ namespace Morgott.UI.Compat
                     Plugin.Log.LogWarning($"[Compat] ValheimBuildCamera {info.Metadata.Version}: {name} not found; its texts stay English.");
                     continue;
                 }
-                foreach (var t in WithNested(type))
-                    foreach (var m in t.GetMethods(All))
+                var types = new List<Type>();
+                CollectNested(type, types);
+                for (var i = 0; i < types.Count; i++)
+                    foreach (var m in types[i].GetMethods(All))
                         if (!m.IsAbstract && !m.ContainsGenericParameters && HasText(m))
                         {
                             harmony.Patch(m, transpiler: transpiler);
                             patched++;
                         }
             }
-            Plugin.Log.LogInfo($"[Compat] ValheimBuildCamera {info.Metadata.Version}: texts translated in {patched} methods");
+            Plugin.Log.LogInfo($"[Compat] ValheimBuildCamera {info.Metadata.Version}: texts translated in {patched.ToString()} methods");
         }
 
-        private static IEnumerable<Type> WithNested(Type type)
+        private static void CollectNested(Type type, List<Type> list)
         {
-            yield return type;
-            foreach (var n in type.GetNestedTypes(BindingFlags.Public | BindingFlags.NonPublic))
-                foreach (var t in WithNested(n)) yield return t;
+            list.Add(type);
+            var nested = type.GetNestedTypes(BindingFlags.Public | BindingFlags.NonPublic);
+            for (var i = 0; i < nested.Length; i++) CollectNested(nested[i], list);
         }
 
         private static bool HasText(MethodBase m)
         {
             try
             {
-                foreach (var op in PatchProcessor.ReadMethodBody(m))
+                var body = PatchProcessor.ReadMethodBody(m);
+                var ops = body as IList<KeyValuePair<OpCode, object>> ?? new List<KeyValuePair<OpCode, object>>(body);
+                for (var i = 0; i < ops.Count; i++)
+                {
+                    var op = ops[i];
                     if (op.Key == OpCodes.Ldstr && op.Value is string s && BuildCameraWords.Texts.ContainsKey(s)) return true;
+                }
             }
             catch (Exception e)
             {
@@ -77,8 +84,10 @@ namespace Morgott.UI.Compat
             var tr = AccessTools.Method(typeof(BuildCameraText), nameof(Tr));
             var reason = AccessTools.Method(typeof(BuildCameraText), nameof(Reason));
             var afterOff = false;
-            foreach (var ins in instructions)
+            var list = instructions as IList<CodeInstruction> ?? new List<CodeInstruction>(instructions);
+            for (var i = 0; i < list.Count; i++)
             {
+                var ins = list[i];
                 yield return ins;
                 // StopCamera: "Build camera OFF: " + reason + "." -> the reason argument right after the prefix.
                 if (afterOff && ins.IsLdarg()) yield return new CodeInstruction(OpCodes.Call, reason);

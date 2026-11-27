@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Text;
 using BepInEx.Configuration;
@@ -117,7 +118,7 @@ namespace Morgott.UI.WorldHud
             Template(hud.m_baseHudMount, false, false);
             // Threat / engaged bars reach past vanilla's 10 m creation radius (EnemyHud.cs:54, TestShow :101-123).
             if (EnemyHudConfig.Smart) hud.m_maxShowDistance = Mathf.Max(hud.m_maxShowDistance, EnemyHudConfig.Range.Value);
-            Plugin.Log.LogInfo($"[Morgott.UI] enemy HUD templates restyled (bars {EnemyHudConfig.Mode.Value}, range {hud.m_maxShowDistance:0.#} m)");
+            Plugin.Log.LogInfo($"[Morgott.UI] enemy HUD templates restyled (bars {ModeName(EnemyHudConfig.Mode.Value)}, range {hud.m_maxShowDistance.ToString("0.#", CultureInfo.InvariantCulture)} m)");
         }
 
         private static void Template(GameObject template, bool boss, bool framed)
@@ -231,7 +232,7 @@ namespace Morgott.UI.WorldHud
         {
             var old = health.rect.height;
             var k = EnemyHudMath.BarGrowth(old, target);
-            Plugin.Log.LogInfo($"[Morgott.UI] enemy HUD '{hud.name}' Health height {old:0.#} -> {old * k:0.#} (x{k:0.##})");
+            Plugin.Log.LogInfo($"[Morgott.UI] enemy HUD '{hud.name}' Health height {old.ToString("0.#", CultureInfo.InvariantCulture)} -> {(old * k).ToString("0.#", CultureInfo.InvariantCulture)} (x{k.ToString("0.##", CultureInfo.InvariantCulture)})");
             if (k <= 1.001f) return;
             var delta = old * (k - 1f);
             if (Mathf.Approximately(health.anchorMin.y, health.anchorMax.y)) health.sizeDelta += new Vector2(0f, delta);
@@ -256,7 +257,7 @@ namespace Morgott.UI.WorldHud
             var old = health.rect.width;
             if (!(target > 0f) || old < 1f || Mathf.Abs(target - old) < 0.5f) return;
             var k = target / old;
-            Plugin.Log.LogInfo($"[Morgott.UI] enemy HUD Health width {old:0.#} -> {target:0.#}");
+            Plugin.Log.LogInfo($"[Morgott.UI] enemy HUD Health width {old.ToString("0.#", CultureInfo.InvariantCulture)} -> {target.ToString("0.#", CultureInfo.InvariantCulture)}");
             if (Mathf.Approximately(health.anchorMin.x, health.anchorMax.x)) health.sizeDelta = new Vector2(target, health.sizeDelta.y);
             else
             {
@@ -734,34 +735,58 @@ namespace Morgott.UI.WorldHud
             var hud = EnemyHud.instance;
             if (!hud) return "no EnemyHud";
             var sb = new StringBuilder();
-            sb.Append("mode=").Append(EnemyHudConfig.Mode.Value).Append(" range=").Append(hud.m_maxShowDistance.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture));
+            sb.Append("mode=").Append(ModeName(EnemyHudConfig.Mode.Value)).Append(" range=").Append(hud.m_maxShowDistance.ToString("0.#", CultureInfo.InvariantCulture));
             foreach (var pair in hud.m_huds)
             {
                 var data = pair.Value;
                 if (data == null || !data.m_gui || !data.m_character || !States.TryGetValue(data, out var s)) continue;
                 sb.Append('\n').Append(data.m_character.GetZDOID().ToString()).Append(' ').Append(data.m_character.name)
                     .Append(" managed=").Append(s.Managed ? 1 : 0).Append(" picked=").Append(s.Picked ? 1 : 0)
-                    .Append(" reason=").Append(s.Reason).Append(" active=").Append(data.m_gui.activeSelf ? 1 : 0)
-                    .Append(" alpha=").Append(s.Alpha.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture))
-                    .Append(" dist=").Append(s.Distance.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture))
-                    .Append(" scale=").Append(data.m_gui.transform.localScale.x.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture))
+                    .Append(" reason=").Append(ReasonName(s.Reason)).Append(" active=").Append(data.m_gui.activeSelf ? 1 : 0)
+                    .Append(" alpha=").Append(s.Alpha.ToString("0.00", CultureInfo.InvariantCulture))
+                    .Append(" dist=").Append(s.Distance.ToString("0.0", CultureInfo.InvariantCulture))
+                    .Append(" scale=").Append(data.m_gui.transform.localScale.x.ToString("0.00", CultureInfo.InvariantCulture))
                     .Append(" name=").Append(s.Name && s.Name.enabled ? 1 : 0)
                     .Append(" frame=").Append(s.Vt && s.Vt.enabled && s.Vt.sprite ? s.Vt.sprite.name : s.Own && s.Own.enabled && s.Own.sprite ? s.Own.sprite.name : "-")
-                    .Append(" shieldW=").Append((s.Shield && s.Shield.enabled ? s.Shield.rectTransform.sizeDelta.x : 0f).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture))
-                    .Append(" barW=").Append(s.Health.rect.width.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture))
-                    .Append(" stg=").Append(s.Stg.Phase).Append(':').Append(s.Stg.Fill.ToString("0.000", System.Globalization.CultureInfo.InvariantCulture))
-                    .Append(" stgW=").Append((s.Stagger && s.Stagger.enabled ? s.Stagger.rectTransform.sizeDelta.x : 0f).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture))
+                    .Append(" shieldW=").Append((s.Shield && s.Shield.enabled ? s.Shield.rectTransform.sizeDelta.x : 0f).ToString("0.0", CultureInfo.InvariantCulture))
+                    .Append(" barW=").Append(s.Health.rect.width.ToString("0.0", CultureInfo.InvariantCulture))
+                    .Append(" stg=").Append(PhaseName(s.Stg.Phase)).Append(':').Append(s.Stg.Fill.ToString("0.000", CultureInfo.InvariantCulture))
+                    .Append(" stgW=").Append((s.Stagger && s.Stagger.enabled ? s.Stagger.rectTransform.sizeDelta.x : 0f).ToString("0.0", CultureInfo.InvariantCulture))
                     .Append(" tier=").Append(s.Tier)
-                    .Append(" sparks=").Append(((s.Sparks && s.Sparks.enabled ? s.Sparks.color.a : 0f) + (s.SparksB && s.SparksB.enabled ? s.SparksB.color.a : 0f)).ToString("0.00", System.Globalization.CultureInfo.InvariantCulture))
+                    .Append(" sparks=").Append(((s.Sparks && s.Sparks.enabled ? s.Sparks.color.a : 0f) + (s.SparksB && s.SparksB.enabled ? s.SparksB.color.a : 0f)).ToString("0.00", CultureInfo.InvariantCulture))
                     .Append(" boss=").Append(s.Boss ? 1 : 0).Append(" bossC=").Append(s.BossC ? 1 : 0)
-                    .Append(" bossFit=").Append(s.BossFit.ToString("0.000", System.Globalization.CultureInfo.InvariantCulture))
-                    .Append(" bossSpan=").Append((_rootCanvas && s.Boss ? _bossSpan * s.BossFit / _rootCanvas.rect.width : -1f).ToString("0.000", System.Globalization.CultureInfo.InvariantCulture))
-                    .Append(" weld=").Append((s.Flare && s.Flare.enabled ? s.Flare.rectTransform.anchorMin.x : -1f).ToString("0.000", System.Globalization.CultureInfo.InvariantCulture))
+                    .Append(" bossFit=").Append(s.BossFit.ToString("0.000", CultureInfo.InvariantCulture))
+                    .Append(" bossSpan=").Append((_rootCanvas && s.Boss ? _bossSpan * s.BossFit / _rootCanvas.rect.width : -1f).ToString("0.000", CultureInfo.InvariantCulture))
+                    .Append(" weld=").Append((s.Flare && s.Flare.enabled ? s.Flare.rectTransform.anchorMin.x : -1f).ToString("0.000", CultureInfo.InvariantCulture))
                     .Append(" bossFrame=").Append(s.Own && s.Own.enabled ? 1 : 0)
                     .Append(" immune=").Append(s.Immune && s.Immune.gameObject.activeSelf ? ImmuneTypes(s.ImmuneMask) : "-");
             }
             return sb.ToString();
         }
+
+        private static string ModeName(EnemyBarMode m) => m switch
+        {
+            EnemyBarMode.Smart => "Smart",
+            EnemyBarMode.Vanilla => "Vanilla",
+            _ => ((int)m).ToString(CultureInfo.InvariantCulture),
+        };
+
+        private static string ReasonName(EnemyHudMath.Reason r) => r switch
+        {
+            EnemyHudMath.Reason.None => "None",
+            EnemyHudMath.Reason.Threat => "Threat",
+            EnemyHudMath.Reason.Engaged => "Engaged",
+            EnemyHudMath.Reason.Aimed => "Aimed",
+            _ => ((int)r).ToString(CultureInfo.InvariantCulture),
+        };
+
+        private static string PhaseName(EnemyHudMath.StaggerPhase p) => p switch
+        {
+            EnemyHudMath.StaggerPhase.Hidden => "Hidden",
+            EnemyHudMath.StaggerPhase.Building => "Building",
+            EnemyHudMath.StaggerPhase.Active => "Active",
+            _ => ((int)p).ToString(CultureInfo.InvariantCulture),
+        };
     }
 
     // Local-player engagements (spec 1 "Engaged"): ZDOID -> unscaled time of the last hit either way. Entries older than

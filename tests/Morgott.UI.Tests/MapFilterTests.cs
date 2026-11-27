@@ -65,7 +65,7 @@ namespace Morgott.UI.Tests
             v[(int)Minimap.PinType.Hildir2] = true; // vanilla AddPin re-shows one type
             Assert.True(MapFilterMath.Shown(v, hildir));
             Assert.True(MapFilterMath.Apply(v, hildir, true));
-            Assert.All(hildir.Types, t => Assert.True(v[(int)t]));
+            for (var i = 0; i < hildir.Types.Length; i++) Assert.True(v[(int)hildir.Types[i]]);
             Assert.True(v[(int)Minimap.PinType.Icon0]);
         }
 
@@ -184,6 +184,20 @@ namespace Morgott.UI.Tests
             Assert.Equal("color.map.biome.ashlands", MapFilterMath.ColorToken(Heightmap.Biome.AshLands));
         }
 
+        private static bool HasColor(ThemeFile t, string token)
+        {
+            for (var i = 0; i < t.colors.Length; i++)
+                if (t.colors[i].token == token) return true;
+            return false;
+        }
+
+        private static bool HasFloat(ThemeFile t, string token)
+        {
+            for (var i = 0; i < t.floats.Length; i++)
+                if (t.floats[i].token == token) return true;
+            return false;
+        }
+
         [Fact]
         public void ThemeHasEveryBiomeColourAndListSizes()
         {
@@ -191,11 +205,11 @@ namespace Morgott.UI.Tests
             using var r = new StreamReader(s!);
             var t = ThemeJson.Parse(r.ReadToEnd());
             Assert.Empty(ThemeSchema.Validate(t));
-            foreach (var b in MapFilterMath.Biomes) Assert.Contains(t.colors, c => c.token == MapFilterMath.ColorToken(b));
+            foreach (var b in MapFilterMath.Biomes) Assert.True(HasColor(t, MapFilterMath.ColorToken(b)), MapFilterMath.ColorToken(b));
             Assert.Contains(t.colors, c => c.token == "color.map.fog");
             Assert.Equal("Valheim-AveriaSerifLibre", t.fonts.Single(f => f.token == "font.map.header").asset);
             foreach (var token in new[] { "size.map.biome.row", "size.map.biome.font", "size.map.legend.scroll", "count.map.players.max", "size.map.biome.line", "size.map.biome.line.switch", "count.map.biome.lines.max" })
-                Assert.Contains(t.floats, f => f.token == token);
+                Assert.True(HasFloat(t, token), token);
             // Mountain and Deep North must not share a colour (both are white in the vanilla map texture).
             Assert.NotEqual(t.colors.Single(c => c.token == "color.map.biome.mountain").value, t.colors.Single(c => c.token == "color.map.biome.deepnorth").value);
         }
@@ -207,8 +221,17 @@ namespace Morgott.UI.Tests
         {
             using var s = typeof(MapFilterTests).Assembly.GetManifestResourceStream($"Morgott.UI.Translations.{language}.json");
             var words = JsonSerializer.Deserialize<Dictionary<string, string>>(s!)!;
-            foreach (var key in MapFilterMath.Rows.Select(r => r.NameToken).Concat(new[] { "$ui_map_layers", "$ui_map_biomes", "$ui_map_others_layer", "$ui_map_players", "$ui_map_pins" }))
+            for (var i = 0; i < MapFilterMath.Rows.Length; i++)
+            {
+                var key = MapFilterMath.Rows[i].NameToken;
                 Assert.True(words.TryGetValue(key.TrimStart('$'), out var w) && !string.IsNullOrWhiteSpace(w), $"{language} misses {key}");
+            }
+            var extra = new[] { "$ui_map_layers", "$ui_map_biomes", "$ui_map_others_layer", "$ui_map_players", "$ui_map_pins" };
+            for (var i = 0; i < extra.Length; i++)
+            {
+                var key = extra[i];
+                Assert.True(words.TryGetValue(key.TrimStart('$'), out var w) && !string.IsNullOrWhiteSpace(w), $"{language} misses {key}");
+            }
         }
 
         [Theory]
@@ -305,8 +328,13 @@ namespace Morgott.UI.Tests
             // Biome colour only on explored texels; every other texel is the fog colour at its soft alpha.
             foreach (var px in new[] { po, pf })
             {
-                Assert.Equal(new[] { 0, 5 }, Enumerable.Range(0, 16).Where(i => (px[i].r, px[i].g, px[i].b) != (Fog.r, Fog.g, Fog.b)).ToArray());
-                Assert.All(Enumerable.Range(0, 16), i => Assert.True(explored[i] || others[i] || px[i].a <= Fog.a));
+                var nonFog = new List<int>();
+                for (var i = 0; i < 16; i++)
+                {
+                    if ((px[i].r, px[i].g, px[i].b) != (Fog.r, Fog.g, Fog.b)) nonFog.Add(i);
+                    Assert.True(explored[i] || others[i] || px[i].a <= Fog.a);
+                }
+                Assert.Equal(new[] { 0, 5 }, nonFog);
             }
         }
 
@@ -319,7 +347,8 @@ namespace Morgott.UI.Tests
             land[4 * n + 2] = 2;
             var all = new BitArray(n * n, true);
             var none = new BitArray(n * n);
-            var w = Enumerable.Range(0, n).Select(x => MapFilterMath.LandMix(land, all, none, n, Palette, x, 6).W).ToArray();
+            var w = new int[n];
+            for (var x = 0; x < n; x++) w[x] = MapFilterMath.LandMix(land, all, none, n, Palette, x, 6).W;
             Assert.Equal(81, w[2]); // interior (x 0-1 see the grid edge: outside is no land)
             Assert.True(w.Skip(2).Zip(w.Skip(3), (a, b) => b <= a).All(t => t), string.Join(",", w)); // ramps down across the coast
             Assert.True(w[5] > 0 && w[5] < 81 && w[7] == 0, string.Join(",", w)); // first sea texel still carries some land
@@ -352,7 +381,8 @@ namespace Morgott.UI.Tests
             Assert.Equal(0, all[8 * n + 7]); // deep inside the explored disc: clear
             Assert.Equal(166, all[0]); // grid corner far from anything explored: full tint (outside counts as fog)
             // Across the disc edge the tint ramps instead of jumping 0 -> full in one texel.
-            var ramp = Enumerable.Range(7, 7).Select(x => (int)all[8 * n + x]).ToArray();
+            var ramp = new int[7];
+            for (var i = 0; i < 7; i++) ramp[i] = all[8 * n + (7 + i)];
             Assert.True(ramp.Zip(ramp.Skip(1), (a, b) => b >= a).All(t => t), string.Join(",", ramp));
             Assert.True(ramp.Count(a => a > 0 && a < 166) >= 3, string.Join(",", ramp));
             Assert.All(all, a => Assert.InRange(a, 0, 166));
@@ -369,7 +399,12 @@ namespace Morgott.UI.Tests
             Assert.Equal(0, MapFilterMath.GridId(Heightmap.Biome.Ocean, 40f, 30f));
         }
 
-        private static byte[] GridOf(int n, Func<int, int, byte> f) => Enumerable.Range(0, n * n).Select(i => f(i % n, i / n)).ToArray();
+        private static byte[] GridOf(int n, Func<int, int, byte> f)
+        {
+            var a = new byte[n * n];
+            for (var i = 0; i < a.Length; i++) a[i] = f(i % n, i / n);
+            return a;
+        }
 
         [Fact]
         public void ContourSegmentsAreSmoothLandOnlyAndRespectFog()

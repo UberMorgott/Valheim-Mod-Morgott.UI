@@ -13,9 +13,29 @@ namespace Morgott.UI.Diagnostics
 {
     public sealed class ReportRow
     {
-        public string Path;
-        public string Component;
-        public string Detail;
+        internal Transform _root;
+        private string _path;
+        private string _component;
+        private string _detail;
+
+        public string Path
+        {
+            get => _path ?? (_path = Graphic ? SkinDiagnostics.PathOf(Graphic.transform, _root) : "(destroyed)");
+            set => _path = value;
+        }
+
+        public string Component
+        {
+            get => _component ?? (_component = Graphic ? Graphic.GetType().Name : "");
+            set => _component = value;
+        }
+
+        public string Detail
+        {
+            get => _detail ?? (_detail = Graphic ? SkinDiagnostics.Describe(Graphic) : "");
+            set => _detail = value;
+        }
+
         public Classification Result;
         public Graphic Graphic; // live reference (coverage scan)
     }
@@ -43,7 +63,7 @@ namespace Morgott.UI.Diagnostics
         }
 
         private static ReportRow Row(Graphic g, Transform root, Classification c) =>
-            new ReportRow { Graphic = g, Path = SkinDiagnostics.PathOf(g.transform, root), Component = g.GetType().Name, Detail = SkinDiagnostics.Describe(g), Result = c };
+            new ReportRow { Graphic = g, _root = root, Result = c };
 
         private Dictionary<Graphic, int> _index;
         private int _prune = 256;
@@ -83,7 +103,7 @@ namespace Morgott.UI.Diagnostics
             Add(g, root, c);
         }
         public string Summary =>
-            $"{ScreenId}: graphics={Rows.Count} styled={Count(Outcome.Styled)} degraded={Count(Outcome.Degraded)} content={Count(Outcome.Content)} skipped={Count(Outcome.Skipped)} unknown={Count(Outcome.Unknown)}";
+            $"{ScreenId}: graphics={Rows.Count.ToString()} styled={Count(Outcome.Styled).ToString()} degraded={Count(Outcome.Degraded).ToString()} content={Count(Outcome.Content).ToString()} skipped={Count(Outcome.Skipped).ToString()} unknown={Count(Outcome.Unknown).ToString()}";
     }
 
     // Diagnostics: per-screen classification counts, unexplained (Unknown) rows, theme/asset problems, and on dump the
@@ -115,17 +135,23 @@ namespace Morgott.UI.Diagnostics
         {
             Last[report.ScreenId] = report;
             // One line per change of the counts (re-shows of an unchanged screen stay quiet).
-            var summary = report.Summary;
-            if (!LastSummary.TryGetValue(report.ScreenId, out var prev) || prev != summary)
+            if (Plugin.Verbose)
             {
-                LastSummary[report.ScreenId] = summary;
-                if (Plugin.Verbose) Plugin.Log?.LogInfo($"[Morgott.UI] diag {summary}");
+                var summary = report.Summary;
+                if (!LastSummary.TryGetValue(report.ScreenId, out var prev) || prev != summary)
+                {
+                    LastSummary[report.ScreenId] = summary;
+                    if (Plugin.Verbose) Plugin.Log?.LogInfo($"[Morgott.UI] diag {summary}");
+                }
             }
+            var checkDegraded = Plugin.Verbose && report.Count(Outcome.Degraded) > 0;
+            var checkUnknown = report.Count(Outcome.Unknown) > 0;
+            if (!checkDegraded && !checkUnknown) return;
             foreach (var row in report.Rows)
                 // A degraded row of an early pass is gone from the dump once a later pass styles it (UnifiedPopup Awake).
-                if (row.Result.Outcome == Outcome.Degraded && Plugin.Verbose && Bounded.AddCapped(NotedDegraded, report.ScreenId + "|" + row.Path, MaxWarnedUnknown))
+                if (checkDegraded && row.Result.Outcome == Outcome.Degraded && Bounded.AddCapped(NotedDegraded, report.ScreenId + "|" + row.Path, MaxWarnedUnknown))
                     Plugin.Log?.LogInfo($"[Morgott.UI] degraded {report.ScreenId}: {row.Path} [{row.Component} {row.Detail}] {row.Result.Reason}");
-                else if (row.Result.Outcome == Outcome.Unknown && Bounded.AddCapped(WarnedUnknown, report.ScreenId + "|" + row.Path, MaxWarnedUnknown))
+                else if (checkUnknown && row.Result.Outcome == Outcome.Unknown && Bounded.AddCapped(WarnedUnknown, report.ScreenId + "|" + row.Path, MaxWarnedUnknown))
                     Plugin.Log?.LogWarning($"[Morgott.UI] unknown {report.ScreenId}: {row.Path} [{row.Component} {row.Detail}] {row.Result.Reason}");
         }
 
@@ -135,22 +161,47 @@ namespace Morgott.UI.Diagnostics
 
         public static IEnumerable<ScreenReport> Reports => Last.Values;
 
+        internal static Dictionary<string, ScreenReport>.ValueCollection ReportValues => Last.Values;
+
+        internal static string OutcomeName(Outcome o) => o switch
+        {
+            Outcome.Styled => "Styled",
+            Outcome.Degraded => "Degraded",
+            Outcome.Content => "Content",
+            Outcome.Skipped => "Skipped",
+            Outcome.Unknown => "Unknown",
+            _ => ((int)o).ToString(),
+        };
+
+        private static string ImageTypeName(Image.Type t) => t switch
+        {
+            Image.Type.Simple => "Simple",
+            Image.Type.Sliced => "Sliced",
+            Image.Type.Tiled => "Tiled",
+            Image.Type.Filled => "Filled",
+            _ => ((int)t).ToString(),
+        };
+
         // Writes one file per screen (or all); returns the paths. Also logs the summary with live checks.
         public static List<string> Dump(string screenId = null)
         {
             var written = new List<string>();
             Directory.CreateDirectory(DumpDir);
-            foreach (var report in Last.Values.Where(r => screenId == null || r.ScreenId == screenId).ToList())
+            var targets = new List<ScreenReport>(Last.Count);
+            foreach (var r in Last.Values)
+                if (screenId == null || r.ScreenId == screenId) targets.Add(r);
+            for (var i = 0; i < targets.Count; i++)
             {
+                var report = targets[i];
                 var sb = new StringBuilder();
                 sb.AppendLine($"# {report.Summary}");
-                sb.AppendLine($"# theme '{Theme_Name()}' rev {Morgott.UI.Theme.ThemeTokens.Revision} bundle={(Morgott.UI.Theme.ThemeTokens.BundleLoaded ? "loaded" : "missing")}");
+                sb.AppendLine($"# theme '{Theme_Name()}' rev {Morgott.UI.Theme.ThemeTokens.Revision.ToString()} bundle={(Morgott.UI.Theme.ThemeTokens.BundleLoaded ? "loaded" : "missing")}");
                 foreach (var issue in ThemeIssues) sb.AppendLine($"# theme-issue {issue}");
                 var floor = Morgott.UI.Theme.ThemeTokens.GetFloat("floor.text.body.px", 16f);
                 int belowFloor = 0, offSafe = 0;
                 var safe = Screen.safeArea;
                 foreach (var row in report.Rows)
-                    sb.AppendLine($"{row.Result.Outcome,-8} {row.Result.Role ?? "-",-14} {row.Path} | {row.Component} {row.Detail} | {row.Result.Reason}");
+                    sb.AppendLine($"{OutcomeName(row.Result.Outcome),-8} {row.Result.Role ?? "-",-14} {row.Path} | {row.Component} {row.Detail} | {row.Result.Reason}");
                 if (report.Root)
                 {
                     foreach (var text in report.Root.GetComponentsInChildren<TMP_Text>(false))
@@ -160,7 +211,7 @@ namespace Morgott.UI.Diagnostics
                         if (px > 0f && px < min - 0.05f && !string.IsNullOrEmpty(text.text))
                         {
                             belowFloor++;
-                            sb.AppendLine($"FLOOR    {PathOf(text.transform, report.Root)} {px:0.0}px < {min}px");
+                            sb.AppendLine($"FLOOR    {PathOf(text.transform, report.Root)} {px.ToString("0.0")}px < {min.ToString()}px");
                         }
                     }
                     var corners = new Vector3[4];
@@ -173,15 +224,15 @@ namespace Morgott.UI.Diagnostics
                             // Full-screen scrims/blur may cover the whole screen; only report content that leaves it.
                             if (g.rectTransform.rect.width * g.canvas.scaleFactor >= Screen.width * 0.98f) continue;
                             offSafe++;
-                            sb.AppendLine($"SAFEAREA {PathOf(g.transform, report.Root)} ({corners[0].x:0},{corners[0].y:0})-({corners[2].x:0},{corners[2].y:0}) safe {safe}");
+                            sb.AppendLine($"SAFEAREA {PathOf(g.transform, report.Root)} ({corners[0].x.ToString("0")},{corners[0].y.ToString("0")})-({corners[2].x.ToString("0")},{corners[2].y.ToString("0")}) safe (x:{safe.x.ToString("F2")}, y:{safe.y.ToString("F2")}, width:{safe.width.ToString("F2")}, height:{safe.height.ToString("F2")})");
                         }
                     }
                 }
-                sb.AppendLine($"# checks belowFloor={belowFloor} offSafeArea={offSafe}");
+                sb.AppendLine($"# checks belowFloor={belowFloor.ToString()} offSafeArea={offSafe.ToString()}");
                 var path = Path.Combine(DumpDir, Sanitize(report.ScreenId) + ".txt");
                 File.WriteAllText(path, sb.ToString());
                 written.Add(path);
-                Plugin.Log?.LogInfo($"[Morgott.UI] diag dump {report.Summary} belowFloor={belowFloor} offSafeArea={offSafe} -> {path}");
+                Plugin.Log?.LogInfo($"[Morgott.UI] diag dump {report.Summary} belowFloor={belowFloor.ToString()} offSafeArea={offSafe.ToString()} -> {path}");
             }
             return written;
         }
@@ -199,16 +250,21 @@ namespace Morgott.UI.Diagnostics
             return size * scale * canvas.rootCanvas.scaleFactor;
         }
 
+        private static readonly List<string> PathParts = new List<string>(16);
+
         public static string PathOf(Transform t, Transform root)
         {
-            var parts = new List<string>();
+            if (!t) return "";
+            PathParts.Clear();
             for (var p = t; p; p = p.parent)
             {
-                parts.Add(p.name);
+                PathParts.Add(p.name);
                 if (p == root) break;
             }
-            parts.Reverse();
-            return string.Join("/", parts);
+            PathParts.Reverse();
+            var joined = string.Join("/", PathParts);
+            PathParts.Clear();
+            return joined;
         }
 
         public static string Describe(Graphic g)
@@ -225,15 +281,15 @@ namespace Morgott.UI.Diagnostics
                         var b = i.sprite.border;
                         var c = i.canvas;
                         var r = i.rectTransform.rect;
-                        geo = $" type={i.type} border={b.x:0}/{b.y:0}/{b.z:0}/{b.w:0} ppu={i.sprite.pixelsPerUnit:0.#} mult={i.pixelsPerUnitMultiplier:0.###}" +
-                              $" refPpu={(c ? c.referencePixelsPerUnit : 0f):0.#} rootRefPpu={(c ? c.rootCanvas.referencePixelsPerUnit : 0f):0.#}" +
-                              $" scaleFactor={(c ? c.scaleFactor : 0f):0.###} rect={r.width:0.#}x{r.height:0.#}";
+                        geo = $" type={ImageTypeName(i.type)} border={b.x.ToString("0")}/{b.y.ToString("0")}/{b.z.ToString("0")}/{b.w.ToString("0")} ppu={i.sprite.pixelsPerUnit.ToString("0.#")} mult={i.pixelsPerUnitMultiplier.ToString("0.###")}" +
+                              $" refPpu={(c ? c.referencePixelsPerUnit : 0f).ToString("0.#")} rootRefPpu={(c ? c.rootCanvas.referencePixelsPerUnit : 0f).ToString("0.#")}" +
+                              $" scaleFactor={(c ? c.scaleFactor : 0f).ToString("0.###")} rect={r.width.ToString("0.#")}x{r.height.ToString("0.#")}";
                     }
-                    return $"spr={sprite} active={g.gameObject.activeInHierarchy}{geo}";
+                    return $"spr={sprite} active={g.gameObject.activeInHierarchy.ToString()}{geo}";
                 case TMP_Text t:
-                    return $"font={(t.font ? t.font.name : "-")} size={t.fontSize:0.#} active={g.gameObject.activeInHierarchy}";
+                    return $"font={(t.font ? t.font.name : "-")} size={t.fontSize.ToString("0.#")} active={g.gameObject.activeInHierarchy.ToString()}";
                 default:
-                    return $"active={g.gameObject.activeInHierarchy}";
+                    return $"active={g.gameObject.activeInHierarchy.ToString()}";
             }
         }
 

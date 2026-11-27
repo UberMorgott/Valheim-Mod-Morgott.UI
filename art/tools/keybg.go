@@ -36,7 +36,7 @@ func keyBackground(img *image.NRGBA, tol float64, sides string) {
 		}
 		return false
 	}
-	for x := 0; x < W; x++ {
+	for x := range W {
 		if has('t') {
 			push(x, 0)
 		}
@@ -44,7 +44,7 @@ func keyBackground(img *image.NRGBA, tol float64, sides string) {
 			push(x, H-1)
 		}
 	}
-	for y := 0; y < H; y++ {
+	for y := range H {
 		if has('l') {
 			push(0, y)
 		}
@@ -75,8 +75,8 @@ func keyBackground(img *image.NRGBA, tol float64, sides string) {
 			}
 		}
 	}
-	for y := 0; y < H; y++ {
-		for x := 0; x < W; x++ {
+	for y := range H {
+		for x := range W {
 			i := y*W + x
 			p := img.PixOffset(x, y)
 			if bg[i] {

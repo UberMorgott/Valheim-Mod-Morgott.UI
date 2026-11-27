@@ -52,7 +52,7 @@ namespace Morgott.UI.GameScreens
             p._store = store;
             var canvas = store.GetComponentInParent<Canvas>(true);
             p._canvas = canvas ? (RectTransform)canvas.rootCanvas.transform : null;
-            p._page = InfoPage.Ensure(store, store, null, () => s.Hide());
+            p._page = InfoPage.Ensure(store, store, null, s.Hide);
         }
 
         private void OnDisable()
@@ -231,17 +231,33 @@ namespace Morgott.UI.GameScreens
             if (p != null && p.Unit > 0f) p.Put(_canvas, u / p.Unit, box);
         }
 
+        private static PagePart Kid(List<PagePart> kids, string name)
+        {
+            for (var i = 0; i < kids.Count; i++)
+            {
+                var k = kids[i];
+                if (k.Rt && k.Rt.name == name) return k;
+            }
+            return null;
+        }
+
+        private static Box Next(Box list, ref float y, float h, float gap)
+        {
+            var b = new Box(list.X, y, list.W, h);
+            y += h + gap;
+            return b;
+        }
+
         // One board section in its cell (mockup v2): knot plate header (title; timer on line 2, Тайник: on the right of
         // one line), the list(s), the action button(s) centred at the bottom.
         private void Section(List<PagePart> kids, int i, Box cell, float u)
         {
-            PagePart Kid(string n) => kids.Find(k => k.Rt && k.Rt.name == n);
             var stash = i == 0;
             var pad = 10f * u;
             ElPageMath.Section(cell, pad, (stash ? 52f : 70f) * u, 44f * u, 8f * u, out var head, out var list, out var act);
             Plate(_plates[i], head, u);
-            var title = Kid("Title");
-            var timer = Kid("TimeLeft");
+            var title = Kid(kids, "Title");
+            var timer = Kid(kids, "TimeLeft");
             if (stash)
             {
                 At(title, head, u);
@@ -258,35 +274,29 @@ namespace Morgott.UI.GameScreens
             var row = T(stash ? "size.trader.row.wide" : "size.trader.row", stash ? 52f : 48f);
             if (i < 3)
             {
-                var panel = Kid("Panel");
+                var panel = Kid(kids, "Panel");
                 At(panel, list, u);
                 Rows(panel?.Rt, row, stash ? 2 : 1);
-                Button(Kid(Sections[i] + "BuyButton"), ElPageMath.Centre(act, (stash ? 490f : 290f) * u), u);
+                Button(Kid(kids, Sections[i] + "BuyButton"), ElPageMath.Centre(act, (stash ? 490f : 290f) * u), u);
                 return;
             }
             // Задания: "Доступные" + one row well + Взять задание, "Принятые" + their list, Забрать награду + abandon (X).
             var sub = 24f * u;
             var y = list.Y;
-            Box Next(float h, float gap)
-            {
-                var b = new Box(list.X, y, list.W, h);
-                y += h + gap;
-                return b;
-            }
-            var avail = Kid("AvailableLabel");
-            At(avail, Next(sub, 2f * u), u);
-            At(Kid("AvailableBountiesPanel"), Next(T("size.trader.row", 48f) * u + 8f * u, 6f * u), u);
-            Button(Kid("AcceptBountyButton"), ElPageMath.Centre(Next(32f * u, 6f * u), 240f * u), u);
-            var claim = Kid("ClaimLabel");
-            At(claim, Next(sub, 2f * u), u);
-            At(Kid("ClaimableBountiesPanel"), new Box(list.X, y, list.W, Mathf.Max(0f, list.Bottom - y)), u);
+            var avail = Kid(kids, "AvailableLabel");
+            At(avail, Next(list, ref y, sub, 2f * u), u);
+            At(Kid(kids, "AvailableBountiesPanel"), Next(list, ref y, T("size.trader.row", 48f) * u + 8f * u, 6f * u), u);
+            Button(Kid(kids, "AcceptBountyButton"), ElPageMath.Centre(Next(list, ref y, 32f * u, 6f * u), 240f * u), u);
+            var claim = Kid(kids, "ClaimLabel");
+            At(claim, Next(list, ref y, sub, 2f * u), u);
+            At(Kid(kids, "ClaimableBountiesPanel"), new Box(list.X, y, list.W, Mathf.Max(0f, list.Bottom - y)), u);
             foreach (var l in new[] { avail, claim }) Font(l?.Rt, Mathf.RoundToInt(T("size.trader.text", 18f)), TextAnchor.MiddleCenter);
-            Rows(Kid("AvailableBountiesPanel")?.Rt, T("size.trader.row", 48f), 1);
-            Rows(Kid("ClaimableBountiesPanel")?.Rt, T("size.trader.row.wide", 52f), 1);
+            Rows(Kid(kids, "AvailableBountiesPanel")?.Rt, T("size.trader.row", 48f), 1);
+            Rows(Kid(kids, "ClaimableBountiesPanel")?.Rt, T("size.trader.row.wide", 52f), 1);
             var x = act.H + 8f * u; // the abandon icon button right of the claim plate
             var claimBox = ElPageMath.Centre(new Box(act.X, act.Y, act.W - x, act.H), 300f * u);
-            Button(Kid("ClaimBountyButton"), claimBox, u);
-            At(Kid("AbandonBountyButton"), new Box(claimBox.Right + 8f * u, act.Y, act.H, act.H), u);
+            Button(Kid(kids, "ClaimBountyButton"), claimBox, u);
+            At(Kid(kids, "AbandonBountyButton"), new Box(claimBox.Right + 8f * u, act.Y, act.H, act.H), u);
         }
 
         private void Button(PagePart b, Box box, float u)
@@ -570,9 +580,14 @@ namespace Morgott.UI.GameScreens
             m.CurrencyParts = PagePart.Children(_canvas, mod.Find("Currencies"));
             m.Sundial = PagePart.Of(_canvas, mod.Find("Sundial") as RectTransform);
             var kids = PagePart.Children(_canvas, mod);
-            kids.RemoveAll(k => k.Rt.name == "Frame" || k.Rt.name == "SelectedFrame" || k.Rt.name == "TooltipAnchor" || k.Rt.name == "Currencies" || k.Rt.name == "Sundial" || k.Rt.name == Compat.ModCompat.EpicLootDragSurface);
-            // Full-panel layers (backgrounds, input blockers) are no widgets.
-            if (m.Whole != null) kids.RemoveAll(k => k.Box0.W >= m.Whole.Box0.W * 0.95f && k.Box0.H >= m.Whole.Box0.H * 0.95f);
+            for (var i = kids.Count - 1; i >= 0; i--)
+            {
+                var k = kids[i];
+                var n = k.Rt.name;
+                var skip = n == "Frame" || n == "SelectedFrame" || n == "TooltipAnchor" || n == "Currencies" || n == "Sundial" || n == Compat.ModCompat.EpicLootDragSurface
+                    || (m.Whole != null && k.Box0.W >= m.Whole.Box0.W * 0.95f && k.Box0.H >= m.Whole.Box0.H * 0.95f);
+                if (skip) kids.RemoveAt(i);
+            }
             m.Content = PagePart.Union(kids, true);
             return m;
         }

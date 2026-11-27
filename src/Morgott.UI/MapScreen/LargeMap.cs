@@ -29,6 +29,7 @@ namespace Morgott.UI.MapScreen
         private RuneWindowHeader _header;
         private PanelDecor _decor;
         private bool _largeDirty = true;
+        private int _largeStyledRev = -1;
         private float _inset = -1f, _hintBand = -1f, _top = -1f;
 
         public void MarkLargeDirty() => _largeDirty = true;
@@ -107,9 +108,11 @@ namespace Morgott.UI.MapScreen
 
         private void LargeLateUpdate()
         {
-            if (_largeDirty)
+            var rev = ThemeTokens.Revision;
+            if (_largeDirty || _largeStyledRev != rev)
             {
                 _largeDirty = false;
+                _largeStyledRev = rev;
                 ScreenRegistry.Restyle(_large);
                 _inset = -1f;
             }

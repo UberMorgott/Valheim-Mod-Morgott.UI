@@ -56,7 +56,7 @@ namespace Morgott.UI.ModScreens
                     catch (Exception e) { Plugin.Log.LogWarning($"[Morgott.UI] Jotunn GUIManager.{m.Name} hook not installed: {e.GetBaseException().Message}"); }
                 }
                 Available();
-                Plugin.Log.LogInfo($"[Morgott.UI] Jotunn GUIManager hooked: {n} builders, OnCustomGUIAvailable={(ev != null)}");
+                Plugin.Log.LogInfo($"[Morgott.UI] Jotunn GUIManager hooked: {n.ToString(System.Globalization.CultureInfo.InvariantCulture)} builders, OnCustomGUIAvailable={(ev != null).ToString()}");
             }
             catch (Exception e)
             {

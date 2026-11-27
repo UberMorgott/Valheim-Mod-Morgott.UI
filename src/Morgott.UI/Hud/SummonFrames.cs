@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Globalization;
 using System.Text;
 using Morgott.UI.Theme;
 using TMPro;
@@ -601,37 +602,63 @@ namespace Morgott.UI.PlayerHud
             var prefab = ZNetScene.instance ? ZNetScene.instance.GetPrefab(s.Prefab) : null;
             var title = prefab && prefab.TryGetComponent<Character>(out var c) ? Localization.instance.Localize(c.m_name) : prefab ? prefab.name : "?";
             var sb = new StringBuilder();
-            sb.Append($"<color=#{Hex("color.text.active", Color.yellow)}>{title}{(s.Count > 1 ? " ×" + s.Count : "")}</color>");
+            sb.Append("<color=#").Append(Hex("color.text.active", Color.yellow)).Append('>').Append(title);
+            if (s.Count > 1) sb.Append(" ×").Append(s.Count);
+            sb.Append("</color>");
             if (PartyMath.HasBody(s.State))
             {
-                sb.Append($"\n{Mathf.CeilToInt(s.HpCur)}/{Mathf.CeilToInt(s.HpMax)}");
-                if (s.EsCur > 0f) sb.Append($"<color=#{Hex("color.text.accent", Color.cyan)}> +{Mathf.FloorToInt(s.EsCur)}</color>");
-                if (s.Count > 1 && s.Weakest >= 0f) sb.Append("\n" + string.Format(Localization.instance.Localize("$ui_party_weakest"), Mathf.CeilToInt(s.Weakest)));
+                sb.Append('\n').Append(Mathf.CeilToInt(s.HpCur)).Append('/').Append(Mathf.CeilToInt(s.HpMax));
+                if (s.EsCur > 0f) sb.Append("<color=#").Append(Hex("color.text.accent", Color.cyan)).Append("> +").Append(Mathf.FloorToInt(s.EsCur)).Append("</color>");
+                if (s.Count > 1 && s.Weakest >= 0f) sb.Append('\n').Append(string.Format(Localization.instance.Localize("$ui_party_weakest"), Mathf.CeilToInt(s.Weakest).ToString(CultureInfo.InvariantCulture)));
             }
             var now = ZNet.instance ? ZNet.instance.GetTimeSeconds() : 0d;
             var key = SummonMath.StatusKey(s.State, s.Stay, s.NextCd, now, out var secs);
             var line = key == null ? "" : Localization.instance.Localize("$" + key);
-            if (secs >= 0) line = string.Format(line, secs);
+            if (secs >= 0) line = string.Format(line, secs.ToString(CultureInfo.InvariantCulture));
             if (s.Mode != 0) line = (line.Length > 0 ? line + ", " : "") + Localization.instance.Localize(s.Mode == 1 ? "$ui_party_defensive" : "$ui_party_aggressive");
-            if (line.Length > 0) sb.Append("\n" + line);
+            if (line.Length > 0) sb.Append('\n').Append(line);
             return sb.ToString();
         }
 
         // ---- diagnostics
 
+        private static string StateName(SummonState s) => s switch
+        {
+            SummonState.Spawning => "Spawning",
+            SummonState.Alive => "Alive",
+            SummonState.Dead => "Dead",
+            SummonState.Off => "Off",
+            SummonState.NoReserve => "NoReserve",
+            SummonState.Waiting => "Waiting",
+            _ => ((byte)s).ToString(CultureInfo.InvariantCulture),
+        };
+
         private void Log()
         {
-            var d = string.Join(" ", _stacks.ConvertAll(s => $"[{PrefabName(s.Prefab)}{(s.Pet ? " pet" : "")} {s.State} x{s.Count} hp={s.Hp:0.00} es={s.Es:0.00}]"));
+            var sb = new StringBuilder();
+            for (var i = 0; i < _stacks.Count; i++)
+            {
+                if (i > 0) sb.Append(' ');
+                var s = _stacks[i];
+                sb.Append('[').Append(PrefabName(s.Prefab));
+                if (s.Pet) sb.Append(" pet");
+                sb.Append(' ').Append(StateName(s.State))
+                    .Append(" x").Append(s.Count)
+                    .Append(" hp=").Append(s.Hp.ToString("0.00", CultureInfo.InvariantCulture))
+                    .Append(" es=").Append(s.Es.ToString("0.00", CultureInfo.InvariantCulture))
+                    .Append(']');
+            }
+            var d = sb.ToString();
             if (d == _last) return;
             _last = d;
-            Describe = $"{_stacks.Count} stack(s) {_units.Count} unit(s) {d}";
+            Describe = _stacks.Count.ToString(CultureInfo.InvariantCulture) + " stack(s) " + _units.Count.ToString(CultureInfo.InvariantCulture) + " unit(s) " + d;
             Plugin.Log.LogInfo($"[Morgott.UI] party frame: {Describe}");
         }
 
         private static string PrefabName(int hash)
         {
             var go = ZNetScene.instance ? ZNetScene.instance.GetPrefab(hash) : null;
-            return go ? go.name : hash.ToString();
+            return go ? go.name : hash.ToString(CultureInfo.InvariantCulture);
         }
 
         // Header: stacks, units, armed (a summoning weapon in hand), grid shown, hover, tooltip. One line per icon
@@ -641,7 +668,7 @@ namespace Morgott.UI.PlayerHud
         {
             var thread = System.Threading.Thread.CurrentThread;
             var culture = thread.CurrentCulture;
-            thread.CurrentCulture = System.Globalization.CultureInfo.InvariantCulture;
+            thread.CurrentCulture = CultureInfo.InvariantCulture;
             try { return DebugStateText(); }
             finally { thread.CurrentCulture = culture; }
         }
@@ -654,7 +681,12 @@ namespace Morgott.UI.PlayerHud
             var canvas = f.GetComponentInParent<Canvas>();
             var cam = canvas && canvas.rootCanvas.renderMode != RenderMode.ScreenSpaceOverlay ? canvas.rootCanvas.worldCamera : null;
             var c = new Vector3[4];
-            sb.Append($"stacks={f._stacks.Count} units={f._units.Count} armed={(f._armed ? 1 : 0)} grid={f._grid.gameObject.activeInHierarchy} hover={f._hover} tip='{(f._tip.gameObject.activeInHierarchy ? f._tipText.text.Replace('\n', '|').Replace('\'', '`') : "-")}'");
+            sb.Append("stacks=").Append(f._stacks.Count)
+                .Append(" units=").Append(f._units.Count)
+                .Append(" armed=").Append(f._armed ? 1 : 0)
+                .Append(" grid=").Append(f._grid.gameObject.activeInHierarchy)
+                .Append(" hover=").Append(f._hover)
+                .Append(" tip='").Append(f._tip.gameObject.activeInHierarchy ? f._tipText.text.Replace('\n', '|').Replace('\'', '`') : "-").Append('\'');
             for (var i = 0; i < f._stacks.Count && i < f._tiles.Count; i++)
             {
                 var s = f._stacks[i];
@@ -662,12 +694,28 @@ namespace Morgott.UI.PlayerHud
                 t.Root.GetWorldCorners(c);
                 Vector2 a = RectTransformUtility.WorldToScreenPoint(cam, c[0]), b = RectTransformUtility.WorldToScreenPoint(cam, c[2]);
                 bool On(Component g) => g && g.gameObject.activeSelf && (!(g is Behaviour be) || be.enabled);
-                sb.Append($"\n{i} prefab={PrefabName(s.Prefab)} pet={(s.Pet ? 1 : 0)} state={s.State} n={s.Count} countText='{(On(t.Count) ? t.Count.text : "")}'" +
-                    $" hp={s.Hp:0.00} es={s.Es:0.00} life={(On(t.LifeFillImg) ? t.LifeFill.anchorMax.x : -1f):0.00} esBar={(t.EsBar.gameObject.activeSelf ? t.EsFill.anchorMax.x : -1f):0.00}" +
-                    $" icon={(On(t.IconImg) && t.IconImg.sprite ? t.IconImg.sprite.name : "-")} glyph={(On(t.Glyph) && t.Glyph.sprite ? t.Glyph.sprite.name : "-")}" +
-                    $" sweep={(On(t.Sweep) ? t.Sweep.fillAmount : -1f):0.00} timer='{(On(t.Timer) ? t.Timer.text : "")}' ring={(On(t.Ring[0]) ? 1 : 0)}" +
-                    $" stay={(On(t.Stay) ? 1 : 0)} mode={(On(t.Mode) && t.Mode.sprite ? t.Mode.sprite.name : "-")} socket={ColorUtility.ToHtmlStringRGB(t.Socket.color)}" +
-                    $" rect={a.x:0},{a.y:0},{b.x - a.x:0},{b.y - a.y:0}");
+                sb.Append('\n').Append(i)
+                    .Append(" prefab=").Append(PrefabName(s.Prefab))
+                    .Append(" pet=").Append(s.Pet ? 1 : 0)
+                    .Append(" state=").Append(StateName(s.State))
+                    .Append(" n=").Append(s.Count)
+                    .Append(" countText='").Append(On(t.Count) ? t.Count.text : "").Append('\'')
+                    .Append(" hp=").Append(s.Hp.ToString("0.00", CultureInfo.InvariantCulture))
+                    .Append(" es=").Append(s.Es.ToString("0.00", CultureInfo.InvariantCulture))
+                    .Append(" life=").Append((On(t.LifeFillImg) ? t.LifeFill.anchorMax.x : -1f).ToString("0.00", CultureInfo.InvariantCulture))
+                    .Append(" esBar=").Append((t.EsBar.gameObject.activeSelf ? t.EsFill.anchorMax.x : -1f).ToString("0.00", CultureInfo.InvariantCulture))
+                    .Append(" icon=").Append(On(t.IconImg) && t.IconImg.sprite ? t.IconImg.sprite.name : "-")
+                    .Append(" glyph=").Append(On(t.Glyph) && t.Glyph.sprite ? t.Glyph.sprite.name : "-")
+                    .Append(" sweep=").Append((On(t.Sweep) ? t.Sweep.fillAmount : -1f).ToString("0.00", CultureInfo.InvariantCulture))
+                    .Append(" timer='").Append(On(t.Timer) ? t.Timer.text : "").Append('\'')
+                    .Append(" ring=").Append(On(t.Ring[0]) ? 1 : 0)
+                    .Append(" stay=").Append(On(t.Stay) ? 1 : 0)
+                    .Append(" mode=").Append(On(t.Mode) && t.Mode.sprite ? t.Mode.sprite.name : "-")
+                    .Append(" socket=").Append(ColorUtility.ToHtmlStringRGB(t.Socket.color))
+                    .Append(" rect=").Append(a.x.ToString("0", CultureInfo.InvariantCulture))
+                    .Append(',').Append(a.y.ToString("0", CultureInfo.InvariantCulture))
+                    .Append(',').Append((b.x - a.x).ToString("0", CultureInfo.InvariantCulture))
+                    .Append(',').Append((b.y - a.y).ToString("0", CultureInfo.InvariantCulture));
             }
             return sb.ToString();
         }

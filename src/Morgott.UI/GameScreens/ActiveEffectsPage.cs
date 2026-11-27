@@ -117,9 +117,9 @@ namespace Morgott.UI.GameScreens
                 var s = food.m_item?.m_shared;
                 if (s == null) continue;
                 var text = new List<string>(4);
-                if (food.m_health > 0f) text.Add($"$item_food_health: <color={health}>{food.m_health:0}</color>");
-                if (food.m_stamina > 0f) text.Add($"$item_food_stamina: <color={stamina}>{food.m_stamina:0}</color>");
-                if (food.m_eitr > 0f) text.Add($"$item_food_eitr: <color={eitr}>{food.m_eitr:0}</color>");
+                if (food.m_health > 0f) text.Add($"$item_food_health: <color={health}>{food.m_health.ToString("0", CultureInfo.InvariantCulture)}</color>");
+                if (food.m_stamina > 0f) text.Add($"$item_food_stamina: <color={stamina}>{food.m_stamina.ToString("0", CultureInfo.InvariantCulture)}</color>");
+                if (food.m_eitr > 0f) text.Add($"$item_food_eitr: <color={eitr}>{food.m_eitr.ToString("0", CultureInfo.InvariantCulture)}</color>");
                 if (s.m_foodRegen > 0f) text.Add($"$item_food_regen: <color={regen}>{StatsMath.FoodRegenPerSecond(s.m_foodRegen).ToString("0.##", CultureInfo.InvariantCulture)} hp$ui_stats_per_second</color>");
                 rows.Add(new Row { Icon = food.m_item.GetIcon(), Name = loc.Localize(s.m_name), Text = loc.Localize(string.Join("   ", text)), Seconds = food.m_time, Active = true });
             }

@@ -211,6 +211,44 @@ namespace Morgott.UI.MapScreen
 
         // ---------------------------------------------------------------- modal UI
 
+        private sealed class PinModalSwatchHandler
+        {
+            private readonly MinimapSkin _skin;
+            private readonly string _hex;
+
+            public PinModalSwatchHandler(MinimapSkin skin, string hex)
+            {
+                _skin = skin;
+                _hex = hex;
+            }
+
+            public void OnClick()
+            {
+                _skin._pinModalHex = _hex;
+                _skin.RefreshCustomPinModal();
+            }
+        }
+
+        private sealed class PinModalIconHandler
+        {
+            private readonly MinimapSkin _skin;
+            private readonly int _idx;
+
+            public PinModalIconHandler(MinimapSkin skin, int idx)
+            {
+                _skin = skin;
+                _idx = idx;
+            }
+
+            public void OnClick()
+            {
+                _skin._pinModalIconIdx = _idx;
+                _skin.RefreshCustomPinModal();
+            }
+        }
+
+        private void OnCustomPinNameChanged(string _) => RefreshCustomPinModal();
+
         private void BuildCustomPinModal()
         {
             _pinModal = HudArtRect("RuneSkin_CustomPinModal", _large);
@@ -236,7 +274,7 @@ namespace Morgott.UI.MapScreen
             _pinModalName = Field(nameBack, CustomPinMath.MaxVisibleNameLength);
             _pinModalName.textViewport.offsetMin = new Vector2(12f, 0f);
             _pinModalName.textViewport.offsetMax = new Vector2(-12f, 0f);
-            _pinModalName.onValueChanged.AddListener(_ => RefreshCustomPinModal());
+            _pinModalName.onValueChanged.AddListener(OnCustomPinNameChanged);
             _pinModalNameHint = _art.Text("NameHint", nameBack.transform, "font.body", "color.state.disabled", font, TextAlignmentOptions.Left);
             Place(_pinModalNameHint.rectTransform, 12f, 0f, contentW - 24f, 38f);
 
@@ -255,7 +293,7 @@ namespace Morgott.UI.MapScreen
                 fill.rectTransform.offsetMin = new Vector2(5f, 5f);
                 fill.rectTransform.offsetMax = new Vector2(-5f, -5f);
                 fill.color = CustomPinMath.SwatchColor(hex);
-                frame.gameObject.AddComponent<Button>().onClick.AddListener(() => { _pinModalHex = hex; RefreshCustomPinModal(); });
+                frame.gameObject.AddComponent<Button>().onClick.AddListener(new PinModalSwatchHandler(this, hex).OnClick);
                 _pinModalSwatchFrames.Add(frame);
             }
 
@@ -266,7 +304,6 @@ namespace Morgott.UI.MapScreen
             var gridX = pad + (contentW - gridW) * 0.5f;
             for (var i = 0; i < CustomPinMath.IconIds.Length; i++)
             {
-                var idx = i;
                 var col = i % PinModalCols;
                 var row = i / PinModalCols;
                 var c = _art.Image("Icon" + i, panel, "sprite.slot.cell", "color.frame", Image.Type.Sliced, raycast: true);
@@ -277,7 +314,7 @@ namespace Morgott.UI.MapScreen
                 glyph.rectTransform.offsetMax = new Vector2(-8f, -8f);
                 glyph.sprite = CustomPinIcons.Get(i);
                 glyph.preserveAspect = true;
-                c.gameObject.AddComponent<Button>().onClick.AddListener(() => { _pinModalIconIdx = idx; RefreshCustomPinModal(); });
+                c.gameObject.AddComponent<Button>().onClick.AddListener(new PinModalIconHandler(this, i).OnClick);
                 if (_ppTooltip)
                 {
                     var tip = c.gameObject.AddComponent<UITooltip>();

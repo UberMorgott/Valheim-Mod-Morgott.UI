@@ -1,6 +1,7 @@
 using Morgott.UI.Api;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Text;
 using Morgott.UI.Classify;
 using Morgott.UI.InventoryScreen;
@@ -39,6 +40,8 @@ namespace Morgott.UI.InfoScreens
             public Image Plate, Icon, Trough, Fill, Icon2, Plate2;
             public TMP_Text Label, Value, Sub, Label2, Value2;
             public readonly StringBuilder L = new StringBuilder(48), V = new StringBuilder(64), S = new StringBuilder(64), L2 = new StringBuilder(32), V2 = new StringBuilder(32);
+            public ulong LastLHash, LastVHash, LastSHash, LastL2Hash, LastV2Hash;
+            public int LastLLen = -1, LastVLen = -1, LastSLen = -1, LastL2Len = -1, LastV2Len = -1;
             public string IconToken, Icon2Token, BarToken;
             public Sprite IconSprite;
             public Color IconColor = Color.white, Icon2Color = Color.white;
@@ -56,6 +59,7 @@ namespace Morgott.UI.InfoScreens
 
         internal sealed class Card
         {
+            public StatsWindow Owner;
             public int Index;
             public Image Fill, Frame, HeaderIcon, Divider, Handle;
             public TMP_Text Title;
@@ -65,6 +69,19 @@ namespace Morgott.UI.InfoScreens
             public int Used;
             public float Scroll, ContentH, ViewH;
             public Box Box;
+
+            public bool CanDragStart(PointerEventData _) => ContentH > ViewH + 0.5f;
+
+            public float DragStepSize() => Owner.T("size.stats.scroll.step", 40f) * Mathf.Max(Owner._scale, 0.05f);
+
+            public void OnDragStep(int steps, PointerEventData _)
+            {
+                if (ContentH <= ViewH + 0.5f) return;
+                var next = StatsMath.ClampScroll(Scroll + steps * Owner.T("size.stats.scroll.step", 40f), ContentH, ViewH);
+                if (Mathf.Approximately(next, Scroll)) return;
+                Scroll = next;
+                Owner.LayoutCard(this);
+            }
         }
 
         private static readonly string[] CardIcons = { "res", "resist", "move", "defense", "food", "rest", "combat", "mt" };
@@ -123,12 +140,16 @@ namespace Morgott.UI.InfoScreens
                 _shownInventory = false; // a page switch keeps the inventory
                 Close();
             });
-            Plugin.Log.LogInfo($"[Morgott.UI] character stats window attached (button={(bool)_button})");
+            Plugin.Log.LogInfo($"[Morgott.UI] character stats window attached (button={((bool)_button).ToString()})");
         }
 
         private void OnDestroy()
         {
-            if (Instance == this) Instance = null;
+            if (Instance == this)
+            {
+                Instance = null;
+                if (_dense) { Destroy(_dense); _dense = null; }
+            }
             if (_root) ScreenRegistry.Unregister(_root);
         }
 
@@ -152,6 +173,7 @@ namespace Morgott.UI.InfoScreens
             if (!text.font) return;
             if (!_dense || _dense.mainTexture != text.font.material.mainTexture)
             {
+                if (_dense) Destroy(_dense);
                 _dense = new Material(text.font.material) { name = "RuneSkin stats body (dense)" };
                 _dense.SetFloat(ShaderUtilities.ID_FaceDilate, ThemeTokens.GetFloat("size.stats.text.dilate", 0.1f));
                 _dense.SetFloat(ShaderUtilities.ID_OutlineWidth, ThemeTokens.GetFloat("size.stats.text.outline", 0.12f));
@@ -185,7 +207,7 @@ namespace Morgott.UI.InfoScreens
 
         private Card MakeCard(int i)
         {
-            var c = new Card { Index = i };
+            var c = new Card { Owner = this, Index = i };
             // Card frame (the painted chrome drew it before) like the compendium reading pane (mockup 02): flat teal fill,
             // the key art as outline.
             c.Fill = new GameObject("Card" + i + "Fill", typeof(RectTransform)).AddComponent<Image>();
@@ -204,16 +226,9 @@ namespace Morgott.UI.InfoScreens
             hit.raycastTarget = true;
             DollCell.Mark(hit, "content", "stats card scroll area");
             var drag = view.AddComponent<DragScroll>();
-            drag.CanStart = _ => c.ContentH > c.ViewH + 0.5f;
-            drag.StepSize = () => T("size.stats.scroll.step", 40f) * Mathf.Max(_scale, 0.05f);
-            drag.OnStep = (steps, _) =>
-            {
-                if (c.ContentH <= c.ViewH + 0.5f) return;
-                var next = StatsMath.ClampScroll(c.Scroll + steps * T("size.stats.scroll.step", 40f), c.ContentH, c.ViewH);
-                if (Mathf.Approximately(next, c.Scroll)) return;
-                c.Scroll = next;
-                LayoutCard(c);
-            };
+            drag.CanStart = c.CanDragStart;
+            drag.StepSize = c.DragStepSize;
+            drag.OnStep = c.OnDragStep;
             c.HeaderIcon = Img(_root, "Card" + i + "Icon", "stats.icon", "card category icon (stats_head_*)");
             c.HeaderIcon.sprite = ThemeTokens.GetSprite("sprite.stats.head." + CardIcons[i]);
             c.HeaderIcon.enabled = c.HeaderIcon.sprite;
@@ -308,13 +323,44 @@ namespace Morgott.UI.InfoScreens
             return null;
         }
 
+        private static string ExplainName(Explain e) => e switch
+        {
+            Explain.None => nameof(Explain.None),
+            Explain.Health => nameof(Explain.Health),
+            Explain.Stamina => nameof(Explain.Stamina),
+            Explain.Eitr => nameof(Explain.Eitr),
+            Explain.HealthRegen => nameof(Explain.HealthRegen),
+            Explain.StaminaRegen => nameof(Explain.StaminaRegen),
+            Explain.EitrRegen => nameof(Explain.EitrRegen),
+            Explain.Resist => nameof(Explain.Resist),
+            Explain.Jog => nameof(Explain.Jog),
+            Explain.Run => nameof(Explain.Run),
+            Explain.Swim => nameof(Explain.Swim),
+            Explain.Weight => nameof(Explain.Weight),
+            Explain.RunDrain => nameof(Explain.RunDrain),
+            Explain.Dodge => nameof(Explain.Dodge),
+            Explain.Jump => nameof(Explain.Jump),
+            Explain.SwimDrain => nameof(Explain.SwimDrain),
+            Explain.Armor => nameof(Explain.Armor),
+            Explain.Block => nameof(Explain.Block),
+            Explain.Parry => nameof(Explain.Parry),
+            Explain.BlockStamina => nameof(Explain.BlockStamina),
+            Explain.Damage => nameof(Explain.Damage),
+            Explain.Dps => nameof(Explain.Dps),
+            Explain.AttackStamina => nameof(Explain.AttackStamina),
+            Explain.ShieldMax => nameof(Explain.ShieldMax),
+            Explain.ShieldRecharge => nameof(Explain.ShieldRecharge),
+            Explain.ShieldBreak => nameof(Explain.ShieldBreak),
+            _ => ((int)e).ToString(CultureInfo.InvariantCulture)
+        };
+
         internal void Hover(Row r, int half, bool enter)
         {
             var plate = half == 0 ? r.Plate : r.Plate2;
             if (enter)
             {
                 // One line per hover start (diagnostics: the breakdown runs other mods' status-effect hooks every frame).
-                if (_hoverRow != r || _hoverHalf != half) Plugin.Log.LogInfo($"[Morgott.UI] stats hover {(half == 0 ? r.Explain : r.Explain2)} arg {(half == 0 ? r.Arg : r.Arg2)}");
+                if (_hoverRow != r || _hoverHalf != half) Plugin.Log.LogInfo($"[Morgott.UI] stats hover {ExplainName(half == 0 ? r.Explain : r.Explain2)} arg {(half == 0 ? r.Arg : r.Arg2).ToString(CultureInfo.InvariantCulture)}");
                 _hoverRow = r;
                 _hoverHalf = half;
                 if (plate) plate.color = ThemeTokens.GetColor("color.stats.plate.hover", r.PlateColor * 1.35f);
@@ -380,7 +426,7 @@ namespace Morgott.UI.InfoScreens
             var trophies = info ? info.Find("Trophies") as RectTransform : null;
             if (!achievements || !trophies)
             {
-                Plugin.Log.LogWarning($"[Morgott.UI] character stats: no Achievements / Trophies button in the info row (Achievements={(bool)achievements} Trophies={(bool)trophies}); key only");
+                Plugin.Log.LogWarning($"[Morgott.UI] character stats: no Achievements / Trophies button in the info row (Achievements={((bool)achievements).ToString()} Trophies={((bool)trophies).ToString()}); key only");
                 return null;
             }
             _buttonGo = Instantiate(achievements.gameObject, achievements.parent, false);
@@ -554,11 +600,11 @@ namespace Morgott.UI.InfoScreens
                 for (var i = 0; i < c.Used; i++)
                 {
                     var r = c.Rows[i];
-                    if (r.Label) r.Label.SetText(r.L);
-                    if (r.Value) r.Value.SetText(r.V);
-                    if (r.Sub) r.Sub.SetText(r.S);
-                    if (r.Label2) r.Label2.SetText(r.L2);
-                    if (r.Value2) r.Value2.SetText(r.V2);
+                    SetIfChanged(r.Label, r.L, ref r.LastLHash, ref r.LastLLen);
+                    SetIfChanged(r.Value, r.V, ref r.LastVHash, ref r.LastVLen);
+                    SetIfChanged(r.Sub, r.S, ref r.LastSHash, ref r.LastSLen);
+                    SetIfChanged(r.Label2, r.L2, ref r.LastL2Hash, ref r.LastL2Len);
+                    SetIfChanged(r.Value2, r.V2, ref r.LastV2Hash, ref r.LastV2Len);
                     SetIcon(r.Icon, r.IconSprite ? r.IconSprite : ThemeTokens.GetSprite(r.IconToken));
                     if (r.Icon && r.Icon.color != r.IconColor) r.Icon.color = r.IconColor;
                     // The label / value split follows the value's width: re-lay out when its length changes. Both halves of
@@ -589,6 +635,23 @@ namespace Morgott.UI.InfoScreens
                         if (r.Trough) PlaceFill(r);
                     }
                 }
+        }
+
+        // Writes StringBuilder to TMP only when content changed (FNV-1a 64-bit + length, avoiding TMP_Text.text getter allocation).
+        private static void SetIfChanged(TMP_Text text, StringBuilder sb, ref ulong lastHash, ref int lastLen)
+        {
+            if (!text) return;
+            var len = sb.Length;
+            var h = 14695981039346656037UL;
+            for (var i = 0; i < len; i++)
+            {
+                h ^= sb[i];
+                h *= 1099511628211UL;
+            }
+            if (len == lastLen && h == lastHash) return;
+            lastLen = len;
+            lastHash = h;
+            text.SetText(sb);
         }
 
         private static void SetIcon(Image image, Sprite sprite)
@@ -1030,7 +1093,7 @@ namespace Morgott.UI.InfoScreens
                 (TextViewer.instance && TextViewer.instance.IsVisible()) || GameCamera.InFreeFly() || Minimap.IsOpen())
             {
                 // Run 20261026-182632 / -184538: Escape left the window open; name the guard that held it.
-                if (pressed) Plugin.Log.LogInfo($"[Morgott.UI] stats back ignored: craftTimer={gui.m_craftTimer:0.00} chat={(Chat.instance && Chat.instance.HasFocus())} console={(global::Console.IsVisible())} menu={Menu.IsVisible()} textViewer={(TextViewer.instance && TextViewer.instance.IsVisible())} freeFly={GameCamera.InFreeFly()} map={Minimap.IsOpen()}");
+                if (pressed) Plugin.Log.LogInfo($"[Morgott.UI] stats back ignored: craftTimer={gui.m_craftTimer.ToString("0.00", CultureInfo.InvariantCulture)} chat={(Chat.instance && Chat.instance.HasFocus()).ToString()} console={(global::Console.IsVisible()).ToString()} menu={Menu.IsVisible().ToString()} textViewer={(TextViewer.instance && TextViewer.instance.IsVisible()).ToString()} freeFly={GameCamera.InFreeFly().ToString()} map={Minimap.IsOpen().ToString()}");
                 return true;
             }
             if (!pressed) return true;

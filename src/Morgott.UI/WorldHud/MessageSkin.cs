@@ -499,7 +499,7 @@ namespace Morgott.UI.WorldHud
         {
             if (!plate || !title || !(plate.rectTransform.parent is RectTransform msg) || title.rectTransform.parent != msg)
             {
-                Plugin.Log.LogWarning($"[Morgott.UI] unlock message layout skipped: plate={(bool)plate} title={(bool)title} (unexpected prefab hierarchy)");
+                Plugin.Log.LogWarning($"[Morgott.UI] unlock message layout skipped: plate={(plate ? "True" : "False")} title={(title ? "True" : "False")} (unexpected prefab hierarchy)");
                 return;
             }
             var prt = plate.rectTransform;
