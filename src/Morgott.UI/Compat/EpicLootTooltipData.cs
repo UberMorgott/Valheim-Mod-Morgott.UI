@@ -7,10 +7,10 @@ using HarmonyLib;
 namespace Morgott.UI.Compat
 {
     // Epic Loot's structured item tooltip (no reference): EpicLoot.ItemTooltip.GetData(item, quality, includeDetails)
-    // returns the per-frame cached ItemTooltipData its TooltipRenderer draws from (0.15.6 decompile: ItemTooltip.cs:68,
-    // ItemTooltipData.cs, TooltipEffect / TooltipSet / TooltipSetPiece / TooltipSetBonus / TooltipSockets / TooltipStat).
-    // Read field by field into the mirror below (its public API's JSON through JsonUtility came back with empty lists in
-    // run 20261108-183456: no magic / set sections). includeDetails follows Epic Loot's MagicItem.ShowEffectDetails.
+    // returns the per-frame cached ItemTooltipData its TooltipRenderer draws from (0.15.6 / 0.16.0 decompile:
+    // ItemTooltip.cs, ItemTooltipData.cs, TooltipEffect / TooltipSet / TooltipSetPiece / TooltipSetBonus / TooltipSockets /
+    // TooltipStat). Read field by field into the mirror below (its public API's JSON through JsonUtility came back with
+    // empty lists in run 20261108-183456: no magic / set sections). includeDetails follows Epic Loot's MagicItem.ShowEffectDetails.
     internal static class EpicLootTooltipData
     {
         internal sealed class Stat { public string Id; public string Variant; }
@@ -23,7 +23,7 @@ namespace Morgott.UI.Compat
 
         internal sealed class Data
         {
-            public string Kind, DisplayName, RarityName, RarityColor, ItemTypeName, SetLabel, SetColor, Description;
+            public string Kind, DisplayName, RarityName, RarityColor, ItemTypeName, SetLabel, SetColor, UniqueLabel, UniqueColor, Description;
             public bool IsMagic;
             public int MaterialRarity = -1, Rarity = -1;
             public List<Stat> Stats = new List<Stat>();
@@ -64,6 +64,8 @@ namespace Morgott.UI.Compat
                 ItemTypeName = S(src, "ItemTypeName"),
                 SetLabel = S(src, "SetLabel"),
                 SetColor = S(src, "SetColor"),
+                UniqueLabel = S(src, "UniqueLabel"),
+                UniqueColor = S(src, "UniqueColor"),
                 Description = S(src, "Description"),
                 IsMagic = F(src, "IsMagic") is bool m && m,
                 MaterialRarity = F(src, "MaterialRarity") is int r ? r : -1,

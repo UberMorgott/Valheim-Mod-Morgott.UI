@@ -265,6 +265,36 @@ namespace Morgott.UI.Tests
         }
 
         [Fact]
+        public void ElUniqueLabelMovesToHeaderWithUniqueColor()
+        {
+            const string rarity = "#00abff";
+            const string unique = "#f7c548";
+            var raw = "<color=" + unique + ">$mod_epicloot_legendaryuniquelabel</color>\n$item_desc\n" +
+                      "\n$item_onehanded\n$inventory_slash: <color=#add8e6ff>92</color>" +
+                      "\n<color=" + rarity + ">● +12% fire\n</color>$mod_epicloot_itemtooltip_rarity: <color=" + rarity + ">Legendary</color>";
+            var d = new TooltipSheet.SheetData
+            {
+                Name = "Mjolnir",
+                NameColor = "00ABFFFF",
+                Subtitle = "Legendary · Hammer",
+                UniqueLabel = "$mod_epicloot_legendaryuniquelabel",
+                UniqueColor = "F7C548FF",
+                Description = "$item_desc",
+                MagicColor = "00ABFFFF",
+                ElEffectsColor = rarity,
+            };
+            d.DropLines.Add("$mod_epicloot_legendaryuniquelabel");
+            d.Effects.Add(new TooltipSheet.Effect { Text = "+12% fire" });
+
+            var r = TooltipSheet.Compose(raw, d, S);
+            AssertInOrder(r,
+                "Mjolnir", "Legendary · Hammer", "<color=#F7C548FF>$mod_epicloot_legendaryuniquelabel</color>", "mui:hdr",
+                "$inventory_slash", "$ui_tip_magic", "+12% fire", "$item_desc");
+            Assert.Equal(1, Count(r, "$mod_epicloot_legendaryuniquelabel"));
+            Assert.DoesNotContain("<color=" + unique + ">", r);
+        }
+
+        [Fact]
         public void TokenRules()
         {
             Assert.Equal("item_twohanded", TooltipSheet.Token("$item_twohanded"));

@@ -88,6 +88,7 @@ namespace Morgott.UI.ModScreens
                     var n = part.Rt.name;
                     if (n == "Title") f.Title = part;
                     else if (f.List == null && (n == "MultiSelectItemList" || n == "SacrificeItemList" || n == "ItemList")) f.List = part;
+                    // Mode-specific panels (IdentifyStylePanel, 0.16.0 SacrificeCategoryPanel) join Rest; PagePart.Fit uses active parts only.
                     else f.Rest.Add(part);
                 }
                 _features.Add(f);

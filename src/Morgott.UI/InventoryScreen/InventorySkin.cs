@@ -1853,9 +1853,11 @@ namespace Morgott.UI.InventoryScreen
         // Markers never cover the icon (user call 2026-10-22, screenshot: a gold 4-point star hid an equipped sword). Epic
         // Loot re-dresses each cell on every UpdateGui (ItemBackgroundHelper): ApplyEquippedSprite puts its equipped sprite
         // at texture size over the cell centre (only skipped with Auga), "magicItem" = rarity glow behind the icon, "setItem"
-        // = the set sprite 64 x 64 as the LAST sibling (over the icon). After it (this postfix runs last): no badge on a
+        // = the set sprite 64 x 64 as the LAST sibling (over the icon), and in 0.16.0 "uniqueEmbers" / "uniqueBorder" =
+        // procedural UniqueCellEffect overlays created at fixed 64 x 64. After it (this postfix runs last): no badge on a
         // cell but the quality number and the no-teleport mark (user call 2026-11-08; set / food info stays in the tooltip),
-        // so equipped, equip-queued, food and set markers are hidden; rarity = a rim in Epic Loot's colour on the cell edge.
+        // so equipped, equip-queued, food and set markers are hidden; rarity = a rim in Epic Loot's colour on the cell edge,
+        // and any unique overlays stretch to the cell rect.
         // The no-teleport mark stays vanilla's (InventoryGrid.cs:336: !m_shared.m_teleportable && no TeleportAll world key;
         // player report 2026-11-19: ores / bars / eggs lost it).
         private static void CellMarks(InventoryElement e)
@@ -1875,13 +1877,20 @@ namespace Morgott.UI.InventoryScreen
             {
                 var rim = ThemeTokens.GetSprite("sprite.hud.strip.rim");
                 if (rim && mi.sprite != rim) { mi.sprite = rim; mi.type = Image.Type.Sliced; mi.preserveAspect = false; }
-                if (magic.anchorMin != Vector2.zero || magic.anchorMax != Vector2.one)
-                {
-                    magic.anchorMin = Vector2.zero;
-                    magic.anchorMax = Vector2.one;
-                    magic.pivot = new Vector2(0.5f, 0.5f);
-                    magic.offsetMin = magic.offsetMax = Vector2.zero;
-                }
+                Stretch(magic);
+            }
+            if (e.transform.Find("uniqueEmbers") is RectTransform embers) Stretch(embers);
+            if (e.transform.Find("uniqueBorder") is RectTransform border) Stretch(border);
+        }
+
+        private static void Stretch(RectTransform rt)
+        {
+            if (rt.anchorMin != Vector2.zero || rt.anchorMax != Vector2.one || rt.offsetMin != Vector2.zero || rt.offsetMax != Vector2.zero)
+            {
+                rt.anchorMin = Vector2.zero;
+                rt.anchorMax = Vector2.one;
+                rt.pivot = new Vector2(0.5f, 0.5f);
+                rt.offsetMin = rt.offsetMax = Vector2.zero;
             }
         }
 

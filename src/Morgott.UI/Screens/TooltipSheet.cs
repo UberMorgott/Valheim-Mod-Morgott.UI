@@ -44,7 +44,7 @@ namespace Morgott.UI.Screens
         {
             public List<EffectBlock> Blocks = new List<EffectBlock>();
             public HashSet<string> DropExact = new HashSet<string>(StringComparer.Ordinal); // raw lines equal to these (colours aside) are dropped
-            public string Name, NameColor, Subtitle, Description;
+            public string Name, NameColor, Subtitle, UniqueLabel, UniqueColor, Description;
             public int IconId = -1;                 // TooltipDecor icon cache id, -1 = none
             public int Quality, MaxQuality;
             public float Durability = -1f, MaxDurability; // < 0 = no durability
@@ -346,6 +346,12 @@ namespace Morgott.UI.Screens
             else sb.Append(d.Name);
             sb.Append("</b></size>");
             if (!string.IsNullOrEmpty(d.Subtitle)) sb.Append('\n').Append(d.Subtitle);
+            if (!string.IsNullOrEmpty(d.UniqueLabel))
+            {
+                sb.Append('\n');
+                if (d.UniqueColor != null) sb.Append("<color=#").Append(d.UniqueColor).Append('>').Append(d.UniqueLabel).Append("</color>");
+                else sb.Append(d.UniqueLabel);
+            }
             if (d.MaxQuality > 1)
             {
                 sb.Append("\n$ui_tip_quality ").Append(d.Quality).Append("  ");

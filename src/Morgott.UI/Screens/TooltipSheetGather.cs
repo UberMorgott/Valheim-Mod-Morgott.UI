@@ -129,6 +129,12 @@ namespace Morgott.UI.Screens
                 }
                 if (!string.IsNullOrEmpty(el.Description)) d.Description = el.Description;
                 if (!string.IsNullOrEmpty(el.SetLabel)) d.DropLines.Add(el.SetLabel);
+                if (!string.IsNullOrEmpty(el.UniqueLabel))
+                {
+                    d.DropLines.Add(el.UniqueLabel);
+                    d.UniqueLabel = el.UniqueLabel;
+                    d.UniqueColor = EpicLootTooltipData.Hex(el.UniqueColor);
+                }
                 if (el.Kind != "Shard") d.ElEffectsColor = el.RarityColor;
                 foreach (var e in el.Effects ?? new List<EpicLootTooltipData.Effect>()) d.Effects.Add(new TooltipSheet.Effect { Text = e.Text });
                 if (el.Sockets != null && el.Sockets.Count > 0)

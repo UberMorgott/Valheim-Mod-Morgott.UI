@@ -126,6 +126,8 @@ namespace Morgott.UI.Classify
 
             if (g is TMP_SubMeshUI)
                 return Classification.Of("content", "TMP_SubMeshUI (fallback-font sub-mesh of its parent text)");
+            if (IsUniqueCellEffect(g))
+                return Classification.Of("content", "Epic Loot unique item cell effect (procedural MaskableGraphic)");
             if (g is TMP_Text text)
             {
                 var selectable = g.GetComponentInParent<Selectable>(true);
@@ -227,6 +229,13 @@ namespace Morgott.UI.Classify
             var input = image.GetComponentInParent<TMP_InputField>(true);
             if (input && input.targetGraphic == image) return Classification.Of("field", "TMP_InputField.targetGraphic");
             return null;
+        }
+
+        private static bool IsUniqueCellEffect(Graphic g)
+        {
+            for (var t = g.GetType(); t != null && t != typeof(MaskableGraphic) && t != typeof(Graphic); t = t.BaseType)
+                if (t.FullName == "EpicLoot.UniqueCellEffect") return true;
+            return false;
         }
 
         // The colour vanilla gave the image (a restyle pass journals it on the mark).
