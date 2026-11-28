@@ -98,14 +98,14 @@ Shader "Morgott/Snow Mask"
             struct appdata
             {
                 float4 vertex : POSITION;
-                float2 uv : TEXCOORD0;
+                float4 uv : TEXCOORD0;
                 fixed4 color : COLOR;
             };
 
             struct v2f
             {
                 float4 pos : SV_POSITION;
-                float2 uv : TEXCOORD0;
+                float4 uv : TEXCOORD0;
                 fixed4 color : TEXCOORD1;
             };
 
@@ -121,11 +121,12 @@ Shader "Morgott/Snow Mask"
             float4 frag(v2f i) : SV_Target
             {
                 float2 inner = i.color.gb;
-                float2 k = saturate((abs(i.uv) - inner) / max(1.0 - inner, 1e-3));
+                float2 k = saturate((abs(i.uv.xy) - inner) / max(1.0 - inner, 1e-3));
                 float shape = (i.color.a < 0.5)
-                    ? (1.0 - smoothstep(0.0, 1.0, saturate((length(i.uv) - i.color.g) / max(1.0 - i.color.g, 1e-3))))
+                    ? (1.0 - smoothstep(0.0, 1.0, saturate((length(i.uv.xy) - i.color.g) / max(1.0 - i.color.g, 1e-3))))
                     : (1.0 - smoothstep(0.0, 1.0, max(k.x, k.y)));
-                return float4(shape * i.color.r * _MaskMeta.z, (shape > 0.05 && _MaskMeta.z > 0.5) ? _MaskMeta.x : -1000.0, shape * _MaskMeta.y, 0.0);
+                float relY = (i.uv.w > 0.5) ? i.uv.z : _MaskMeta.x;
+                return float4(shape * i.color.r * _MaskMeta.z, (shape > 0.05 && _MaskMeta.z > 0.5) ? relY : -1000.0, shape * _MaskMeta.y, 0.0);
             }
             ENDCG
         }

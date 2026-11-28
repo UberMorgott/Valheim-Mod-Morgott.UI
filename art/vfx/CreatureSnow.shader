@@ -374,12 +374,14 @@ Shader "Morgott/CreatureSnow"
                 float3 driftPos = worldMode ? (wp * 0.65) : (localPos * 6.5);
                 float vertNoise = saturate((NoiseGrad3(driftPos).x - 0.20) / 0.60);
                 float upMask = worldMode ? smoothstep(0.45, 0.72, wn.y) : smoothstep(0.50, 0.85, wn.y);
+                float distFade = worldMode ? (1.0 - smoothstep(52.0, 64.0, distance(wp, _WorldSpaceCameraPos))) : 1.0;
                 float capHeight = (_MorgottCapHeight > 0.0001) ? _MorgottCapHeight : 0.022;
                 float tuck = worldMode ? -0.025 : -0.012;
-                float maxPuff = capAmt * capHeight * (0.72 + 0.28 * vertNoise);
-                float disp = lerp(tuck, maxPuff, upMask);
+                float maxPuff = capAmt * distFade * capHeight * (0.72 + 0.28 * vertNoise);
+                float mask = upMask * distFade;
+                float disp = lerp(tuck, maxPuff, mask);
                 float3 puffDir = SafeNormalize(lerp(wn, float3(0.0, 1.0, 0.0), 0.45), float3(0.0, 1.0, 0.0));
-                float3 dispDir = SafeNormalize(lerp(wn, puffDir, upMask), wn);
+                float3 dispDir = SafeNormalize(lerp(wn, puffDir, mask), wn);
                 wp += dispDir * disp;
 
                 o.pos = mul(UNITY_MATRIX_VP, float4(wp, 1.0));

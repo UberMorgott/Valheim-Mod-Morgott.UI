@@ -189,10 +189,12 @@ Shader "Morgott/WorldSeason"
                 float3 wn = SafeNormalize(tex2Dlod(_CameraGBufferTexture2, float4(uv, 0.0, 0.0)).xyz * 2.0 - 1.0, float3(0.0, 1.0, 0.0));
 
                 float2 suv = (worldPos.xz - _MorgottShelterRect.xy) * _MorgottShelterRect.z;
-                float3 shSample = tex2Dlod(_MorgottShelterTex, float4(saturate(suv), 0.0, 0.0)).rgb;
-                float3 sh = (suv.x >= 0.0 && suv.x <= 1.0 && suv.y >= 0.0 && suv.y <= 1.0) ? shSample : float3(0.0, -1000.0, 0.0);
+                float2 sEdge = min(suv, 1.0 - suv);
+                float sFade = (_MorgottShelterRect.z > 0.0) ? smoothstep(0.0, 0.03, min(sEdge.x, sEdge.y)) : 0.0;
+                float3 sh = (sFade > 0.0) ? tex2Dlod(_MorgottShelterTex, float4(saturate(suv), 0.0, 0.0)).rgb : float3(0.0, -1000.0, 0.0);
+                sh.b *= sFade;
                 float roofWorldY = _MorgottShelterRect.w + sh.g;
-                float underRoofOrFire = (sh.r > 0.20 && worldPos.y < roofWorldY - 0.20) ? smoothstep(0.20, 0.72, sh.r) : 0.0;
+                float underRoofOrFire = (sh.r > 0.20 && worldPos.y < roofWorldY - 0.20) ? smoothstep(0.20, 0.72, sh.r) * sFade : 0.0;
 
                 float3 leafColor = float3(0.35, 0.14, 0.02);
                 float leafAlpha = 0.0;
